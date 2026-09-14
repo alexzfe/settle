@@ -369,6 +369,10 @@ I'd recommend settling the direction first in Design Direction, which can take o
 
 Settle the direction in Design Direction now, or start on colours anyway? *(Recommended: the direction first.)*`;
 
+const WHICH_ROOMS = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked: warm, low contrast, oak, linen, limewash, and brass. No Palette yet, so that comes first, and every Room's colours will be drawn from it.
+
+Before I propose anything I'll read what the house came with, since the Palette is built around it. Which Rooms matter most? *(Recommended: the living room and the kitchen; I'll read their Room Sheets and name back what stays.)*`;
+
 const PALETTE_ROUND = `Colours it is. First round, one question per colour, each drawn from the Direction and the house's light:
 
 1. **Base, for most walls.** A warm plaster pink that glows in the south-facing living room and stays soft under lamps in the windowless hallway. *(Recommended: Setting Plaster (Farrow & Ball No. 231), which the living room walls already have.)*
@@ -514,6 +518,23 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   // Graded turn: the user asks which color the Main bedroom's walls should be, and to save it.
   // The case's own opening has the Palette "Warm clay" Locked; the Room color names one of its
   // colors, and no other color is offered.
+  // Graded turn: the Design Direction is Locked and there is no Palette. Color has asked which
+  // Rooms matter most; the user names three. The reply reads their Room Sheets and names back
+  // what the house came with instead of asking. The case's own opening has no Palette.
+  "color-starts-from-what-stays": (context) => {
+    const { turns, session } = opening(
+      context,
+      "Let's start on the colours for the house. We'd like to paint before winter.",
+      "color",
+    );
+    const lookup = { session, kind: "palette", state: "rejected" };
+    return [
+      ...turns,
+      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+      { assistant: WHICH_ROOMS },
+    ];
+  },
+
   "color-rests-on-palette": (context) => [
     ...colorRoomStart(context, "Let's do the colours for the main bedroom.", "main-bedroom").turns,
     { assistant: BEDROOM_ROUND },
