@@ -1,0 +1,146 @@
+{
+  "tools": [
+    {
+      "name": "open_session",
+      "title": "Open session",
+      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts, its Levels, and one line per Room with the Room's slug and Level). Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "skill": {
+            "type": "string",
+            "enum": ["home-intake", "design-direction", "color", "purchase"],
+            "description": "The Skill that is starting."
+          },
+          "session": {
+            "description": "Leave out to open a new Session. To join the Session this conversation already has, pass its id.",
+            "type": "string",
+            "minLength": 1
+          },
+          "resend": {
+            "description": "With `session`: return the whole opening again, not only what is new.",
+            "type": "boolean"
+          }
+        },
+        "required": ["skill"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_room",
+      "title": "Save room",
+      "description": "Records one Room of this Home, with its name and the Level it is on, and returns a receipt with one line per change. A Room is a named space divided from its neighbours by walls with doorways, whether or not a door hangs in them: an open-plan kitchen and living area is one Room, and a hallway, a staircase, or a balcony you can step onto is a Room too; a built-in cupboard is not. Call it once for each Room the user names or confirms. A Room whose name is already recorded is updated (moved to the given Level), never duplicated. `level` is a Level the opening lists, by name or slug; leave it out for the ground Level. Tell the user what the receipt says changed. Needs the open Session's id as `session`; a closed Session is refused.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "The Room's name as the user says it, e.g. \"Living room\" or \"Mia's room\"."
+          },
+          "level": {
+            "description": "The Level the Room is on, by name or slug (\"Ground\" or \"ground\").",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["session", "name"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_room_sheet",
+      "title": "Get room sheet",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home. Fetch it the first time the Session's work touches a Room, or when the user asks what is recorded about it; don't fetch every Room up front, since the opening already lists them all. For now a Room holds only its name and Level; its Walls, Windows, Doors, Features, Surfaces, and Items join the sheet later. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "room": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The Room's slug as the opening lists it (\"living-room\"); its name also works."
+          }
+        },
+        "required": ["session", "room"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "close_session",
+      "title": "Close session",
+      "description": "Closes the Session with a three-part summary the user reads in the app: what changed, what is still open, and the suggested next Skill. Call it when the user wraps up, not after each task. Once closed, the Session refuses every write; if the user wants to carry on, call open_session without `session` to start a new Session in the same conversation. The summary is for the user only: no later Session reads it.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "changed": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What changed in the Home's record during the Session, in plain words."
+              },
+              "open": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What is still open or undecided; \"Nothing\" when nothing is."
+              },
+              "next": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The suggested next Skill and why, e.g. \"Home Intake: record the upstairs\"."
+              }
+            },
+            "required": ["changed", "open", "next"]
+          }
+        },
+        "required": ["session", "summary"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
+}

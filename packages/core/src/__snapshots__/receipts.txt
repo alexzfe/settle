@@ -1,0 +1,5 @@
+Study (study): created on First
+
+Study (study): moved from First to Ground
+
+Study (study): already recorded on Ground, nothing changed

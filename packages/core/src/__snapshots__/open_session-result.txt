@@ -1,0 +1,12 @@
+Session: home-intake-efgh
+Pass session "home-intake-efgh" on every write in this conversation.
+
+Home: Fixture Home
+Location: London, GB (latitude 51.5° N)
+Levels: Ground (storey 0), First (storey 1)
+
+Rooms:
+- Living room (living-room): Ground
+- Kitchen (kitchen): Ground
+- Hallway (hallway): Ground
+- Main bedroom (main-bedroom): First

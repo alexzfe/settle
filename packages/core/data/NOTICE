@@ -1,0 +1,11 @@
+cities15000.tsv is derived from the GeoNames gazetteer extract cities15000
+(https://download.geonames.org/export/dump/cities15000.zip, downloaded 2026-09-13).
+
+GeoNames data is licensed under the Creative Commons Attribution 4.0 License
+(https://creativecommons.org/licenses/by/4.0/) by GeoNames (https://www.geonames.org/).
+The data is provided "as is" without warranty or any representation of accuracy, timeliness or
+completeness.
+
+Changes made: only the name, country code, latitude (rounded to 0.1 degree), and population of
+each city are kept, and of several cities with the same name in one country only the most
+populous. packages/core/scripts/build-cities.ts makes the file from the original.

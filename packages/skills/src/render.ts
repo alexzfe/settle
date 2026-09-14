@@ -12,6 +12,9 @@ const Frontmatter = z.strictObject({
 
 const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/;
 
+// The protocol sits under PROTOCOL_HEADING, so its own headings must be one level deeper or more.
+const SHALLOW_HEADING = /^#{1,2} /m;
+
 /**
  * Turns one Skill source into its built SKILL.md: the source's frontmatter and body, then the
  * shared protocol under PROTOCOL_HEADING. `dir` is the Skill's folder name, which `name` must match.
@@ -34,6 +37,10 @@ export function renderSkill(dir: string, source: string, protocol: string): stri
   const body = source.slice(match[0].length).trim();
   if (body.includes(PROTOCOL_HEADING)) {
     throw new Error(`${dir}/SKILL.md: "${PROTOCOL_HEADING}" is added by the build`);
+  }
+
+  if (SHALLOW_HEADING.test(protocol)) {
+    throw new Error(`protocol.md: use ### or deeper headings, to nest under "${PROTOCOL_HEADING}"`);
   }
 
   return `---\n${yaml}\n---\n\n${body}\n\n${PROTOCOL_HEADING}\n\n${protocol.trim()}\n`;

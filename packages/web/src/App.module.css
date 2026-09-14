@@ -1,0 +1,37 @@
+.page {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding-inline: 1rem;
+  font-family: system-ui, sans-serif;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.error {
+  color: #b00020;
+}
