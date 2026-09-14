@@ -18,13 +18,13 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
 - **Purpose:** records or corrects the Active Home's Home facts, Levels, Rooms, and Inventory, from a Blueprint, an interview, or optionally Photos. It can be run again at any time ("we moved the office", "add the bookshelf we forgot").
 - **Boundaries:** it records facts and makes no design Decisions. It runs in an ordinary Session, with the same Home binding, logging, and summary as any other Skill.
 - **Procedure:**
-  1. **Home facts.** Ask for any missing required Home fact. When Tenure is rented, ask one question about the usual permissions: paint, drill or hang, change light fittings, flooring. Propose the answers as a batch of Constraints, and add them once the user agrees.
+  1. **Home facts.** The web UI has already created the Home with its name, country, and city ([Home](home-model.md#home)). Record its Levels and any other Home fact the user gives. When Tenure is rented, ask one question about the usual permissions: paint, drill or hang, change lights, flooring. Propose the answers as a batch of Constraints, and add them once the user agrees.
   2. **Blueprint**, if the user uploaded one. Go through it in stages, with one reply per Level for each stage, auto-filling only text printed on the Blueprint:
      1. The Room list, with open-plan merges.
      2. Dimensions.
      3. Windows and Doors.
      4. Where north is. Always ask this.
-  3. **No Blueprint.** Interview Room by Room: the required fields first, then the Gaps (the Home model's "enough for advice" list).
+  3. **Remaining Gaps.** Always, with or without a Blueprint: interview Room by Room for whatever is still missing. Without a Blueprint, start with each Room's required fields. Then cover its Gaps (the Home model's "enough for advice" list), such as ceiling height and Surfaces, except times of use, which step 5 covers.
   4. **Items.** Mainly by interview: the user describes what they own, Room by Room, and confirms the list in one reply per Room. Optionally, the user uploads a Photo and the AI proposes a numbered list of what it sees (Items, Features, Surfaces), which the user confirms in one reply ("all but 3; 5 is oak, not pine"). Only confirmed entries are saved.
   5. **Times of use.** Ask once at the end, as one table covering every Room. The user can skip it, and whatever is skipped stays a Gap.
   6. **Facts along the way.** Propose any fact the user states as a Constraint, and save it once the user agrees. Softer context becomes a Note.
@@ -45,6 +45,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
   - the Design Direction Decision
   - Room Direction Decisions
   - Decisions on the use of undecided Rooms
+  - Fulfilment of those Room-use Decisions, which updates the Room's functions
 
 ### Color
 
@@ -64,8 +65,8 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
   - recording Fulfilment and any Deviations
 - **Boundaries:**
   - It applies the Palette but never extends it. The color of a fabric or finish is a Purchase Requirement whose reason is the Palette.
-  - Until Layout exists, it derives size and clearance Requirements from the Room. Until Lighting exists, it handles bulb and lamp specifications.
-  - Fulfilment can also be recorded through a form in the web UI.
+  - Until Furniture Placement exists, it derives size and clearance Requirements from the Room. Until Lighting exists, it handles bulb and lamp specifications.
+  - In the PoC, Fulfilment is recorded only through the Agent, by the Skill that owns the Decision (see `record_fulfilment`). A web UI form for it is deferred ([poc-design.md](../poc-design.md#deferred-topics)).
 - **Requirements:** each one is plain text ("under 85 cm tall"), marked *must* or *prefer*, with a reason linking to any Decision, Constraint, Note, or recorded part of the Home. The PoC has no structured numeric fields; the AI does the Listing and Deviation checks.
 - **Checks:**
   - **Measure first.** A *must* Requirement that rests on an Estimated value puts a "Measure first: alcove width (~1.2 m)" line at the top of the Quick Guide. Purchase offers to record the real measurement on the spot.
@@ -86,10 +87,10 @@ These are not part of the PoC.
 
 | Skill | What it does | What it takes over from the PoC Skills |
 |---|---|---|
-| Lighting | Fixtures, bulbs, lamp placement, daylight strategy | Bulb and lamp specifications, from Purchase |
-| Layout | Furniture placement and clearances | Size and clearance derivation, from Purchase |
+| Lighting | Lights (the Items and Features that give light), bulbs, lamp placement, daylight strategy | Bulb and lamp specifications, from Purchase |
+| Furniture Placement | Where furniture goes, and clearances | Size and clearance derivation, from Purchase |
 | Storage | Storage needs and solutions | Storage furniture needs, from Purchase |
-| Review | Walks the user through open flags, Conflicts, and Deviations | Nothing. In the PoC the web UI resolves these |
+| Review | Walks the user through open flags, Conflicts, and Deviations | Nothing. In the PoC the web UI and any Skill resolve these |
 | Tidy | Proposes merges and archives for the user to approve | Nothing |
 
 ## Trigger descriptions
@@ -137,7 +138,7 @@ the chair"). Not for property.
 ## Sessions and the shared protocol
 
 - **Home Folders.** Each Home has one Home Folder, which the web UI sets up, and the user runs their Agent inside it. Every Session started there belongs to that folder's Home, whatever the web UI is showing. The web UI's Home switcher only changes what the UI displays, and the AI can neither see nor switch Homes.
-- **Session scope.** A Session is one Agent conversation.
+- **Session scope.** A Session lives in one Agent conversation, and one conversation can hold several Sessions, one after another.
   - It opens when the first Skill starts.
   - Every Skill loaded later in the same conversation joins it.
   - Two terminals each hold their own Session.
@@ -159,7 +160,7 @@ the chair"). Not for property.
   - whether the Design Direction is Locked
   - open flags and Conflicts
 
-  The Skill names the Home and warns if the Design Direction isn't Locked. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't resolve them.
+  The Skill names the Home and warns if the Design Direction isn't Locked. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't stop to resolve them. Any Skill may resolve a flag later, when the user works on that Decision, and so can the web UI.
 - **Saying what changed.** Whenever the AI changes a Decision's state or the Home record, it says so plainly in the conversation ("Locked: Palette 'Warm Clay'").
 - **Asking first.** Before these moves, the AI asks the user in the conversation and waits for a yes. The recorded reason quotes the user's permission.
   - Reopen
@@ -169,7 +170,7 @@ the chair"). Not for property.
 - **Refused writes.** When the server refuses to replace a value with a weaker-Provenance one, the Skill states both values and their Provenance in one line ("You measured 3.62 m; the photo suggests ~3.5 m. I kept yours. Replace it?"). It overrides only if the user says yes.
 - **Closing.** When the user wraps up, the Agent calls `close_session` with a three-part summary: what changed, what's still open, and a suggested next Skill.
   - There is no time limit. A Session that never gets a summary stays unsummarised. That is harmless, because its record is built from its writes, and the web UI lists such Sessions without treating them as errors.
-  - After a summary, any further write in the same conversation opens a new Session.
+  - After a summary the Session is closed. A write carrying its id is refused with an error telling the AI to call `open_session`, which starts the next Session in the same conversation.
 
 ## Rule enforcement
 
@@ -177,16 +178,26 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 - **The server** enforces everything it can check from the data, refusing with an actionable error.
 - **The Skills** own every judgment about what the user meant.
 - **No hooks and no confirmation dialogs** in the PoC.
+- **Agent writes only.** The Session rules below apply to writes from the Agent over MCP. Web UI changes need no Session and are logged as coming from the web UI.
 
 | Server enforces (refuses the write) | Server supplies, the Skill says it | Skill instructions only |
 |---|---|---|
-| Writes need an open Session belonging to the Home Folder's Home | Home name, and whether the Design Direction is Locked, at Session open | Lock only on clear commitment, then say so |
-| Every state change carries its Session and a non-empty reason | Notes stay out of the Home Overview; `search_notes` finds them | Ask first before a Reopen, Rejecting a Locked Decision, or reviving a Rejected one; the reason quotes the user's permission |
-| Only legal transitions | Open flags and Conflicts at Session open | Constraints: only from a fact the user states, read back, and added or removed only once the user agrees |
+| Agent writes need an open (not closed) Session belonging to the Home Folder's Home | Home name, and whether the Design Direction is Locked, at Session open | Lock only on clear commitment, then say so |
+| Every Agent state change carries its Session and a non-empty reason | Notes stay out of the Home Overview; `search_notes` finds them | Ask first before a Reopen, Rejecting a Locked Decision, or reviving a Rejected one; the reason quotes the user's permission |
+| Only legal transitions (see below) | Open flags and Conflicts at Session open | Constraints: only from a fact the user states, read back, and added or removed only once the user agrees |
 | The Design Direction is automatically in every Basis; every Basis and Evidence entry must exist in this Home | | Never re-propose a Rejected Decision (use `find_decisions` to look up the Rejected ones in scope first) |
 | Nothing referenced is deleted; it is Archived instead | | A Note alone never changes a Decision's state |
 | Flags cascade automatically on Reopen, Reject, a Deviation from a *must* Requirement, and a change to a value a Requirement's reason points at | | A Room Direction refines, never contradicts, the Design Direction |
 | No value is overwritten by one of weaker Provenance unless the user overrides | | Spotting Conflicts and raising them with `flag_conflict` |
+
+**Legal transitions.** The server refuses any other.
+
+| From | To |
+|---|---|
+| Candidate | Leaning, Locked, Rejected |
+| Leaning | Candidate, Locked, Rejected |
+| Locked | Leaning (Reopen), Rejected |
+| Rejected | Candidate (revive) |
 
 **Server `instructions`** repeat the core rules as a backstop in case compaction drops Skill text. They stay under 512 characters. Draft:
 
@@ -195,9 +206,9 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 ## Auto-selection and hand-off
 
 - **Four separate Skills,** chosen automatically from their descriptions. The user can also invoke one by name.
-- **Hand-off.** When one Skill hits another Skill's question, it asks "settle this in Color now, or park it?" and defaults to switching.
+- **Hand-off.** When one Skill hits another Skill's question, it asks "settle this in Color now, or park it?" (naming whichever Skill owns the question) and defaults to switching.
   - **Switching** stays in the same Session, and the first Skill resumes afterwards.
-  - **Parking** records the need as a *prefer* Requirement with the reason "Palette pending", and the Session summary lists it under "still open".
+  - **Parking** creates a Candidate Decision for the parked question (for example, "an accent color for the rug"). A Requirement that needs the answer points its reason at that Decision, and the Session summary lists it under "still open".
   - Skills name each other in plain words, never as slash commands, so the text works in Codex too.
 
 ## Blueprints and Photos
@@ -206,7 +217,7 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 - A Skill fetches them with `view_images`, a few images per call. Claude Code caps a tool result at about 25K tokens.
 - The server converts HEIC to JPEG and PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs.
 - A tool result that carries images has no `structuredContent`, because Codex drops the images when it's present.
-- Photos are optional in the PoC. Home Intake can propose Items from one, and no other Skill uses them.
+- Photos are optional in the PoC. Only Home Intake depends on them, proposing Items from one. Any Skill may look at a Photo when one seems relevant.
 
 ## MCP tool surface
 
@@ -225,13 +236,13 @@ There are eighteen tools, shaped around tasks. Read tools and write tools are se
 | `save_home` | Home facts and Levels | Home Intake; Purchase (access measurements) |
 | `save_room` | One Room with its Walls, Windows, Doors, Features, and Surfaces | Home Intake; any Skill recording a fact the user states or a new measurement |
 | `save_items` | Several Items at once | Home Intake; any Skill recording a fact the user states |
-| `set_constraints` | Adds or removes a batch of Constraints | All |
+| `set_constraints` | Adds or removes (Archives) a batch of Constraints | All |
 | `save_note` | One Note | All |
 | `save_decision` | Creates or edits a Decision: content (including Design Direction and Palette content), scope, kind, Basis, Evidence, and Requirements for a Purchase. New Decisions start as Candidate | Design Direction, Color, Purchase |
-| `set_decision_state` | Lean, Lock, Reject, Reopen, or revive, with a reason. The server cascades flags | Design Direction, Color, Purchase |
+| `set_decision_state` | Lean, Lock, Reject, Reopen, or revive (to Candidate), with a reason, within the legal transitions. The server cascades flags | Design Direction, Color, Purchase |
 | `save_guides` | The Quick Guide's AI-written lines and the Full Guide | Purchase |
 | `record_listing` | A Listing, with pass, fail, or unknown for each Requirement | Purchase |
-| `record_fulfilment` | What was actually done, any Deviations, and the resulting Home changes: a new Item, an Archived Item, a changed Surface | Purchase; Color (for painting) |
+| `record_fulfilment` | What was actually done, any Deviations, and the resulting Home changes: a new Item, an Archived Item, a changed Surface, a Room's changed functions, or a replaced (Archived) Feature | Purchase; Color (for painting); Design Direction (Room use) |
 | `flag_conflict` | Raises a Conflict against a Locked Decision | All |
 | `close_session` | The three-part summary | All |
 
@@ -248,7 +259,7 @@ There are eighteen tools, shaped around tasks. Read tools and write tools are se
   - A build step inlines the shared protocol into each `SKILL.md` and writes the plugin into this repo.
   - Frontmatter uses only the spec fields, and each `name` matches its directory name.
   - Skills sit flat under `skills/`, and the manifest has no `skills` field.
-- **Setting up a Home Folder.** The web UI's "Set up Home Folder" action writes two files into a folder the user chooses:
+- **Setting up a Home Folder.** The web UI's "Set up Home Folder" action, available once the Home exists ([Home](home-model.md#home)), writes two files into a folder the user chooses:
   - **`.claude/settings.json`** enables the plugin for this folder only and names its marketplace, so Claude Code offers to install it. The plugin therefore costs nothing in unrelated Claude Code sessions.
   - **`.mcp.json`** points to the server at `http://127.0.0.1:<fixed port>/mcp/homes/<home>`. That URL is how the server knows the folder's Home.
   - **Why the MCP config lives in the folder:** Codex doesn't expand variables, and MCP roots are deprecated, so there is no portable way for a plugin-level config to tell the server which Home a folder belongs to.

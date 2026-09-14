@@ -23,7 +23,7 @@ Whether the user owns or rents a Home. Never a restriction on its own: what the 
 _Avoid_: Ownership, rental status
 
 **Level**:
-One storey of a Home, placed by its storey in the building, so a fifth-floor flat is a single Level at storey 5.
+The part of a Home at one height in the building, numbered from the ground (0) upward, so a fifth-floor flat is a single Level numbered 5.
 _Avoid_: Floor, storey, story
 
 **Room**:
@@ -33,6 +33,12 @@ _Avoid_: Space, area, zone
 **Wall**:
 One side of a Room, in clockwise order around it, with a length, the compass direction it faces, and what lies beyond it (another Room or outside). A Room's Wall lengths are its dimensions.
 _Avoid_: Side, edge
+
+**Window**:
+A window or skylight of a Room, recorded in the Wall it is in (or in the roof). Windows bring daylight, so the way their Walls face shapes color and lighting advice.
+
+**Door**:
+A doorway in a Wall, between two Rooms or between a Room and outside, whether or not a door hangs in it. One Door is shared by the two Rooms it joins, and a glazed Door (e.g. French doors) also lets in daylight.
 
 **Blueprint**:
 A source document (image or PDF) of a Home's plan, supplied by the user for the AI to read.
@@ -102,7 +108,7 @@ To move a Locked Decision back to Leaning, on the user's explicit instruction ("
 _Avoid_: Unlock
 
 **Design Direction**:
-The Home's overall design philosophy (style references, mood, color temperature, key materials, guiding principles). It names no specific colors; those belong to the Palette. It is a Home-wide Decision, settled in its own Session, that is automatically part of the Basis of every other Decision. It frames every later Session, Decision, and Shopping Guide.
+The Home's overall design philosophy (style references, mood, color temperature, key materials, guiding principles). It names no specific colors; those belong to the Palette. It is a Home-wide Decision, settled by the Design Direction Skill, that is automatically part of the Basis of every other Decision. It frames every later Session, Decision, and Shopping Guide.
 _Avoid_: Style, design philosophy, aesthetic, theme
 
 **Room Direction**:
@@ -123,6 +129,10 @@ A Note, Session, or other Decision recorded as supporting or undermining a Decis
 **Conflict**:
 A flagged contradiction between new Evidence and a Locked Decision, which only the user can resolve by keeping, reopening, or rejecting the Decision.
 
+**Flag**:
+A mark on a Decision saying that something it rests on has changed and it needs review: a Decision in its Basis was reopened, rejected, or Fulfilled with a Deviation from a *must* Requirement, or a value one of its Requirements' reasons points at has changed. Unlike a Conflict, the platform raises it; the user clears it by keeping, reopening, or rejecting the Decision.
+_Avoid_: Alert, warning
+
 **Fulfilled**:
 Said of a Locked Decision that needed action (buying, painting, installing, moving) once that action has been carried out. Fulfilling it updates the Home, e.g. by adding the bought Item to the Inventory, Archiving the Item it replaced, or changing a Room's Surface. What was actually done may differ from what was decided, and the Home records what was actually done. Not a Decision state.
 _Avoid_: Done, purchased, completed
@@ -132,7 +142,7 @@ A recorded difference between what a Decision asked for and what was actually do
 _Avoid_: Mismatch, discrepancy
 
 **Archived**:
-Said of a Note, Session, Decision, or Item retired from active use but kept. Anything referenced as Evidence or in a Basis is archived, never deleted. An Item is Archived when replaced, sold, given away, or broken.
+Said of anything retired from active use but kept: a Note, Session, Decision, or Constraint, or a recorded part of the Home such as a Room, Wall, Feature, or Item. Anything referenced (as Evidence, in a Basis, or by a Requirement's reason) is Archived, never deleted, so removing a Constraint or a Room Archives it. An Item is Archived when replaced, sold, given away, or broken.
 _Avoid_: Deleted, pruned, hidden
 
 ### Purchasing
@@ -142,7 +152,7 @@ A Decision to acquire something for the Home, possibly replacing an existing Ite
 _Avoid_: Order, wish, buy
 
 **Requirement**:
-One attribute a Purchase Decision asks for (e.g. "under 85 cm tall"), marked *must* or *prefer*, with a reason linking to where it came from — a Decision, Constraint, Note, or a recorded part of the Home (a Room, Wall, window, Feature, Item…).
+One attribute a Purchase Decision asks for (e.g. "under 85 cm tall"), marked *must* or *prefer*, with a reason linking to where it came from — a Decision, Constraint, Note, or a recorded part of the Home (a Room, Wall, Window, Feature, Item…).
 _Avoid_: Spec, criterion, filter
 
 **Listing**:
@@ -184,7 +194,7 @@ An AI-led grilling interview about the Active Home, held in one Agent conversati
 _Avoid_: Chat, conversation, grilling session, purchase session
 
 **Skill**:
-A packaged area of design expertise or procedure — e.g. Home Intake, color design, purchase grilling — that the AI applies during a Session.
+A packaged area of design expertise or procedure — e.g. Home Intake, Color, Purchase — that the AI applies during a Session.
 _Avoid_: Mode, agent, tool
 
 **Home Intake**:

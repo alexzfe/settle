@@ -35,7 +35,7 @@
 | name | The user's label for the Home | text | User | Req |
 | country | Country the Home is in; also sets the market for Listings | country | User | Req |
 | city | City or town. No street address and no coordinates, for privacy | text | User | Req |
-| latitude | Derived from the city, rounded to 0.1° (about 11 km). Sets the hemisphere, so compass advice flips correctly | degrees | AI, from the city | Req |
+| latitude | Derived from the city, rounded to 0.1° (about 11 km). Sets the hemisphere, so compass advice flips correctly | degrees | Platform, from a built-in city table | Req |
 | Tenure | Owned, rented, or other. Never implies a restriction on its own; what the user may change is recorded as Constraints | enum | User | Opt |
 | planned stay | How long the user expects to live there. Tempers investment advice | under 1 yr / 1–3 / 3–10 / indefinitely | User | Opt |
 | building type | | house / apartment / other | User | Opt |
@@ -44,6 +44,8 @@
 | lift door width, lift car depth | For getting furniture in | mm | Provenance | Opt |
 | narrowest access point | Narrowest point on the way into the Home: its width and what it is (e.g. "turn in the communal stair") | mm + text | Provenance | Opt |
 | Home Folder path | Where the user set up this Home's Home Folder, so the web UI can show it and set it up again. Never given to the AI | path | Platform, from the web UI's setup action | Opt |
+
+The web UI creates a Home from its name, country, and city, and the platform derives the latitude. A Home Folder can be set up only once its Home exists.
 
 There is no Home-level orientation: compass direction is recorded on each Wall. There is no structured household either: people and pets who impose rules are Constraints, and softer context is Notes.
 
@@ -149,6 +151,7 @@ A color value has one shape everywhere: in Surfaces, Palette colors, and Items.
 | position note | e.g. "under the window" | text | User | Opt |
 | size | width × height × depth | mm | Provenance | Opt |
 | light | [Light attributes](#light-attributes), for a Feature that gives light (e.g. a downlight) | | | Opt |
+| archived | When and why: removed, or replaced by a new Feature (a Purchase Decision may replace a radiator) | date + reason + optional replacing Feature | Platform / User | Opt |
 
 ### Item
 
@@ -163,7 +166,7 @@ A color value has one shape everywhere: in Surfaces, Palette colors, and Items.
 | colors | | Color values | Provenance | Opt |
 | materials | | text list | User / AI | Opt |
 | condition | | good / worn / damaged | User | Opt |
-| brand, model, price, link | Filled in when a Listing is Fulfilled, or stated by the user | text / money / URL | User / AI | Opt |
+| brand, model, price, link | Filled in when its Purchase Decision is Fulfilled, or stated by the user | text / money / URL | User / AI | Opt |
 | light | [Light attributes](#light-attributes), for an Item that gives light | | | Opt |
 | archived | When and why: replaced by another Item, sold, given away, or broken | date + reason + optional replacing Item | Platform / User | Opt |
 
@@ -213,8 +216,9 @@ No scale is stored, because values are never measured off the drawing: a value s
 ## Rules the Home model owns
 
 - **No weaker overwrites.** A value is never replaced by one with weaker Provenance (Measured > Blueprint > Estimated) unless the user explicitly says so. The server refuses such a write and says why. The weaker value is not stored.
-- **Change log.** Every change to a Home record is logged with what changed, when, and whether it came from the UI or which Session. The log exists for undo and audit, and it is never loaded into the AI's context. The Home itself holds only current state. Earlier states survive in Fulfilled Decisions, Deviations, and dated Photos.
+- **Change log.** Every change to a Home record is logged with what changed, when, and whether it came from the web UI or from which Session. The log exists for undo and audit, and it is never loaded into the AI's context. The Home itself holds only current state. Earlier states survive in Fulfilled Decisions, Deviations, and dated Photos.
 - **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item. When a value a reason points at changes (the alcove is re-measured), the platform detects it and the Purchase Decision is flagged for review.
+- **Archiving, not deleting.** Anything a Requirement's reason can point at (a Room, Wall, Window, Door, Feature, or Item, as well as a Constraint) is Archived rather than deleted, so every reference keeps working. Removing a Room or a Constraint Archives it. Archived records leave the Home's current state.
 - **Gaps.** A Room's Gaps are worked out against the "enough for advice" list:
   - Wall lengths
   - ceiling height
@@ -247,7 +251,7 @@ Locked Decisions are loaded alongside the Home Overview as poc-design says, and 
 - real geometry: corner coordinates, non-square angles, and curved walls
 - wall thickness, and Walls shared between neighbouring Rooms
 - door swing
-- areas within open-plan Rooms, and split floor finishes with real shapes
+- areas within open-plan Rooms, and a floor Surface's several materials given real shapes
 - numeric positions and rotations for Items and Features
 - sockets and switches
 - the floor area a bay window adds

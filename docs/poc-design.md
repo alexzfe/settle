@@ -6,10 +6,10 @@ The settled shape of the proof of concept, agreed in the design grilling of 2026
 
 Run on the user's own real home:
 
-1. Home Intake from a Blueprint and an interview (Photos optional) produces correct Rooms and Inventory.
+1. Home Intake works through a Blueprint, then interviews for the remaining Gaps (Photos optional), and produces correct Rooms and Inventory.
 2. A Design Direction Session ends with the Direction Locked.
 3. A Color Session Locks a palette resting on the Direction.
-4. A purchase grilling produces Requirements that trace back to the palette and the Rooms, plus a Quick Guide and a Full Guide.
+4. A Purchase Session produces Requirements that trace back to the palette and the Rooms, plus a Quick Guide and a Full Guide.
 5. The user takes the Quick Guide shopping.
 6. The user Fulfils with something slightly different, and the Deviation flags a dependent Decision.
 
@@ -24,7 +24,7 @@ Run on the user's own real home:
 ## AI behaviour
 
 - Skills are chosen automatically, and the user can also invoke one by name.
-- State changes follow the rules in CONTEXT.md (Locked, Rejected, Reopen, Conflict). Every state change is logged with its Session and a reason.
+- State changes follow the rules in CONTEXT.md (Locked, Rejected, Reopen, Conflict). Every state change the Agent makes is logged with its Session and a reason; web UI changes are logged as coming from the web UI ([skill-set.md](specs/skill-set.md#rule-enforcement)).
 - The AI makes state changes on its own judgment and says plainly what it changed. Before a Reopen, Rejecting a Locked Decision, reviving a Rejected one, or adding or removing a Constraint, it asks the user in the conversation. There are no confirmation dialogs. The server enforces only what it can check from data (ADR 0004).
 - The AI creates a Constraint only from a fact the user states. It reads the Constraint back before saving it, and removes one only on the user's explicit instruction.
 - At Session start the AI gets the Home Overview (the Home's facts, Constraints, Design Direction, and one line per Room with its Gaps) and the Locked Decisions. It fetches a Room Sheet, with that Room's Items, only when the Session needs that Room. Notes, Photos, Blueprints, and Archived Items are left out, and the AI looks them up only when one seems relevant.
@@ -34,7 +34,7 @@ Run on the user's own real home:
 
 ## Web UI
 
-- The user can view everything; edit Rooms, Items, Notes, and Constraints through forms; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home. The UI updates live when the Agent writes.
+- The user can view everything; create a Home; edit Rooms, Items, Notes, and Constraints through forms; upload Blueprints onto a Home and Photos onto a Room or an Item; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
 - A Shopping section shows two groups, the Shopping List and Considering. Each entry opens its Quick Guide, with the Full Guide one tap away. Every non-Rejected Purchase Decision has Guides. The AI writes them during Sessions, personalised to that Purchase Decision.
 - Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC.
 
@@ -42,8 +42,8 @@ Run on the user's own real home:
 
 Each of these gets its own research and grilling session.
 
-- Home model detail. Spec: [specs/home-model.md](specs/home-model.md). Brief: [handoff/home-model.md](handoff/home-model.md)
-- Skill set. Spec: [specs/skill-set.md](specs/skill-set.md). Brief: [handoff/skill-set.md](handoff/skill-set.md)
+- Home model detail: done. Spec: [specs/home-model.md](specs/home-model.md). Brief: [handoff/home-model.md](handoff/home-model.md)
+- Skill set: done. Spec: [specs/skill-set.md](specs/skill-set.md). Brief: [handoff/skill-set.md](handoff/skill-set.md)
 - Agent context budget: what the Agent is given, when, and at what size, so it never carries context it doesn't need. Brief: [handoff/agent-context.md](handoff/agent-context.md)
 - Budget module
 - 2D Floor Plan editor, then maybe 3D
@@ -53,4 +53,5 @@ Each of these gets its own research and grilling session.
 - Tidy Skill, which proposes merges and archives for the user to approve
 - Room Brief export for painters and contractors
 - To-do list for non-purchase Decisions that need action
+- Web UI form for recording Fulfilment (in the PoC, only the Agent records it)
 - Shared library of category guides
