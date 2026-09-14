@@ -1,5 +1,7 @@
 # `claude plugin eval` for testing our Skills (researched 2026-09-13)
 
+> **Update 2026-09-14:** [spike 2](spikes/2-eval-harness.md) tested this against Claude Code 2.1.269. Corrections: AskUserQuestion is not available in `claude -p` at all (the model asks in plain text); a mock for a server the plugin does not declare is named `mcp__<server>__<tool>`; a path target defaults to `--ablation with-without`.
+
 What Claude Code's plugin eval harness tests, how suites are written and run, and how it compares with Anthropic's other skill-evaluation guidance. Checked against Claude Code 2.1.269. The public docs page [1] exists. The CLI's own embedded reference [3] still says "no public documentation page for them yet", which is out of date. Where [1] and [3] overlap they agree, and [3] has more detail. Re-verify anything load-bearing, because this changes fast.
 
 ## What it is

@@ -1,5 +1,7 @@
 # Claude Code Skills and plugins (researched 2026-09-13)
 
+> **Update 2026-09-14:** the "One plugin" sketch under Consequences predates the Home Folder design. The plugin ships no `.mcp.json`; the Home Folder's `.mcp.json` declares the server, so tools are `mcp__int-design-harness__<tool>`. See [spike 1](spikes/1-home-folder.md) and [spike 2](spikes/2-eval-harness.md).
+
 How Skills and plugins work in Claude Code as of v2.1.270 (2026-09-12) [17]: the `SKILL.md` format, how Skills get invoked, plugin packaging with an MCP server, and the hooks that can enforce rules on MCP tool calls. Findings come from primary sources, listed at the end. The docs record many behaviours with a "requires vX" note, so re-verify anything load-bearing.
 
 ## `SKILL.md` format

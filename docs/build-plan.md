@@ -24,7 +24,7 @@ packages/core        domain types, the Core operations, the SQLite store, migrat
 packages/server      the one Node process: MCP over HTTP, the web API, static UI, SSE
 packages/web         React + Vite
 packages/skills      Skill sources, the shared protocol, and the build step that writes plugin/
-plugin/              the built plugin, checked in: .claude-plugin/plugin.json, skills/, evals/
+plugin/              the built plugin, checked in: .claude-plugin/plugin.json, skills/, evals/ (offline, mocked), evals-live/ (live smoke), test-support/live-server/ (helper plugin that only declares the server URL)
 .claude-plugin/marketplace.json   at the repo root; plugin source "./plugin"
 docs/
 ```
@@ -41,7 +41,7 @@ docs/
 | UI | React, React Router, TanStack Query, CSS modules, uncontrolled forms validated with the operation schemas |
 | Plugin build | a script in `packages/skills` that inlines the protocol into each `SKILL.md` and writes `plugin/skills/` |
 
-Commands: `pnpm dev` (server and UI with live reload), `pnpm test`, `pnpm build`, `pnpm plugin:build`, `pnpm plugin:eval`, `pnpm start`.
+Commands: `pnpm dev` (server and UI with live reload), `pnpm test`, `pnpm build`, `pnpm plugin:build`, `pnpm plugin:eval` (offline suite: `claude plugin eval ./plugin --trust-plugin --ablation none --no-publish --model <pinned>`), `pnpm plugin:eval:live` (starts the server on a dedicated port with a temporary data dir seeded with the fixture Home, runs `evals-live/` with the helper plugin, stops the server), `pnpm start`.
 
 Git: trunk on `main`, one commit per step, a tag per finished slice (`slice-1` … `slice-6`).
 
@@ -137,7 +137,7 @@ Every committed write appends to `change_log` and publishes one event `{ home, r
 | Adapters | `packages/server` | A handful of tests: an MCP tool call end to end, an API call, an SSE event after a write, the Home Folder files written |
 | Skill triggers | `plugin/evals` | About 10 should-fire and 10 near-miss prompts per Skill, graded on whether the Skill fired. **The user revises every prompt set before it is committed** |
 | Skill behaviour | `plugin/evals` | Replay cases from real transcripts, tools mocked, grading the next turn. One case per rule that lives only in Skill text |
-| Live smoke | `plugin/evals` | Against the real localhost server, once spike 2 shows the harness can reach it |
+| Live smoke | `plugin/evals-live` | Against a real server on a dedicated port with a seeded temporary data dir, reached through the helper plugin in `plugin/test-support/live-server/` |
 | Acceptance | manual | The finish line on the user's real Home, plus one read-through of the real Overview asking of each line: would a designer need this? |
 
 **The fixture Home** is fictional, built in code in `packages/core/fixture/`, and grows with each slice: two Levels, four Rooms of different shapes, one outdoor Room, Windows, Doors including one shared between two Rooms, Features, Items including one Unplaced and one Archived, Constraints, Notes, and from slice 4 on, Decisions in every state with Basis links, a flag, and a Conflict. Evals use it as the mocked server's data.
@@ -151,8 +151,8 @@ Scope: the repository layout above, empty packages that build and test, CI-less 
 | Spike | What it proves | Risk it retires |
 |---|---|---|
 | 1. Home Folder packaging | A marketplace added from a local path, a Home Folder's `.claude/settings.json` and `.mcp.json`, and Claude Code asking once to approve the folder's HTTP server and once to install the plugin | The Home Folder design: per-folder plugin enablement and Home binding by URL. **Done:** [1-home-folder.md](research/spikes/1-home-folder.md). Binding by URL and per-folder enablement work. There is no install offer: trusting the folder registers the `directory` marketplace and loads the plugin from the source tree, so no version bump is needed in the PoC. The server prompt defaults to "continue without", so `set_up_home_folder` also writes `enabledMcpjsonServers`, leaving the trust dialog as the only question. Tools are named `mcp__int-design-harness__<tool>`. Headless runs connect without approval but need a tool grant |
-| 2. Eval harness reach | `claude plugin eval` with `--mocks off` or `--allow-real-servers` calling a localhost HTTP MCP server, and what AskUserQuestion does headless | The live smoke suite and the grilling-Skill eval approach |
-| 3. PDF to PNG | `mupdf` (WebAssembly) rendering a page at 2000 px in-process; fallback is shelling out to `pdftoppm`, installed here and one package in Docker | Blueprint conversion |
+| 2. Eval harness reach | `claude plugin eval` with `--mocks off` or `--allow-real-servers` calling a localhost HTTP MCP server, and what AskUserQuestion does headless | The live smoke suite and the grilling-Skill eval approach. **Done:** [2-eval-harness.md](research/spikes/2-eval-harness.md). Mocks under `evals/mocks/int-design-harness/` give tools their production names `mcp__int-design-harness__<tool>` with no grant needed. A server declared only in the run's working directory is never read, so live smoke loads a helper plugin `plugin/test-support/live-server/` (manifest plus `.mcp.json`) next to the real one, from its own eval dir `plugin/evals-live/`, with `--mocks off --allow-tools "mcp__plugin_live-server_int-design-harness__*"`, against a server on a dedicated port with a temporary data dir seeded with the fixture Home, never 4380. Always pass `--ablation none`. AskUserQuestion is absent in `claude -p`, so the model asks in plain text and the run ends with the question as `last_message`; replay of transcripts that contain AskUserQuestion calls works |
+| 3. PDF to PNG | `mupdf` (WebAssembly) rendering a page at 2000 px in-process; fallback is shelling out to `pdftoppm`, installed here and one package in Docker | Blueprint conversion. **Done:** [3-pdf-to-png.md](research/spikes/3-pdf-to-png.md). `mupdf` wins: no native build, 40–80 ms per page, honours `/Rotate`, renders crops and returns the text layer with boxes in render coordinates, and opens JPEG and PNG Blueprints through the same call. Text reads down to about 5 pt whole-page and 4 pt in the crop. Every WASM object must be destroyed; a truncated PDF repairs to 0 pages and must be refused. **mupdf is AGPL**, which only bites if the platform is hosted for others; the fallback is the one wrapped module swapped for `pdftoppm` or pdfjs. Fixture PDFs are in `docs/research/spikes/fixtures/` |
 | 4. Images in a tool result | Several PNG pages returned from one tool call under Claude Code's result cap, and how the model sees them | The `view_images` paging and `crop` design. **Done:** [4-images-in-results.md](research/spikes/4-images-in-results.md). At most 6 pages of 2000 px per call (about 3.9K tokens each) stay under the 25K cap with no truncation logic running; the text block naming the pages goes first; PNG, with JPEG q85 when a page's PNG is over 1 MB, keeps a result far under the 16 MB transport limit; the model read 12 px text on every full-size page, so `crop` stays as cheap insurance and tiles are not needed unless the real Blueprint says so |
 
 Built-in SQLite is already verified and is off the list. HEIC conversion is deferred.
@@ -164,10 +164,10 @@ Done when: every spike has a written finding, and the layout builds and runs an 
 Threads every layer once, with the smallest possible Home model.
 
 - **Core:** `create_home`, `list_homes`, `set_up_home_folder` (writes `.mcp.json` with server key `int-design-harness` and `.claude/settings.json` with `enabledPlugins`, the `directory` marketplace at this repo's absolute path, and `enabledMcpjsonServers`; never touches `settings.local.json`), `open_session`, `save_room` (name and Level only; every Home gets a default ground Level), `get_room_sheet`, `close_session`, `list_sessions`, the change log, the event bus, the slug generator, migration 0001.
-- **Server:** the process, the API routes, `/events`, `/mcp/homes/<slug>` with the four tools, static UI.
+- **Server:** the process, the API routes, `/events`, `/mcp/homes/<slug>` with the four tools and the SDK's DNS-rebinding protection turned on (any web page can reach localhost), static UI.
 - **Web UI:** create Home, Home list and switcher, Home page with a live Room list and the Set up Home Folder action, Sessions list with summaries.
 - **Skill text:** the protocol's opening and closing, and a Home Intake reduced to opening, recording Rooms by name, and closing with the three-part summary. The plugin build, manifest, and marketplace file.
-- **Tests:** rules for Session scoping, the closed-Session refusal, and the Home Folder refusing a folder that holds another Home's `.mcp.json`; snapshots of the Overview (Rooms only), a Room Sheet, and a receipt; one trigger eval to prove the harness runs; one server test of an SSE event after a write.
+- **Tests:** rules for Session scoping, the closed-Session refusal, and the Home Folder refusing a folder that holds another Home's `.mcp.json`; snapshots of the Overview (Rooms only), a Room Sheet, and a receipt; one mocked trigger eval and one live smoke case to prove both suites run; one server test of an SSE event after a write.
 - **Demo:** create your Home in the browser, set up its Home Folder, run Claude Code there, accept the plugin and the server, describe one Room, and watch it appear in the browser. Close the Session and see its summary in the UI.
 
 ## Slice 2: the full Home model
@@ -180,7 +180,7 @@ Threads every layer once, with the smallest possible Home model.
 
 ## Slice 3: Blueprints
 
-- **Core:** `upload_blueprint`, page rendering to PNG on upload (spike 3's choice), `view_images` with a page list (at most 6 pages per call, enforced in the schema, text block first, JPEG fallback for pages over 1 MB as PNG) and a `crop` quarter, Blueprint Provenance with page and printed text, `get_room_sheet` with `with_sources`, page-to-Level mapping through `save_home`. Migration 0003.
+- **Core:** `upload_blueprint`, page rendering to PNG on upload with `mupdf` behind the file-store seam (page count, page size, render whole or a quarter, text lines; refuse 0 pages; destroy every WASM object), `view_images` with a page list (at most 6 pages per call, enforced in the schema, text block first, JPEG fallback for pages over 1 MB as PNG) and a `crop` quarter, Blueprint Provenance with page and printed text, `get_room_sheet` with `with_sources`, page-to-Level mapping through `save_home`. Migration 0003.
 - **Web UI:** Blueprint upload on the Home page, a page viewer, and Blueprint sources shown next to values on the Room page.
 - **Skill text:** the four Blueprint stages, one reply per Level, printed text only, always asking where north is.
 - **Tests:** a conversion test on a fixture PDF, a tool result with two pages under the cap, snapshots of `with_sources` and of a Blueprint-Provenance receipt; a behaviour eval for "auto-fills only printed text".
@@ -217,8 +217,8 @@ Threads every layer once, with the smallest possible Home model.
 | Revise the four trigger descriptions and each Skill's trigger prompt sets before they are committed | the user | the slice that ships each Skill |
 | Provide the real Blueprint PDF for the slice 3 demo and the Blueprint eval | the user | slice 3 |
 | Whether Blueprint pages need tiles | decided by the slice 3 demo | slice 3 |
-| AskUserQuestion behaviour in headless evals | spike 2 | slice 0 |
 | Web UI design session, including form-based editing | the user schedules it | after the finish line |
 | HEIC conversion | deferred until a HEIC file arrives | later |
+| mupdf's AGPL licence: keep it, or swap the one wrapped module for pdftoppm or pdfjs | the user decides before any hosting | before Docker |
 
 Everything else the docs did not answer was settled in the grilling and written into the specs: identifiers, the port, the city table, Decision kinds and their content, Door identity, the Provenance override, reason granularity, the Home Folder path, web UI reasons, no undo, and LAN mode for the phone.
