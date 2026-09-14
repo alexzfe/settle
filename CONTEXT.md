@@ -198,15 +198,15 @@ A packaged area of design expertise or procedure — e.g. Home Intake, Color, Pu
 _Avoid_: Mode, agent, tool
 
 **Home Intake**:
-The Skill that records or corrects a Home's Rooms and Inventory from a Blueprint, Photos, or an interview. It can be run at any time, not only when a Home is first added.
+The Skill that records or corrects a Home's Rooms and Inventory from a Blueprint or an interview. It can be run at any time, not only when a Home is first added.
 _Avoid_: Onboarding, setup, import
 
 **Home Overview**:
-The compact picture of the Active Home the AI is given at the start of every Session: the Home's own facts, its Constraints, the Design Direction, and one line per Room with its Gaps. Everything else is fetched only when needed.
+The compact picture of the Active Home that every Skill is given at Session start: the Home's own facts, its Constraints, a count of Unplaced Items, and one line per Room with its Gaps. The rest of the Home is fetched only when needed.
 _Avoid_: Summary, context, snapshot
 
 **Room Sheet**:
-Everything recorded about one Room — its Walls, windows, doors, Features, Surfaces, lights, and Items — which the AI fetches only when a Session needs that Room.
+Everything recorded about one Room — its Walls, Windows, Doors, Features, Surfaces, lights, Items, and its Decisions that are Candidate, Leaning, or Locked but not yet Fulfilled — which the AI fetches only when a Session needs that Room.
 _Avoid_: Room brief, room detail, room file
 
 **Gap**:

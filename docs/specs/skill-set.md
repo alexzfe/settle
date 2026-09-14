@@ -1,6 +1,6 @@
 # Skill set spec
 
-**Status:** settled in the Skill-set grilling of 2026-09-13 and confirmed by the user. The trigger descriptions are drafts until the user revises them.
+**Status:** settled in the Skill-set grilling of 2026-09-13 and confirmed by the user. The opening, the read tools, write receipts, and Photos were revised in the [Agent-context grilling](../handoff/agent-context.md) the same day. The trigger descriptions are drafts until the user revises them.
 
 **Related docs:**
 - Vocabulary: [CONTEXT.md](../../CONTEXT.md)
@@ -11,11 +11,11 @@
 
 ## The PoC Skills
 
-There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each Skill is one `SKILL.md`, so a Skill in the domain and a packaged Skill are the same unit. There is no router Skill.
+There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each Skill is one `SKILL.md`, so a Skill in the domain and a packaged Skill are the same unit. There is no router Skill. A branch of a Skill (such as Home Intake's Blueprint stages) moves into a reference file only if it grows long enough to crowd out the main procedure, since instructions for an unused branch distract far less than unused data.
 
 ### Home Intake
 
-- **Purpose:** records or corrects the Active Home's Home facts, Levels, Rooms, and Inventory, from a Blueprint, an interview, or optionally Photos. It can be run again at any time ("we moved the office", "add the bookshelf we forgot").
+- **Purpose:** records or corrects the Active Home's Home facts, Levels, Rooms, and Inventory, from a Blueprint or an interview. It can be run again at any time ("we moved the office", "add the bookshelf we forgot").
 - **Boundaries:** it records facts and makes no design Decisions. It runs in an ordinary Session, with the same Home binding, logging, and summary as any other Skill.
 - **Procedure:**
   1. **Home facts.** The web UI has already created the Home with its name, country, and city ([Home](home-model.md#home)). Record its Levels and any other Home fact the user gives. When Tenure is rented, ask one question about the usual permissions: paint, drill or hang, change lights, flooring. Propose the answers as a batch of Constraints, and add them once the user agrees.
@@ -25,7 +25,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
      3. Windows and Doors.
      4. Where north is. Always ask this.
   3. **Remaining Gaps.** Always, with or without a Blueprint: interview Room by Room for whatever is still missing. Without a Blueprint, start with each Room's required fields. Then cover its Gaps (the Home model's "enough for advice" list), such as ceiling height and Surfaces, except times of use, which step 5 covers.
-  4. **Items.** Mainly by interview: the user describes what they own, Room by Room, and confirms the list in one reply per Room. Optionally, the user uploads a Photo and the AI proposes a numbered list of what it sees (Items, Features, Surfaces), which the user confirms in one reply ("all but 3; 5 is oak, not pine"). Only confirmed entries are saved.
+  4. **Items.** By interview: the user describes what they own, Room by Room, and confirms the list in one reply per Room. Only confirmed entries are saved.
   5. **Times of use.** Ask once at the end, as one table covering every Room. The user can skip it, and whatever is skipped stays a Gap.
   6. **Facts along the way.** Propose any fact the user states as a Constraint, and save it once the user agrees. Softer context becomes a Note.
 - **Outputs:**
@@ -105,7 +105,7 @@ Each description:
 
 ```
 home-intake: Records the rooms, measurements, windows, doors and belongings of the
-user's home, from an uploaded floor plan, photos, or a room-by-room interview. Use
+user's home, from an uploaded floor plan or a room-by-room interview. Use
 when the user wants to set up their home, add or fix a room or a measurement, or
 tell it about furniture they already own ("add the spare bedroom", "the living
 room is 4.2 m, not 4"). Not for design advice, colors or shopping; not for buying
@@ -155,20 +155,27 @@ the chair"). Not for property.
   - Once the current Decision could be Locked, every round offers to stop there.
   - A Session should take roughly 15–40 minutes.
 - **Opening.** The first Skill calls `open_session`, which returns:
-  - the Home Overview, with Locked Decisions alongside (how they are tiered belongs to the [Agent context brief](../handoff/agent-context.md))
   - the Home's name
-  - whether the Design Direction is Locked
+  - the Home Overview
   - open flags and Conflicts
+  - for every Skill except Home Intake, the Home-wide Decisions in force: the Design Direction and Palette in full, each marked Locked or Leaning (or a count of Candidates when none is chosen), and every other Home-wide Locked Decision that isn't Fulfilled, one line each
 
-  The Skill names the Home and warns if the Design Direction isn't Locked. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't stop to resolve them. Any Skill may resolve a flag later, when the user works on that Decision, and so can the web UI.
+  Home Intake makes no design Decisions, so for it the design block would only be text to ignore. A Skill that joins later calls `open_session` with the Session id and gets only what the Session hasn't been sent yet. So when Home Intake hands off to Color, Color's join brings in the design block. What loads where, and why, is in the home-model spec's [Context tiers](home-model.md#context-tiers).
+
+  The Skill names the Home, and every Skill except Home Intake warns if the Design Direction isn't Locked. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't stop to resolve them. Any Skill may resolve a flag later, when the user works on that Decision, and so can the web UI.
 - **Saying what changed.** Whenever the AI changes a Decision's state or the Home record, it says so plainly in the conversation ("Locked: Palette 'Warm Clay'").
 - **Asking first.** Before these moves, the AI asks the user in the conversation and waits for a yes. The recorded reason quotes the user's permission.
   - Reopen
   - Rejecting a Locked Decision
   - Reviving a Rejected Decision
   - Adding or removing a Constraint (it reads the exact wording back)
-- **Refused writes.** When the server refuses to replace a value with a weaker-Provenance one, the Skill states both values and their Provenance in one line ("You measured 3.62 m; the photo suggests ~3.5 m. I kept yours. Replace it?"). It overrides only if the user says yes.
+- **Refused writes.** When the server refuses to replace a value with a weaker-Provenance one, the Skill states both values and their Provenance in one line ("You measured 3.62 m; the Blueprint prints 3.5 m. I kept yours. Replace it?"). It overrides only if the user says yes.
+- **Keeping context focused.** The rule is in the home-model spec's [Context tiers](home-model.md#context-tiers): the AI gets what the current work needs, in full, and nothing it would have to ignore.
+  - **One Room at a time.** A Skill fetches a Room's Room Sheet the first time its work touches that Room, and no others. Finding an Item elsewhere uses `find_items`, not more Room Sheets.
+  - **The Home record is the AI's memory.** Session summaries are for the user, in the web UI. Nothing from past Sessions loads. "Let's pick up where we left off" is answered from open Decisions and flags, which are always current. A Session reaches the AI only as an Evidence line inside `get_decision`.
+  - **After compaction.** If the Home Overview is no longer in view, the Skill calls `open_session` with the Session id and `resend` to get the whole opening back.
 - **Closing.** When the user wraps up, the Agent calls `close_session` with a three-part summary: what changed, what's still open, and a suggested next Skill.
+  - When that next Skill is about a different Room or topic, the closing message suggests starting it in a new conversation, because the finished work would otherwise stay in view. Moving to another Room within the same piece of work (a rug for the hallway during a living-room Purchase) stays in the same conversation.
   - There is no time limit. A Session that never gets a summary stays unsummarised. That is harmless, because its record is built from its writes, and the web UI lists such Sessions without treating them as errors.
   - After a summary the Session is closed. A write carrying its id is refused with an error telling the AI to call `open_session`, which starts the next Session in the same conversation.
 
@@ -214,25 +221,31 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 ## Blueprints and Photos
 
 - The user uploads files in the web UI: Blueprints onto the Home, Photos onto a Room or an Item.
-- A Skill fetches them with `view_images`, a few images per call. Claude Code caps a tool result at about 25K tokens.
+- A Skill fetches Blueprint pages with `view_images`, a few images per call. Claude Code caps a tool result at about 25K tokens.
 - The server converts HEIC to JPEG and PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs.
 - A tool result that carries images has no `structuredContent`, because Codex drops the images when it's present.
-- Photos are optional in the PoC. Only Home Intake depends on them, proposing Items from one. Any Skill may look at a Photo when one seems relevant.
+- **Photos are scaffolding in the PoC.** The platform stores them, and the web UI uploads and shows them, but the AI neither sees nor uses them:
+  - No Skill step depends on them.
+  - The Room Sheet doesn't mention them.
+  - `view_images` returns Blueprint pages only.
+
+  This keeps AI guesses from photos out of the Home record while the PoC is judged. Adding Photos later means extending `view_images` and a line or two of Skill text. A user who wants the AI to look at a picture can paste it into the Agent conversation, as with inspiration images.
 
 ## MCP tool surface
 
-There are eighteen tools, shaped around tasks. Read tools and write tools are separate, so Codex can auto-approve reads. Claude Code loads the full tool definitions only when they're needed. Every tool is available to every Skill; the "Used by" column shows which Skills rely on it.
+There are nineteen tools, shaped around tasks. Read tools and write tools are separate, so Codex can auto-approve reads. Claude Code loads the full tool definitions only when they're needed. Every tool is available to every Skill; the "Used by" column shows which Skills rely on it.
 
 | Tool | What it does | Used by |
 |---|---|---|
 | **Read** | | |
-| `open_session` | Opens a Session, or joins one by id and records the joining Skill. Returns the Home Overview, Locked Decisions, whether the Design Direction is Locked, and open flags and Conflicts | All |
-| `get_room_sheet` | One Room's Room Sheet, fetched the first time the Session's work touches that Room | All |
-| `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Includes Rejected ones | All |
-| `get_decision` | One Decision in full: Basis, Evidence, Requirements, Guides, Listings, flags | All |
+| `open_session` | Opens a Session, or joins one by id and records the joining Skill. Returns the opening (see Opening above): the Home Overview, open flags and Conflicts, and, for every Skill except Home Intake, the Home-wide Decisions in force. A join returns only what the Session hasn't been sent yet; `resend` returns the whole opening again, for use after compaction | All |
+| `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `with_sources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
+| `find_items` | One line per Item, filtered by Room, Unplaced, category, or text. `archived` includes Archived Items | All |
+| `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Covers every state, including Fulfilled and Rejected ones | All |
+| `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, pass/fail/unknown counts, and any *must* it fails. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `include_full_guide` is set | All |
 | `search_notes` | Notes matching a query | All |
-| `view_images` | A Blueprint's pages, or a Room's or Item's Photos, as images | Home Intake |
-| **Write** (each call carries the Session id) | | |
+| `view_images` | A Blueprint's pages as images. Photos are scaffolding in the PoC, so it doesn't return them | Home Intake |
+| **Write** (each call carries the Session id and returns a receipt) | | |
 | `save_home` | Home facts and Levels | Home Intake; Purchase (access measurements) |
 | `save_room` | One Room with its Walls, Windows, Doors, Features, and Surfaces | Home Intake; any Skill recording a fact the user states or a new measurement |
 | `save_items` | Several Items at once | Home Intake; any Skill recording a fact the user states |
@@ -246,12 +259,21 @@ There are eighteen tools, shaped around tasks. Read tools and write tools are se
 | `flag_conflict` | Raises a Conflict against a Locked Decision | All |
 | `close_session` | The three-part summary | All |
 
-**Why eighteen is enough, and not too many:**
+**Write receipts.** Every write returns a short receipt, never the record it wrote:
+- one line per change ("Living room: ceiling height 2.60 m (Measured)")
+- any refused part, with its reason
+- the touched Room's remaining Gaps
+- any flags the change raised
+
+The AI's picture of a Room is the Room Sheet it fetched plus the receipts since. That picture stays current, because every change comes back in a receipt.
+
+**Why nineteen is enough, and not too many:**
 - It is under OpenAI's guideline of fewer than 20, and well below the 30–50 at which Claude's tool choice starts to degrade ([mcp-tool-design.md](../research/mcp-tool-design.md)).
 - No two tools do the same job, which matters more than the count.
 - Merging tools would mix reads with writes, or merge unrelated schemas. That makes tool choice worse, not better.
+- `find_items` earns its place: without it, finding one Item means loading every Room Sheet.
 
-**What to watch is the size of the definitions, not the count.** Claude Code loads definitions only when they are needed, but Codex loads them all up front. The richer schemas (`save_room`, `save_decision`) are the ones to keep lean. Measure them with `/context` on the user's real Home. Size budgets for definitions and results belong to the [Agent context brief](../handoff/agent-context.md).
+**Keep the definitions lean.** Claude Code loads definitions only when they are needed, but Codex loads them all up front. The richer schemas (`save_room`, `save_decision`) are the ones to watch. There are no token budgets; check them with `/context` on the user's real Home.
 
 ## Packaging
 
@@ -280,8 +302,9 @@ There are eighteen tools, shaped around tasks. Read tools and write tools are se
    - A rubric grader checks that Requirements trace back to their sources and that the Guides are good.
    - Every rule that lives only in Skill instructions gets at least one case.
 3. **Server tests.** Ordinary TypeScript tests cover every server-enforced rule, with no model involved.
-4. **Live smoke suite.** Runs against the real localhost server, once a pilot shows the eval harness can reach it.
-5. **Acceptance.** The PoC finish line, run manually on the user's real home.
+4. **Snapshot tests of what the AI reads.** Each of these is rendered from a fixture Home and snapshotted: the Home Overview, the Home-wide Decisions block, a Room Sheet, a `get_decision` result, a `find_items` result, and a write receipt. Any new line then shows up as a diff in review, and has to be justified against the [Context tiers](home-model.md#context-tiers) rule.
+5. **Live smoke suite.** Runs against the real localhost server, once a pilot shows the eval harness can reach it.
+6. **Acceptance.** The PoC finish line, run manually on the user's real home. It includes one read-through of the real Home's Overview, asking of each line: would a designer need this?
 
 ## Answers to the Home-model session
 

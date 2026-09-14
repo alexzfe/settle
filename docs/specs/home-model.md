@@ -6,7 +6,7 @@
 
 - **Nearly everything is optional.** Only a handful of fields are required, so a Room can be saved from one sentence. What advice needs but is missing is reported as a Gap rather than demanded up front.
 - **Handle edge cases when they arise.** Anything the model has no field for goes into an "other" kind with a description, or a Note. Sloped ceilings, sockets, and similar cases wait until a real Home needs them.
-- **The AI sees little and fetches the rest** (see [Context tiers](#context-tiers)).
+- **The AI gets what the current work needs, in full, and nothing it would have to ignore** (see [Context tiers](#context-tiers)).
 - **v1 is a Room list, but it is shaped so the 2D Floor Plan extends it rather than replacing it.** Walls exist from day one, and windows and doors point at them.
 
 ## Conventions
@@ -197,6 +197,8 @@ Light attributes sit on whichever Item or Feature actually gives the light: a pe
 
 Inspiration images are not Photos.
 
+In the PoC, Photos are scaffolding: the platform stores them and the web UI uploads and shows them, but the AI neither sees nor uses them ([skill-set.md](skill-set.md#blueprints-and-photos)).
+
 ### Blueprint
 
 | Field | Meaning | Unit / values | Source | Required |
@@ -230,18 +232,29 @@ No scale is stored, because values are never measured off the drawing: a value s
 
 ## Context tiers
 
+Revised in the [Agent-context grilling](../handoff/agent-context.md) of 2026-09-13. **The AI gets what the current work needs, in full, and nothing it would have to ignore.** The aim is an Agent that stays focused and gives good advice, not one that saves tokens, so there are no token budgets.
+
+- **At Session start:** only what every Session needs, whatever its topic. That means what any Skill could break (Constraints and Home-wide commitments), open Flags and Conflicts, and a map of the Rooms.
+- **History never loads at start.** Fulfilled Decisions, past Sessions, and anything Archived are fetched only when a question reaches into the past, so a Home used for years opens as cleanly as a new one.
+- **Don't starve it.** Once something is in play, it comes whole: a Room being worked on gets its full Room Sheet, not a trimmed one.
+
 | Tier | What | When |
 |---|---|---|
-| Home Overview | The Home's facts (location, Tenure, planned stay, access, Levels), Constraints, Design Direction, a count of Unplaced Items, and one line per Room: name, Level, functions, size, ceiling height, window facings, times of use, Item count, and Gaps | Loaded at every Session start. Roughly 500–1,000 tokens for a typical Home |
-| Room Sheet | Everything about one Room: Walls, Windows, Doors, Features, Surfaces, lights, one line per Item, and a list of Photos with their dates (not the images) | Fetched when a Session needs that Room |
-| On request | Photo and Blueprint images, the printed text behind Blueprint values, Archived Items, Notes, and the change log (never) | Only when asked for |
+| Home Overview | The Home's facts (location, Tenure, planned stay, access, Levels), Constraints, a count of Unplaced Items, and one line per Room: name, Level, functions, size, ceiling height, window facings, times of use, Item count, and Gaps | Session start, for every Skill, together with open Flags and Conflicts |
+| Home-wide Decisions in force | The Design Direction and the Palette in full. For each, whichever one is furthest along (Locked or Leaning), marked with its state, or a count of Candidates when none is chosen. Every other Home-wide Decision that is Locked and not Fulfilled, one line each | Session start, for every Skill except Home Intake, which makes no design Decisions |
+| Room Sheet | Everything about one Room: Walls, Windows, Doors, Features, Surfaces, lights, one line per Item, and one line per Decision scoped to the Room that is Candidate, Leaning, or Locked but not yet Fulfilled | Fetched the first time a Session's work touches that Room |
+| On request | Blueprint pages as images; the printed text behind Blueprint values; Items anywhere in the Home, Unplaced, or Archived; Decisions in any state, Fulfilled and Rejected ones included; one Decision in full, with its Full Guide only when asked for; Notes | When a question needs them |
+| Never | The change log. Session records, except as Evidence lines inside a Decision. Photos, in the PoC | |
+
+- **Room lines stay full.** Every field in a Room line serves some Skill's work across Rooms. A Palette is chosen for the whole Home and needs every Room's light; without facings and times of use in the map, Color would have to fetch every Room Sheet.
+- **Fulfilled Decisions drop out** because the Home record already holds what was done. Living-room walls painted "Setting Plaster" in June show up as the wall Surface, not as a Decision.
+- **The tools behind each tier** are listed in the [skill-set spec](skill-set.md#mcp-tool-surface).
 
 Rendering rules:
 - Leave out empty fields.
 - Mark Estimated values with `~` ("~3.6 m"). Measured and Blueprint values render plain.
 - Use readable identifiers, not raw database ids.
-
-Locked Decisions are loaded alongside the Home Overview as poc-design says, and how they should be tiered is part of the [Agent context budget brief](../handoff/agent-context.md).
+- A Decision renders as one line: title, state, and a one-line statement. Its full content comes from `get_decision`. The Design Direction and Palette at Session start are the exception.
 
 ## v1 versus the 2D Floor Plan
 
