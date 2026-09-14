@@ -11,8 +11,12 @@ A dwelling the user designs and furnishes — a house, apartment, or similar. A 
 _Avoid_: Property, house, apartment, space, unit
 
 **Active Home**:
-The one Home the AI can see at any time. Everything about the user's other Homes is invisible to it.
+The one Home a Session can see: the Home whose Home Folder the Agent is running in. Everything about the user's other Homes is invisible to it.
 _Avoid_: Current home, selected home, default home
+
+**Home Folder**:
+A folder on the user's computer, one per Home, in which the user runs their Agent. Every Session started there belongs to that Home.
+_Avoid_: Workspace, project, project folder
 
 **Tenure**:
 Whether the user owns or rents a Home. Never a restriction on its own: what the user may change is recorded as Constraints.
@@ -176,7 +180,7 @@ The external AI client (e.g. Claude Code, Codex) in which the user runs Sessions
 _Avoid_: Harness, assistant, bot
 
 **Session**:
-An AI-led grilling interview about the Active Home, held in one sitting of one Agent conversation, whose outcome is changes to the Home's record or new or changed Decisions of any kind. It may use several Skills. The platform keeps a record of each Session (the Skills it used, the Rooms and Decisions it touched, and a summary), not its transcript. A Session that is never given a summary is closed after a period of inactivity.
+An AI-led grilling interview about the Active Home, held in one Agent conversation, whose outcome is changes to the Home's record or new or changed Decisions of any kind. It may use several Skills. The platform keeps a record of each Session (the Skills it used, the Rooms and Decisions it touched, and a summary), not its transcript. A Session ends when the user wraps up and it is given a summary; one that never gets a summary simply stays unsummarised.
 _Avoid_: Chat, conversation, grilling session, purchase session
 
 **Skill**:
