@@ -40,6 +40,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
 - **Boundaries:**
   - It owns temperature, mood, contrast level, key materials, style references, and guiding principles. It never names specific colors; those belong to Color.
   - It owns every Room Direction and checks that each one refines the Design Direction without contradicting it. Other Skills may suggest that a Room needs a Room Direction, but never write one.
+- **Invocation:** fires on its own only for the first Direction or an outright request to rethink the style; otherwise the user invokes it by name, or another Skill hands it a Room's question (see "Auto-selection and hand-off").
 - **Inspiration images** are not stored in the PoC. The user shows them to the Agent during the Session. What the AI takes from them goes into the Design Direction's style references, and the Session is recorded as Evidence.
 - **Outputs:**
   - the Design Direction Decision
@@ -111,13 +112,15 @@ tell it about furniture they already own ("add the spare bedroom", "the living
 room is 4.2 m, not 4"). Not for design advice, colors or shopping; not for buying
 or evaluating property.
 
-design-direction: Interviews the user to settle their home's overall style: mood,
-warmth, key materials, style references, guiding principles. Also settles each
-room's direction and what an undecided room is for. Use when the user wants to
-work out their style or how a room should feel or be used ("I don't know what
-style I like", "make the bedroom calmer", "office or guest room?"). Not for
-specific colors (color) or things to buy (purchase); not for app, web or brand
-design.
+design-direction: Interviews the user to settle their home's overall style,
+normally once: mood, warmth, key materials, style references, guiding
+principles. Use only when the home has no design direction yet, or when the user
+says outright that they want to work out or rethink their overall style ("I
+don't know what style I like", "let's rethink the direction, it feels too
+cold"). It also settles a room's direction and what an undecided room is for,
+but only when invoked by name or when another skill hands it the question; a
+request about one room on its own is not a reason to use it. Not for specific
+colors (color) or things to buy (purchase); not for app, web or brand design.
 
 color: Interviews the user to choose their home's palette of named colors, then
 the colors of each room's walls, ceiling, floor and woodwork, based on the home's
@@ -229,6 +232,7 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 ## Auto-selection and hand-off
 
 - **Four separate Skills,** chosen automatically from their descriptions. The user can also invoke one by name.
+- **Design Direction fires rarely** (decided with the user on 2026-09-14). Its description triggers only when the Home has no Direction yet, or when the user asks outright to work out or rethink the overall style. After that first Session it is reached by name: Home Intake's closing suggestion, Color, and Purchase point at it by name when the Direction, a Room Direction, or a Room's use is needed. A question about one Room's feel or use on its own does not fire it; it reaches the Skill by name or through a hand-off.
 - **Hand-off.** When one Skill hits another Skill's question, it asks "settle this in Color now, or park it?" (naming whichever Skill owns the question) and defaults to switching.
   - **Switching** stays in the same Session, and the first Skill resumes afterwards.
   - **Parking** creates a Candidate Decision for the parked question (for example, "an accent color for the rug"). A Requirement that needs the answer points its reason at that Decision, and the Session summary lists it under "still open".

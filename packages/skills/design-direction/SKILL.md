@@ -1,6 +1,6 @@
 ---
 name: design-direction
-description: "Interviews the user to settle their home's overall style: mood, warmth, key materials, style references, guiding principles. Also settles each room's direction and what an undecided room is for. Use when the user wants to work out their style or how a room should feel or be used (\"I don't know what style I like\", \"make the bedroom calmer\", \"office or guest room?\"). Not for specific colors (color) or things to buy (purchase); not for app, web or brand design."
+description: "Interviews the user to settle their home's overall style, normally once: mood, warmth, key materials, style references, guiding principles. Use only when the home has no design direction yet, or when the user says outright that they want to work out or rethink their overall style (\"I don't know what style I like\", \"let's rethink the direction, it feels too cold\"). It also settles a room's direction and what an undecided room is for, but only when invoked by name or when another skill hands it the question; a request about one room on its own is not a reason to use it. Not for specific colors (color) or things to buy (purchase); not for app, web or brand design."
 ---
 
 # Design Direction
@@ -12,7 +12,7 @@ Grills the user and Locks the Active Home's Design Direction, then each Room's R
 1. **Check the tools.** Follow "App not running" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "design-direction"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write, even when the user asked for something you can do at once. The opening's Home-wide Decisions show the Design Direction, if there is one, with its state.
 3. **Pick the work.**
-   - **No Design Direction Locked:** start with it. When the user came for one Room ("make the bedroom calmer"), say that a Room Direction rests on the Design Direction and recommend settling that first; if the user would rather do the Room now, do it, and keep the Room's Decisions below Locked until the Design Direction is Locked.
+   - **No Design Direction Locked:** start with it. When the user came for one Room (by name, or handed over from another Skill), say that a Room Direction rests on the Design Direction and recommend settling that first; if the user would rather do the Room now, do it, and keep the Room's Decisions below Locked until the Design Direction is Locked.
    - **The Design Direction is Locked:** go to the Room the user named, or else offer the Rooms the Overview shows with no functions, then the Rooms with no Room Direction.
    - **The user wants to change a Locked Direction** ("let's rethink the direction"): follow "Asking first" before anything else.
 
