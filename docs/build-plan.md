@@ -150,10 +150,10 @@ Scope: the repository layout above, empty packages that build and test, CI-less 
 
 | Spike | What it proves | Risk it retires |
 |---|---|---|
-| 1. Home Folder packaging | A marketplace added from a local path, a Home Folder's `.claude/settings.json` and `.mcp.json`, and Claude Code asking once to approve the folder's HTTP server and once to install the plugin | The Home Folder design: per-folder plugin enablement and Home binding by URL |
+| 1. Home Folder packaging | A marketplace added from a local path, a Home Folder's `.claude/settings.json` and `.mcp.json`, and Claude Code asking once to approve the folder's HTTP server and once to install the plugin | The Home Folder design: per-folder plugin enablement and Home binding by URL. **Done:** [1-home-folder.md](research/spikes/1-home-folder.md). Binding by URL and per-folder enablement work. There is no install offer: trusting the folder registers the `directory` marketplace and loads the plugin from the source tree, so no version bump is needed in the PoC. The server prompt defaults to "continue without", so `set_up_home_folder` also writes `enabledMcpjsonServers`, leaving the trust dialog as the only question. Tools are named `mcp__int-design-harness__<tool>`. Headless runs connect without approval but need a tool grant |
 | 2. Eval harness reach | `claude plugin eval` with `--mocks off` or `--allow-real-servers` calling a localhost HTTP MCP server, and what AskUserQuestion does headless | The live smoke suite and the grilling-Skill eval approach |
 | 3. PDF to PNG | `mupdf` (WebAssembly) rendering a page at 2000 px in-process; fallback is shelling out to `pdftoppm`, installed here and one package in Docker | Blueprint conversion |
-| 4. Images in a tool result | Several PNG pages returned from one tool call under Claude Code's result cap, and how the model sees them | The `view_images` paging and `crop` design |
+| 4. Images in a tool result | Several PNG pages returned from one tool call under Claude Code's result cap, and how the model sees them | The `view_images` paging and `crop` design. **Done:** [4-images-in-results.md](research/spikes/4-images-in-results.md). At most 6 pages of 2000 px per call (about 3.9K tokens each) stay under the 25K cap with no truncation logic running; the text block naming the pages goes first; PNG, with JPEG q85 when a page's PNG is over 1 MB, keeps a result far under the 16 MB transport limit; the model read 12 px text on every full-size page, so `crop` stays as cheap insurance and tiles are not needed unless the real Blueprint says so |
 
 Built-in SQLite is already verified and is off the list. HEIC conversion is deferred.
 
@@ -163,7 +163,7 @@ Done when: every spike has a written finding, and the layout builds and runs an 
 
 Threads every layer once, with the smallest possible Home model.
 
-- **Core:** `create_home`, `list_homes`, `set_up_home_folder`, `open_session`, `save_room` (name and Level only; every Home gets a default ground Level), `get_room_sheet`, `close_session`, `list_sessions`, the change log, the event bus, the slug generator, migration 0001.
+- **Core:** `create_home`, `list_homes`, `set_up_home_folder` (writes `.mcp.json` with server key `int-design-harness` and `.claude/settings.json` with `enabledPlugins`, the `directory` marketplace at this repo's absolute path, and `enabledMcpjsonServers`; never touches `settings.local.json`), `open_session`, `save_room` (name and Level only; every Home gets a default ground Level), `get_room_sheet`, `close_session`, `list_sessions`, the change log, the event bus, the slug generator, migration 0001.
 - **Server:** the process, the API routes, `/events`, `/mcp/homes/<slug>` with the four tools, static UI.
 - **Web UI:** create Home, Home list and switcher, Home page with a live Room list and the Set up Home Folder action, Sessions list with summaries.
 - **Skill text:** the protocol's opening and closing, and a Home Intake reduced to opening, recording Rooms by name, and closing with the three-part summary. The plugin build, manifest, and marketplace file.
@@ -180,7 +180,7 @@ Threads every layer once, with the smallest possible Home model.
 
 ## Slice 3: Blueprints
 
-- **Core:** `upload_blueprint`, page rendering to PNG on upload (spike 3's choice), `view_images` with a page list and a `crop` quarter, Blueprint Provenance with page and printed text, `get_room_sheet` with `with_sources`, page-to-Level mapping through `save_home`. Migration 0003.
+- **Core:** `upload_blueprint`, page rendering to PNG on upload (spike 3's choice), `view_images` with a page list (at most 6 pages per call, enforced in the schema, text block first, JPEG fallback for pages over 1 MB as PNG) and a `crop` quarter, Blueprint Provenance with page and printed text, `get_room_sheet` with `with_sources`, page-to-Level mapping through `save_home`. Migration 0003.
 - **Web UI:** Blueprint upload on the Home page, a page viewer, and Blueprint sources shown next to values on the Room page.
 - **Skill text:** the four Blueprint stages, one reply per Level, printed text only, always asking where north is.
 - **Tests:** a conversion test on a fixture PDF, a tool result with two pages under the cap, snapshots of `with_sources` and of a Blueprint-Provenance receipt; a behaviour eval for "auto-fills only printed text".

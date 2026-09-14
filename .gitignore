@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# claude plugin eval output
+plugin/evals/results/
+
+# local data dirs (the default data dir is $XDG_DATA_HOME/int-design-harness, outside the repo)
+/data/
+/.data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+.env
+.env.*

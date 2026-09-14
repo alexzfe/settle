@@ -237,7 +237,7 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 ## Blueprints and Photos
 
 - The user uploads files in the web UI: Blueprints onto the Home, Photos onto a Room or an Item.
-- A Skill fetches Blueprint pages with `view_images`, a few images per call. Claude Code caps a tool result at about 25K tokens.
+- A Skill fetches Blueprint pages with `view_images`, at most six pages per call (enforced by the tool), usually one Level's pages at a time. Claude Code caps a tool result at 25K tokens, and six 2000 px pages fit under it ([spike 4](../research/spikes/4-images-in-results.md)). The tool's text block, which names the pages returned, comes before the images.
 - The server converts PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs. HEIC to JPEG conversion is deferred until a HEIC file actually arrives (decided in the build-plan grilling of 2026-09-14): Photos are scaffolding in the PoC, and Blueprints are normally PDFs or screenshots.
 - A tool result that carries images has no `structuredContent`, because Codex drops the images when it's present.
 - **Photos are scaffolding in the PoC.** The platform stores them, and the web UI uploads and shows them, but the AI neither sees nor uses them:
@@ -300,15 +300,17 @@ The AI's picture of a Room is the Room Sheet it fetched plus the receipts since.
   - Frontmatter uses only the spec fields, and each `name` matches its directory name.
   - Skills sit flat under `skills/`, and the manifest has no `skills` field.
 - **Setting up a Home Folder.** The web UI's "Set up Home Folder" action, available once the Home exists ([Home](home-model.md#home)), writes two files into a folder the user chooses. A browser can't hand the server a picked folder, so the user types an absolute path, defaulting to `~/Homes/<home slug>`. The server creates the folder if it's missing, refuses one that already holds another Home's `.mcp.json`, and stores the path on the Home. The two files:
-  - **`.claude/settings.json`** enables the plugin for this folder only and names its marketplace, so Claude Code offers to install it. The plugin therefore costs nothing in unrelated Claude Code sessions.
+  - **`.claude/settings.json`** enables the plugin for this folder only, names its marketplace as a `directory` source with the absolute path of this repo, and pre-approves the folder's MCP server with `enabledMcpjsonServers`. There is no install offer: when the user trusts the folder, Claude Code registers the marketplace and loads the plugin in place from the source directory ([spike 1](../research/spikes/1-home-folder.md)). The plugin therefore costs nothing in unrelated Claude Code sessions. Without the pre-approval line Claude Code asks about the server with "Continue without using this MCP server" preselected, so the line leaves the trust dialog as the only question; it takes effect only after the user trusts the folder.
   - **`.mcp.json`** points to the server at `http://127.0.0.1:4380/mcp/homes/<home slug>`. That URL is how the server knows the folder's Home. The port is fixed at 4380 and can be overridden by an environment variable, in which case the setup action writes the overridden port.
   - **Why the MCP config lives in the folder:** Codex doesn't expand variables, and MCP roots are deprecated, so there is no portable way for a plugin-level config to tell the server which Home a folder belongs to.
-  - **To verify during the build:** that Claude Code asks once to approve the folder's server.
+  - **The server key in `.mcp.json` is `int-design-harness`**, so its tools are `mcp__int-design-harness__<tool>` in permission rules, `allowed-tools`, and eval grants. The server comes from the folder, not the plugin, so the `mcp__plugin_…` form never applies.
+  - **Claude Code writes the folder's `.claude/settings.local.json`** (the server approval) and may rewrite `settings.json` (`plugin install` and `uninstall`). The setup action never touches `settings.local.json`, and its "another Home's folder" check looks only at `.mcp.json`.
+  - **Verified in spike 1:** Home binding by URL, per-folder enablement, no plugin in folders outside a Home Folder. Still to confirm by hand in the user's own terminal: the two dialogs, `/plugin` showing the plugin, and the per-tool prompt in default permission mode.
   - **Codex:** its equivalents join the same setup step when Codex is supported. Whether Codex can enable a plugin per project is unverified.
 - **Distribution and versioning.**
   - The plugin and its marketplace file live in this repo. The marketplace file gives the plugin a relative `./` source, which both Claude Code and Codex read.
-  - For the single-user PoC, the user adds the marketplace from its local path. Moving it to GitHub later is a one-line change.
-  - `version` in `plugin.json` is bumped on every release, because without a bump installed copies never update.
+  - For the single-user PoC nothing is added by hand: the first Home Folder the user trusts registers the marketplace for the user. Moving the marketplace to GitHub later adds a `claude plugin install` step for users, because a plugin from an external source that only project settings enable does not load until installed.
+  - With a `directory` marketplace, sessions load the plugin from the source directory, so a rebuilt `plugin/` reaches every Home Folder on the next session. `version` in `plugin.json` still gets bumped on every release, because that rule bites once the plugin is fetched from git.
   - During development, use `claude --plugin-dir` with `/reload-plugins`.
 - **Measuring context cost:** `claude plugin details` and `/skill-doctor`.
 

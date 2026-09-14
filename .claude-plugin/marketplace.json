@@ -1,0 +1,14 @@
+{
+  "name": "int-design-harness",
+  "description": "The Interior Design Harness plugin, installed from this repository.",
+  "owner": {
+    "name": "Alex Ferrer"
+  },
+  "plugins": [
+    {
+      "name": "int-design-harness",
+      "source": "./plugin",
+      "description": "Skills for designing and furnishing your Home with the Interior Design Harness app."
+    }
+  ]
+}
