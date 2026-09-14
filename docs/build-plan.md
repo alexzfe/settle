@@ -1,6 +1,6 @@
 # Build plan: the PoC, slice by slice
 
-**Status:** confirmed by the user on 2026-09-14, in the build-plan grilling. No code has been written.
+**Status:** confirmed by the user on 2026-09-14, in the build-plan grilling. **Progress:** slice 0 done (scaffold and all four spikes, findings in [research/spikes/](research/spikes/)); slice 1 code done and verified end to end, tagged `slice-1-code`, awaiting its demo on the user's real Home.
 
 This plan turns the settled design into buildable work. Vocabulary is [CONTEXT.md](../CONTEXT.md); the finish line and architecture are in [poc-design.md](poc-design.md); what is recorded and what the Skills do are in [specs/home-model.md](specs/home-model.md) and [specs/skill-set.md](specs/skill-set.md); the four accepted decisions are in [adr/](adr/). Every choice made in the grilling that belongs in a spec was written into that spec, not only here.
 
