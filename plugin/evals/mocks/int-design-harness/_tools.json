@@ -3,7 +3,7 @@
     {
       "name": "open_session",
       "title": "Open session",
-      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts, its Levels, and one line per Room with the Room's slug and Level). Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
+      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item count, and Gaps: the facts advice still needs). Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -34,44 +34,9 @@
       }
     },
     {
-      "name": "save_room",
-      "title": "Save room",
-      "description": "Records one Room of this Home, with its name and the Level it is on, and returns a receipt with one line per change. A Room is a named space divided from its neighbours by walls with doorways, whether or not a door hangs in them: an open-plan kitchen and living area is one Room, and a hallway, a staircase, or a balcony you can step onto is a Room too; a built-in cupboard is not. Call it once for each Room the user names or confirms. A Room whose name is already recorded is updated (moved to the given Level), never duplicated. `level` is a Level the opening lists, by name or slug; leave it out for the ground Level. Tell the user what the receipt says changed. Needs the open Session's id as `session`; a closed Session is refused.",
-      "inputSchema": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "properties": {
-          "session": {
-            "type": "string",
-            "minLength": 1,
-            "description": "The id of this conversation's open Session, as open_session returned it."
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "The Room's name as the user says it, e.g. \"Living room\" or \"Mia's room\"."
-          },
-          "level": {
-            "description": "The Level the Room is on, by name or slug (\"Ground\" or \"ground\").",
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": ["session", "name"]
-      },
-      "annotations": {
-        "readOnlyHint": false,
-        "openWorldHint": false
-      },
-      "execution": {
-        "taskSupport": "forbidden"
-      }
-    },
-    {
       "name": "get_room_sheet",
       "title": "Get room sheet",
-      "description": "Returns the Room Sheet: everything recorded about one Room of this Home. Fetch it the first time the Session's work touches a Room, or when the user asks what is recorded about it; don't fetch every Room up front, since the opening already lists them all. For now a Room holds only its name and Level; its Walls, Windows, Doors, Features, Surfaces, and Items join the sheet later. Changes nothing.",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -91,6 +56,1874 @@
       },
       "annotations": {
         "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "find_items",
+      "title": "Find items",
+      "description": "Lists Items of this Home, one line each: name and slug, category, where it is (its Room and Wall, or Unplaced), size, colors, materials, and condition. Values marked ~ are Estimated. Filter by Room, by Unplaced, by category, or by text; with no filter it lists the whole Inventory. Archived Items (sold, broken, replaced) are left out unless `archived` is true. Use it to find an Item outside the Room being worked on, instead of fetching more Room Sheets. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "room": {
+            "description": "Only Items in this Room (its slug).",
+            "type": "string",
+            "minLength": 1
+          },
+          "unplaced": {
+            "description": "true for only the Unplaced Items.",
+            "type": "boolean"
+          },
+          "category": {
+            "description": "Only Items of this category.",
+            "type": "string",
+            "enum": [
+              "seating",
+              "tables",
+              "beds",
+              "storage",
+              "lighting",
+              "rugs",
+              "textiles",
+              "art-and-mirrors",
+              "decor",
+              "plants",
+              "appliances",
+              "electronics",
+              "outdoor",
+              "other"
+            ]
+          },
+          "text": {
+            "description": "Only Items whose name, brand, model, materials, colors, or note contain this.",
+            "type": "string",
+            "minLength": 1
+          },
+          "archived": {
+            "description": "true to include Archived Items (sold, broken, replaced).",
+            "type": "boolean"
+          }
+        },
+        "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "search_notes",
+      "title": "Search notes",
+      "description": "Finds the Notes about this Home that contain any of the words in `query`, those matching the most words first, one line each with the day it was written. Without a query it lists every Note, newest first. Notes are background context: they can support a Decision but never change one on their own. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "query": {
+            "description": "Words to look for; Notes with any of them come first. Leave out for every Note.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_home",
+      "title": "Save home",
+      "description": "Records this Home's own facts and its Levels, and returns a receipt with one line per change. The facts: tenure (owned, rented, or other; it never implies a restriction by itself, since what the user may change is recorded as Constraints), planned stay, building type and era, whether there is a lift and its door width and car depth, and the narrowest point on the way into the Home with what it is (for getting furniture in). Levels: add one with its name and storey (0 for ground, -1 for a basement, 5 for a fifth-floor flat; a flat is a single Level), rename or renumber one by its slug (the slug never changes), or remove one no Room is on. Give only what the user stated; fields left out stay as they are. The Home's name, country, and city are set in the app. Lengths are whole millimetres with a Provenance: measured, blueprint, or estimated. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "tenure": {
+            "description": "owned, rented, or other.",
+            "type": "string",
+            "enum": ["owned", "rented", "other"]
+          },
+          "plannedStay": {
+            "description": "How long the user expects to live there: under-1-year, 1-3-years, 3-10-years, or indefinitely.",
+            "type": "string",
+            "enum": ["under-1-year", "1-3-years", "3-10-years", "indefinitely"]
+          },
+          "buildingType": {
+            "description": "house, apartment, or other.",
+            "type": "string",
+            "enum": ["house", "apartment", "other"]
+          },
+          "buildingEra": {
+            "description": "The building's approximate age, e.g. \"1890s terrace\", \"1970s block\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "lift": {
+            "description": "Whether the building has a lift.",
+            "type": "boolean"
+          },
+          "liftDoorWidth": {
+            "description": "The lift door's clear width.",
+            "type": "object",
+            "properties": {
+              "mm": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Whole millimetres: 3.62 m is 3620."
+              },
+              "provenance": {
+                "type": "string",
+                "enum": ["measured", "blueprint", "estimated"],
+                "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+              },
+              "source": {
+                "description": "With blueprint Provenance only.",
+                "type": "object",
+                "properties": {
+                  "blueprint": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Blueprint's slug."
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "printed": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text as printed, e.g. 12'6\"."
+                  }
+                },
+                "required": ["blueprint", "page", "printed"]
+              }
+            },
+            "required": ["mm", "provenance"]
+          },
+          "liftCarDepth": {
+            "description": "The lift car's depth.",
+            "type": "object",
+            "properties": {
+              "mm": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Whole millimetres: 3.62 m is 3620."
+              },
+              "provenance": {
+                "type": "string",
+                "enum": ["measured", "blueprint", "estimated"],
+                "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+              },
+              "source": {
+                "description": "With blueprint Provenance only.",
+                "type": "object",
+                "properties": {
+                  "blueprint": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Blueprint's slug."
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "printed": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text as printed, e.g. 12'6\"."
+                  }
+                },
+                "required": ["blueprint", "page", "printed"]
+              }
+            },
+            "required": ["mm", "provenance"]
+          },
+          "accessWidth": {
+            "description": "The width of the narrowest point on the way into the Home.",
+            "type": "object",
+            "properties": {
+              "mm": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Whole millimetres: 3.62 m is 3620."
+              },
+              "provenance": {
+                "type": "string",
+                "enum": ["measured", "blueprint", "estimated"],
+                "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+              },
+              "source": {
+                "description": "With blueprint Provenance only.",
+                "type": "object",
+                "properties": {
+                  "blueprint": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Blueprint's slug."
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "printed": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text as printed, e.g. 12'6\"."
+                  }
+                },
+                "required": ["blueprint", "page", "printed"]
+              }
+            },
+            "required": ["mm", "provenance"]
+          },
+          "accessNote": {
+            "description": "What that narrowest point is, e.g. \"turn in the communal stair\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "levels": {
+            "description": "Levels to add, change, or remove. Levels not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "description": "The slug of an existing Level to rename, renumber, or remove; leave out to add one.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "description": "The Level's name, e.g. \"Ground\", \"First\", \"Loft\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                "storey": {
+                  "description": "Storey in the building: 0 for ground, -1 for a basement, 5 for a fifth-floor flat. Needed to add a Level.",
+                  "type": "integer",
+                  "minimum": -5,
+                  "maximum": 200
+                },
+                "remove": {
+                  "description": "true to remove the Level. Refused while any Room, even an Archived one, is on it.",
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "overrideProvenance": {
+            "description": "Only when the user has said to replace a stronger value with a weaker one (e.g. a measured length with an estimate): their words, quoted. Without it such a replacement is refused.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_room",
+      "title": "Save room",
+      "description": "Records one Room of this Home, or changes it, with its Walls, Windows, Doors, Features, and Surfaces, and returns a receipt: one line per change, any refused part with its reason, and the Room's remaining Gaps (what advice still needs). A Room is a named space divided from its neighbours by walls with doorways, whether or not a door hangs in them: an open-plan kitchen and living area is one Room; a hallway, a staircase, or a balcony you can step onto is a Room too; a built-in cupboard is a Feature. Pass `room` (its slug) to change a recorded Room; without it, a Room with the same name is updated, never duplicated. Give only what the user stated or confirmed: fields and parts left out stay as they are, and a part given with archive: true is Archived (kept, out of the current state), never deleted. Walls go clockwise from 1 and are named <room>/wall-<position>; Windows, Doors, and Features name their Wall by its position, so add the Wall first or in the same call. A Door is shared by the two Rooms it joins: naming otherRoom updates the Door that already joins them. Lengths are whole millimetres with a Provenance: measured (the user measured it), blueprint (printed on a Blueprint), or estimated (by eye, scaled off a drawing, or guessed); colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated): that part is refused and the receipt states both values, with their Provenance; a write with nothing else in it is refused as a whole. Tell the user both values in one line and ask; only if they say to replace it, call again with overrideProvenance quoting their words. Tell the user what the receipt says changed. Needs the open Session's id as `session`; a closed Session is refused.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "room": {
+            "description": "The slug of the Room to change, as the Home Overview lists it. Leave out for a new Room (a Room with the same name is updated instead of duplicated).",
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "The Room's name as the user says it, e.g. \"Living room\" or \"Mia's room\". A new name renames it; its slug stays."
+          },
+          "level": {
+            "description": "The Level the Room is on, by slug or name (\"ground\"). A new Room without one goes on the ground Level; a staircase belongs to the Level you enter it from.",
+            "type": "string",
+            "minLength": 1
+          },
+          "functions": {
+            "description": "How the Room is used now, replacing the recorded list: kitchen, dining, living, bedroom, office, bathroom, hallway, stairs, storage, utility, garage, other. May be empty.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "kitchen",
+                "dining",
+                "living",
+                "bedroom",
+                "office",
+                "bathroom",
+                "hallway",
+                "stairs",
+                "storage",
+                "utility",
+                "garage",
+                "other"
+              ]
+            }
+          },
+          "outdoor": {
+            "description": "true for a balcony you can step onto, a terrace, patio, or garden. A railing-only (Juliet) balcony is not a Room but a glazed Door to outside.",
+            "type": "boolean"
+          },
+          "ceilingHeight": {
+            "description": "The full ceiling height.",
+            "type": "object",
+            "properties": {
+              "mm": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Whole millimetres: 3.62 m is 3620."
+              },
+              "provenance": {
+                "type": "string",
+                "enum": ["measured", "blueprint", "estimated"],
+                "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+              },
+              "source": {
+                "description": "With blueprint Provenance only.",
+                "type": "object",
+                "properties": {
+                  "blueprint": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The Blueprint's slug."
+                  },
+                  "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "printed": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text as printed, e.g. 12'6\"."
+                  }
+                },
+                "required": ["blueprint", "page", "printed"]
+              }
+            },
+            "required": ["mm", "provenance"]
+          },
+          "timesOfUse": {
+            "description": "When the Room is mostly used, replacing the recorded list: morning, daytime, evening, night.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["morning", "daytime", "evening", "night"]
+            }
+          },
+          "windowless": {
+            "description": "true once the user confirms the Room has no Windows.",
+            "type": "boolean"
+          },
+          "surfaces": {
+            "description": "The Room's four Surfaces. Only the Surfaces and fields given change.",
+            "type": "object",
+            "properties": {
+              "walls": {
+                "type": "object",
+                "properties": {
+                  "materials": {
+                    "description": "Its materials, replacing any recorded. Usually one; a floor may have several.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "material": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "e.g. \"plaster\", \"oak boards\", \"carpet\"."
+                        },
+                        "where": {
+                          "description": "Where in the Room, when a floor has several materials (\"tiles, kitchen end\").",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["material"]
+                    }
+                  },
+                  "color": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A paint's name, or a description (\"warm grey\")."
+                      },
+                      "brand": {
+                        "description": "The paint maker.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "code": {
+                        "description": "The maker's code.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lrv": {
+                        "description": "Light reflectance value, when published. Never ask the user.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "hex": {
+                        "description": "Approximate, for the screen only.",
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": ["measured", "blueprint", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      }
+                    },
+                    "required": ["name", "provenance"]
+                  },
+                  "finish": {
+                    "description": "Paint sheen or surface finish: \"matt\", \"eggshell\", \"satin\", \"gloss\", \"oiled\"…",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "ceiling": {
+                "type": "object",
+                "properties": {
+                  "materials": {
+                    "description": "Its materials, replacing any recorded. Usually one; a floor may have several.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "material": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "e.g. \"plaster\", \"oak boards\", \"carpet\"."
+                        },
+                        "where": {
+                          "description": "Where in the Room, when a floor has several materials (\"tiles, kitchen end\").",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["material"]
+                    }
+                  },
+                  "color": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A paint's name, or a description (\"warm grey\")."
+                      },
+                      "brand": {
+                        "description": "The paint maker.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "code": {
+                        "description": "The maker's code.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lrv": {
+                        "description": "Light reflectance value, when published. Never ask the user.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "hex": {
+                        "description": "Approximate, for the screen only.",
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": ["measured", "blueprint", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      }
+                    },
+                    "required": ["name", "provenance"]
+                  },
+                  "finish": {
+                    "description": "Paint sheen or surface finish: \"matt\", \"eggshell\", \"satin\", \"gloss\", \"oiled\"…",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "floor": {
+                "type": "object",
+                "properties": {
+                  "materials": {
+                    "description": "Its materials, replacing any recorded. Usually one; a floor may have several.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "material": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "e.g. \"plaster\", \"oak boards\", \"carpet\"."
+                        },
+                        "where": {
+                          "description": "Where in the Room, when a floor has several materials (\"tiles, kitchen end\").",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["material"]
+                    }
+                  },
+                  "color": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A paint's name, or a description (\"warm grey\")."
+                      },
+                      "brand": {
+                        "description": "The paint maker.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "code": {
+                        "description": "The maker's code.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lrv": {
+                        "description": "Light reflectance value, when published. Never ask the user.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "hex": {
+                        "description": "Approximate, for the screen only.",
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": ["measured", "blueprint", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      }
+                    },
+                    "required": ["name", "provenance"]
+                  },
+                  "finish": {
+                    "description": "Paint sheen or surface finish: \"matt\", \"eggshell\", \"satin\", \"gloss\", \"oiled\"…",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "woodwork": {
+                "description": "Skirting, door frames, doors, and window frames.",
+                "type": "object",
+                "properties": {
+                  "materials": {
+                    "description": "Its materials, replacing any recorded. Usually one; a floor may have several.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "material": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "e.g. \"plaster\", \"oak boards\", \"carpet\"."
+                        },
+                        "where": {
+                          "description": "Where in the Room, when a floor has several materials (\"tiles, kitchen end\").",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["material"]
+                    }
+                  },
+                  "color": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A paint's name, or a description (\"warm grey\")."
+                      },
+                      "brand": {
+                        "description": "The paint maker.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "code": {
+                        "description": "The maker's code.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lrv": {
+                        "description": "Light reflectance value, when published. Never ask the user.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "hex": {
+                        "description": "Approximate, for the screen only.",
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": ["measured", "blueprint", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      }
+                    },
+                    "required": ["name", "provenance"]
+                  },
+                  "finish": {
+                    "description": "Paint sheen or surface finish: \"matt\", \"eggshell\", \"satin\", \"gloss\", \"oiled\"…",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "walls": {
+            "description": "Walls to add or change, by position. Walls not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99,
+                  "description": "The Wall's place in clockwise order around the Room seen from above, from 1. It names the Wall: position 2 of living-room is living-room/wall-2. A rectangular Room has Walls 1-4, an L-shaped one 1-6. Saving a position that exists changes that Wall."
+                },
+                "length": {
+                  "description": "The Wall's length. Wall lengths are the Room's dimensions.",
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "facing": {
+                  "description": "Exterior Walls only: the compass direction the Wall faces outward (n, ne, e, se, s, sw, w, nw). Always confirm north with the user.",
+                  "type": "string",
+                  "enum": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+                },
+                "beyond": {
+                  "description": "What is on the other side: another Room's slug, \"outside\", or \"unknown\". A Wall with an outdoor Room (a balcony) beyond it counts as exterior.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "description": "e.g. \"window wall\", \"chimney wall\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                "obstruction": {
+                  "description": "Exterior Walls only: how much sky outside is blocked: open, partly, or heavily.",
+                  "type": "string",
+                  "enum": ["open", "partly", "heavily"]
+                },
+                "deciduous": {
+                  "description": "Exterior Walls only: true when deciduous trees do the blocking (bare in winter).",
+                  "type": "boolean"
+                },
+                "surface": {
+                  "description": "A whole-Wall exception to the Room's walls Surface, such as a feature wall.",
+                  "type": "object",
+                  "properties": {
+                    "materials": {
+                      "description": "Its materials, replacing any recorded. Usually one; a floor may have several.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "material": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "e.g. \"plaster\", \"oak boards\", \"carpet\"."
+                          },
+                          "where": {
+                            "description": "Where in the Room, when a floor has several materials (\"tiles, kitchen end\").",
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": ["material"]
+                      }
+                    },
+                    "color": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A paint's name, or a description (\"warm grey\")."
+                        },
+                        "brand": {
+                          "description": "The paint maker.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "code": {
+                          "description": "The maker's code.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "lrv": {
+                          "description": "Light reflectance value, when published. Never ask the user.",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "hex": {
+                          "description": "Approximate, for the screen only.",
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$"
+                        },
+                        "provenance": {
+                          "type": "string",
+                          "enum": ["measured", "blueprint", "estimated"],
+                          "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                        }
+                      },
+                      "required": ["name", "provenance"]
+                    },
+                    "finish": {
+                      "description": "Paint sheen or surface finish: \"matt\", \"eggshell\", \"satin\", \"gloss\", \"oiled\"…",
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                }
+              },
+              "required": ["position"]
+            }
+          },
+          "windows": {
+            "description": "Windows to add or change. Windows not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "window": {
+                  "description": "The slug of an existing Window to change; leave out to add a Window.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "wall": {
+                  "description": "The position of the Wall it is in (2 for living-room/wall-2), or \"roof\" for a skylight. Needed to add a Window; the Wall must exist or be in this call's walls.",
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 99
+                    },
+                    {
+                      "type": "string",
+                      "const": "roof"
+                    }
+                  ]
+                },
+                "roofFacing": {
+                  "description": "For a roof window: the direction the roof slope faces.",
+                  "type": "string",
+                  "enum": ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+                },
+                "kind": {
+                  "description": "standard, bay, or roof.",
+                  "type": "string",
+                  "enum": ["standard", "bay", "roof"]
+                },
+                "width": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "sillHeight": {
+                  "description": "Sill height above the floor: it decides what fits beneath.",
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "offset": {
+                  "description": "From the Wall's start corner (clockwise) to the Window's near edge.",
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "glass": {
+                  "description": "clear (the default), obscured, tinted, or filmed.",
+                  "type": "string",
+                  "enum": ["clear", "obscured", "tinted", "filmed"]
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "doors": {
+            "description": "Doors (doorways, with or without a door) to add or change. A Door is shared by the two Rooms it joins; Doors not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "door": {
+                  "description": "The slug of an existing Door to change. Leave out otherwise: when a Door already joins this Room and otherRoom, that Door is updated rather than duplicated.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "newDoor": {
+                  "description": "true to add a second Door between two Rooms that already have one.",
+                  "type": "boolean"
+                },
+                "wall": {
+                  "description": "The position of this Room's Wall the Door is in. Needed to add a Door, except from an outdoor Room without Walls; the Wall must exist or be in this call's walls.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                },
+                "sideB": {
+                  "description": "What the Door leads to: \"room\" or \"outdoor-room\" (name it in otherRoom), \"outside\", or \"unknown\". With otherRoom it can be left out.",
+                  "type": "string",
+                  "enum": ["room", "outdoor-room", "outside", "unknown"]
+                },
+                "otherRoom": {
+                  "description": "The slug of the Room on the other side.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "otherWall": {
+                  "description": "The position of the other Room's Wall the Door is in, when known.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                },
+                "clearWidth": {
+                  "description": "Clear width, for getting furniture in.",
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "offset": {
+                  "description": "Along this Room's Wall, from its start corner (clockwise) to the Door's near edge. Only from the Room the Door was first recorded in.",
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "glazed": {
+                  "description": "true for a glazed door, e.g. French doors: it lets in daylight.",
+                  "type": "boolean"
+                },
+                "noDoor": {
+                  "description": "true for a doorway with nothing hanging in it.",
+                  "type": "boolean"
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "features": {
+            "description": "Features to add or change: parts of the building that stay when the user moves out. Features not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "feature": {
+                  "description": "The slug of an existing Feature to change; leave out to add a Feature.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "description": "Needed to add a Feature: radiator (or heater), fireplace (or chimney breast), built-in-storage, fitted-units (kitchen or bathroom), beam-or-column, light-point (or downlight), tiling-or-panelling (a splashback, panelling), or other.",
+                  "type": "string",
+                  "enum": [
+                    "radiator",
+                    "fireplace",
+                    "built-in-storage",
+                    "fitted-units",
+                    "beam-or-column",
+                    "light-point",
+                    "tiling-or-panelling",
+                    "other"
+                  ]
+                },
+                "description": {
+                  "description": "What it is; needed when the kind is \"other\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "wall": {
+                  "description": "The position of the Wall it is on or against.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                },
+                "positionNote": {
+                  "description": "Where it is, e.g. \"under the window\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "depth": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "light": {
+                  "description": "For a Feature that gives light, such as a downlight.",
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "description": "ambient, task, or accent.",
+                      "type": "string",
+                      "enum": ["ambient", "task", "accent"]
+                    },
+                    "colorTemperature": {
+                      "description": "Kelvin (2700), or \"warm\", \"neutral\", or \"cool\" when that is all the user knows.",
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 10000
+                        },
+                        {
+                          "type": "string",
+                          "enum": ["warm", "neutral", "cool"]
+                        }
+                      ]
+                    },
+                    "brightness": {
+                      "description": "Lumens, from the bulb box.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "dimming": {
+                      "description": "none, standard, dim-to-warm, or tunable. Only the last two change the color.",
+                      "type": "string",
+                      "enum": ["none", "standard", "dim-to-warm", "tunable"]
+                    },
+                    "cri": {
+                      "description": "Color rendering index, when stated. Leave out when unknown.",
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                },
+                "archiveReason": {
+                  "description": "With archive: why, e.g. \"sold\", \"broken\", \"removed when the kitchen was refitted\".",
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "archive": {
+            "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+            "type": "boolean"
+          },
+          "archiveReason": {
+            "description": "With archive: why, e.g. \"sold\", \"broken\", \"removed when the kitchen was refitted\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "overrideProvenance": {
+            "description": "Only when the user has said to replace a stronger value with a weaker one (e.g. a measured length with an estimate): their words, quoted. Without it such a replacement is refused.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["session", "name"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_items",
+      "title": "Save items",
+      "description": "Records several Items the user owns, or changes them, and returns a receipt with one line per change. An Item is something the user would take with them on moving out: furniture, decor, an appliance, a lamp, a rug, a plant. Parts of the building that stay (a radiator, a fitted wardrobe, a ceiling light point) are Features of a Room, saved with save_room. Save only Items the user has confirmed. To add an Item give its name and category; to change one give its slug in `item` (find_items and the Room Sheet list them) and only the fields that change. An Item with no Room is Unplaced (boxed, or in off-site storage). Identical pieces are one Item with a quantity (six dining chairs). An Item that is sold, broken, given away, or replaced is Archived with archive: true and a reason, never deleted. Sizes are whole millimetres with a Provenance: measured, blueprint, or estimated; colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "items": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "description": "The slug of an existing Item to change; leave out to add an Item.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "description": "Needed to add an Item: e.g. \"Grey sofa\", \"Oak bookcase\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "category": {
+                  "description": "Needed to add an Item: seating, tables, beds, storage, lighting, rugs, textiles (curtains, cushions, throws), art-and-mirrors, decor, plants, appliances, electronics, outdoor, or other.",
+                  "type": "string",
+                  "enum": [
+                    "seating",
+                    "tables",
+                    "beds",
+                    "storage",
+                    "lighting",
+                    "rugs",
+                    "textiles",
+                    "art-and-mirrors",
+                    "decor",
+                    "plants",
+                    "appliances",
+                    "electronics",
+                    "outdoor",
+                    "other"
+                  ]
+                },
+                "quantity": {
+                  "description": "Identical pieces kept as one Item, e.g. 6 dining chairs. Defaults to 1.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "room": {
+                  "description": "The slug of the Room it is in. A new Item without a Room is Unplaced.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "unplaced": {
+                  "description": "true to take it out of its Room: boxed, or in off-site storage.",
+                  "type": "boolean"
+                },
+                "wall": {
+                  "description": "The position of the Wall of its Room it stands against; leave out if free-standing.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                },
+                "positionNote": {
+                  "description": "Where it sits, e.g. \"left of the window\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "depth": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "mm": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Whole millimetres: 3.62 m is 3620."
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    },
+                    "source": {
+                      "description": "With blueprint Provenance only.",
+                      "type": "object",
+                      "properties": {
+                        "blueprint": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The Blueprint's slug."
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "printed": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The text as printed, e.g. 12'6\"."
+                        }
+                      },
+                      "required": ["blueprint", "page", "printed"]
+                    }
+                  },
+                  "required": ["mm", "provenance"]
+                },
+                "colors": {
+                  "description": "Its colors, replacing any recorded.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A paint's name, or a description (\"warm grey\")."
+                      },
+                      "brand": {
+                        "description": "The paint maker.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "code": {
+                        "description": "The maker's code.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lrv": {
+                        "description": "Light reflectance value, when published. Never ask the user.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "hex": {
+                        "description": "Approximate, for the screen only.",
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$"
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": ["measured", "blueprint", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      }
+                    },
+                    "required": ["name", "provenance"]
+                  }
+                },
+                "materials": {
+                  "description": "Its materials, replacing any recorded, e.g. [\"oak\", \"linen\"].",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  }
+                },
+                "condition": {
+                  "description": "good, worn, or damaged.",
+                  "type": "string",
+                  "enum": ["good", "worn", "damaged"]
+                },
+                "brand": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "price": {
+                  "description": "What it cost, with the currency, e.g. \"£450\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "link": {
+                  "description": "A link to the product page.",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "light": {
+                  "description": "For an Item that gives light, such as a lamp.",
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "description": "ambient, task, or accent.",
+                      "type": "string",
+                      "enum": ["ambient", "task", "accent"]
+                    },
+                    "colorTemperature": {
+                      "description": "Kelvin (2700), or \"warm\", \"neutral\", or \"cool\" when that is all the user knows.",
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "maximum": 10000
+                        },
+                        {
+                          "type": "string",
+                          "enum": ["warm", "neutral", "cool"]
+                        }
+                      ]
+                    },
+                    "brightness": {
+                      "description": "Lumens, from the bulb box.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "dimming": {
+                      "description": "none, standard, dim-to-warm, or tunable. Only the last two change the color.",
+                      "type": "string",
+                      "enum": ["none", "standard", "dim-to-warm", "tunable"]
+                    },
+                    "cri": {
+                      "description": "Color rendering index, when stated. Leave out when unknown.",
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                },
+                "archiveReason": {
+                  "description": "With archive: why, e.g. \"sold\", \"broken\", \"removed when the kitchen was refitted\".",
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "description": "The Items to add or change, each confirmed by the user."
+          },
+          "overrideProvenance": {
+            "description": "Only when the user has said to replace a stronger value with a weaker one (e.g. a measured length with an estimate): their words, quoted. Without it such a replacement is refused.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["session", "items"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "set_constraints",
+      "title": "Set constraints",
+      "description": "Adds or removes a batch of Constraints and returns a receipt with one line per change. A Constraint is a fact about the user's situation that every Skill must obey as strictly as a Locked Decision, though it is not a design choice: \"Rented: no painting or drilling\", \"Two cats\", \"Grandmother's dresser stays\". Add or remove one only once the user has agreed: read the exact wording back first. A softer fact that should not bind every Decision is a Note (save_note). Removing a Constraint Archives it: it leaves the Home Overview but is kept. The Home Overview lists the Constraints in force with their slugs. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "add": {
+            "description": "Constraints to add, each in the wording the user agreed, e.g. \"Rented: no painting\".",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            }
+          },
+          "remove": {
+            "description": "The slugs of Constraints to remove. A removed Constraint is Archived, never deleted.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "reason": {
+            "description": "Why they are removed, quoting the user's permission.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_note",
+      "title": "Save note",
+      "description": "Records one Note and returns a receipt. A Note is a free-form fact about the Home or the people living in it that fits no other record: \"the cat scratches fabric furniture\", \"we might get a dog\", \"the landlord is relaxed about small nails\". It is background context: it can support a Decision but never changes one on its own, and it is not in the Home Overview (search_notes finds it). A fact the user wants every Skill to obey is a Constraint instead, added with set_constraints once the user agrees. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "One fact, in plain words, e.g. \"The cat scratches fabric furniture\"."
+          }
+        },
+        "required": ["session", "text"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
         "openWorldHint": false
       },
       "execution": {

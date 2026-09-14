@@ -20,6 +20,7 @@ describe("migrate", () => {
     expect(db.prepare("SELECT id FROM migrations ORDER BY id").all()).toEqual([
       { id: 0 },
       { id: 1 },
+      { id: 2 },
     ]);
     db.close();
   });
@@ -28,11 +29,11 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 2 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 3 });
     db.close();
   });
 
-  it("creates the slice 1 tables", () => {
+  it("creates the tables of slices 1 and 2", () => {
     const db = migrate(":memory:");
     const tables = db
       .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name")
@@ -40,12 +41,20 @@ describe("migrate", () => {
       .map((row) => row.name);
     expect(tables).toEqual([
       "change_log",
+      "constraints",
+      "doors",
+      "features",
       "homes",
+      "items",
       "levels",
       "migrations",
+      "notes",
       "rooms",
       "sessions",
       "settings",
+      "surfaces",
+      "walls",
+      "windows",
     ]);
     db.close();
   });

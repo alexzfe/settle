@@ -177,11 +177,17 @@ describe("save_room", () => {
   });
   afterEach(() => fixture.core.close());
 
+  /** Saves a Room; the receipt is its first line, about the Room itself, before the Gaps. */
   async function save(name: string, level?: string) {
     const { session } = await fixture.core.run("open_session", agent(fixture.home), {
       skill: "home-intake",
     });
-    return fixture.core.run("save_room", agent(fixture.home, session), { session, name, level });
+    const { receipt } = await fixture.core.run("save_room", agent(fixture.home, session), {
+      session,
+      name,
+      level,
+    });
+    return { receipt: receipt.split("\n")[0] };
   }
 
   it("puts a Room on the ground Level when no Level is given", async () => {

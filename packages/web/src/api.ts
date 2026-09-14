@@ -1,55 +1,52 @@
 // The web API client: every operation is POST /api/<name> with JSON in and out, and a refusal
-// comes back as { error: { code, message } } with a message written for the reader.
+// comes back as { error: { code, message } } with a message written for the reader. The shapes
+// are core's: the Zod schemas in packages/core/src/operations/ are their single source of truth.
 
-export interface Home {
-  slug: string;
-  name: string;
-  country: string;
-  city: string;
-  latitude: number;
-  homeFolderPath?: string;
+import type {
+  OperationName as CoreOperationName,
+  OperationInput,
+  OperationOutput,
+  RoomDetail,
+} from "@idh/core";
+
+export type {
+  ChangeEntry,
+  Constraint,
+  Door,
+  Feature,
+  Home,
+  Item,
+  Level,
+  Note,
+  Room,
+  RoomDetail,
+  Session,
+  Wall,
+  Window,
+} from "@idh/core";
+
+// @idh/core's own `Surface` names which adapters offer an operation, and it shadows the schema's
+// Surface record in the package's exports; the record's type is taken from the Room detail.
+export type Surface = RoomDetail["surfaces"][number];
+
+/** An operation's input and output, as core's registry declares them. */
+interface Shapes<Name extends CoreOperationName> {
+  input: OperationInput<Name>;
+  output: OperationOutput<Name>;
 }
 
-export interface Level {
-  slug: string;
-  name: string;
-  storey: number;
-}
-
-export interface Room {
-  slug: string;
-  name: string;
-  /** The slug of the Level the Room is on. */
-  level: string;
-}
-
-export interface SessionSummary {
-  changed: string;
-  open: string;
-  next: string;
-}
-
-export interface Session {
-  slug: string;
-  skills: string[];
-  openedAt: string;
-  closedAt?: string;
-  summary?: SessionSummary;
-}
-
-/** The operations the web UI calls, with their input and output shapes. */
+/** The operations the web UI calls. */
 export interface Operations {
-  list_homes: { input: Record<string, never>; output: { homes: Home[] } };
-  create_home: {
-    input: { name: string; country: string; city: string; latitude?: number };
-    output: { home: Home };
-  };
-  get_home: { input: { home: string }; output: { home: Home; levels: Level[]; rooms: Room[] } };
-  set_up_home_folder: {
-    input: { home: string; path: string };
-    output: { path: string; files: string[] };
-  };
-  list_sessions: { input: { home: string }; output: { sessions: Session[] } };
+  list_homes: Shapes<"list_homes">;
+  create_home: Shapes<"create_home">;
+  get_home: Shapes<"get_home">;
+  set_up_home_folder: Shapes<"set_up_home_folder">;
+  list_sessions: Shapes<"list_sessions">;
+  get_room: Shapes<"get_room">;
+  list_items: Shapes<"list_items">;
+  list_constraints: Shapes<"list_constraints">;
+  list_notes: Shapes<"list_notes">;
+  get_change_log: Shapes<"get_change_log">;
 }
 
 export type OperationName = keyof Operations;

@@ -1,0 +1,27 @@
+Room: Hallway (hallway)
+Level: Ground (storey 0)
+Functions: hallway
+Windowless: yes
+
+Walls, clockwise:
+- hallway/wall-1: 1.10 m; faces N; outside
+- hallway/wall-2: ~4.20 m; beyond Living room (living-room)
+- hallway/wall-3: ~0.90 m
+- hallway/wall-4: ~1.20 m
+- hallway/wall-5: ~1.00 m
+- hallway/wall-6: ~1.20 m
+- hallway/wall-7
+- hallway/wall-8
+
+Doors:
+- hallway-outside-door: in hallway/wall-1, to outside; clear width 0.82 m; glazed
+- hallway-living-room-door: in hallway/wall-2, to Living room (living-room) at living-room/wall-6; clear width 0.76 m
+- hallway-kitchen-door: in hallway/wall-6, to Kitchen (kitchen) at kitchen/wall-4; clear width ~0.70 m; no door hanging
+
+Surfaces:
+- floor: encaustic tiles
+
+Features:
+- Built-in storage (hallway-built-in-storage): understairs cupboard; on hallway/wall-3
+
+Gaps: wall lengths (hallway/wall-7, hallway/wall-8), ceiling height, times of use, walls Surface, ceiling Surface, woodwork Surface

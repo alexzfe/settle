@@ -1,0 +1,2 @@
+# A replay run copies its case's history.jsonl beside it as <session id>.jsonl, to resume it.
+/*/*-*-*-*-*.jsonl

@@ -1,5 +1,17 @@
 /** The CONTEXT.md noun of a record, in snake case. */
-export type RecordKind = "home" | "level" | "room" | "session";
+export type RecordKind =
+  | "home"
+  | "level"
+  | "room"
+  | "wall"
+  | "window"
+  | "door"
+  | "surface"
+  | "feature"
+  | "item"
+  | "constraint"
+  | "note"
+  | "session";
 
 /** Published once per changed record after a write commits. */
 export interface ChangeEvent {

@@ -118,6 +118,46 @@ describe("the web API", () => {
     );
   });
 
+  it("offers the Home model's read views: get_room, list_items, list_constraints, list_notes, get_change_log", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const opened = await callTool("my-flat", "open_session", { skill: "home-intake" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1];
+    await callTool("my-flat", "save_room", {
+      session,
+      name: "Kitchen",
+      walls: [{ position: 1, length: { mm: 3400, provenance: "measured" } }],
+    });
+    await callTool("my-flat", "save_items", {
+      session,
+      items: [{ name: "Kettle", category: "appliances", room: "kitchen" }],
+    });
+    await callTool("my-flat", "set_constraints", { session, add: ["Two cats"] });
+    await callTool("my-flat", "save_note", { session, text: "We might get a dog" });
+    const read = async (operation: string, body: unknown) =>
+      (await (await api(operation, { home: "my-flat", ...(body as object) })).json()) as Record<
+        string,
+        unknown
+      >;
+
+    expect(await read("get_room", { room: "kitchen" })).toMatchObject({
+      room: {
+        slug: "kitchen",
+        walls: [{ slug: "kitchen/wall-1", length: { mm: 3400, provenance: "measured" } }],
+        items: [{ slug: "kettle" }],
+        gaps: expect.arrayContaining(["ceiling height"]),
+      },
+    });
+    expect(await read("list_items", {})).toMatchObject({ items: [{ slug: "kettle" }] });
+    expect(await read("list_constraints", {})).toEqual({
+      constraints: [{ slug: "two-cats", text: "Two cats" }],
+    });
+    expect(await read("list_notes", {})).toMatchObject({ notes: [{ text: "We might get a dog" }] });
+    expect(await read("get_home", {})).toMatchObject({ unplacedItems: 0 });
+    const { changes } = (await read("get_change_log", {})) as { changes: { recordKind: string }[] };
+    expect(changes[0]).toMatchObject({ origin: session, recordKind: "note" });
+    expect(changes.at(-1)).toMatchObject({ origin: "web", recordKind: "home", record: "my-flat" });
+  });
+
   it("does not offer the Agent's tools, or anything but JSON", async () => {
     const tool = await api("open_session", { skill: "home-intake" });
     const unknown = await api("drop_tables", {});
@@ -146,7 +186,7 @@ describe("the MCP endpoint", () => {
     expect(SERVER_INSTRUCTIONS.length).toBeLessThanOrEqual(512);
   });
 
-  it("lists the four Agent tools, read tools marked readOnlyHint, every write taking session", async () => {
+  it("lists the Agent tools, read tools marked readOnlyHint, every write taking session", async () => {
     const { tools } = (await listTools(app, PORT)) as {
       tools: {
         name: string;
@@ -157,8 +197,14 @@ describe("the MCP endpoint", () => {
     };
     expect(tools.map((tool) => [tool.name, tool.annotations.readOnlyHint])).toEqual([
       ["open_session", true],
-      ["save_room", false],
       ["get_room_sheet", true],
+      ["find_items", true],
+      ["search_notes", true],
+      ["save_home", false],
+      ["save_room", false],
+      ["save_items", false],
+      ["set_constraints", false],
+      ["save_note", false],
       ["close_session", false],
     ]);
     for (const tool of tools.filter((each) => !each.annotations.readOnlyHint)) {
@@ -172,6 +218,27 @@ describe("the MCP endpoint", () => {
     const result = await callTool("my-flat", "save_room", { session: "nope", name: "Kitchen" });
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("open_session");
+  });
+
+  it("refuses a weaker value as an isError result stating both values and their Provenance", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const opened = await callTool("my-flat", "open_session", { skill: "home-intake" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1];
+    const kitchen = { session, name: "Kitchen" };
+    await callTool("my-flat", "save_room", {
+      ...kitchen,
+      ceilingHeight: { mm: 2500, provenance: "measured" },
+    });
+
+    const refused = await callTool("my-flat", "save_room", {
+      ...kitchen,
+      ceilingHeight: { mm: 2400, provenance: "estimated" },
+    });
+
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]?.text).toContain("~2.40 m (Estimated)");
+    expect(refused.content[0]?.text).toContain("2.50 m (Measured)");
+    expect(refused.content[0]?.text).toContain("overrideProvenance");
   });
 
   it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @idh/server tools:json)", async () => {

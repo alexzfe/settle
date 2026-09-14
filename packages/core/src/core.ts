@@ -4,30 +4,49 @@ import type { z } from "zod";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
 import { type FileStore, nodeFileStore } from "./files.js";
+import { getChangeLog } from "./operations/changes.js";
+import { listConstraints, setConstraints } from "./operations/constraints.js";
 import {
   createHome,
   getHome,
   listHomes,
   listSessions,
+  saveHome,
   setUpHomeFolderOperation,
 } from "./operations/homes.js";
-import { getRoomSheet, saveRoom } from "./operations/rooms.js";
+import { findItems, listItems, saveItems } from "./operations/items.js";
+import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
+import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
 import { closeSession, openSession } from "./operations/sessions.js";
 import type { CallContext, Operation, OperationContext } from "./registry.js";
 import { openStore, type Store } from "./store.js";
 
 export type { CallContext, Caller } from "./registry.js";
 
-/** The operation registry: every operation core offers, keyed by name. */
+/**
+ * The operation registry: every operation core offers, keyed by name. The Agent's tools are
+ * listed in this order: the read tools, then the writes, then close_session.
+ */
 const operations = {
   create_home: createHome,
   list_homes: listHomes,
   get_home: getHome,
   set_up_home_folder: setUpHomeFolderOperation,
   list_sessions: listSessions,
+  get_room: getRoom,
+  list_items: listItems,
+  list_constraints: listConstraints,
+  list_notes: listNotes,
+  get_change_log: getChangeLog,
   open_session: openSession,
-  save_room: saveRoom,
   get_room_sheet: getRoomSheet,
+  find_items: findItems,
+  search_notes: searchNotes,
+  save_home: saveHome,
+  save_room: saveRoom,
+  save_items: saveItems,
+  set_constraints: setConstraints,
+  save_note: saveNote,
   close_session: closeSession,
 };
 
@@ -99,6 +118,7 @@ export function createCore(options: CoreOptions = {}): Core {
             field: change.field ?? null,
             old: change.old,
             new: change.new,
+            reason: change.reason ?? null,
           });
           const event = {
             home: change.home.slug,

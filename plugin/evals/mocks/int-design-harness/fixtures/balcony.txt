@@ -1,0 +1,12 @@
+Room: Balcony (balcony)
+Level: First (storey 1)
+Outdoor: yes
+Functions: dining
+
+Doors:
+- main-bedroom-balcony-door: to Main bedroom (main-bedroom) at main-bedroom/wall-1; glazed
+
+Surfaces:
+- floor: hardwood decking
+
+Gaps: times of use

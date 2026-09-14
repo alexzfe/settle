@@ -8,6 +8,10 @@ export type CoreErrorCode =
   | "unknown_session"
   | "session_required"
   | "session_closed"
+  /** A value would be replaced by one of weaker Provenance without overrideProvenance. */
+  | "weaker_provenance"
+  /** A record can't be removed while something else still refers to it. */
+  | "referenced_cannot_delete"
   | "city_not_found"
   | "folder_belongs_to_other_home"
   | "home_folder_unusable";

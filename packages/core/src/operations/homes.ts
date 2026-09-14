@@ -2,32 +2,25 @@ import { z } from "zod";
 import { cityLatitude, countryCode } from "../cities.js";
 import { CoreError } from "../errors.js";
 import { setUpHomeFolder } from "../home-folder.js";
-import { defineOperation } from "../registry.js";
+import { optional } from "../optional.js";
+import { defineOperation, type OperationContext } from "../registry.js";
+import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { HomeRow, LevelRow, RoomRow, SessionRow } from "../store.js";
-import { homeInput, requireHome } from "./scope.js";
+import { findLevel, list } from "./lookup.js";
+import {
+  type GetHomeResult,
+  type Home,
+  type Level,
+  type levelInput,
+  type ReceiptResult,
+  type Room,
+  saveHomeInput,
+} from "./schemas.js";
+import { homeInput, requireHome, requireSession } from "./scope.js";
+import { Writer } from "./writer.js";
 
-export interface Home {
-  slug: string;
-  name: string;
-  country: string;
-  city: string;
-  latitude: number;
-  homeFolderPath?: string;
-}
-
-export interface Level {
-  slug: string;
-  name: string;
-  storey: number;
-}
-
-export interface Room {
-  slug: string;
-  name: string;
-  /** The slug of the Level the Room is on. */
-  level: string;
-}
+export type { Home, Level, Room };
 
 export interface Session {
   slug: string;
@@ -111,16 +104,125 @@ export const getHome = defineOperation({
   input: z.object({ home: homeInput }),
   readOnly: true,
   surface: "web",
-  handler(context) {
+  handler(context): GetHomeResult {
     const home = requireHome(context);
     const levels = context.store.levels(home.id);
     return {
       home: toHome(home),
       levels: levels.map(toLevel),
-      rooms: context.store.rooms(home.id).map((room) => toRoom(room, levels)),
+      rooms: context.store
+        .rooms(home.id)
+        .filter((room) => room.archivedAt === null)
+        .map((room) => toRoom(room, levels)),
+      unplacedItems: context.store
+        .list("items", home.id)
+        .filter((item) => item.archivedAt === null && item.roomId === null).length,
     };
   },
 });
+
+export const saveHome = defineOperation({
+  name: "save_home",
+  description:
+    "Records this Home's own facts and its Levels, and returns a receipt with one line per " +
+    "change. The facts: tenure (owned, rented, or other; it never implies a restriction by " +
+    "itself, since what the user may change is recorded as Constraints), planned stay, building " +
+    "type and era, whether there is a lift and its door width and car depth, and the narrowest " +
+    "point on the way into the Home with what it is (for getting furniture in). Levels: add one " +
+    "with its name and storey (0 for ground, -1 for a basement, 5 for a fifth-floor flat; a flat " +
+    "is a single Level), rename or renumber one by its slug (the slug never changes), or remove " +
+    "one no Room is on. Give only what the user stated; fields left out stay as they are. The " +
+    "Home's name, country, and city are set in the app. Lengths are whole millimetres with a " +
+    "Provenance: measured, blueprint, or estimated. A value is never replaced by one of weaker " +
+    "Provenance (measured > blueprint > estimated) unless the user says so: that part is " +
+    "refused, the receipt states both values, and only if the user agrees do you call again " +
+    "with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
+  input: saveHomeInput,
+  readOnly: false,
+  surface: "agent",
+  handler(context, input): ReceiptResult {
+    const home = requireHome(context);
+    const session = requireSession(context, home, { open: true });
+    const receipt = context.write(session.slug, (log) => {
+      const writer = new Writer(context.store, home, log, input.overrideProvenance);
+      const { session: _session, levels, overrideProvenance: _override, ...facts } = input;
+      const subject = named(home);
+      writer.line(subject, undefined, writer.patch("homes", "home", home, subject, facts));
+      for (const level of levels ?? []) saveLevel(context, home, writer, level);
+      return writer.receipt();
+    });
+    return { receipt };
+  },
+  text: ({ receipt }) => receipt,
+});
+
+function saveLevel(
+  context: OperationContext,
+  home: HomeRow,
+  writer: Writer,
+  input: z.output<typeof levelInput>,
+): void {
+  const { store } = context;
+  const levels = store.levels(home.id);
+  const level =
+    input.level !== undefined
+      ? levels.find((each) => each.slug === input.level)
+      : input.name !== undefined
+        ? findLevel(levels, input.name)
+        : undefined;
+  if (input.level !== undefined && !level) {
+    throw new CoreError(
+      "not_found",
+      `This Home has no Level "${input.level}". Its Levels are ${list(levels)}.`,
+    );
+  }
+  if (input.remove) {
+    if (!level) throw new CoreError("validation", "To remove a Level, give its slug as `level`.");
+    const rooms = store.rooms(home.id).filter((room) => room.levelId === level.id);
+    if (rooms.length > 0) {
+      throw new CoreError(
+        "referenced_cannot_delete",
+        `${named(level)} can't be removed: ${list(rooms)} ${rooms.length === 1 ? "is" : "are"} on ` +
+          "it, Archived Rooms included. Move them to another Level with save_room first.",
+      );
+    }
+    if (levels.length === 1) {
+      throw new CoreError(
+        "validation",
+        `${named(level)} is the Home's only Level, and every Home keeps at least one.`,
+      );
+    }
+    store.deleteLevel(level.id);
+    writer.logged({ recordKind: "level", record: level, field: "removed", old: toLevel(level) });
+    writer.line(named(level), "removed");
+    return;
+  }
+  if (!level) {
+    if (input.name === undefined || input.storey === undefined) {
+      throw new CoreError(
+        "validation",
+        "To add a Level, give its name and storey (0 for ground, -1 for a basement).",
+      );
+    }
+    const slug = uniqueSlug(input.name, "level", (taken) =>
+      store.slugTaken("levels", taken, home.id),
+    );
+    const created = writer.create(
+      "levels",
+      "level",
+      { homeId: home.id, slug, name: input.name, storey: input.storey },
+      { name: input.name, storey: input.storey },
+    );
+    writer.line(named(created), `added, storey ${created.storey}`);
+    return;
+  }
+  const subject = named({ name: input.name ?? level.name, slug: level.slug });
+  writer.line(
+    subject,
+    undefined,
+    writer.patch("levels", "level", level, subject, { name: input.name, storey: input.storey }),
+  );
+}
 
 export const setUpHomeFolderOperation = defineOperation({
   name: "set_up_home_folder",
@@ -157,14 +259,25 @@ export const listSessions = defineOperation({
 });
 
 export function toHome(row: HomeRow): Home {
-  const { slug, name, country, city, latitude, homeFolderPath } = row;
+  const { slug, name, country, city, latitude } = row;
   return {
     slug,
     name,
     country,
     city,
     latitude,
-    ...(homeFolderPath === null ? {} : { homeFolderPath }),
+    ...optional({
+      homeFolderPath: row.homeFolderPath,
+      tenure: row.tenure,
+      plannedStay: row.plannedStay,
+      buildingType: row.buildingType,
+      buildingEra: row.buildingEra,
+      lift: row.lift,
+      liftDoorWidth: row.liftDoorWidth,
+      liftCarDepth: row.liftCarDepth,
+      accessWidth: row.accessWidth,
+      accessNote: row.accessNote,
+    }),
   };
 }
 

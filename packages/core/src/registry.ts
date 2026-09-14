@@ -24,6 +24,8 @@ export interface Change {
   field?: string;
   old?: unknown;
   new?: unknown;
+  /** Why, when the write said: an override of Provenance, a removal. */
+  reason?: string;
 }
 
 /** What core hands an operation's handler along with the caller. */
@@ -44,7 +46,7 @@ export interface OperationContext extends CallContext {
 }
 
 /** Which adapters offer an operation: the MCP server, the web API, or both. */
-export type Surface = "agent" | "web" | "both";
+export type OperationSurface = "agent" | "web" | "both";
 
 export interface Operation<Input extends z.ZodObject = z.ZodObject, Output = unknown> {
   name: string;
@@ -52,7 +54,7 @@ export interface Operation<Input extends z.ZodObject = z.ZodObject, Output = unk
   description: string;
   input: Input;
   readOnly: boolean;
-  surface: Surface;
+  surface: OperationSurface;
   handler(context: OperationContext, input: z.output<Input>): Output | Promise<Output>;
   /** For an Agent operation, the text the AI reads, rendered from the result. */
   text?(output: Output): string;

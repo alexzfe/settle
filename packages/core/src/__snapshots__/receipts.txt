@@ -1,5 +1,8 @@
 Study (study): created on First
+Gaps left in Study (study): wall lengths, ceiling height, Windows or windowless, times of use, walls Surface, ceiling Surface, floor Surface, woodwork Surface
 
 Study (study): moved from First to Ground
+Gaps left in Study (study): wall lengths, ceiling height, Windows or windowless, times of use, walls Surface, ceiling Surface, floor Surface, woodwork Surface
 
 Study (study): already recorded on Ground, nothing changed
+Gaps left in Study (study): wall lengths, ceiling height, Windows or windowless, times of use, walls Surface, ceiling Surface, floor Surface, woodwork Surface

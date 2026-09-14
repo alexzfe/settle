@@ -1,35 +1,69 @@
+import type { ChangeEvent, RecordKind } from "@idh/core";
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { queryKeys } from "./queries";
 
-/** One committed write, as /events publishes it. recordKind is the snake_case CONTEXT.md noun. */
-export interface ChangeEvent {
-  home: string;
-  recordKind: string;
-  recordSlug: string;
+/**
+ * The queries that show records of a kind, so a change to one refetches only those. Every write
+ * also adds to the change log.
+ */
+export function queriesShowing(recordKind: string, home: string): QueryKey[] {
+  const shown = showing(recordKind as RecordKind, home);
+  return shown ? [...shown, queryKeys.changeLog(home)] : queriesOfHome(home);
 }
 
-/** The queries that show records of a kind, so a change to one refetches only those. */
-export function queriesShowing(recordKind: string, home: string): QueryKey[] {
+function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
   switch (recordKind) {
     case "home":
       return [queryKeys.homes, queryKeys.home(home)];
+    // The Home page lists Levels and Rooms; a Room page names its Level and the Rooms beyond it.
     case "level":
     case "room":
-      return [queryKeys.home(home)];
+      return [queryKeys.home(home), queryKeys.rooms(home)];
+    // Parts of a Room show only on Room pages. A Door is on two, so every Room page refetches.
+    case "wall":
+    case "window":
+    case "door":
+    case "surface":
+    case "feature":
+      return [queryKeys.rooms(home)];
+    // The Home page counts the Unplaced Items.
+    case "item":
+      return [queryKeys.items(home), queryKeys.rooms(home), queryKeys.home(home)];
+    case "constraint":
+      return [queryKeys.constraints(home)];
+    case "note":
+      return [queryKeys.notes(home)];
     case "session":
       return [queryKeys.sessions(home)];
     default:
-      return queriesOfHome(home);
+      return unmapped(recordKind);
   }
 }
 
+/**
+ * A record kind core publishes that the switch above lacks fails to type-check here. At run time
+ * a kind from a newer server gets undefined, and everything for the Home is refetched.
+ */
+function unmapped(_recordKind: never): undefined {
+  return undefined;
+}
+
 function queriesOfHome(home: string): QueryKey[] {
-  return [queryKeys.homes, queryKeys.home(home), queryKeys.sessions(home)];
+  return [
+    queryKeys.homes,
+    queryKeys.home(home),
+    queryKeys.sessions(home),
+    queryKeys.rooms(home),
+    queryKeys.items(home),
+    queryKeys.constraints(home),
+    queryKeys.notes(home),
+    queryKeys.changeLog(home),
+  ];
 }
 
 /**
- * Keeps one Home's queries fresh while the page is open: each change event invalidates the
+ * Keeps one Home's queries fresh while its pages are open: each change event invalidates the
  * queries showing that record kind, and after a dropped connection comes back (the browser
  * retries on its own) everything for the Home is refetched, since changes may have been missed.
  */

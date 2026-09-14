@@ -1,0 +1,19 @@
+Main bedroom (main-bedroom): ceiling height 2.45 m (Measured)
+main-bedroom/wall-1: length 3.62 m (Measured), was ~3.60 m (Estimated)
+main-bedroom/wall-2: length 3.10 m (Measured)
+main-bedroom/wall-3: length 3.62 m (Measured)
+main-bedroom/wall-4: beyond outside; length 3.10 m (Measured); faces N
+Main bedroom walls Surface (main-bedroom/walls): recorded; color ~chalk white (Estimated); finish matt
+Window in main-bedroom/wall-1 (main-bedroom-window): width 1.18 m (Measured), was ~1.20 m (Estimated)
+Door to Balcony (main-bedroom-balcony-door): updated the existing Door between Main bedroom and Balcony; clear width 1.40 m (Measured); height ~2.10 m (Estimated)
+Radiator (main-bedroom-radiator): added; on main-bedroom/wall-4; position under the window
+Gaps left in Main bedroom (main-bedroom): ceiling Surface, floor Surface, woodwork Surface
+
+Living room (living-room): used daytime, evening
+living-room/wall-5: length 3.65 m (Measured), was ~3.70 m (Estimated)
+Refused: Living room (living-room) ceiling height ~2.40 m (Estimated). The recorded 2.60 m (Measured) is stronger, so it stays. If the user says to replace it, call again with overrideProvenance quoting their words.
+Refused: Living room walls Surface (living-room/walls) color ~pinkish beige (Estimated). The recorded Setting Plaster (Farrow & Ball No. 231), LRV 63 (Measured) is stronger, so it stays. If the user says to replace it, call again with overrideProvenance quoting their words.
+Living room (living-room): no Gaps left
+
+Kitchen (kitchen): ceiling height ~2.45 m (Estimated), replacing 2.50 m (Measured) as the user said
+Gaps left in Kitchen (kitchen): woodwork Surface

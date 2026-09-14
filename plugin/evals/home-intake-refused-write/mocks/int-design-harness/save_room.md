@@ -1,0 +1,1 @@
+Refused: living-room/wall-1 length ~5.00 m (Estimated). The recorded 5.20 m (Measured) is stronger, so it stays. If the user says to replace it, call again with overrideProvenance quoting their words.

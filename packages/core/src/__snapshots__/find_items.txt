@@ -1,0 +1,22 @@
+# every Item
+- Sofa (sofa): seating; in Living room (living-room), against living-room/wall-6; 2.10 × 0.95 × 0.85 m (W × D × H); ~warm grey; linen; worn
+- Dining chair (dining-chair): seating; ×6; in Living room (living-room), dining end; oak
+- Pendant lamp (pendant-lamp): lighting; in Living room (living-room), on the ceiling point
+- Bookcase (bookcase): storage; in Living room (living-room), against living-room/wall-4; ~0.80 × ~0.30 × ~1.80 m (W × D × H); IKEA Billy
+- Kitchen table (kitchen-table): tables; in Kitchen (kitchen); width 1.20 m
+- Double bed (double-bed): beds; in Main bedroom (main-bedroom), against main-bedroom/wall-2; 1.60 × 2.10 m (W × D)
+- Standing desk (standing-desk): tables; Unplaced; £350
+
+# Unplaced
+- Standing desk (standing-desk): tables; Unplaced; £350
+
+# seating, Archived included
+- Sofa (sofa): seating; in Living room (living-room), against living-room/wall-6; 2.10 × 0.95 × 0.85 m (W × D × H); ~warm grey; linen; worn
+- Dining chair (dining-chair): seating; ×6; in Living room (living-room), dining end; oak
+- Old armchair (old-armchair): seating; in Living room (living-room); Archived 2026-09-14: sold
+
+# text "oak"
+- Dining chair (dining-chair): seating; ×6; in Living room (living-room), dining end; oak
+
+# the balcony
+No Items match.

@@ -3,6 +3,7 @@ import { CoreError } from "../errors.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { type OpeningBlock, type OverviewView, renderOpening } from "../render.js";
 import type { HomeRow, SessionRow } from "../store.js";
+import { loadHome, overviewView } from "./model.js";
 import { requireHome, requireSession, sessionInput } from "./scope.js";
 
 export const SKILLS = ["home-intake", "design-direction", "color", "purchase"] as const;
@@ -32,8 +33,9 @@ export const openSession = defineOperation({
   name: "open_session",
   description:
     "Opens a Session for this Home and returns its opening: the Home's name and its Home " +
-    "Overview (the Home's facts, its Levels, and one line per Room with the Room's slug and " +
-    "Level). Call it first, when a Skill starts, before any other tool of this server, and pass " +
+    "Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many " +
+    "Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item " +
+    "count, and Gaps: the facts advice still needs). Call it first, when a Skill starts, before any other tool of this server, and pass " +
     "the returned Session id as `session` on every later call in the conversation. A Session is " +
     "one interview with the user; the app keeps its record (Skills used and a summary), not the " +
     "transcript. When another Skill starts later in the same conversation, call it again with " +
@@ -191,15 +193,5 @@ function newSessionSlug(context: OperationContext, skill: Skill): string {
 }
 
 export function overview(context: OperationContext, home: HomeRow): OverviewView {
-  const levels = context.store.levels(home.id);
-  const levelName = new Map(levels.map((level) => [level.id, level.name]));
-  return {
-    home,
-    levels,
-    rooms: context.store.rooms(home.id).map((room) => ({
-      name: room.name,
-      slug: room.slug,
-      level: levelName.get(room.levelId) ?? "",
-    })),
-  };
+  return overviewView(loadHome(context.store, home));
 }

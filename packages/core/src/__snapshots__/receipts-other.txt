@@ -1,0 +1,15 @@
+Fixture Home (fixture-home): no lift
+Upstairs (first): renamed from First
+Loft (loft): added, storey 2
+Refused: Fixture Home (fixture-home) narrowest access width ~0.80 m (Estimated). The recorded 0.76 m (Measured) is stronger, so it stays. If the user says to replace it, call again with overrideProvenance quoting their words.
+
+Rug (rug): added in Living room (living-room); category rugs; width ~2.00 m (Estimated)
+Sofa (sofa): moved to Kitchen (kitchen); condition damaged
+Standing desk (standing-desk): moved to Main bedroom (main-bedroom); on main-bedroom/wall-2
+Kitchen table (kitchen-table): moved out of its Room: now Unplaced
+
+Two cats (two-cats): already recorded, nothing changed
+No smoking (no-smoking): added
+Two cats (two-cats): removed (Archived)
+
+Note (the-landlord-visits-every-spring): saved: The landlord visits every spring

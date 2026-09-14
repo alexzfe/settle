@@ -59,7 +59,8 @@ it("runs MCP tool calls end to end: open_session, then save_room", async () => {
 
   expect(session).toMatch(/^home-intake-/);
   expect(opening).toContain("Home: Tool home");
-  expect(receipt).toBe("Kitchen (kitchen): created on Ground");
+  expect(receipt.split("\n")[0]).toBe("Kitchen (kitchen): created on Ground");
+  expect(receipt).toContain("Gaps left in Kitchen (kitchen): wall lengths, ceiling height");
   expect(await api("get_home", { home: "tool-home" })).toMatchObject({
     rooms: [{ slug: "kitchen", name: "Kitchen", level: "ground" }],
   });
@@ -85,12 +86,53 @@ it("sends a change event on /events after a write to that Home", async () => {
   }
 });
 
+it("sends one change event per record a save_room writes, with the record's kind", async () => {
+  await api("create_home", { name: "Parts home", country: "GB", city: "London" });
+  const controller = new AbortController();
+  const response = await fetch(`${server.url}/events?home=parts-home`, {
+    signal: controller.signal,
+  });
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+  try {
+    const opening = await callTool("parts-home", "open_session", { skill: "home-intake" });
+    const session = /^Session: (\S+)$/m.exec(opening)?.[1] ?? "";
+    await callTool("parts-home", "save_room", {
+      session,
+      name: "Kitchen",
+      walls: [{ position: 1 }, { position: 2 }],
+      surfaces: { floor: { finish: "oiled" } },
+      windows: [{ wall: 1 }],
+    });
+    const home = "parts-home";
+    expect(await nextChanges(reader, 6)).toEqual([
+      { home, recordKind: "session", recordSlug: session },
+      { home, recordKind: "room", recordSlug: "kitchen" },
+      { home, recordKind: "wall", recordSlug: "kitchen/wall-1" },
+      { home, recordKind: "wall", recordSlug: "kitchen/wall-2" },
+      { home, recordKind: "surface", recordSlug: "kitchen/floor" },
+      { home, recordKind: "window", recordSlug: "kitchen-window" },
+    ]);
+  } finally {
+    controller.abort();
+  }
+});
+
 async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {
+  return (await nextChanges(reader, 1))[0];
+}
+
+/** The next `count` change events on the stream. */
+async function nextChanges(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  count: number,
+): Promise<unknown[]> {
   const decoder = new TextDecoder();
   let text = "";
   for (;;) {
-    const data = /event: change\ndata: (.*)\n/.exec(text)?.[1];
-    if (data !== undefined) return JSON.parse(data);
+    const events = [...text.matchAll(/event: change\ndata: (.*)\n/g)].map((match) =>
+      JSON.parse(match[1] as string),
+    );
+    if (events.length >= count) return events.slice(0, count);
     const { value, done } = await reader.read();
     if (done) throw new Error(`The event stream ended after: ${text}`);
     text += decoder.decode(value, { stream: true });
