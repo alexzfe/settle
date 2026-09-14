@@ -1,0 +1,1 @@
+- Industrial loft (industrial-loft): Design Direction, Rejected; Home-wide. Exposed brick, black steel, concrete floors, and factory lighting.

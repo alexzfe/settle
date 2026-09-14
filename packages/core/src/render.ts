@@ -5,9 +5,18 @@ import type {
   Blueprint,
   Color,
   Constraint,
+  DecisionDetail,
+  DecisionKind,
+  DecisionKindContent,
+  DecisionState,
+  DecisionSummary,
   Door,
+  EvidenceEntry,
   Feature,
   FeatureKind,
+  Flag,
+  FlagCause,
+  Fulfilment,
   Home,
   Item,
   Level,
@@ -17,6 +26,7 @@ import type {
   Note,
   PlannedStay,
   Provenance,
+  Requirement,
   RoomDetail,
   Surface,
   ViewImagesResult,
@@ -42,12 +52,46 @@ export interface OverviewView {
   rooms: RoomDetail[];
 }
 
-/** The parts of the opening, each delivered once per Session. Slice 4 adds the Decisions block. */
-export type OpeningBlock = "overview";
+/**
+ * The Home-wide Decisions in force: the Design Direction and Palette in full, whichever of each is
+ * furthest along (Locked, else Leaning), or how many Candidates there are when none is; then every
+ * other Home-wide Decision that is Locked and not Fulfilled.
+ */
+export interface HomeDecisionsView {
+  designDirection?: DecisionDetail;
+  designDirectionCandidates: number;
+  palette?: DecisionDetail;
+  paletteCandidates: number;
+  others: DecisionSummary[];
+}
+
+export interface OpeningView {
+  overview: OverviewView;
+  decisions: HomeDecisionsView;
+  /** The Decisions with an open flag or Conflict. */
+  flagged: DecisionSummary[];
+}
+
+/**
+ * The parts of the opening, each delivered once per Session: the Home Overview, the Home-wide
+ * Decisions (every Skill but Home Intake), and the open flags and Conflicts.
+ */
+export type OpeningBlock = "overview" | "decisions" | "flags";
+
+const OPENING_ORDER: readonly OpeningBlock[] = ["overview", "decisions", "flags"];
 
 /** The opening's blocks in `blocks`, in their fixed order; empty when there are none. */
-export function renderOpening(view: OverviewView, blocks: readonly OpeningBlock[]): string {
-  return blocks.includes("overview") ? renderHomeOverview(view) : "";
+export function renderOpening(view: OpeningView, blocks: readonly OpeningBlock[]): string {
+  return OPENING_ORDER.filter((block) => blocks.includes(block))
+    .map((block) =>
+      block === "overview"
+        ? renderHomeOverview(view.overview)
+        : block === "decisions"
+          ? renderHomeDecisions(view.decisions)
+          : renderFlagged(view.flagged),
+    )
+    .filter((text) => text !== "")
+    .join("\n\n");
 }
 
 // ─── The Home Overview ──────────────────────────────────────────────────────────────────────
@@ -151,12 +195,13 @@ function windowFacings(room: RoomDetail): string[] {
 
 /**
  * Everything recorded about one Room: its facts, Walls, Windows, Doors, Surfaces, Features,
- * lights, one line per Item, and its Gaps. With `sources`, every value printed on a Blueprint is
+ * lights, one line per Item, one line per Decision (those given: Candidate, Leaning, and Locked
+ * but not Fulfilled), and its Gaps. With `sources`, every value printed on a Blueprint is
  * followed by its Blueprint, page, and the text as printed: 1.80 m [agent-plan p.1: 5'11"].
  */
 export function renderRoomSheet(
   room: RoomDetail,
-  { sources = false }: { sources?: boolean } = {},
+  { sources = false, decisions = [] }: { sources?: boolean; decisions?: DecisionSummary[] } = {},
 ): string {
   const lines = [`Room: ${named(room)}`, `Level: ${room.level.name} (storey ${room.level.storey})`];
   if (room.archivedAt) {
@@ -205,6 +250,11 @@ export function renderRoomSheet(
     lines,
     "Items",
     room.items.map((item) => itemLine(item, false, sources)),
+  );
+  section(
+    lines,
+    "Decisions",
+    decisions.map((decision) => decisionLine(decision, false)),
   );
   lines.push("", room.gaps.length > 0 ? `Gaps: ${room.gaps.join(", ")}` : "Gaps: none");
   return lines.join("\n");
@@ -350,6 +400,241 @@ export function renderNotes(notes: Note[]): string {
   return notes.map((note) => `- ${note.text} (${note.slug}), ${day(note.createdAt)}`).join("\n");
 }
 
+// ─── Decisions ──────────────────────────────────────────────────────────────────────────────
+
+export const DECISION_KIND_LABELS: Record<DecisionKind, string> = {
+  "design-direction": "Design Direction",
+  "room-direction": "Room Direction",
+  "room-use": "Room use",
+  palette: "Palette",
+  "room-color": "Room color",
+  purchase: "Purchase",
+  other: "Other",
+};
+
+export const DECISION_STATE_LABELS: Record<DecisionState, string> = {
+  candidate: "Candidate",
+  leaning: "Leaning",
+  locked: "Locked",
+  rejected: "Rejected",
+};
+
+/** A Decision by its title and slug: "Warm minimalism (warm-minimalism)". */
+export function titled(decision: { title: string; slug: string }): string {
+  return named({ name: decision.title, slug: decision.slug });
+}
+
+/**
+ * One Decision on one line: title and slug, kind, state, when it was Fulfilled, with `scope` the
+ * Room it is about or Home-wide, its open flags and Conflicts, then its one-line statement.
+ */
+export function decisionLine(decision: DecisionSummary, scope: boolean): string {
+  const parts = [
+    `${DECISION_KIND_LABELS[decision.kind]}, ${DECISION_STATE_LABELS[decision.state]}` +
+      (decision.fulfilledAt ? `, Fulfilled ${day(decision.fulfilledAt)}` : ""),
+    scope ? (decision.room ? named(decision.room) : "Home-wide") : undefined,
+    decision.openFlags.length > 0 ? count(decision.openFlags.length, "open flag") : undefined,
+    decision.openConflicts.length > 0
+      ? count(decision.openConflicts.length, "open Conflict")
+      : undefined,
+  ];
+  return `${titled(decision)}: ${join("; ", parts)}. ${decision.statement}`;
+}
+
+/** find_decisions: one line per Decision, with its scope. */
+export function renderDecisions(decisions: DecisionSummary[]): string {
+  if (decisions.length === 0) return "No Decisions match.";
+  return decisions.map((decision) => `- ${decisionLine(decision, true)}`).join("\n");
+}
+
+/**
+ * The opening's Home-wide Decisions: the Design Direction and the Palette in full, each marked
+ * with its state (or a count of Candidates when none is chosen), then the other Home-wide Locked
+ * Decisions not yet Fulfilled, one line each.
+ */
+export function renderHomeDecisions(view: HomeDecisionsView): string {
+  const lines = [
+    "Home-wide Decisions in force:",
+    "",
+    ...inFull("Design Direction", view.designDirection, view.designDirectionCandidates),
+    "",
+    ...inFull("Palette", view.palette, view.paletteCandidates),
+  ];
+  if (view.others.length > 0) {
+    lines.push("", "Other Home-wide Decisions, Locked:");
+    for (const decision of view.others) lines.push(`- ${decisionLine(decision, false)}`);
+  }
+  return lines.join("\n");
+}
+
+function inFull(label: string, decision: DecisionDetail | undefined, candidates: number): string[] {
+  if (!decision) {
+    return [
+      `${label}: none chosen yet` +
+        (candidates > 0 ? `; ${count(candidates, "Candidate")} (find_decisions lists them)` : ""),
+    ];
+  }
+  return [
+    `${label}: ${titled(decision)}, ${DECISION_STATE_LABELS[decision.state]}`,
+    decision.statement,
+    ...contentLines(decision),
+  ];
+}
+
+/** The opening's open flags and Conflicts, one line each, with the flagged Decision's scope. */
+export function renderFlagged(decisions: DecisionSummary[]): string {
+  if (decisions.length === 0) return "";
+  const lines = ["Open flags and Conflicts:"];
+  for (const decision of decisions) {
+    const subject = `${titled(decision)}, ${decision.room ? named(decision.room) : "Home-wide"}`;
+    for (const flag of decision.openFlags) {
+      lines.push(`- ${subject}: flagged on ${day(flag.raisedAt)}, ${flagCause(flag)}`);
+    }
+    for (const conflict of decision.openConflicts) {
+      lines.push(
+        `- ${subject}: Conflict raised on ${day(conflict.raisedAt)}: ${conflict.description}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
+const FLAG_CAUSES: Record<FlagCause, string> = {
+  reopened: "was reopened",
+  rejected: "was rejected",
+  deviation: "was Fulfilled with a Deviation from a must Requirement",
+  value_changed: "changed",
+};
+
+function flagCause(flag: Flag): string {
+  return `${named(flag.source)} ${FLAG_CAUSES[flag.cause]}`;
+}
+
+/**
+ * get_decision: one Decision in full: its kind, scope, state, statement, content, Requirements,
+ * open flags and Conflicts, then one line per Basis and Evidence entry.
+ */
+export function renderDecision(decision: DecisionDetail): string {
+  const lines = [
+    `Decision: ${titled(decision)}`,
+    `Kind: ${DECISION_KIND_LABELS[decision.kind]}`,
+    `Scope: ${decision.room ? named(decision.room) : "the whole Home"}`,
+    `State: ${DECISION_STATE_LABELS[decision.state]}`,
+  ];
+  if (decision.fulfilledAt) {
+    lines.push(
+      `Fulfilled: ${join("; ", [day(decision.fulfilledAt), fulfilmentText(decision.fulfilment)])}`,
+    );
+  }
+  lines.push(`Statement: ${decision.statement}`);
+  const content = contentLines(decision);
+  if (content.length > 0) lines.push("", "Content:", ...content);
+  if (decision.requirements.length > 0) {
+    lines.push("", "Requirements:", ...decision.requirements.map(requirementLine));
+  }
+  section(
+    lines,
+    "Open flags",
+    decision.openFlags.map((flag) => `${flag.slug}: ${flagCause(flag)} on ${day(flag.raisedAt)}`),
+  );
+  section(
+    lines,
+    "Open Conflicts",
+    decision.openConflicts.map(
+      (conflict) => `${conflict.slug}: ${conflict.description} (raised ${day(conflict.raisedAt)})`,
+    ),
+  );
+  section(
+    lines,
+    "Basis",
+    decision.basis.map(
+      (entry) =>
+        `${titled(entry)}: ${DECISION_KIND_LABELS[entry.kind]}, ${DECISION_STATE_LABELS[entry.state]}` +
+        (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt)}` : "") +
+        (entry.automatic ? "; in every Basis as the Design Direction" : ""),
+    ),
+  );
+  section(lines, "Evidence", decision.evidence.map(evidenceLine));
+  return lines.join("\n");
+}
+
+/** A Decision's content, one line per field, in the kind's own order. */
+function contentLines(decision: DecisionKindContent): string[] {
+  const out: (string | false | undefined)[] = [];
+  switch (decision.kind) {
+    case "design-direction": {
+      const { content } = decision;
+      out.push(
+        content.mood && `- Mood: ${content.mood}`,
+        content.temperature && `- Color temperature: ${content.temperature}`,
+        content.contrast && `- Contrast: ${content.contrast}`,
+        !!content.keyMaterials?.length && `- Key materials: ${content.keyMaterials.join(", ")}`,
+        !!content.styleReferences?.length &&
+          `- Style references: ${content.styleReferences.join("; ")}`,
+      );
+      if (content.principles?.length) {
+        out.push("- Principles:", ...content.principles.map((principle) => `  - ${principle}`));
+      }
+      break;
+    }
+    case "room-direction": {
+      const { content } = decision;
+      out.push(
+        `- Direction: ${content.direction}`,
+        content.mood && `- Mood, overriding the Design Direction's: ${content.mood}`,
+        content.contrast && `- Contrast, overriding the Design Direction's: ${content.contrast}`,
+      );
+      break;
+    }
+    case "room-use":
+      out.push(`- Functions: ${decision.content.functions.join(", ")}`);
+      break;
+    case "palette":
+      out.push(
+        "- Colors:",
+        ...decision.content.colors.map(
+          (color) => `  - ${color.role}: ${colorText(color)}${color.note ? `; ${color.note}` : ""}`,
+        ),
+      );
+      break;
+    case "room-color": {
+      const { content } = decision;
+      out.push(
+        `- Surface: ${content.wall ? `Wall ${content.wall}` : content.surface}`,
+        `- Color: ${content.color}`,
+        `- Finish: ${content.finish}`,
+      );
+      break;
+    }
+  }
+  return out.filter((each): each is string => typeof each === "string");
+}
+
+function requirementLine(requirement: Requirement): string {
+  const { reason } = requirement;
+  const what =
+    reason.name === reason.id ? reason.id : named({ name: reason.name, slug: reason.id });
+  const noun = reason.kind.charAt(0).toUpperCase() + reason.kind.slice(1);
+  return (
+    `${requirement.position}. ${requirement.strength}: ${requirement.text} ` +
+    `(reason: ${noun} ${what}${reason.field ? `, ${reason.field}` : ""})`
+  );
+}
+
+function evidenceLine(evidence: EvidenceEntry): string {
+  const source =
+    evidence.kind === "note"
+      ? `Note "${evidence.name}" (${evidence.id})`
+      : evidence.kind === "session"
+        ? `Session ${evidence.id}, ${evidence.name}`
+        : `Decision ${named({ name: evidence.name, slug: evidence.id })}`;
+  return `${evidence.stance}: ${source}${evidence.note ? `: ${evidence.note}` : ""}`;
+}
+
+function fulfilmentText(fulfilment: Fulfilment | undefined): string | undefined {
+  return fulfilment?.roomFunctions && `functions ${fulfilment.roomFunctions.join(", ")}`;
+}
+
 // ─── Blueprints ─────────────────────────────────────────────────────────────────────────────
 
 /** One Blueprint of the Overview: its pages, and the Level each shows. */
@@ -411,23 +696,38 @@ export interface RefusedPart {
   reason?: string;
 }
 
+/** A Decision a write flagged, because a Decision in its Basis changed. */
+export interface FlaggedDecision {
+  decision: NamedRecord;
+  source: NamedRecord;
+  cause: FlagCause;
+}
+
 export interface Receipt {
   lines: ReceiptLine[];
   refused: RefusedPart[];
   /** The touched Rooms' remaining Gaps. */
   gaps: { room: NamedRecord; gaps: string[] }[];
+  /** The Decisions the write flagged. */
+  flagged?: FlaggedDecision[];
 }
 
 /**
  * A write's receipt: one line per change, never the record it wrote; then any refused part with
- * its reason; then the touched Rooms' remaining Gaps.
+ * its reason; then the Decisions it flagged; then the touched Rooms' remaining Gaps.
  */
-export function renderReceipt({ lines, refused, gaps }: Receipt): string {
+export function renderReceipt({ lines, refused, gaps, flagged = [] }: Receipt): string {
   const out = lines
     .map((line) => join("; ", [line.head, ...(line.fields ?? []).map(fieldText)]))
     .map((text, index) => (text ? `${lines[index]?.subject}: ${text}` : undefined))
     .filter((text) => text !== undefined);
   out.push(...refused.map(renderRefused));
+  for (const each of flagged) {
+    out.push(
+      `Flagged for review: ${named(each.decision)}, which rests on ${named(each.source)}, ` +
+        `now ${each.cause === "reopened" ? "reopened" : "rejected"}`,
+    );
+  }
   if (out.length === 0) out.push("Nothing changed.");
   for (const room of gaps) {
     out.push(

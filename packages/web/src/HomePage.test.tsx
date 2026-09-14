@@ -1,7 +1,18 @@
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Constraint, Home, Level, Note, Room, Session } from "./api";
-import { type ApiHandlers, FakeEventSource, renderRoutes, stubApi } from "./testSupport";
+import type {
+  Conflict,
+  Constraint,
+  DecisionSummary,
+  Flag,
+  Home,
+  Level,
+  Note,
+  Room,
+  Session,
+} from "./api";
+import { formatDate } from "./format";
+import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
 const ground: Level = { slug: "ground", name: "Ground", storey: 0 };
@@ -24,9 +35,157 @@ function stubHomePage(handlers: ApiHandlers) {
     list_sessions: () => ({ sessions: [] }),
     list_constraints: () => ({ constraints: [] }),
     list_notes: () => ({ notes: [] }),
+    list_decisions: () => ({ decisions: [] }),
     ...handlers,
   });
 }
+
+const raised = "2026-09-14T10:00:00Z";
+
+function summary(
+  slug: string,
+  title: string,
+  kind: DecisionSummary["kind"],
+  state: DecisionSummary["state"],
+): DecisionSummary {
+  return {
+    slug,
+    title,
+    kind,
+    state,
+    statement: `${title}.`,
+    createdAt: raised,
+    openFlags: [],
+    openConflicts: [],
+  };
+}
+
+const calm = summary("living-room-direction", "Calm and low", "room-direction", "locked");
+const nook = summary("hallway-use", "Reading nook", "room-use", "candidate");
+const sofa = summary("sofa", "A low sofa", "purchase", "locked");
+
+/** A flag raised on `decision` when the Design Direction was reopened. */
+function flagOn(decision: DecisionSummary): Flag {
+  return {
+    slug: `${decision.slug}/flag-1`,
+    decision: { slug: decision.slug, title: decision.title },
+    cause: "reopened",
+    source: { kind: "decision", slug: "design-direction", name: "Warm minimalism" },
+    raisedAt: raised,
+  };
+}
+
+function conflictOn(decision: DecisionSummary, description: string): Conflict {
+  return {
+    slug: `${decision.slug}/conflict-1`,
+    decision: { slug: decision.slug, title: decision.title },
+    description,
+    raisedAt: raised,
+  };
+}
+
+/** The Decisions line of the Home page's Flags and Conflicts list: its text and its buttons. */
+function reviewLines(): { text: string; buttons: (string | null)[] }[] {
+  const list = screen.getByRole("heading", { name: "Flags and Conflicts" }).nextElementSibling;
+  return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) => ({
+    text: [...li.childNodes]
+      .filter((node) => node.nodeName !== "FORM")
+      .map((node) => node.textContent)
+      .join(""),
+    buttons: [...li.querySelectorAll("button")].map((button) => button.textContent),
+  }));
+}
+
+it("shows each open flag and Conflict on one line, linking to its Decision", async () => {
+  const decisions: DecisionSummary[] = [
+    { ...calm, openFlags: [flagOn(calm)] },
+    { ...nook, openFlags: [flagOn(nook)] },
+    { ...sofa, openConflicts: [conflictOn(sofa, "The sofa we saw is 90 cm tall.")] },
+  ];
+  stubHomePage({ list_decisions: () => ({ decisions }) });
+  renderRoutes("/homes/flat");
+  await screen.findByText(/The sofa we saw/);
+  const date = formatDate(raised);
+  expect(reviewLines()).toEqual([
+    {
+      text: `Flag on Calm and low (Room Direction, Locked): Warm minimalism was reopened, raised ${date}.`,
+      buttons: ["Keep", "Reopen", "Reject"],
+    },
+    {
+      // Only a Locked Decision can be reopened.
+      text: `Flag on Reading nook (Room use, Candidate): Warm minimalism was reopened, raised ${date}.`,
+      buttons: ["Keep", "Reject"],
+    },
+    {
+      text: `Conflict on A low sofa (Purchase, Locked): The sofa we saw is 90 cm tall., raised ${date}.`,
+      buttons: ["Keep", "Reopen", "Reject"],
+    },
+  ]);
+  expect(screen.getByRole("link", { name: "Reading nook" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/hallway-use",
+  );
+});
+
+it("keeps a flagged Decision: posts resolve_flag with the reason, and the line goes", async () => {
+  let flags = [flagOn(calm)];
+  const fetch = stubHomePage({
+    list_decisions: () => ({ decisions: [{ ...calm, openFlags: flags }] }),
+    resolve_flag: () => {
+      flags = [];
+      return { receipt: "Kept Calm and low.", decision: calm };
+    },
+  });
+  renderRoutes("/homes/flat");
+  const line = (await screen.findByText(/Flag on/)).closest("li") as HTMLElement;
+
+  fireEvent.change(within(line).getByLabelText("Reason (optional)"), {
+    target: { value: "still right for the room" },
+  });
+  fireEvent.click(within(line).getByRole("button", { name: "Keep" }));
+
+  expect(await screen.findByText("None: no Decision needs review.")).toBeDefined();
+  expect(inputsTo(fetch, "resolve_flag")).toEqual([
+    {
+      home: "flat",
+      flag: "living-room-direction/flag-1",
+      resolution: "keep",
+      reason: "still right for the room",
+    },
+  ]);
+});
+
+it("reopens the Decision in Conflict through resolve_conflict", async () => {
+  const fetch = stubHomePage({
+    list_decisions: () => ({
+      decisions: [{ ...calm, openConflicts: [conflictOn(calm, "Too dark.")] }],
+    }),
+    resolve_conflict: () => ({ receipt: "Reopened Calm and low.", decision: calm }),
+  });
+  renderRoutes("/homes/flat");
+  await screen.findByText(/Conflict on/);
+  fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
+  await waitFor(() => expect(inputsTo(fetch, "resolve_conflict")).toHaveLength(1));
+  expect(inputsTo(fetch, "resolve_conflict")).toEqual([
+    { home: "flat", conflict: "living-room-direction/conflict-1", resolution: "reopen" },
+  ]);
+});
+
+it("shows a new flag when a flag change event arrives", async () => {
+  let flags: Flag[] = [];
+  stubHomePage({ list_decisions: () => ({ decisions: [{ ...calm, openFlags: flags }] }) });
+  renderRoutes("/homes/flat");
+  await screen.findByText("None: no Decision needs review.");
+
+  flags = [flagOn(calm)];
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "flag",
+      recordSlug: "living-room-direction/flag-1",
+    }),
+  );
+  expect(await screen.findByText(/Flag on/)).toBeDefined();
+});
 
 it("re-renders the Room list when a Room change event arrives", async () => {
   let rooms: Room[] = [{ slug: "kitchen", name: "Kitchen", level: "ground" }];

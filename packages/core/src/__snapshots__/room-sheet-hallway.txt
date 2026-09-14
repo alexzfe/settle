@@ -24,4 +24,7 @@ Surfaces:
 Features:
 - Built-in storage (hallway-built-in-storage): understairs cupboard; on hallway/wall-3
 
+Decisions:
+- Storage in the hallway (storage-in-the-hallway): Room use, Candidate. The hallway also holds coats, shoes, and the vacuum.
+
 Gaps: wall lengths (hallway/wall-7, hallway/wall-8), ceiling height, times of use, walls Surface, ceiling Surface, woodwork Surface

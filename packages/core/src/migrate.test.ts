@@ -22,6 +22,7 @@ describe("migrate", () => {
       { id: 1 },
       { id: 2 },
       { id: 3 },
+      { id: 4 },
     ]);
     db.close();
   });
@@ -30,11 +31,11 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 4 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 5 });
     db.close();
   });
 
-  it("creates the tables of slices 1 to 3", () => {
+  it("creates the tables of slices 1 to 4", () => {
     const db = migrate(":memory:");
     const tables = db
       .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name")
@@ -44,17 +45,24 @@ describe("migrate", () => {
       "blueprint_pages",
       "blueprints",
       "change_log",
+      "conflicts",
       "constraints",
+      "decision_basis",
+      "decision_evidence",
+      "decisions",
       "doors",
       "features",
+      "flags",
       "homes",
       "items",
       "levels",
       "migrations",
       "notes",
+      "requirements",
       "rooms",
       "sessions",
       "settings",
+      "state_changes",
       "surfaces",
       "walls",
       "windows",

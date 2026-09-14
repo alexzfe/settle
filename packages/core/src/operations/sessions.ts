@@ -1,20 +1,23 @@
 import { z } from "zod";
 import { CoreError } from "../errors.js";
 import { defineOperation, type OperationContext } from "../registry.js";
-import { type OpeningBlock, type OverviewView, renderOpening } from "../render.js";
+import { type OpeningBlock, renderOpening } from "../render.js";
 import type { HomeRow, SessionRow } from "../store.js";
-import { loadHome, overviewView } from "./model.js";
+import { openingView } from "./decisions.js";
 import { requireHome, requireSession, sessionInput } from "./scope.js";
 
 export const SKILLS = ["home-intake", "design-direction", "color", "purchase"] as const;
 export type Skill = (typeof SKILLS)[number];
 
-/** What each Skill's opening holds. Slice 4 adds the Decisions block to every Skill but Home Intake. */
+/**
+ * What each Skill's opening holds. Home Intake makes no design Decisions, so it gets no
+ * Home-wide Decisions block; open flags and Conflicts go to every Skill.
+ */
 const OPENING_BLOCKS: Record<Skill, readonly OpeningBlock[]> = {
-  "home-intake": ["overview"],
-  "design-direction": ["overview"],
-  color: ["overview"],
-  purchase: ["overview"],
+  "home-intake": ["overview", "flags"],
+  "design-direction": ["overview", "decisions", "flags"],
+  color: ["overview", "decisions", "flags"],
+  purchase: ["overview", "decisions", "flags"],
 };
 
 // No 0/o or 1/l/i, so a Session id read back by the AI can't be mistyped.
@@ -35,7 +38,10 @@ export const openSession = defineOperation({
     "Opens a Session for this Home and returns its opening: the Home's name and its Home " +
     "Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many " +
     "Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item " +
-    "count, and Gaps: the facts advice still needs). Call it first, when a Skill starts, before any other tool of this server, and pass " +
+    "count, and Gaps: the facts advice still needs); for every Skill but home-intake, the " +
+    "Home-wide Decisions in force (the Design Direction and Palette in full, marked Locked or " +
+    "Leaning, then the other Home-wide Locked Decisions); and the open flags and Conflicts, one " +
+    "line each. Call it first, when a Skill starts, before any other tool of this server, and pass " +
     "the returned Session id as `session` on every later call in the conversation. A Session is " +
     "one interview with the user; the app keeps its record (Skills used and a summary), not the " +
     "transcript. When another Skill starts later in the same conversation, call it again with " +
@@ -81,7 +87,7 @@ export const openSession = defineOperation({
       return {
         session: slug,
         home: home.name,
-        opening: renderOpening(overview(context, home), blocks),
+        opening: renderOpening(openingView(store, home), blocks),
       };
     });
   },
@@ -129,7 +135,7 @@ function joinSession(
   return {
     session: session.slug,
     home: home.name,
-    opening: renderOpening(overview(context, home), blocks),
+    opening: renderOpening(openingView(context.store, home), blocks),
   };
 }
 
@@ -190,8 +196,4 @@ function newSessionSlug(context: OperationContext, skill: Skill): string {
     if (!context.store.slugTaken("sessions", slug)) return slug;
   }
   throw new CoreError("validation", "Could not find a free Session id; try again.");
-}
-
-export function overview(context: OperationContext, home: HomeRow): OverviewView {
-  return overviewView(loadHome(context.store, home));
 }

@@ -4,6 +4,7 @@ import { equal, sameColor, sameLength, weigh } from "../provenance.js";
 import type { Change } from "../registry.js";
 import {
   type FieldChange,
+  type FlaggedDecision,
   isColor,
   isMeasurement,
   type Receipt,
@@ -25,6 +26,8 @@ type Row = { id: number; slug: string };
 export class Writer {
   readonly lines: ReceiptLine[] = [];
   readonly refused: RefusedPart[] = [];
+  /** The Decisions the write flagged, for the receipt. */
+  readonly flagged: FlaggedDecision[] = [];
   /** Whether anything was stored. */
   changed = false;
   readonly #store: Store;
@@ -193,7 +196,7 @@ export class Writer {
     if (!this.changed && this.refused.length > 0) {
       throw new CoreError("weaker_provenance", this.refused.map(renderRefused).join("\n"));
     }
-    return renderReceipt({ lines: this.lines, refused: this.refused, gaps });
+    return renderReceipt({ lines: this.lines, refused: this.refused, gaps, flagged: this.flagged });
   }
 
   /** An Item's colors, where a color named like a stronger recorded one can't replace it. */

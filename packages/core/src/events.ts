@@ -12,7 +12,10 @@ export type RecordKind =
   | "constraint"
   | "note"
   | "blueprint"
-  | "session";
+  | "session"
+  | "decision"
+  | "flag"
+  | "conflict";
 
 /** Published once per changed record after a write commits. */
 export interface ChangeEvent {

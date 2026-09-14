@@ -4,6 +4,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, featureName, named, renderRoomSheet } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { DoorRow, RoomRow, WallRow } from "../store.js";
+import { loadDecisions, roomDecisions } from "./decisions.js";
 import {
   active,
   findLevel,
@@ -107,7 +108,8 @@ export const getRoomSheet = defineOperation({
     "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, " +
     "ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, " +
     "and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, " +
-    "woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked " +
+    "woodwork); its Features; its lights; one line per Item in it; one line per Decision about " +
+    "it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked " +
     "~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: " +
     "the receipts of later writes keep your picture current. Don't fetch every Room up front; " +
     "the opening lists them all, and find_items finds an Item elsewhere. Values printed on a " +
@@ -119,10 +121,13 @@ export const getRoomSheet = defineOperation({
   handler(context, input): GetRoomSheetResult {
     const home = requireHome(context);
     requireSession(context, home, { open: false });
-    const model = loadHome(context.store, home);
+    const model = loadDecisions(context.store, home);
     const room = requireRoom(model, input.room, { archived: true });
     return {
-      sheet: renderRoomSheet(roomDetail(model, room), { sources: input.withSources === true }),
+      sheet: renderRoomSheet(roomDetail(model, room), {
+        sources: input.withSources === true,
+        decisions: roomDecisions(model, room),
+      }),
     };
   },
   text: ({ sheet }) => sheet,
@@ -130,16 +135,18 @@ export const getRoomSheet = defineOperation({
 
 export const getRoom = defineOperation({
   name: "get_room",
-  description: "One Room with everything on its Room Sheet, for the Room page.",
+  description:
+    "One Room with everything on its Room Sheet, for the Room page: its Candidate, Leaning, and " +
+    "Locked-but-not-Fulfilled Decisions too.",
   input: getRoomInput,
   readOnly: true,
   surface: "web",
   handler(context, input): GetRoomResult {
-    const model = loadHome(context.store, requireHome(context));
+    const model = loadDecisions(context.store, requireHome(context));
     const room =
       model.rooms.find((each) => each.slug === input.room) ??
       requireRoom(model, input.room, { archived: true });
-    return { room: roomDetail(model, room) };
+    return { room: roomDetail(model, room), decisions: roomDecisions(model, room) };
   },
 });
 

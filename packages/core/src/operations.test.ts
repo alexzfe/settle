@@ -149,14 +149,21 @@ describe("open_session", () => {
       skill: "color",
       session,
     });
+    const again = await core.run("open_session", agent(home, session), {
+      skill: "color",
+      session,
+    });
     const resent = await core.run("open_session", agent(home, session), {
       skill: "color",
       session,
       resend: true,
     });
 
-    expect(joined).toEqual({ session, home: "My flat", opening: "" });
-    expect(resent.opening).toBe(opened.opening);
+    // Home Intake had the Overview; Color adds only the Home-wide Decisions block.
+    expect(joined.opening).toMatch(/^Home-wide Decisions in force:/);
+    expect(joined.opening).not.toContain("Rooms:");
+    expect(again).toEqual({ session, home: "My flat", opening: "" });
+    expect(resent.opening).toBe(`${opened.opening}\n\n${joined.opening}`);
     const { sessions } = await core.run("list_sessions", web, { home });
     expect(sessions.map((each) => each.skills)).toEqual([["home-intake", "color"]]);
   });

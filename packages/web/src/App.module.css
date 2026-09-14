@@ -29,6 +29,15 @@
   align-items: flex-start;
 }
 
+/** A reason field and the buttons that send it. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.25rem;
+}
+
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;

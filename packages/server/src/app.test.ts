@@ -199,6 +199,8 @@ describe("the MCP endpoint", () => {
       ["open_session", true],
       ["get_room_sheet", true],
       ["find_items", true],
+      ["find_decisions", true],
+      ["get_decision", true],
       ["search_notes", true],
       ["view_images", true],
       ["save_home", false],
@@ -206,6 +208,10 @@ describe("the MCP endpoint", () => {
       ["save_items", false],
       ["set_constraints", false],
       ["save_note", false],
+      ["save_decision", false],
+      ["set_decision_state", false],
+      ["record_fulfilment", false],
+      ["flag_conflict", false],
       ["close_session", false],
     ]);
     for (const tool of tools.filter((each) => !each.annotations.readOnlyHint)) {
@@ -245,6 +251,137 @@ describe("the MCP endpoint", () => {
   it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @idh/server tools:json)", async () => {
     const saved = JSON.parse(readFileSync(TOOLS_JSON, "utf8")) as unknown;
     expect(await listTools(app, PORT)).toEqual(saved);
+  });
+});
+
+describe("Decisions", () => {
+  const reason = 'The user: "yes"';
+
+  /** A Home with a living room, and a Design Direction Session's tool caller. */
+  async function setUp() {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const opened = await callTool("my-flat", "open_session", { skill: "design-direction" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1] ?? "";
+    const tool = (name: string, args: Record<string, unknown>) =>
+      callTool("my-flat", name, { session, ...args });
+    await tool("save_room", { name: "Living room" });
+    return { session, tool };
+  }
+
+  const direction = {
+    kind: "design-direction",
+    title: "Warm minimalism",
+    statement: "Calm, warm rooms.",
+    content: { mood: "calm", temperature: "warm" },
+  };
+
+  it("runs the six Decision tools over MCP, refusing a state change without a reason", async () => {
+    const { session, tool } = await setUp();
+
+    const saved = await tool("save_decision", direction);
+    const noReason = await tool("set_decision_state", {
+      decision: "warm-minimalism",
+      to: "locked",
+      reason: " ",
+    });
+    const locked = await tool("set_decision_state", {
+      decision: "warm-minimalism",
+      to: "locked",
+      reason,
+    });
+    await tool("save_decision", {
+      kind: "room-use",
+      room: "living-room",
+      title: "Living and dining",
+      statement: "One room for both.",
+      content: { functions: ["living", "dining"] },
+    });
+    await tool("set_decision_state", { decision: "living-and-dining", to: "locked", reason });
+    const fulfilled = await tool("record_fulfilment", { decision: "living-and-dining" });
+    const conflict = await tool("flag_conflict", {
+      decision: "warm-minimalism",
+      description: "The user now loves chrome.",
+    });
+    const found = await tool("find_decisions", { homeWide: true });
+    const detail = await tool("get_decision", { decision: "warm-minimalism" });
+    const opening = await tool("open_session", { skill: "design-direction", resend: true });
+
+    expect(saved.content[0]?.text).toContain("created as a Candidate Design Direction");
+    expect(noReason.isError).toBe(true);
+    expect(noReason.content[0]?.text).toContain("reason");
+    expect(locked.content[0]?.text).toBe(
+      "Warm minimalism (warm-minimalism): Locked, was Candidate",
+    );
+    expect(fulfilled.content[0]?.text).toContain("Living room (living-room): functions living");
+    expect(conflict.content[0]?.text).toContain("warm-minimalism/conflict-1");
+    expect(found.content[0]?.text).toContain(
+      "Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide; 1 open Conflict",
+    );
+    expect(detail.content[0]?.text).toContain("- Mood: calm");
+    expect(opening.content[0]?.text).toContain(
+      "Design Direction: Warm minimalism (warm-minimalism), Locked",
+    );
+    expect(opening.content[0]?.text).toContain("Open flags and Conflicts:");
+    expect(session).toMatch(/^design-direction-/);
+  });
+
+  it("offers the web list_decisions, get_decision, set_decision_state without a Session, and resolve_flag", async () => {
+    const { tool } = await setUp();
+    await tool("save_decision", direction);
+    await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+    await tool("save_decision", {
+      kind: "room-direction",
+      room: "living-room",
+      title: "Calm evenings",
+      statement: "Low and warm.",
+      content: { direction: "Lamplight and wool." },
+    });
+    await tool("set_decision_state", { decision: "calm-evenings", to: "locked", reason });
+
+    const reopen = await api("set_decision_state", {
+      home: "my-flat",
+      decision: "warm-minimalism",
+      to: "leaning",
+    });
+    const reopened = (await reopen.json()) as { receipt: string; decision: { state: string } };
+    const listed = (await (
+      await api("list_decisions", { home: "my-flat", room: "living-room" })
+    ).json()) as { decisions: { slug: string; openFlags: { slug: string }[] }[] };
+    const flag = listed.decisions[0]?.openFlags[0]?.slug;
+    const illegal = await api("set_decision_state", {
+      home: "my-flat",
+      decision: "calm-evenings",
+      to: "candidate",
+    });
+    const kept = await api("resolve_flag", {
+      home: "my-flat",
+      flag,
+      resolution: "keep",
+      reason: "",
+    });
+    const detail = await api("get_decision", { home: "my-flat", decision: "calm-evenings" });
+    const agentOnly = await api("save_decision", { home: "my-flat", ...direction });
+
+    expect(reopen.status).toBe(200);
+    expect(reopened.decision.state).toBe("leaning");
+    expect(reopened.receipt).toContain("Flagged for review: Calm evenings (calm-evenings)");
+    expect(flag).toBe("calm-evenings/flag-1");
+    expect(illegal.status).toBe(409);
+    expect(await illegal.json()).toEqual({
+      error: { code: "illegal_transition", message: expect.stringContaining("Locked") },
+    });
+    expect(kept.status).toBe(200);
+    expect(await detail.json()).toMatchObject({
+      decision: {
+        kind: "room-direction",
+        state: "locked",
+        content: { direction: "Lamplight and wool." },
+        basis: [{ slug: "warm-minimalism", state: "leaning", automatic: true }],
+        openFlags: [],
+        flags: [{ slug: "calm-evenings/flag-1", resolution: "keep" }],
+      },
+    });
+    expect(agentOnly.status).toBe(404);
   });
 });
 

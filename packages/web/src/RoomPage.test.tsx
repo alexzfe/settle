@@ -1,6 +1,6 @@
 import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Home, RoomDetail } from "./api";
+import type { DecisionSummary, Home, RoomDetail } from "./api";
 import { FakeEventSource, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -158,11 +158,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function stubRoom(room: () => RoomDetail) {
+function stubRoom(room: () => RoomDetail, decisions: () => DecisionSummary[] = () => []) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
-    get_room: () => ({ room: room() }),
+    get_room: () => ({ room: room(), decisions: decisions() }),
   });
+}
+
+function roomDecision(
+  slug: string,
+  title: string,
+  kind: DecisionSummary["kind"],
+  state: DecisionSummary["state"],
+  extra: Partial<DecisionSummary> = {},
+): DecisionSummary {
+  return {
+    slug,
+    title,
+    kind,
+    state,
+    statement: `${title}.`,
+    room: livingRoomRef,
+    createdAt: "2026-09-14T10:00:00Z",
+    openFlags: [],
+    openConflicts: [],
+    ...extra,
+  };
 }
 
 /** The text of the section a heading starts. */
@@ -319,6 +340,52 @@ it("says what is not recorded when the Room has nothing yet", async () => {
   expect(screen.getByText("No lights recorded, so how the Room is lit is unknown.")).toBeDefined();
   expect(screen.getByText("No Items in this Room.")).toBeDefined();
   expect(screen.getByText("None: everything advice needs is recorded.")).toBeDefined();
+});
+
+it("lists the Room's open Decisions that get_room answers with, each linking to its page", async () => {
+  // get_room gives the Candidate, Leaning, and Locked-but-not-Fulfilled ones only.
+  stubRoom(livingRoom, () => [
+    roomDecision("reading-corner", "A reading corner", "room-use", "candidate"),
+    roomDecision("low-sofa", "A low sofa", "purchase", "leaning"),
+    roomDecision("calm", "Calm and low", "room-direction", "locked", {
+      openFlags: [
+        {
+          slug: "calm/flag-1",
+          decision: { slug: "calm", title: "Calm and low" },
+          cause: "reopened",
+          source: { kind: "decision", slug: "design-direction", name: "Warm minimalism" },
+          raisedAt: "2026-09-14T11:00:00Z",
+        },
+      ],
+    }),
+  ]);
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByText("A reading corner");
+  expect(listAfter("Decisions")).toEqual([
+    "A reading corner, Room use, Candidate",
+    "A low sofa, Purchase, Leaning",
+    "Calm and low, Room Direction, Locked, Flagged",
+  ]);
+  expect(screen.getByRole("link", { name: "Calm and low" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/calm",
+  );
+});
+
+it("says when the Room has no open Decisions, and shows one the Agent adds", async () => {
+  let decisions: DecisionSummary[] = [];
+  stubRoom(livingRoom, () => decisions);
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByText("No open Decisions.");
+
+  decisions = [roomDecision("calm", "Calm and low", "room-direction", "candidate")];
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "decision",
+      recordSlug: "calm",
+    }),
+  );
+  expect(await screen.findByText("Calm and low")).toBeDefined();
 });
 
 it("shows the refusal when the Room does not exist", async () => {

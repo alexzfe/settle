@@ -118,6 +118,48 @@ it("sends one change event per record a save_room writes, with the record's kind
   }
 });
 
+it("sends decision, flag, and conflict events when a Reopen flags a Decision", async () => {
+  const home = "decision-home";
+  await api("create_home", { name: "Decision home", country: "GB", city: "London" });
+  const opening = await callTool(home, "open_session", { skill: "design-direction" });
+  const session = /^Session: (\S+)$/m.exec(opening)?.[1] ?? "";
+  const tool = (name: string, args: Record<string, unknown>) =>
+    callTool(home, name, { session, ...args });
+  const reason = 'The user: "yes"';
+  await tool("save_room", { name: "Living room" });
+  await tool("save_decision", {
+    kind: "design-direction",
+    title: "Warm minimalism",
+    statement: "Calm, warm rooms.",
+  });
+  await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+  await tool("save_decision", {
+    kind: "room-direction",
+    room: "living-room",
+    title: "Calm evenings",
+    statement: "Low and warm.",
+    content: { direction: "Lamplight and wool." },
+  });
+  await tool("set_decision_state", { decision: "calm-evenings", to: "locked", reason });
+
+  const controller = new AbortController();
+  const response = await fetch(`${server.url}/events?home=${home}`, {
+    signal: controller.signal,
+  });
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+  try {
+    await api("set_decision_state", { home, decision: "warm-minimalism", to: "leaning" });
+    await tool("flag_conflict", { decision: "calm-evenings", description: "It should be bright." });
+    expect(await nextChanges(reader, 3)).toEqual([
+      { home, recordKind: "decision", recordSlug: "warm-minimalism" },
+      { home, recordKind: "flag", recordSlug: "calm-evenings/flag-1" },
+      { home, recordKind: "conflict", recordSlug: "calm-evenings/conflict-1" },
+    ]);
+  } finally {
+    controller.abort();
+  }
+});
+
 it("keeps an uploaded Blueprint and its rendered pages in the data dir", async () => {
   await api("create_home", { name: "Plan home", country: "GB", city: "London" });
   const form = new FormData();

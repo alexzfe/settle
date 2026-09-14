@@ -12,7 +12,8 @@ import type {
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import type { Surface } from "./api";
+import type { DecisionSummary, Surface } from "./api";
+import { DecisionLine } from "./DecisionsPage";
 import { compass, type Measure, sentence, wallName, wallNameOf, words } from "./format";
 import { ItemList } from "./ItemsPage";
 import { useRoom } from "./queries";
@@ -48,10 +49,10 @@ export function RoomPage() {
   const sheet = useRoom(home, room);
   if (sheet.isPending) return <p>Loading…</p>;
   if (sheet.isError) return <p className={styles.error}>{sheet.error.message}</p>;
-  return <RoomSheet room={sheet.data.room} />;
+  return <RoomSheet room={sheet.data.room} decisions={sheet.data.decisions} />;
 }
 
-function RoomSheet({ room }: { room: RoomDetail }) {
+function RoomSheet({ room, decisions }: { room: RoomDetail; decisions: DecisionSummary[] }) {
   const walls = room.walls.toSorted((a, b) => a.position - b.position);
   const wallSlugs = new Set(walls.map((wall) => wall.slug));
   const roofWindows = room.windows.filter((window) => window.wall === "roof");
@@ -149,7 +150,25 @@ function RoomSheet({ room }: { room: RoomDetail }) {
           ))}
         </ul>
       )}
+
+      <h2>Decisions</h2>
+      <RoomDecisions decisions={decisions} />
     </>
+  );
+}
+
+/** The Room's open Decisions, as get_room gives them: Candidate, Leaning, and Locked not Fulfilled. */
+function RoomDecisions({ decisions }: { decisions: DecisionSummary[] }) {
+  const { home = "" } = useParams();
+  if (decisions.length === 0) return <p>No open Decisions.</p>;
+  return (
+    <ul>
+      {decisions.map((decision) => (
+        <li key={decision.slug}>
+          <DecisionLine home={home} decision={decision} />
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -41,6 +41,13 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     // The Home page lists the Blueprints, and each page viewer reads the list.
     case "blueprint":
       return [queryKeys.home(home), queryKeys.blueprints(home)];
+    // Every Decision query (the list, each Decision page, the Home page's flags and Conflicts) and
+    // the Room pages, which list their Room's Decisions. A state change may flag others, and a
+    // Decision's page shows its Basis's states, so one change refetches them all.
+    case "decision":
+    case "flag":
+    case "conflict":
+      return [queryKeys.decisions(home), queryKeys.rooms(home)];
     default:
       return unmapped(recordKind);
   }
@@ -65,6 +72,7 @@ function queriesOfHome(home: string): QueryKey[] {
     queryKeys.notes(home),
     queryKeys.changeLog(home),
     queryKeys.blueprints(home),
+    queryKeys.decisions(home),
   ];
 }
 

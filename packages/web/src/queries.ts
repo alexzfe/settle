@@ -1,5 +1,5 @@
 import { keepPreviousData, QueryClient, useQuery } from "@tanstack/react-query";
-import { ApiError, call } from "./api";
+import { ApiError, call, type ListDecisionsInput } from "./api";
 
 /**
  * Query keys, one family per record kind the pages show. A key without its last parts is the
@@ -16,6 +16,9 @@ export const queryKeys = {
   notes: (home: string) => ["notes", home],
   changeLog: (home: string) => ["change-log", home],
   blueprints: (home: string) => ["blueprints", home],
+  /** The Decision lists, each ending in its filter, and the Decision pages, in the slug. */
+  decisions: (home: string) => ["decisions", home],
+  decision: (home: string, decision: string) => ["decisions", home, decision],
 } as const;
 
 export function useHomes() {
@@ -73,6 +76,24 @@ export function useBlueprints(home: string) {
   return useQuery({
     queryKey: queryKeys.blueprints(home),
     queryFn: () => call("list_blueprints", { home }),
+  });
+}
+
+export type DecisionFilter = Omit<ListDecisionsInput, "home">;
+
+/** The Decisions matching `filter`, keeping the previous answer on screen while another loads. */
+export function useDecisions(home: string, filter: DecisionFilter = {}) {
+  return useQuery({
+    queryKey: [...queryKeys.decisions(home), filter],
+    queryFn: () => call("list_decisions", { home, ...filter }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDecision(home: string, decision: string) {
+  return useQuery({
+    queryKey: queryKeys.decision(home, decision),
+    queryFn: () => call("get_decision", { home, decision }),
   });
 }
 

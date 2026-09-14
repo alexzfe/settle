@@ -995,7 +995,6 @@ export const getHomeResult = z.object({
   unplacedItems: z.number(),
 });
 
-export const getRoomResult = z.object({ room: roomDetailSchema });
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
 export const findItemsResult = z.object({ items: z.array(itemSchema) });
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
@@ -1049,3 +1048,587 @@ export type ListConstraintsResult = z.infer<typeof listConstraintsResult>;
 export type ListNotesResult = z.infer<typeof listNotesResult>;
 export type SearchNotesResult = z.infer<typeof searchNotesResult>;
 export type GetChangeLogResult = z.infer<typeof getChangeLogResult>;
+
+// ─── Decisions (slice 4: docs/specs/skill-set.md#decision-kinds and #rule-enforcement) ─────────
+
+export const DECISION_KINDS = [
+  "design-direction",
+  "room-direction",
+  "room-use",
+  "palette",
+  "room-color",
+  "purchase",
+  "other",
+] as const;
+export const DECISION_STATES = ["candidate", "leaning", "locked", "rejected"] as const;
+export const CONTRASTS = ["low", "medium", "high"] as const;
+export const PALETTE_ROLES = ["base", "secondary", "accent"] as const;
+export const EVIDENCE_KINDS = ["note", "session", "decision"] as const;
+export const STANCES = ["supports", "undermines"] as const;
+export const STRENGTHS = ["must", "prefer"] as const;
+/** What a Requirement's reason can point at: a Decision, a Constraint, a Note, or a recorded part. */
+export const REQUIREMENT_REASON_KINDS = [
+  "decision",
+  "constraint",
+  "note",
+  "home",
+  "room",
+  "wall",
+  "window",
+  "door",
+  "feature",
+  "surface",
+  "item",
+] as const;
+export const FLAG_CAUSES = ["reopened", "rejected", "deviation", "value_changed"] as const;
+/** How the user resolves a flag or a Conflict. */
+export const RESOLUTIONS = ["keep", "reopen", "reject"] as const;
+
+export type DecisionKind = (typeof DECISION_KINDS)[number];
+export type DecisionState = (typeof DECISION_STATES)[number];
+export type Contrast = (typeof CONTRASTS)[number];
+export type PaletteRole = (typeof PALETTE_ROLES)[number];
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
+export type Stance = (typeof STANCES)[number];
+export type Strength = (typeof STRENGTHS)[number];
+export type RequirementReasonKind = (typeof REQUIREMENT_REASON_KINDS)[number];
+export type FlagCause = (typeof FLAG_CAUSES)[number];
+export type Resolution = (typeof RESOLUTIONS)[number];
+
+/**
+ * The legal state transitions; the server refuses any other. Locked to leaning is a Reopen, and
+ * rejected to candidate a revival.
+ */
+export const LEGAL_TRANSITIONS: Record<DecisionState, readonly DecisionState[]> = {
+  candidate: ["leaning", "locked", "rejected"],
+  leaning: ["candidate", "locked", "rejected"],
+  locked: ["leaning", "rejected"],
+  rejected: ["candidate"],
+};
+
+/** Where a kind's Decisions live: the Home as a whole, one Room, or either. */
+export const DECISION_KIND_SCOPES: Record<DecisionKind, "home" | "room" | "either"> = {
+  "design-direction": "home",
+  "room-direction": "room",
+  "room-use": "room",
+  palette: "home",
+  "room-color": "room",
+  purchase: "either",
+  other: "either",
+};
+
+const line = text.max(200);
+
+/** One color of the Palette: a Color value with its role. */
+export const paletteColorSchema = colorSchema.extend({
+  role: z.enum(PALETTE_ROLES).describe("base, secondary, or accent."),
+  note: line.optional().describe('Where it is meant to go, e.g. "walls throughout".'),
+});
+
+// Each kind's content, as stored and as results carry it. Strict: a field of another kind is
+// refused, not dropped.
+
+/** The Home's design philosophy. It names no specific colors; those belong to the Palette. */
+export const designDirectionContent = z.strictObject({
+  mood: line.optional(),
+  temperature: z.enum(COLOR_TEMPERATURES).optional(),
+  contrast: z.enum(CONTRASTS).optional(),
+  keyMaterials: z.array(line).optional(),
+  styleReferences: z.array(line).optional(),
+  /** One line each. */
+  principles: z.array(line).optional(),
+});
+
+/** One paragraph refining the Design Direction for one Room, with optional overrides. */
+export const roomDirectionContent = z.strictObject({
+  direction: text.max(1500),
+  mood: line.optional(),
+  contrast: z.enum(CONTRASTS).optional(),
+});
+
+/** What a Room will be used for; Fulfilment sets the Room's functions. */
+export const roomUseContent = z.strictObject({
+  functions: z.array(z.enum(ROOM_FUNCTIONS)).min(1),
+});
+
+export const paletteContent = z.strictObject({ colors: z.array(paletteColorSchema).min(1) });
+
+/** A Surface of the Room (or one Wall's), a Palette color by name, and a finish. */
+export const roomColorContent = z.strictObject({
+  surface: z.enum(SURFACE_PARTS),
+  wall: wallPosition.optional(),
+  color: text.max(100),
+  finish: text.max(60),
+});
+
+/** A Purchase carries Requirements (and, from slice 6, Guides and Listings), not content. */
+export const purchaseContent = z.strictObject({});
+export const otherContent = z.strictObject({});
+
+/** Each kind's content schema, which save_decision validates the content against. */
+export const DECISION_CONTENT = {
+  "design-direction": designDirectionContent,
+  "room-direction": roomDirectionContent,
+  "room-use": roomUseContent,
+  palette: paletteContent,
+  "room-color": roomColorContent,
+  purchase: purchaseContent,
+  other: otherContent,
+} as const satisfies Record<DecisionKind, z.ZodObject>;
+
+/** A Decision's kind with its content, so a result narrows the content by kind. */
+export const decisionKindContentSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("design-direction"), content: designDirectionContent }),
+  z.object({ kind: z.literal("room-direction"), content: roomDirectionContent }),
+  z.object({ kind: z.literal("room-use"), content: roomUseContent }),
+  z.object({ kind: z.literal("palette"), content: paletteContent }),
+  z.object({ kind: z.literal("room-color"), content: roomColorContent }),
+  z.object({ kind: z.literal("purchase"), content: purchaseContent }),
+  z.object({ kind: z.literal("other"), content: otherContent }),
+]);
+
+export type PaletteColor = z.infer<typeof paletteColorSchema>;
+export type DesignDirectionContent = z.infer<typeof designDirectionContent>;
+export type RoomDirectionContent = z.infer<typeof roomDirectionContent>;
+export type RoomUseContent = z.infer<typeof roomUseContent>;
+export type PaletteContent = z.infer<typeof paletteContent>;
+export type RoomColorContent = z.infer<typeof roomColorContent>;
+export type DecisionKindContent = z.infer<typeof decisionKindContentSchema>;
+
+// ─── save_decision ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * The Agent's content: every kind's fields in one object, each saying which kinds take it, so the
+ * tool schema stays lean. save_decision validates it against the kind's own schema.
+ */
+export const decisionContentInput = z
+  .object({
+    mood: line
+      .optional()
+      .describe(
+        'design-direction; room-direction only to override the Direction\'s: e.g. "calm, grounded".',
+      ),
+    temperature: z
+      .enum(COLOR_TEMPERATURES)
+      .optional()
+      .describe("design-direction: color temperature, warm, neutral, or cool."),
+    contrast: z
+      .enum(CONTRASTS)
+      .optional()
+      .describe("design-direction; room-direction only to override: low, medium, or high."),
+    keyMaterials: z
+      .array(line)
+      .optional()
+      .describe('design-direction: key materials, one each, e.g. "oak", "linen".'),
+    styleReferences: z
+      .array(line)
+      .optional()
+      .describe(
+        'design-direction: style references, one each, e.g. "Japandi", or what an inspiration ' +
+          "image the user showed has.",
+      ),
+    principles: z
+      .array(line)
+      .optional()
+      .describe("design-direction: guiding principles, one line each."),
+    direction: text
+      .max(1500)
+      .optional()
+      .describe(
+        "room-direction, required: one paragraph on how the Room should feel, refining the " +
+          "Design Direction.",
+      ),
+    functions: z
+      .array(z.enum(ROOM_FUNCTIONS))
+      .min(1)
+      .optional()
+      .describe(
+        "room-use, required: what the Room is to be used for: kitchen, dining, living, bedroom, " +
+          "office, bathroom, hallway, stairs, storage, utility, garage, other.",
+      ),
+    colors: z
+      .array(paletteColorSchema)
+      .min(1)
+      .optional()
+      .describe("palette, required: its colors, each with a role."),
+    surface: z
+      .enum(SURFACE_PARTS)
+      .optional()
+      .describe("room-color, required: walls, ceiling, floor, or woodwork."),
+    wall: wallPosition
+      .optional()
+      .describe("room-color: a Wall's position, when the color is for that Wall alone."),
+    color: text
+      .max(100)
+      .optional()
+      .describe("room-color, required: the name of a color of the Palette."),
+    finish: text.max(60).optional().describe('room-color, required: e.g. "matt", "eggshell".'),
+  })
+  .describe(
+    "The kind's own fields, replacing any recorded content; each field says which kinds take " +
+      "it. Leave out for purchase and other.",
+  );
+
+export const evidenceInput = z.object({
+  kind: z.enum(EVIDENCE_KINDS).describe("note, session, or decision."),
+  id: slugInput.describe(
+    "A Note's slug (search_notes lists them), a Session's id (this one's, for what the user " +
+      "said or showed in it), or a Decision's slug.",
+  ),
+  stance: z.enum(STANCES).describe("supports or undermines."),
+  note: line.optional().describe("What it shows, in one line."),
+});
+
+export const requirementReasonInput = z.object({
+  kind: z
+    .enum(REQUIREMENT_REASON_KINDS)
+    .describe(
+      "What it comes from: decision, constraint, note, home (its lift and narrowest access), " +
+        "room, wall, window, door, feature, surface, or item.",
+    ),
+  id: slugInput
+    .optional()
+    .describe(
+      'Its slug, e.g. "two-cats", "living-room/wall-2", "living-room/floor"; not for home.',
+    ),
+  field: text
+    .max(60)
+    .optional()
+    .describe(
+      'The one field it rests on, when only that field matters, e.g. "length" of a Wall or ' +
+        '"accessWidth" of the home.',
+    ),
+});
+
+export const requirementInput = z.object({
+  position: z
+    .number()
+    .int()
+    .min(1)
+    .max(99)
+    .optional()
+    .describe(
+      "Its place in the list, from 1. A position that exists changes that Requirement; leave " +
+        "out to add one at the end.",
+    ),
+  text: line.optional().describe('Needed to add one: plain words, e.g. "under 85 cm tall".'),
+  strength: z.enum(STRENGTHS).optional().describe("Needed to add one: must or prefer."),
+  reason: requirementReasonInput.optional().describe("Needed to add one: where it comes from."),
+  archive: archiveInput,
+});
+
+const decisionSlugInput = slugInput.describe(
+  "The Decision's slug, as the opening, find_decisions, or a receipt gives it.",
+);
+
+export const saveDecisionInput = z.object({
+  session: sessionInput,
+  decision: slugInput
+    .optional()
+    .describe(
+      "The slug of the Decision to change. Leave out to create one (one of the same kind, " +
+        "scope, and title that is not Rejected is changed instead of duplicated).",
+    ),
+  kind: z
+    .enum(DECISION_KINDS)
+    .describe(
+      "design-direction, room-direction, room-use, palette, room-color, purchase, or other. " +
+        "It never changes once created.",
+    ),
+  room: slugInput
+    .optional()
+    .describe(
+      "The slug of the Room it is about. Needed for room-direction, room-use, and room-color; " +
+        "never given for design-direction or palette; left out for a Home-wide purchase or other.",
+    ),
+  title: text
+    .max(100)
+    .describe('A short name, e.g. "Warm minimalism", "Office for the spare room".'),
+  statement: text.max(500).describe("The Decision itself, in one line."),
+  content: decisionContentInput.optional(),
+  basis: z
+    .array(slugInput)
+    .optional()
+    .describe(
+      "The slugs of the Decisions it rests on, replacing the recorded Basis. The Design " +
+        "Direction is in every Basis automatically: don't list it.",
+    ),
+  evidence: z
+    .array(evidenceInput)
+    .optional()
+    .describe(
+      "Evidence to add: Notes, Sessions, or Decisions that support or undermine it. Giving a " +
+        "source already recorded changes its stance and note.",
+    ),
+  requirements: z
+    .array(requirementInput)
+    .optional()
+    .describe(
+      "purchase only: Requirements to add or change, by position. Those not listed stay as " +
+        "they are.",
+    ),
+});
+
+export type SaveDecisionInput = z.input<typeof saveDecisionInput>;
+export type DecisionContentInput = z.input<typeof decisionContentInput>;
+export type EvidenceInput = z.input<typeof evidenceInput>;
+export type RequirementInput = z.input<typeof requirementInput>;
+
+// ─── set_decision_state, flag_conflict, record_fulfilment ───────────────────────────────────
+
+/** The Agent's state change: its Session and a non-empty reason are required. */
+export const setDecisionStateInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput,
+  to: z
+    .enum(DECISION_STATES)
+    .describe(
+      "candidate, leaning, locked, or rejected; or its current state, to keep a flagged Decision " +
+        "as it is.",
+    ),
+  reason: z
+    .string()
+    .max(1000)
+    .describe("Why, in a sentence; quote the user's words when they gave permission. Never empty."),
+});
+
+/** The web UI's optional reason: an empty one is no reason. */
+const webReason = z.string().trim().max(1000).optional();
+
+/** The same operation from the web UI: no Session, and the reason is optional. */
+export const setDecisionStateWebInput = z.object({
+  home: homeInput,
+  decision: decisionSlugInput,
+  to: z.enum(DECISION_STATES),
+  reason: webReason,
+});
+
+export const flagConflictInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput.describe("The slug of the Locked Decision it contradicts."),
+  description: text
+    .max(500)
+    .describe("What contradicts it, in a sentence or two, e.g. what the user now says."),
+});
+
+export const recordFulfilmentInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput.describe("The slug of the Locked Decision that was carried out."),
+  roomFunctions: z
+    .array(z.enum(ROOM_FUNCTIONS))
+    .optional()
+    .describe(
+      "Room use: the functions the Room actually has now, only when they differ from what was " +
+        "decided.",
+    ),
+});
+
+export type SetDecisionStateInput = z.input<typeof setDecisionStateInput>;
+export type SetDecisionStateWebInput = z.input<typeof setDecisionStateWebInput>;
+export type FlagConflictInput = z.input<typeof flagConflictInput>;
+export type RecordFulfilmentInput = z.input<typeof recordFulfilmentInput>;
+
+// ─── find_decisions, get_decision, and the web's Decision operations ────────────────────────
+
+export const findDecisionsInput = z.object({
+  session: sessionInput,
+  room: slugInput.optional().describe("Only the Decisions about this Room (its slug)."),
+  homeWide: z.boolean().optional().describe("true for only the Home-wide Decisions."),
+  kind: z.enum(DECISION_KINDS).optional().describe("Only Decisions of this kind."),
+  state: z.enum(DECISION_STATES).optional().describe("Only Decisions in this state."),
+});
+
+export const getDecisionInput = z.object({ session: sessionInput, decision: decisionSlugInput });
+
+/** get_decision from the web UI, for the Decision page. */
+export const getDecisionWebInput = z.object({ home: homeInput, decision: decisionSlugInput });
+
+export const listDecisionsInput = z.object({
+  home: homeInput,
+  room: slugInput.optional().describe("Only the Decisions about this Room (its slug)."),
+  kind: z.enum(DECISION_KINDS).optional(),
+  state: z.enum(DECISION_STATES).optional(),
+});
+
+export const resolveFlagInput = z.object({
+  home: homeInput,
+  flag: slugInput.describe('The flag\'s slug, "<decision slug>/flag-<n>".'),
+  resolution: z
+    .enum(RESOLUTIONS)
+    .describe("keep the Decision as it is, reopen it (Locked only), or reject it."),
+  reason: webReason,
+});
+
+export const resolveConflictInput = z.object({
+  home: homeInput,
+  conflict: slugInput.describe('The Conflict\'s slug, "<decision slug>/conflict-<n>".'),
+  resolution: z.enum(RESOLUTIONS),
+  reason: webReason,
+});
+
+export type FindDecisionsInput = z.input<typeof findDecisionsInput>;
+export type GetDecisionInput = z.input<typeof getDecisionInput>;
+export type GetDecisionWebInput = z.input<typeof getDecisionWebInput>;
+export type ListDecisionsInput = z.input<typeof listDecisionsInput>;
+export type ResolveFlagInput = z.input<typeof resolveFlagInput>;
+export type ResolveConflictInput = z.input<typeof resolveConflictInput>;
+
+// ─── Decision records, as results carry them ────────────────────────────────────────────────
+
+export const decisionRefSchema = z.object({ slug: z.string(), title: z.string() });
+
+/** A mark on a Decision that something it rests on changed; the user clears it. */
+export const flagSchema = z.object({
+  /** "<decision slug>/flag-<n>". */
+  slug: z.string(),
+  /** The flagged Decision. */
+  decision: decisionRefSchema,
+  cause: z.enum(FLAG_CAUSES),
+  /** What changed: for reopened and rejected, the Decision in the flagged one's Basis. */
+  source: z.object({ kind: z.string(), slug: z.string(), name: z.string() }),
+  raisedAt: z.string(),
+  /** Set once the user kept, reopened, or rejected the flagged Decision. */
+  clearedAt: z.string().optional(),
+  resolution: z.enum(RESOLUTIONS).optional(),
+  reason: z.string().optional(),
+});
+
+/** New Evidence contradicting a Locked Decision; only the user resolves it. */
+export const conflictSchema = z.object({
+  /** "<decision slug>/conflict-<n>". */
+  slug: z.string(),
+  decision: decisionRefSchema,
+  description: z.string(),
+  /** The Session that raised it. */
+  session: z.string().optional(),
+  raisedAt: z.string(),
+  resolvedAt: z.string().optional(),
+  resolution: z.enum(RESOLUTIONS).optional(),
+  reason: z.string().optional(),
+});
+
+/** One Decision as a list shows it: one line's worth, with its open flags and Conflicts. */
+export const decisionSummarySchema = z.object({
+  slug: z.string(),
+  kind: z.enum(DECISION_KINDS),
+  title: z.string(),
+  statement: z.string(),
+  state: z.enum(DECISION_STATES),
+  /** The Room it is about; absent for a Home-wide Decision. */
+  room: namedRefSchema.optional(),
+  createdAt: z.string(),
+  /** When its action was carried out. Fulfilled is not a state: the Decision stays Locked. */
+  fulfilledAt: z.string().optional(),
+  openFlags: z.array(flagSchema),
+  openConflicts: z.array(conflictSchema),
+});
+
+/** A Decision of the Basis. */
+export const basisEntrySchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  kind: z.enum(DECISION_KINDS),
+  state: z.enum(DECISION_STATES),
+  fulfilledAt: z.string().optional(),
+  /** The Design Direction in force, which is in every other Decision's Basis automatically. */
+  automatic: z.boolean(),
+});
+
+export const evidenceEntrySchema = z.object({
+  kind: z.enum(EVIDENCE_KINDS),
+  /** The Note's, Session's, or Decision's slug. */
+  id: z.string(),
+  /** The Note's text, the Session's day and Skills, or the Decision's title. */
+  name: z.string(),
+  stance: z.enum(STANCES),
+  note: z.string().optional(),
+});
+
+export const requirementSchema = z.object({
+  position: z.number(),
+  text: z.string(),
+  strength: z.enum(STRENGTHS),
+  reason: z.object({
+    kind: z.enum(REQUIREMENT_REASON_KINDS),
+    /** The record's slug; the Home's for home. */
+    id: z.string(),
+    /** A readable name for the record. */
+    name: z.string(),
+    field: z.string().optional(),
+  }),
+});
+
+export const stateChangeSchema = z.object({
+  from: z.enum(DECISION_STATES),
+  to: z.enum(DECISION_STATES),
+  /** The Session's slug, or "web". */
+  origin: z.string(),
+  reason: z.string().optional(),
+  at: z.string(),
+});
+
+/** What was actually done when a Decision was Fulfilled. */
+export const fulfilmentSchema = z.object({
+  /** Room use: the Room's functions as set. */
+  roomFunctions: z.array(z.enum(ROOM_FUNCTIONS)).optional(),
+});
+
+/** One Decision in full, for get_decision and the Decision page. Its content narrows by kind. */
+export const decisionDetailSchema = decisionSummarySchema
+  .omit({ kind: true })
+  .extend({
+    fulfilment: fulfilmentSchema.optional(),
+    /** The Design Direction in force first (automatic), then in the order given. */
+    basis: z.array(basisEntrySchema),
+    evidence: z.array(evidenceEntrySchema),
+    /** Not Archived, by position. */
+    requirements: z.array(requirementSchema),
+    /** Every flag, cleared ones too, oldest first. */
+    flags: z.array(flagSchema),
+    /** Every Conflict, resolved ones too, oldest first. */
+    conflicts: z.array(conflictSchema),
+    /** Oldest first. */
+    stateChanges: z.array(stateChangeSchema),
+  })
+  .and(decisionKindContentSchema);
+
+export type DecisionRef = z.infer<typeof decisionRefSchema>;
+export type Flag = z.infer<typeof flagSchema>;
+export type Conflict = z.infer<typeof conflictSchema>;
+export type DecisionSummary = z.infer<typeof decisionSummarySchema>;
+export type BasisEntry = z.infer<typeof basisEntrySchema>;
+export type EvidenceEntry = z.infer<typeof evidenceEntrySchema>;
+export type Requirement = z.infer<typeof requirementSchema>;
+export type StateChange = z.infer<typeof stateChangeSchema>;
+export type Fulfilment = z.infer<typeof fulfilmentSchema>;
+export type DecisionDetail = z.infer<typeof decisionDetailSchema>;
+
+// ─── Decision results ───────────────────────────────────────────────────────────────────────
+
+/**
+ * list_decisions (web) and find_decisions (Agent): Home-wide Decisions first, then each Room's in
+ * the Rooms' order, each group in the order the Decisions were created. Archived ones never.
+ */
+export const listDecisionsResult = z.object({ decisions: z.array(decisionSummarySchema) });
+export const findDecisionsResult = listDecisionsResult;
+export const getDecisionResult = z.object({ decision: decisionDetailSchema });
+
+/**
+ * set_decision_state, resolve_flag, and resolve_conflict: the receipt (one line per change, then
+ * the Decisions it flagged), and the Decision as it now is.
+ */
+export const decisionReceiptResult = z.object({
+  receipt: z.string(),
+  decision: decisionSummarySchema,
+});
+
+/** get_room: the Room, and its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions. */
+export const getRoomResult = z.object({
+  room: roomDetailSchema,
+  decisions: z.array(decisionSummarySchema),
+});
+
+export type ListDecisionsResult = z.infer<typeof listDecisionsResult>;
+export type FindDecisionsResult = z.infer<typeof findDecisionsResult>;
+export type GetDecisionResult = z.infer<typeof getDecisionResult>;
+export type DecisionReceiptResult = z.infer<typeof decisionReceiptResult>;

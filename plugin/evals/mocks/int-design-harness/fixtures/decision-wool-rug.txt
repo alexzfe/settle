@@ -1,0 +1,5 @@
+Decision: Wool rug (wool-rug)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Leaning
+Statement: A large wool rug under the sofa.

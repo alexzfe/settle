@@ -72,7 +72,7 @@ Six stages, in this order, each in rounds (see "Round format"). Save after every
 
 ## Staying in scope
 
-Home Intake records the Home. When the user asks for design advice, colors, or shopping, say those belong to other Skills, keep it for the summary's `next`, and carry on with the interview.
+Home Intake records the Home. When the user asks for design advice, colors, or shopping, follow "Hand-off and parking": those belong to other Skills. Whatever is parked goes in the summary, and the interview carries on.
 
 ## Closing
 

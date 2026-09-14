@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type CallContext, type Core, type CoreOptions, createCore } from "../core.js";
-import type { Measurement } from "../operations/schemas.js";
+import {
+  type CallContext,
+  type Core,
+  type CoreOptions,
+  createCore,
+  type OperationInput,
+} from "../core.js";
+import type { DecisionState, Measurement } from "../operations/schemas.js";
 import { openStore } from "../store.js";
 
 /**
@@ -21,7 +27,12 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * Unplaced and one Archived; Constraints, one of them removed; and Notes. Slice 3 adds a
  * Blueprint, "Agent plan" (the A3 fixture PDF, copied into the core's data dir on upload), whose
  * page 1 shows Ground, and two living-room Wall lengths printed on it. The printed strings are the
- * fixture's own: the A3 drawing stands in for the plan.
+ * fixture's own: the A3 drawing stands in for the plan. Slice 4 adds, from a Design Direction
+ * Session, Decisions in every state: a Locked Design Direction "Warm minimalism"; a Locked
+ * Home-wide "Keep the original floors" with an open Conflict; a Locked living-room Room Direction
+ * "Calm evenings" resting on both; a Candidate Room use for the Hallway; a Rejected hallway paint
+ * idea; and a Leaning "Wool rug" Purchase with two Requirements and Evidence, resting on the Room
+ * Direction and flagged because it was reopened (and then Locked again).
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -338,6 +349,128 @@ export async function createFixtureHome(
         "Surfaces, eight Items, three Constraints, and two Notes.",
       open: "The hallway's ceiling height and times of use; most of the main bedroom.",
       next: "Home Intake again, to measure the main bedroom.",
+    },
+  });
+
+  const { session: design } = await core.run("open_session", agent(), {
+    skill: "design-direction",
+  });
+  const withDesign = agent(design);
+  const decide = (input: Omit<OperationInput<"save_decision">, "session">) =>
+    core.run("save_decision", withDesign, { session: design, ...input });
+  const move = (decision: string, to: DecisionState, reason: string) =>
+    core.run("set_decision_state", withDesign, { session: design, decision, to, reason });
+
+  await decide({
+    kind: "design-direction",
+    title: "Warm minimalism",
+    statement: "Calm, warm rooms of natural materials that age well.",
+    content: {
+      mood: "calm, grounded",
+      temperature: "warm",
+      contrast: "low",
+      keyMaterials: ["oak", "linen", "limewash", "unlacquered brass"],
+      styleReferences: ["Japandi", "1970s Danish modern"],
+      principles: [
+        "Fewer, better things",
+        "Daylight first, then low warm lamps",
+        "Nothing the cats can shred",
+      ],
+    },
+    evidence: [
+      {
+        kind: "session",
+        id: design,
+        stance: "supports",
+        note: "The user showed three Japandi living rooms they love.",
+      },
+    ],
+  });
+  await move("warm-minimalism", "leaning", 'The user: "that sounds like us"');
+  await move("warm-minimalism", "locked", 'The user: "yes, lock it"');
+  await decide({
+    kind: "other",
+    title: "Keep the original floors",
+    statement: "The oak boards and terracotta tiles stay.",
+  });
+  await move("keep-the-original-floors", "locked", 'The user: "the floors stay, full stop"');
+  await decide({
+    kind: "room-direction",
+    room: "living-room",
+    title: "Calm evenings",
+    statement: "A low, warm room for long evenings.",
+    content: {
+      direction:
+        "Pools of lamplight, soft wool and linen, and the fireplace as the focus; nothing " +
+        "bright or glossy after dark.",
+      contrast: "medium",
+    },
+    basis: ["keep-the-original-floors"],
+  });
+  await move("calm-evenings", "locked", 'The user: "perfect, lock the living room"');
+  await decide({
+    kind: "room-use",
+    room: "hallway",
+    title: "Storage in the hallway",
+    statement: "The hallway also holds coats, shoes, and the vacuum.",
+    content: { functions: ["hallway", "storage"] },
+  });
+  await decide({
+    kind: "other",
+    room: "hallway",
+    title: "Paint the hallway dark green",
+    statement: "A dark green hallway.",
+  });
+  await move(
+    "paint-the-hallway-dark-green",
+    "rejected",
+    'The user: "no, too dark without windows"',
+  );
+  await decide({
+    kind: "purchase",
+    room: "living-room",
+    title: "Wool rug",
+    statement: "A large wool rug under the sofa.",
+    basis: ["calm-evenings"],
+    evidence: [
+      {
+        kind: "note",
+        id: "the-cats-scratch-fabric-furniture",
+        stance: "supports",
+        note: "Wool stands up to claws better than linen.",
+      },
+    ],
+    requirements: [
+      {
+        text: "At least 2.0 × 1.4 m",
+        strength: "must",
+        reason: { kind: "wall", id: "living-room/wall-2", field: "length" },
+      },
+      {
+        text: "Wool, low pile: loops catch the cats' claws",
+        strength: "prefer",
+        reason: { kind: "constraint", id: "two-cats" },
+      },
+    ],
+  });
+  await move("wool-rug", "leaning", 'The user: "I like the idea of wool"');
+  // Rethinking the living room flags the rug, which rests on its direction; the flag stays open
+  // after the direction is Locked again.
+  await move("calm-evenings", "leaning", `The user: "let's rethink the living room"`);
+  await move("calm-evenings", "locked", 'The user: "no, it was right; lock it again"');
+  await core.run("flag_conflict", withDesign, {
+    session: design,
+    decision: "keep-the-original-floors",
+    description: "The user now says the terracotta tiles crack every winter and wants them gone.",
+  });
+  await core.run("close_session", withDesign, {
+    session: design,
+    summary: {
+      changed:
+        "Locked the Design Direction Warm minimalism, keeping the original floors, and the " +
+        "living room's Calm evenings.",
+      open: "Storage in the hallway; the wool rug; a Conflict over the terracotta tiles.",
+      next: "Color: a Palette for Warm minimalism.",
     },
   });
   return { core, home: home.slug, session };

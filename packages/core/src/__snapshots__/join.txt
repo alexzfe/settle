@@ -1,0 +1,26 @@
+Session: home-intake-tuvw
+Pass session "home-intake-tuvw" on every write in this conversation.
+
+Home-wide Decisions in force:
+
+Design Direction: Warm minimalism (warm-minimalism), Locked
+Calm, warm rooms of natural materials that age well.
+- Mood: calm, grounded
+- Color temperature: warm
+- Contrast: low
+- Key materials: oak, linen, limewash, unlacquered brass
+- Style references: Japandi; 1970s Danish modern
+- Principles:
+  - Fewer, better things
+  - Daylight first, then low warm lamps
+  - Nothing the cats can shred
+
+Palette: none chosen yet
+
+Other Home-wide Decisions, Locked:
+- Keep the original floors (keep-the-original-floors): Other, Locked; 1 open Conflict. The oak boards and terracotta tiles stay.
+
+Session: home-intake-tuvw
+Pass session "home-intake-tuvw" on every write in this conversation.
+
+This Session already has the opening. If the Home Overview is no longer in view, call open_session again with resend: true.

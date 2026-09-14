@@ -7,8 +7,13 @@ import type {
   Color,
   CompassPoint,
   Condition,
+  DecisionKind,
+  DecisionState,
   DoorSideBKind,
+  EvidenceKind,
   FeatureKind,
+  FlagCause,
+  Fulfilment,
   GlassKind,
   ItemCategory,
   Light,
@@ -16,7 +21,11 @@ import type {
   Measurement,
   Obstruction,
   PlannedStay,
+  RequirementReasonKind,
+  Resolution,
   RoomFunction,
+  Stance,
+  Strength,
   SurfacePart,
   Tenure,
   TimeOfUse,
@@ -227,6 +236,100 @@ export interface BlueprintPageRow {
   textLines: TextLine[];
 }
 
+/** A Decision; Home-wide when scopeRoomId is null. */
+export interface DecisionRow {
+  id: number;
+  homeId: number;
+  slug: string;
+  kind: DecisionKind;
+  scopeRoomId: number | null;
+  title: string;
+  statement: string;
+  /** Validated per kind by save_decision. */
+  content: Record<string, unknown>;
+  state: DecisionState;
+  createdAt: string;
+  fulfilledAt: string | null;
+  fulfilment: Fulfilment | null;
+  archivedAt: string | null;
+}
+
+/** One Decision of another's Basis, as given; the automatic Design Direction is never stored. */
+export interface DecisionBasisRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  basisDecisionId: number;
+}
+
+export interface DecisionEvidenceRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  sourceKind: EvidenceKind;
+  /** The id of the Note, Session, or Decision. */
+  sourceId: number;
+  stance: Stance;
+  note: string | null;
+}
+
+export interface RequirementRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  position: number;
+  text: string;
+  strength: Strength;
+  reasonKind: RequirementReasonKind;
+  /** The id of the row in the table reasonKind names; the Home's own id for "home". */
+  reasonId: number;
+  reasonField: string | null;
+  archivedAt: string | null;
+}
+
+export interface FlagRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  /** <decision slug>/flag-<n> */
+  slug: string;
+  cause: FlagCause;
+  sourceKind: string;
+  sourceId: number;
+  raisedAt: string;
+  clearedAt: string | null;
+  resolution: Resolution | null;
+  reason: string | null;
+}
+
+export interface ConflictRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  /** <decision slug>/conflict-<n> */
+  slug: string;
+  sessionId: number | null;
+  description: string;
+  raisedAt: string;
+  resolvedAt: string | null;
+  resolution: Resolution | null;
+  reason: string | null;
+}
+
+export interface StateChangeRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  fromState: DecisionState;
+  toState: DecisionState;
+  /** Null for a change from the web UI. */
+  sessionId: number | null;
+  /** The Session's slug, or "web". */
+  origin: string;
+  reason: string | null;
+  at: string;
+}
+
 export interface SessionSummary {
   changed: string;
   open: string;
@@ -274,6 +377,13 @@ export interface HomeTables {
   notes: NoteRow;
   blueprints: BlueprintRow;
   blueprint_pages: BlueprintPageRow;
+  decisions: DecisionRow;
+  decision_basis: DecisionBasisRow;
+  decision_evidence: DecisionEvidenceRow;
+  requirements: RequirementRow;
+  flags: FlagRow;
+  conflicts: ConflictRow;
+  state_changes: StateChangeRow;
 }
 
 export type HomeTable = keyof HomeTables;
@@ -310,6 +420,8 @@ export interface Store {
   update<T extends Table>(table: T, id: number, patch: Patch<T>): void;
   /** Every row of a Home in `table`, Archived ones too, in the order they were recorded. */
   list<T extends HomeTable>(table: T, homeId: number): Tables[T][];
+  /** Takes one Decision out of another's Basis. The Decisions themselves are never deleted. */
+  removeBasis(id: number): void;
 
   insertSession(session: Omit<SessionRow, "id">): SessionRow;
   /** Looks across every Home: Session slugs are unique app-wide. */
@@ -355,6 +467,8 @@ const JSON_KEYS = new Set([
   "colors",
   "light",
   "textLines",
+  "content",
+  "fulfilment",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 
@@ -501,6 +615,9 @@ export function openStore(path: string): Store {
     update,
     list: <T extends HomeTable>(table: T, homeId: number) =>
       rows<Tables[T]>(`SELECT * FROM ${table} WHERE home_id = ? ORDER BY id`, homeId),
+    removeBasis(id) {
+      run("DELETE FROM decision_basis WHERE id = ?", id);
+    },
 
     insertSession(session) {
       const id = Number(

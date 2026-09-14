@@ -1,0 +1,16 @@
+Decision: Warm minimalism (warm-minimalism)
+Kind: Design Direction
+Scope: the whole Home
+State: Locked
+Statement: Calm, warm rooms of natural materials that age well.
+
+Content:
+- Mood: calm, grounded
+- Color temperature: warm
+- Contrast: low
+- Key materials: oak, linen, limewash, unlacquered brass
+- Style references: Japandi; 1970s Danish modern
+- Principles:
+  - Fewer, better things
+  - Daylight first, then low warm lamps
+  - Nothing the cats can shred

@@ -52,14 +52,26 @@ export interface OperationContext extends CallContext {
 /** Which adapters offer an operation: the MCP server, the web API, or both. */
 export type OperationSurface = "agent" | "web" | "both";
 
-export interface Operation<Input extends z.ZodObject = z.ZodObject, Output = unknown> {
+export interface Operation<
+  Input extends z.ZodObject = z.ZodObject,
+  Output = unknown,
+  WebInput extends z.ZodObject = Input,
+> {
   name: string;
   /** For an Agent operation, the MCP tool description: written for a new hire. */
   description: string;
   input: Input;
+  /**
+   * For an operation both adapters offer whose web input differs (the Home instead of a Session,
+   * say): what the web UI passes. The MCP tool's schema is always `input`.
+   */
+  webInput?: WebInput;
   readOnly: boolean;
   surface: OperationSurface;
-  handler(context: OperationContext, input: z.output<Input>): Output | Promise<Output>;
+  handler(
+    context: OperationContext,
+    input: z.output<Input> | z.output<WebInput>,
+  ): Output | Promise<Output>;
   /** For an Agent operation, the text the AI reads, rendered from the result. */
   text?(output: Output): string;
   /**
@@ -69,8 +81,10 @@ export interface Operation<Input extends z.ZodObject = z.ZodObject, Output = unk
   images?(output: Output): { data: Uint8Array; mimeType: string }[];
 }
 
-export function defineOperation<Input extends z.ZodObject, Output>(
-  operation: Operation<Input, Output>,
-): Operation<Input, Output> {
+export function defineOperation<
+  Input extends z.ZodObject,
+  Output,
+  WebInput extends z.ZodObject = Input,
+>(operation: Operation<Input, Output, WebInput>): Operation<Input, Output, WebInput> {
   return operation;
 }

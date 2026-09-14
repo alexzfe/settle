@@ -16,6 +16,17 @@ import {
 import { getChangeLog } from "./operations/changes.js";
 import { listConstraints, setConstraints } from "./operations/constraints.js";
 import {
+  findDecisions,
+  flagConflict,
+  getDecision,
+  listDecisions,
+  recordFulfilment,
+  resolveConflict,
+  resolveFlag,
+  saveDecision,
+  setDecisionState,
+} from "./operations/decisions.js";
+import {
   createHome,
   getHome,
   listHomes,
@@ -50,9 +61,14 @@ const operations = {
   list_blueprints: listBlueprints,
   get_blueprint_page: getBlueprintPage,
   upload_blueprint: uploadBlueprint,
+  list_decisions: listDecisions,
+  resolve_flag: resolveFlag,
+  resolve_conflict: resolveConflict,
   open_session: openSession,
   get_room_sheet: getRoomSheet,
   find_items: findItems,
+  find_decisions: findDecisions,
+  get_decision: getDecision,
   search_notes: searchNotes,
   view_images: viewImages,
   save_home: saveHome,
@@ -60,12 +76,20 @@ const operations = {
   save_items: saveItems,
   set_constraints: setConstraints,
   save_note: saveNote,
+  save_decision: saveDecision,
+  set_decision_state: setDecisionState,
+  record_fulfilment: recordFulfilment,
+  flag_conflict: flagConflict,
   close_session: closeSession,
 };
 
 type Operations = typeof operations;
 export type OperationName = keyof Operations;
-export type OperationInput<N extends OperationName> = z.input<Operations[N]["input"]>;
+/** What the operation takes: its input, or for the web UI its webInput when it has one. */
+export type OperationInput<N extends OperationName> =
+  Operations[N] extends Operation<infer Input, unknown, infer WebInput>
+    ? z.input<Input> | z.input<WebInput>
+    : never;
 export type OperationOutput<N extends OperationName> = Awaited<
   ReturnType<Operations[N]["handler"]>
 >;
@@ -172,7 +196,9 @@ export function createCore(options: CoreOptions = {}): Core {
     async run(name: string, context: CallContext, input: unknown): Promise<never> {
       const operation = registry.get(name);
       if (!operation) throw new CoreError("not_found", `There is no operation "${name}".`);
-      const parsed = operation.input.safeParse(input ?? {});
+      const schema =
+        context.caller.kind === "web" && operation.webInput ? operation.webInput : operation.input;
+      const parsed = schema.safeParse(input ?? {});
       if (!parsed.success) {
         const issues = parsed.error.issues.map(
           (issue) => `${issue.path.join(".") || "input"}: ${issue.message}`,

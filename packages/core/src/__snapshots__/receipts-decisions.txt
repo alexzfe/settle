@@ -1,0 +1,13 @@
+Dark and restful (dark-and-restful): created as a Candidate Room Direction for Main bedroom (main-bedroom); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Evidence: Session design-direction-jkmn supports
+
+Dark and restful (dark-and-restful): statement changed; content changed (mood); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Keep the original floors (keep-the-original-floors)
+
+Hallway bench (hallway-bench): created as a Candidate Purchase for Hallway (hallway); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically
+Requirement 1 of Hallway bench (hallway-bench): added: must, At most 35 cm deep (reason: Door hallway-outside-door)
+Requirement 2 of Hallway bench (hallway-bench): added: prefer, Oak (reason: Decision Warm minimalism (warm-minimalism))
+
+Calm evenings (calm-evenings): Conflict raised (calm-evenings/conflict-1); it stays Locked until the user keeps, Reopens, or Rejects it: The user now wants a bright reading corner by the bay window.
+
+Storage in the hallway (storage-in-the-hallway): Fulfilled, differently from what was decided (hallway, storage)
+Hallway (hallway): functions hallway, storage, utility
+Gaps left in Hallway (hallway): wall lengths (hallway/wall-7, hallway/wall-8), ceiling height, times of use, walls Surface, ceiling Surface, woodwork Surface

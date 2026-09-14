@@ -2,7 +2,7 @@
 // must be justified against the Context tiers (docs/specs/home-model.md#context-tiers).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CallContext, OperationInput } from "./core.js";
 import {
   createFixtureHome,
@@ -45,6 +45,55 @@ it("renders the opening: the Home's name and its Home Overview, with every Room'
   await expect(toolText("open_session", result)).toMatchFileSnapshot(
     snapshot("open_session-result"),
   );
+});
+
+it("renders the opening for Design Direction: the Home-wide Decisions after the Overview", async () => {
+  const result = await fixture.core.run("open_session", agent(), { skill: "design-direction" });
+  await expect(result.opening).toMatchFileSnapshot(snapshot("opening-design-direction"));
+});
+
+it("renders a join: only the blocks the Session has not been sent yet", async () => {
+  const session = await openSession();
+  const join = await fixture.core.run("open_session", agent(session), {
+    skill: "design-direction",
+    session,
+  });
+  const again = await fixture.core.run("open_session", agent(session), {
+    skill: "purchase",
+    session,
+  });
+  await expect(
+    [toolText("open_session", join), toolText("open_session", again)].join("\n\n"),
+  ).toMatchFileSnapshot(snapshot("join"));
+});
+
+it("renders find_decisions lines", async () => {
+  const session = await openSession();
+  const find = async (title: string, filter: Record<string, unknown>) => {
+    const result = await fixture.core.run("find_decisions", agent(session), {
+      session,
+      ...filter,
+    });
+    return `# ${title}\n${toolText("find_decisions", result)}`;
+  };
+  const results = [
+    await find("every Decision", {}),
+    await find("the hallway", { room: "hallway" }),
+    await find("Home-wide", { homeWide: true }),
+    await find("Rejected", { state: "rejected" }),
+    await find("Palettes", { kind: "palette" }),
+  ];
+  await expect(results.join("\n\n")).toMatchFileSnapshot(snapshot("find_decisions"));
+});
+
+it("renders get_decision: a Room Direction, a flagged Purchase, and a Decision with a Conflict", async () => {
+  const session = await openSession();
+  const texts = [];
+  for (const decision of ["calm-evenings", "wool-rug", "keep-the-original-floors"]) {
+    const result = await fixture.core.run("get_decision", agent(session), { session, decision });
+    texts.push(toolText("get_decision", result));
+  }
+  await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision"));
 });
 
 it("renders every Room's Room Sheet", async () => {
@@ -222,6 +271,107 @@ it("renders a save_room receipt recording Blueprint values, with the Estimated o
   await expect([hallway.receipt, living.receipt].join("\n\n")).toMatchFileSnapshot(
     snapshot("receipt-save_room-blueprint"),
   );
+});
+
+describe("Decision receipts", () => {
+  // Their own fixture Home, since these writes change the Decisions the other snapshots show.
+  let own: FixtureHome;
+  let session: string;
+  beforeAll(async () => {
+    let next = 0;
+    own = await createFixtureHome({
+      random: (max) => next++ % max,
+      clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    });
+    session = (await own.core.run("open_session", ownAgent(), { skill: "design-direction" }))
+      .session;
+  });
+  afterAll(() => own.core.close());
+
+  function ownAgent(id?: string): CallContext {
+    return { caller: { kind: "session", session: id }, home: own.home };
+  }
+
+  it("renders a set_decision_state receipt with a cascade, then one keeping a flagged Decision", async () => {
+    const reopen = await own.core.run("set_decision_state", ownAgent(session), {
+      session,
+      decision: "warm-minimalism",
+      to: "leaning",
+      reason: `The user: "let's rethink the direction"`,
+    });
+    const keep = await own.core.run("set_decision_state", ownAgent(session), {
+      session,
+      decision: "calm-evenings",
+      to: "locked",
+      reason: 'The user: "the living room stays as it is"',
+    });
+    await expect([reopen.receipt, keep.receipt].join("\n\n")).toMatchFileSnapshot(
+      snapshot("receipt-set_decision_state"),
+    );
+  });
+
+  it("renders the receipts of save_decision, flag_conflict, and record_fulfilment", async () => {
+    const run = async (name: string, input: Record<string, unknown>) =>
+      (
+        (await own.core.run(name, ownAgent(session), { session, ...input })) as {
+          receipt: string;
+        }
+      ).receipt;
+    const bedroom = {
+      kind: "room-direction",
+      room: "main-bedroom",
+      title: "Dark and restful",
+    };
+    const receipts = [
+      await run("save_decision", {
+        ...bedroom,
+        statement: "A dark, cocooning room for sleep.",
+        content: {
+          direction: "Deep, soft, and dim: heavy curtains and a low bed.",
+          mood: "cocooning",
+        },
+        evidence: [{ kind: "session", id: session, stance: "supports" }],
+      }),
+      await run("save_decision", {
+        ...bedroom,
+        decision: "dark-and-restful",
+        statement: "A dark, quiet room for sleep.",
+        content: { direction: "Deep, soft, and dim: heavy curtains and a low bed.", mood: "quiet" },
+        basis: ["keep-the-original-floors"],
+      }),
+      await run("save_decision", {
+        kind: "purchase",
+        title: "Hallway bench",
+        room: "hallway",
+        statement: "A narrow bench with shoe storage by the front door.",
+        requirements: [
+          {
+            text: "At most 35 cm deep",
+            strength: "must",
+            reason: { kind: "door", id: "hallway-outside-door" },
+          },
+          { text: "Oak", strength: "prefer", reason: { kind: "decision", id: "warm-minimalism" } },
+        ],
+      }),
+      await run("flag_conflict", {
+        decision: "calm-evenings",
+        description: "The user now wants a bright reading corner by the bay window.",
+      }),
+    ];
+    await own.core.run("set_decision_state", ownAgent(session), {
+      session,
+      decision: "storage-in-the-hallway",
+      to: "locked",
+      reason: 'The user: "yes, storage it is"',
+    });
+    receipts.push(
+      await run("record_fulfilment", {
+        decision: "storage-in-the-hallway",
+        roomFunctions: ["hallway", "storage", "utility"],
+      }),
+    );
+    await expect(receipts.join("\n\n")).toMatchFileSnapshot(snapshot("receipts-decisions"));
+  });
 });
 
 function fromPlan(mm: number, text: string) {

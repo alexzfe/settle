@@ -26,8 +26,19 @@ export * from "./operations/schemas.js";
 export { SKILLS, type Skill } from "./operations/sessions.js";
 export type { Operation, OperationSurface } from "./registry.js";
 export {
+  DECISION_KIND_LABELS,
+  DECISION_STATE_LABELS,
+  decisionLine,
+  type FlaggedDecision,
+  type HomeDecisionsView,
+  type OpeningBlock,
+  type OpeningView,
   type OverviewView,
   type Receipt,
+  renderDecision,
+  renderDecisions,
+  renderFlagged,
+  renderHomeDecisions,
   renderHomeOverview,
   renderItems,
   renderNotes,

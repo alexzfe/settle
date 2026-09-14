@@ -1,0 +1,5 @@
+Decision: Keep the original floors (keep-the-original-floors)
+Kind: Other
+Scope: the whole Home
+State: Locked
+Statement: The oak boards and terracotta tiles stay.

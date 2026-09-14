@@ -5,23 +5,43 @@
 
 import type {
   OperationName as CoreOperationName,
+  DecisionReceiptResult,
+  GetDecisionResult,
+  GetDecisionWebInput,
+  ListDecisionsInput,
+  ListDecisionsResult,
   OperationInput,
   OperationOutput,
+  ResolveConflictInput,
+  ResolveFlagInput,
   RoomDetail,
+  SetDecisionStateWebInput,
   UploadBlueprintResult,
 } from "@idh/core";
 
 export type {
+  BasisEntry,
   Blueprint,
   BlueprintPage,
   ChangeEntry,
+  Conflict,
   Constraint,
+  DecisionDetail,
+  DecisionKind,
+  DecisionState,
+  DecisionSummary,
   Door,
+  EvidenceEntry,
   Feature,
+  Flag,
+  FlagCause,
   Home,
   Item,
   Level,
+  ListDecisionsInput,
   Note,
+  Requirement,
+  Resolution,
   Room,
   RoomDetail,
   Session,
@@ -52,6 +72,13 @@ export interface Operations {
   list_notes: Shapes<"list_notes">;
   get_change_log: Shapes<"get_change_log">;
   list_blueprints: Shapes<"list_blueprints">;
+  // The Decision operations, from their schemas: get_decision and set_decision_state are shared
+  // with the Agent, and the web calls them with their web inputs (no Session, reason optional).
+  list_decisions: { input: ListDecisionsInput; output: ListDecisionsResult };
+  get_decision: { input: GetDecisionWebInput; output: GetDecisionResult };
+  set_decision_state: { input: SetDecisionStateWebInput; output: DecisionReceiptResult };
+  resolve_flag: { input: ResolveFlagInput; output: DecisionReceiptResult };
+  resolve_conflict: { input: ResolveConflictInput; output: DecisionReceiptResult };
 }
 
 export type OperationName = keyof Operations;

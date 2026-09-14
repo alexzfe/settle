@@ -5,6 +5,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 // Every other refusal is a rule refusal: 409.
 const STATUS: Partial<Record<CoreErrorCode, ContentfulStatusCode>> = {
   validation: 400,
+  reason_required: 400,
   city_not_found: 400,
   no_pages: 400,
   unsupported_file: 400,

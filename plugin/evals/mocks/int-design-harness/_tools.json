@@ -3,7 +3,7 @@
     {
       "name": "open_session",
       "title": "Open session",
-      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item count, and Gaps: the facts advice still needs). Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
+      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item count, and Gaps: the facts advice still needs); for every Skill but home-intake, the Home-wide Decisions in force (the Design Direction and Palette in full, marked Locked or Leaning, then the other Home-wide Locked Decisions); and the open flags and Conflicts, one line each. Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -36,7 +36,7 @@
     {
       "name": "get_room_sheet",
       "title": "Get room sheet",
-      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; one line per Decision about it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -119,6 +119,86 @@
           }
         },
         "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "find_decisions",
+      "title": "Find decisions",
+      "description": "Lists this Home's Decisions, one line each: title and slug, kind, state (and when it was Fulfilled), the Room it is about or Home-wide, its open flags and Conflicts, and its one-line statement. Covers every state, Rejected and Fulfilled ones included, which the opening and Room Sheets leave out. Filter by room (a Room's slug) or homeWide, by kind, and by state. Before proposing a Decision, look up the Rejected ones in its scope and never propose one of them again. get_decision gives one Decision in full. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "room": {
+            "description": "Only the Decisions about this Room (its slug).",
+            "type": "string",
+            "minLength": 1
+          },
+          "homeWide": {
+            "description": "true for only the Home-wide Decisions.",
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "Only Decisions of this kind.",
+            "type": "string",
+            "enum": [
+              "design-direction",
+              "room-direction",
+              "room-use",
+              "palette",
+              "room-color",
+              "purchase",
+              "other"
+            ]
+          },
+          "state": {
+            "description": "Only Decisions in this state.",
+            "type": "string",
+            "enum": ["candidate", "leaning", "locked", "rejected"]
+          }
+        },
+        "required": ["session"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "get_decision",
+      "title": "Get decision",
+      "description": "Returns one Decision of this Home in full: its kind, scope, state, statement, the kind's content, its Requirements, its open flags and Conflicts, then one line per Decision of its Basis and per piece of Evidence. The opening, Room Sheets, and find_decisions give only one line per Decision (except the Design Direction and Palette, which the opening gives in full): fetch this when the work turns to a Decision, for example before changing it or resolving its flag. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The Decision's slug, as the opening, find_decisions, or a receipt gives it."
+          }
+        },
+        "required": ["session", "decision"]
       },
       "annotations": {
         "readOnlyHint": true,
@@ -2014,6 +2094,446 @@
           }
         },
         "required": ["session", "text"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "save_decision",
+      "title": "Save decision",
+      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors), room-color (a Surface's color from the Palette), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "description": "The slug of the Decision to change. Leave out to create one (one of the same kind, scope, and title that is not Rejected is changed instead of duplicated).",
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "design-direction",
+              "room-direction",
+              "room-use",
+              "palette",
+              "room-color",
+              "purchase",
+              "other"
+            ],
+            "description": "design-direction, room-direction, room-use, palette, room-color, purchase, or other. It never changes once created."
+          },
+          "room": {
+            "description": "The slug of the Room it is about. Needed for room-direction, room-use, and room-color; never given for design-direction or palette; left out for a Home-wide purchase or other.",
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "A short name, e.g. \"Warm minimalism\", \"Office for the spare room\"."
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "The Decision itself, in one line."
+          },
+          "content": {
+            "type": "object",
+            "properties": {
+              "mood": {
+                "description": "design-direction; room-direction only to override the Direction's: e.g. \"calm, grounded\".",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "temperature": {
+                "description": "design-direction: color temperature, warm, neutral, or cool.",
+                "type": "string",
+                "enum": ["warm", "neutral", "cool"]
+              },
+              "contrast": {
+                "description": "design-direction; room-direction only to override: low, medium, or high.",
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              },
+              "keyMaterials": {
+                "description": "design-direction: key materials, one each, e.g. \"oak\", \"linen\".",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "styleReferences": {
+                "description": "design-direction: style references, one each, e.g. \"Japandi\", or what an inspiration image the user showed has.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "principles": {
+                "description": "design-direction: guiding principles, one line each.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "direction": {
+                "description": "room-direction, required: one paragraph on how the Room should feel, refining the Design Direction.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1500
+              },
+              "functions": {
+                "description": "room-use, required: what the Room is to be used for: kitchen, dining, living, bedroom, office, bathroom, hallway, stairs, storage, utility, garage, other.",
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "kitchen",
+                    "dining",
+                    "living",
+                    "bedroom",
+                    "office",
+                    "bathroom",
+                    "hallway",
+                    "stairs",
+                    "storage",
+                    "utility",
+                    "garage",
+                    "other"
+                  ]
+                }
+              },
+              "colors": {
+                "description": "palette, required: its colors, each with a role.",
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A paint's name, or a description (\"warm grey\")."
+                    },
+                    "brand": {
+                      "description": "The paint maker.",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "code": {
+                      "description": "The maker's code.",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "lrv": {
+                      "description": "Light reflectance value, when published. Never ask the user.",
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "hex": {
+                      "description": "Approximate, for the screen only.",
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["measured", "blueprint", "estimated"],
+                      "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": ["base", "secondary", "accent"],
+                      "description": "base, secondary, or accent."
+                    },
+                    "note": {
+                      "description": "Where it is meant to go, e.g. \"walls throughout\".",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "required": ["name", "provenance", "role"]
+                }
+              },
+              "surface": {
+                "description": "room-color, required: walls, ceiling, floor, or woodwork.",
+                "type": "string",
+                "enum": ["walls", "ceiling", "floor", "woodwork"]
+              },
+              "wall": {
+                "description": "room-color: a Wall's position, when the color is for that Wall alone.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 99
+              },
+              "color": {
+                "description": "room-color, required: the name of a color of the Palette.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "finish": {
+                "description": "room-color, required: e.g. \"matt\", \"eggshell\".",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              }
+            },
+            "description": "The kind's own fields, replacing any recorded content; each field says which kinds take it. Leave out for purchase and other."
+          },
+          "basis": {
+            "description": "The slugs of the Decisions it rests on, replacing the recorded Basis. The Design Direction is in every Basis automatically: don't list it.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "evidence": {
+            "description": "Evidence to add: Notes, Sessions, or Decisions that support or undermine it. Giving a source already recorded changes its stance and note.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["note", "session", "decision"],
+                  "description": "note, session, or decision."
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A Note's slug (search_notes lists them), a Session's id (this one's, for what the user said or showed in it), or a Decision's slug."
+                },
+                "stance": {
+                  "type": "string",
+                  "enum": ["supports", "undermines"],
+                  "description": "supports or undermines."
+                },
+                "note": {
+                  "description": "What it shows, in one line.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": ["kind", "id", "stance"]
+            }
+          },
+          "requirements": {
+            "description": "purchase only: Requirements to add or change, by position. Those not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "description": "Its place in the list, from 1. A position that exists changes that Requirement; leave out to add one at the end.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99
+                },
+                "text": {
+                  "description": "Needed to add one: plain words, e.g. \"under 85 cm tall\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "strength": {
+                  "description": "Needed to add one: must or prefer.",
+                  "type": "string",
+                  "enum": ["must", "prefer"]
+                },
+                "reason": {
+                  "description": "Needed to add one: where it comes from.",
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "decision",
+                        "constraint",
+                        "note",
+                        "home",
+                        "room",
+                        "wall",
+                        "window",
+                        "door",
+                        "feature",
+                        "surface",
+                        "item"
+                      ],
+                      "description": "What it comes from: decision, constraint, note, home (its lift and narrowest access), room, wall, window, door, feature, surface, or item."
+                    },
+                    "id": {
+                      "description": "Its slug, e.g. \"two-cats\", \"living-room/wall-2\", \"living-room/floor\"; not for home.",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "field": {
+                      "description": "The one field it rests on, when only that field matters, e.g. \"length\" of a Wall or \"accessWidth\" of the home.",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    }
+                  },
+                  "required": ["kind"]
+                },
+                "archive": {
+                  "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "required": ["session", "kind", "title", "statement"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "set_decision_state",
+      "title": "Set decision state",
+      "description": "Moves one Decision to another state and returns a receipt, including every Decision the move flagged. Only these moves: candidate to leaning, locked, or rejected; leaning to candidate, locked, or rejected; locked to leaning (a Reopen) or rejected; rejected to candidate (a revival). Lock only when the user clearly commits. Before a Reopen, rejecting a Locked Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is required: why, quoting the user's words when they gave permission. A Reopen or Reject flags, but never changes, every Decision resting on this one; each flag stays until the user keeps, Reopens, or Rejects that Decision, which also clears its own flags and Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting the user. Then say plainly what changed, e.g. \"Locked: Design Direction 'Warm minimalism'\". Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The Decision's slug, as the opening, find_decisions, or a receipt gives it."
+          },
+          "to": {
+            "type": "string",
+            "enum": ["candidate", "leaning", "locked", "rejected"],
+            "description": "candidate, leaning, locked, or rejected; or its current state, to keep a flagged Decision as it is."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Why, in a sentence; quote the user's words when they gave permission. Never empty."
+          }
+        },
+        "required": ["session", "decision", "to", "reason"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "record_fulfilment",
+      "title": "Record fulfilment",
+      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. For now it takes Room use Decisions only: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it when the user says the change is made, and tell them what changed. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The slug of the Locked Decision that was carried out."
+          },
+          "roomFunctions": {
+            "description": "Room use: the functions the Room actually has now, only when they differ from what was decided.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "kitchen",
+                "dining",
+                "living",
+                "bedroom",
+                "office",
+                "bathroom",
+                "hallway",
+                "stairs",
+                "storage",
+                "utility",
+                "garage",
+                "other"
+              ]
+            }
+          }
+        },
+        "required": ["session", "decision"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "flag_conflict",
+      "title": "Flag conflict",
+      "description": "Raises a Conflict: something new (what the user now says, shows, or wants) contradicts a Locked Decision of this Home. Only a Locked Decision can have a Conflict; for one still open, add the Evidence with save_decision (stance undermines) instead. Raising it changes nothing else: the Decision stays Locked, and only the user resolves the Conflict, by keeping, Reopening, or Rejecting the Decision (with set_decision_state once they say which, or in the app). Describe the contradiction in a sentence or two, then tell the user. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The slug of the Locked Decision it contradicts."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "What contradicts it, in a sentence or two, e.g. what the user now says."
+          }
+        },
+        "required": ["session", "decision", "description"]
       },
       "annotations": {
         "readOnlyHint": false,

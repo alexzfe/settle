@@ -1,0 +1,45 @@
+Decision: Calm evenings (calm-evenings)
+Kind: Room Direction
+Scope: Living room (living-room)
+State: Locked
+Statement: A low, warm room for long evenings.
+
+Content:
+- Direction: Pools of lamplight, soft wool and linen, and the fireplace as the focus; nothing bright or glossy after dark.
+- Contrast, overriding the Design Direction's: medium
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Keep the original floors (keep-the-original-floors): Other, Locked
+
+Decision: Wool rug (wool-rug)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Leaning
+Statement: A large wool rug under the sofa.
+
+Requirements:
+1. must: At least 2.0 × 1.4 m (reason: Wall living-room/wall-2, length)
+2. prefer: Wool, low pile: loops catch the cats' claws (reason: Constraint Two cats (two-cats))
+
+Open flags:
+- wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Calm evenings (calm-evenings): Room Direction, Locked
+
+Evidence:
+- supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
+
+Decision: Keep the original floors (keep-the-original-floors)
+Kind: Other
+Scope: the whole Home
+State: Locked
+Statement: The oak boards and terracotta tiles stay.
+
+Open Conflicts:
+- keep-the-original-floors/conflict-1: The user now says the terracotta tiles crack every winter and wants them gone. (raised 2026-09-14)
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction

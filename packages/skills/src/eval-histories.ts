@@ -11,24 +11,47 @@ export interface HistoryContext {
   answer(tool: string, input: Record<string, unknown>): string;
 }
 
-/** Every tool Home Intake uses; a history loads them all, as a real Session's ToolSearch does. */
-const TOOLS = [
-  "open_session",
-  "get_room_sheet",
-  "find_items",
-  "search_notes",
-  "view_images",
-  "save_home",
-  "save_room",
-  "save_items",
-  "set_constraints",
-  "save_note",
-  "close_session",
-];
+/** Every tool each Skill uses; a history loads them all, as a real Session's ToolSearch does. */
+const TOOLS = {
+  "home-intake": [
+    "open_session",
+    "get_room_sheet",
+    "find_items",
+    "search_notes",
+    "view_images",
+    "save_home",
+    "save_room",
+    "save_items",
+    "set_constraints",
+    "save_note",
+    "close_session",
+  ],
+  "design-direction": [
+    "open_session",
+    "get_room_sheet",
+    "find_items",
+    "find_decisions",
+    "get_decision",
+    "search_notes",
+    "save_decision",
+    "set_decision_state",
+    "record_fulfilment",
+    "flag_conflict",
+    "set_constraints",
+    "save_note",
+    "close_session",
+  ],
+} as const;
 
-/** The start of every Home Intake Session: the user's message, the Skill, and the opening. */
-function opening(context: HistoryContext, message: string): { turns: Turn[]; session: string } {
-  const input = { skill: "home-intake" };
+type Skill = keyof typeof TOOLS;
+
+/** The start of every Session: the user's message, the Skill, and the opening. */
+function opening(
+  context: HistoryContext,
+  message: string,
+  skill: Skill = "home-intake",
+): { turns: Turn[]; session: string } {
+  const input = { skill };
   const result = context.answer("open_session", input);
   const session = /^Session: (\S+)/m.exec(result)?.[1];
   if (!session) throw new Error("The open_session mock must start with `Session: <id>`");
@@ -36,8 +59,8 @@ function opening(context: HistoryContext, message: string): { turns: Turn[]; ses
     session,
     turns: [
       { user: message },
-      { skill: "home-intake", body: context.skill("home-intake") },
-      { toolSearch: TOOLS },
+      { skill, body: context.skill(skill) },
+      { toolSearch: TOOLS[skill] },
       { tool: "open_session", input, result },
     ],
   };
@@ -222,6 +245,76 @@ function throughDimensions(context: HistoryContext): Turn[] {
   ];
 }
 
+// ─── Design Direction cases ─────────────────────────────────────────────────────────────────
+// The Fixture Home at different points in settling its Design Direction. A case whose own
+// open_session mock sets that point (no Direction yet, a Rejected one, a Leaning one) says so;
+// the others use the suite's opening, whose Direction is Locked.
+
+/** A Design Direction Session's start: the opening, then the Rejected Directions looked up. */
+function directionStart(
+  context: HistoryContext,
+  message: string,
+): { turns: Turn[]; session: string } {
+  const { turns, session } = opening(context, message, "design-direction");
+  const lookup = { session, kind: "design-direction", state: "rejected" };
+  return {
+    session,
+    turns: [
+      ...turns,
+      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+    ],
+  };
+}
+
+const NO_DIRECTION_YET = `Working on Fixture Home, in London. It has no Design Direction yet, and the Palette, each Room's direction, and what you buy will all rest on it, so let's start there.`;
+
+const FIRST_ROUND = `${NO_DIRECTION_YET}
+
+First round, about how you live and what you love:
+
+1. **Coming home.** How do you want the house to feel when you walk in? *(Recommended: calm and uncluttered, somewhere to unwind.)*
+2. **Places you've loved.** Homes, hotels, or places you've felt good in, and what you liked about them. Pictures are welcome. *(Recommended: two or three places, a line each.)*
+3. **Everyday life.** With two cats and a rented house, what should the direction make easy? *(Recommended: tough, washable fabrics, and pieces you can take with you.)*
+4. **What stays.** Anything you own and love that the direction should work around? *(Recommended: the oak dining chairs.)*`;
+
+const MOOD_ROUND = `Saved as a Candidate: Design Direction 'Calm and natural'.
+
+Your two places pull in slightly different directions, so this round is about the mood:
+
+1. **Mood.** Copenhagen reads calm, airy, and pared back; Provence reads warm, earthy, and lived-in. Which is closer to how you want home to feel, or is it a mix? *(Recommended: a mix, calm and pared back with earthy warmth.)*
+2. **Temperature.** Warm, neutral, or cool overall? *(Recommended: warm, since you said never cold.)*
+3. **Contrast.** Low, medium, or high? *(Recommended: low, with soft steps between light and dark.)*`;
+
+const CHARACTER_ROUND = `${NO_DIRECTION_YET}
+
+First round:
+
+1. **Coming home.** How do you want the house to feel when you walk in? *(Recommended: relaxed and welcoming.)*
+2. **What you're drawn to.** Places, eras, or things you love the look of. *(Recommended: two or three, with what you like about each.)*
+3. **Everyday life.** With two cats, what should the direction make easy? *(Recommended: tough, washable fabrics.)*
+4. **What stays.** Anything you own that the direction should work around? *(Recommended: the oak dining chairs.)*`;
+
+const LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked:
+
+- **Mood:** calm, uncluttered, unhurried
+- **Temperature:** warm
+- **Contrast:** low
+- **Key materials:** oak, linen, wool, rough plaster, terracotta
+- **Style references:** Japandi; a Copenhagen hotel's pale wood and linen; a Provence farmhouse's terracotta and plaster
+- **Principles:** fewer, better things; tough, washable fabrics the cats can't ruin; the oak dining chairs stay
+
+Every line is filled in and they agree with each other, so it could be Locked now. Once it is, the Palette and each Room's direction rest on it, and changing it later means reopening it.
+
+Shall I Lock it as it stands? *(Recommended: yes.)*`;
+
+const WHERE_WE_ARE = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked: calm and grounded, warm, low contrast, in oak, linen, limewash, and unlacquered brass. Two things are waiting for you, which we can take up when we reach them: a Conflict on *Keep the original floors* (the terracotta tiles), and a flag on the *Wool rug*.
+
+Where next? *(Recommended: 1.)*
+
+1. **Hallway.** Its use is still a Candidate, *Storage in the hallway*: we'd settle it together with how the Hallway should feel.
+2. **Main bedroom.** No Room Direction yet.
+3. **Kitchen.** No Room Direction yet.`;
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -270,4 +363,78 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   // Graded turn: the user confirms the Windows and Doors. The reply asks where north is before
   // any Wall's facing is recorded.
   "home-intake-asks-north": throughDimensions,
+
+  // Graded turn: the user is still weighing two moods. Nothing is Locked, and the reply asks.
+  // The case's own opening has no Design Direction yet.
+  "design-direction-no-lock-without-commitment": (context) => {
+    const { turns, session } = directionStart(
+      context,
+      "I don't know what style I like. Can you help me work it out?",
+    );
+    const candidate = {
+      session,
+      kind: "design-direction",
+      title: "Calm and natural",
+      statement: "A calm, uncluttered home in natural materials, somewhere to unwind.",
+      content: {
+        mood: "calm and uncluttered, never cold",
+        keyMaterials: ["oak", "linen", "plaster", "terracotta"],
+        styleReferences: [
+          "a small Copenhagen hotel: pale wood and linen",
+          "a Provence farmhouse: terracotta floors, rough plaster walls",
+        ],
+        principles: ["tough, washable fabrics the cats can't ruin", "the oak dining chairs stay"],
+      },
+    };
+    return [
+      ...turns,
+      { assistant: FIRST_ROUND },
+      {
+        user: "Calm, definitely, but not cold. We loved a small hotel in Copenhagen, all pale wood and linen, and a friend's farmhouse in Provence with terracotta floors and rough plaster walls. Yes to cat-proof fabrics, and the oak chairs stay.",
+      },
+      // The case's save_decision mock answers the graded turn's edits, so the create gets its
+      // receipt in core's wording here.
+      {
+        tool: "save_decision",
+        input: candidate,
+        result:
+          "Calm and natural (calm-and-natural): created as a Candidate Design Direction, Home-wide",
+      },
+      { assistant: MOOD_ROUND },
+    ];
+  },
+
+  // Graded turn: the user asks for directions that suit their love of character. The case's
+  // find_decisions mock lists a Rejected "Industrial loft" Direction, which is never offered again.
+  "design-direction-never-reproposes-rejected": (context) => [
+    ...directionStart(context, "Help us pick a style for the house.").turns,
+    { assistant: CHARACTER_ROUND },
+  ],
+
+  // Graded turn: the user wants to rethink the Locked Direction. The reply asks before Reopening,
+  // and no state changes. The suite's opening has Warm minimalism Locked.
+  "design-direction-asks-before-reopen": (context) => {
+    const { turns, session } = opening(
+      context,
+      "Let's carry on with our style. Where had we got to?",
+      "design-direction",
+    );
+    const everything = { session };
+    return [
+      ...turns,
+      {
+        tool: "find_decisions",
+        input: everything,
+        result: context.answer("find_decisions", everything),
+      },
+      { assistant: WHERE_WE_ARE },
+    ];
+  },
+
+  // Graded turn: the user commits to the Leaning Direction. It is Locked with a reason, and the
+  // reply says so. The case's own opening has the Direction Leaning.
+  "design-direction-says-what-changed": (context) => [
+    ...directionStart(context, "Can we finish off our style? I think we're nearly there.").turns,
+    { assistant: LOCK_OFFER },
+  ],
 };

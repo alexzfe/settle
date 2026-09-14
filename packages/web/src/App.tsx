@@ -10,6 +10,8 @@ import {
 import styles from "./App.module.css";
 import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
+import { DecisionPage } from "./DecisionPage";
+import { DecisionsPage } from "./DecisionsPage";
 import { HomeListPage } from "./HomeListPage";
 import { HomePage } from "./HomePage";
 import { ItemsPage } from "./ItemsPage";
@@ -28,6 +30,8 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage /> },
           { path: "rooms/:room", element: <RoomPage /> },
+          { path: "decisions", element: <DecisionsPage /> },
+          { path: "decisions/:decision", element: <DecisionPage /> },
           { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
           { path: "items", element: <ItemsPage /> },
           { path: "log", element: <ChangeLogPage /> },
@@ -66,6 +70,7 @@ function HomeScope({ home }: { home: string }) {
         <NavLink to={`/homes/${home}`} end>
           Home
         </NavLink>
+        <NavLink to={`/homes/${home}/decisions`}>Decisions</NavLink>
         <NavLink to={`/homes/${home}/items`}>Items</NavLink>
         <NavLink to={`/homes/${home}/log`}>Change log</NavLink>
       </nav>
