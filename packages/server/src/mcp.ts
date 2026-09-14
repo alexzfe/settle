@@ -74,7 +74,14 @@ function buildServer(core: Core, tools: AnyOperation[], home: string): McpServer
           // Core reads the Session from the tool's `session` argument.
           const output = await core.run(tool.name, { caller: { kind: "session" }, home }, args);
           const text = tool.text ? tool.text(output) : JSON.stringify(output);
-          return { content: [{ type: "text", text }] };
+          // The text block first, naming what the images show; never structuredContent, which
+          // makes Codex drop the images.
+          const images = (tool.images?.(output) ?? []).map(({ data, mimeType }) => ({
+            type: "image" as const,
+            data: Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString("base64"),
+            mimeType,
+          }));
+          return { content: [{ type: "text" as const, text }, ...images] };
         } catch (error) {
           if (!(error instanceof CoreError)) throw error;
           return { isError: true, content: [{ type: "text", text: error.message }] };

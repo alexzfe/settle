@@ -1,4 +1,6 @@
 // The server-enforced rules of the Home model (slice 2), written before their implementation.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   type CallContext,
@@ -8,6 +10,7 @@ import {
   type OperationName,
 } from "./core.js";
 import { CoreError } from "./errors.js";
+import { FIXTURE_FILES } from "./fixture/fixture-home.js";
 import type { Measurement } from "./operations/schemas.js";
 
 const web: CallContext = { caller: { kind: "web" } };
@@ -60,6 +63,14 @@ async function setUp(name = "My flat") {
       core.run("find_items", context, { session, ...input }),
     room: async (room: string) => (await core.run("get_room", web, { home: home.slug, room })).room,
     getHome: () => core.run("get_home", web, { home: home.slug }),
+    /** Uploads the one-page A3 plan as "Agent plan", the Blueprint `blueprint()` values name. */
+    uploadAgentPlan: () =>
+      core.run("upload_blueprint", web, {
+        home: home.slug,
+        file: readFileSync(join(FIXTURE_FILES, "blueprint-a3.pdf")),
+        fileName: "blueprint-a3.pdf",
+        label: "Agent plan",
+      }),
   };
 }
 
@@ -81,6 +92,7 @@ describe("the Provenance rule", () => {
 
   it("orders Provenance measured > blueprint > estimated", async () => {
     const my = await setUp();
+    await my.uploadAgentPlan();
     const cases: [Measurement, Measurement, boolean][] = [
       [estimated(3000), blueprint(3100), true],
       [blueprint(3000), measured(3100), true],

@@ -1,6 +1,7 @@
-// The Zod schemas of every slice 2 operation input and result, and of the records and values they
-// carry: the single source of truth that core, the web API, the MCP tools, the web UI, and the
-// Skills read. Field names are the camelCase of docs/specs/home-model.md's field tables.
+// The Zod schemas of the Home model's operation inputs and results (slices 2 and 3), and of the
+// records and values they carry: the single source of truth that core, the web API, the MCP tools,
+// the web UI, and the Skills read. Field names are the camelCase of docs/specs/home-model.md's
+// field tables.
 import { z } from "zod";
 import { homeInput, sessionInput } from "./scope.js";
 
@@ -62,6 +63,23 @@ export const LIGHT_ROLES = ["ambient", "task", "accent"] as const;
 export const COLOR_TEMPERATURES = ["warm", "neutral", "cool"] as const;
 export const DIMMING_KINDS = ["none", "standard", "dim-to-warm", "tunable"] as const;
 
+// ─── Blueprints (docs/research/spikes/3-pdf-to-png.md and 4-images-in-results.md) ─────────────
+
+/** What a Blueprint file may be. HEIC is refused until conversion arrives. */
+export const BLUEPRINT_FILE_TYPES = ["pdf", "png", "jpeg"] as const;
+/** A quarter of a page, which view_images renders at twice the whole page's scale. */
+export const QUARTERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+/** The image types view_images returns: PNG, or JPEG for a page whose PNG is over 1 MB. */
+export const IMAGE_TYPES = ["image/png", "image/jpeg"] as const;
+/** Every Blueprint page is rendered with its long edge at this many pixels. */
+export const PAGE_LONG_EDGE = 2000;
+/** The most pages one view_images call returns: six 2000 px pages fit a 25K-token tool result. */
+export const MAX_PAGES_PER_VIEW = 6;
+
+export type BlueprintFileType = (typeof BLUEPRINT_FILE_TYPES)[number];
+export type Quarter = (typeof QUARTERS)[number];
+export type ImageType = (typeof IMAGE_TYPES)[number];
+
 export type Provenance = (typeof PROVENANCES)[number];
 export type RoomFunction = (typeof ROOM_FUNCTIONS)[number];
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
@@ -86,10 +104,15 @@ export const provenanceSchema = z
   .enum(PROVENANCES)
   .describe("measured (by the user), blueprint (printed on one), or estimated (by eye, guessed).");
 
+/** Where a Blueprint value is printed. The Blueprint and its page must exist in the Home. */
 export const blueprintSourceSchema = z.object({
-  blueprint: z.string().trim().min(1).describe("The Blueprint's slug."),
-  page: z.number().int().min(1),
-  printed: z.string().trim().min(1).describe(`The text as printed, e.g. 12'6".`),
+  blueprint: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The Blueprint's slug, as the Home Overview lists it."),
+  page: z.number().int().min(1).describe("The page it is printed on, from 1."),
+  printed: z.string().trim().min(1).describe(`The text exactly as printed, e.g. 12'6" or 3.62.`),
 });
 
 /** A length with its Provenance, in whole millimetres. */
@@ -203,6 +226,11 @@ const wallPosition = z.number().int().min(1).max(99);
 
 const slugInput = z.string().trim().min(1);
 
+/** A file's bytes: web only, never part of a tool's JSON schema. */
+const bytes = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
+  message: "Expected the file's bytes",
+});
+
 const text = z.string().trim().min(1);
 
 // ─── save_home ──────────────────────────────────────────────────────────────────────────────
@@ -228,6 +256,12 @@ export const levelInput = z.object({
     .boolean()
     .optional()
     .describe("true to remove the Level. Refused while any Room, even an Archived one, is on it."),
+});
+
+export const blueprintPageLevelInput = z.object({
+  blueprint: slugInput.describe("The Blueprint's slug, as the Home Overview lists it."),
+  page: z.number().int().min(1).describe("The page, from 1."),
+  level: slugInput.describe('The Level the page shows, by slug or name ("ground").'),
 });
 
 export const saveHomeInput = z.object({
@@ -258,11 +292,19 @@ export const saveHomeInput = z.object({
     .array(levelInput)
     .optional()
     .describe("Levels to add, change, or remove. Levels not listed stay as they are."),
+  blueprintPages: z
+    .array(blueprintPageLevelInput)
+    .optional()
+    .describe(
+      "Which Level each Blueprint page shows. Applied after `levels`, so a Level added in the " +
+        "same call can be named. Pages not listed stay as they are.",
+    ),
   overrideProvenance: overrideProvenanceInput,
 });
 
 export type SaveHomeInput = z.input<typeof saveHomeInput>;
 export type LevelInput = z.input<typeof levelInput>;
+export type BlueprintPageLevelInput = z.input<typeof blueprintPageLevelInput>;
 
 // ─── save_room ──────────────────────────────────────────────────────────────────────────────
 
@@ -616,9 +658,62 @@ export const getRoomSheetInput = z.object({
   room: slugInput.describe(
     'The Room\'s slug as the opening lists it ("living-room"); its name also works.',
   ),
+  withSources: z
+    .boolean()
+    .optional()
+    .describe(
+      "true to show, after each value printed on a Blueprint, its Blueprint, page, and the text " +
+        "exactly as printed: 3.62 m [agent-plan p.1: 3.62]. Only when a question needs them.",
+    ),
 });
 
 export type GetRoomSheetInput = z.input<typeof getRoomSheetInput>;
+
+// ─── Blueprints ─────────────────────────────────────────────────────────────────────────────
+
+export const viewImagesInput = z.object({
+  session: sessionInput,
+  blueprint: slugInput.describe("The Blueprint's slug, as the Home Overview lists it."),
+  pages: z
+    .array(z.number().int().min(1))
+    .min(1)
+    .max(MAX_PAGES_PER_VIEW)
+    .describe(
+      "The pages to look at, from 1: at most 6 per call, usually the pages of one Level. Call " +
+        "again for more.",
+    ),
+  crop: z
+    .enum(QUARTERS)
+    .optional()
+    .describe(
+      "Only this quarter of each page (top-left, top-right, bottom-left, bottom-right), at twice " +
+        "the scale: for printed text too small to read on the whole page.",
+    ),
+});
+
+/** Web only: the multipart form's fields, with the file as bytes. */
+export const uploadBlueprintInput = z.object({
+  home: homeInput,
+  file: bytes.describe("The file's bytes: a PDF, PNG, or JPEG."),
+  fileName: z.string().trim().min(1).max(255).describe("The file's name as uploaded."),
+  label: text
+    .max(100)
+    .optional()
+    .describe('e.g. "Estate agent plan". The file\'s name, without its extension, when left out.'),
+});
+
+export const listBlueprintsInput = z.object({ home: homeInput });
+
+export const getBlueprintPageInput = z.object({
+  home: homeInput,
+  blueprint: slugInput.describe("The Blueprint's slug."),
+  page: z.number().int().min(1).describe("The page, from 1."),
+});
+
+export type ViewImagesInput = z.input<typeof viewImagesInput>;
+export type UploadBlueprintInput = z.input<typeof uploadBlueprintInput>;
+export type ListBlueprintsInput = z.input<typeof listBlueprintsInput>;
+export type GetBlueprintPageInput = z.input<typeof getBlueprintPageInput>;
 
 // ─── Web read views ─────────────────────────────────────────────────────────────────────────
 
@@ -673,6 +768,32 @@ export const homeSchema = z.object({
 });
 
 export const levelSchema = z.object({ slug: z.string(), name: z.string(), storey: z.number() });
+
+/** One page of a Blueprint, as rendered on upload. */
+export const blueprintPageSchema = z.object({
+  /** From 1. */
+  page: z.number(),
+  /** The Level the page shows, once mapped through save_home. */
+  level: levelSchema.optional(),
+  /** The rendered PNG's size in pixels, 2000 on the long edge, after the page's rotation. */
+  width: z.number(),
+  height: z.number(),
+  /** Whether the page has a text layer, so its printed text is exact; a scan or photo has none. */
+  hasText: z.boolean(),
+});
+
+export const blueprintSchema = z.object({
+  slug: z.string(),
+  /** The user's label, or the file's name without its extension. */
+  label: z.string(),
+  /** The file's name as uploaded. */
+  fileName: z.string(),
+  fileType: z.enum(BLUEPRINT_FILE_TYPES),
+  pageCount: z.number(),
+  uploadedAt: z.string(),
+  /** In page order. */
+  pages: z.array(blueprintPageSchema),
+});
 
 /** A Room as the Home lists it. */
 export const roomSchema = z.object({
@@ -843,6 +964,8 @@ export const changeSchema = z.object({
 
 export type Home = z.infer<typeof homeSchema>;
 export type Level = z.infer<typeof levelSchema>;
+export type Blueprint = z.infer<typeof blueprintSchema>;
+export type BlueprintPage = z.infer<typeof blueprintPageSchema>;
 export type Room = z.infer<typeof roomSchema>;
 export type NamedRef = z.infer<typeof namedRefSchema>;
 export type Wall = z.infer<typeof wallSchema>;
@@ -881,7 +1004,43 @@ export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
 /** Newest first. */
 export const getChangeLogResult = z.object({ changes: z.array(changeSchema) });
 
+/** get_room_sheet: the Room Sheet as text. */
+export const getRoomSheetResult = z.object({ sheet: z.string() });
+
+export const uploadBlueprintResult = z.object({ blueprint: blueprintSchema });
+/** In the order they were uploaded. */
+export const listBlueprintsResult = z.object({ blueprints: z.array(blueprintSchema) });
+
+/** One image view_images returns: a whole page, or a quarter of it. */
+export const viewedPageSchema = blueprintPageSchema.extend({
+  /** Set when only this quarter was rendered, at twice the page's scale. */
+  crop: z.enum(QUARTERS).optional(),
+  /** PNG, or JPEG (quality 85) when the page's PNG is over 1 MB. */
+  mimeType: z.enum(IMAGE_TYPES),
+  /** The image's bytes; `width` and `height` are its size. */
+  data: bytes,
+});
+
+/** view_images: over MCP, one text block naming the pages, then one image block per page. */
+export const viewImagesResult = z.object({
+  blueprint: blueprintSchema,
+  /** In the order asked for. */
+  pages: z.array(viewedPageSchema),
+});
+
+/** get_blueprint_page: the rendered page, served as the PNG itself. */
+export const getBlueprintPageResult = z.object({
+  mimeType: z.literal("image/png"),
+  data: bytes,
+});
+
 export type ReceiptResult = z.infer<typeof receiptResult>;
+export type GetRoomSheetResult = z.infer<typeof getRoomSheetResult>;
+export type UploadBlueprintResult = z.infer<typeof uploadBlueprintResult>;
+export type ListBlueprintsResult = z.infer<typeof listBlueprintsResult>;
+export type ViewedPage = z.infer<typeof viewedPageSchema>;
+export type ViewImagesResult = z.infer<typeof viewImagesResult>;
+export type GetBlueprintPageResult = z.infer<typeof getBlueprintPageResult>;
 export type GetHomeResult = z.infer<typeof getHomeResult>;
 export type GetRoomResult = z.infer<typeof getRoomResult>;
 export type ListItemsResult = z.infer<typeof listItemsResult>;

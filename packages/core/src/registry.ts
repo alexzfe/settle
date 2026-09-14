@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { RecordKind } from "./events.js";
-import type { FileStore } from "./files.js";
+import type { FileStore, PdfRenderer } from "./files.js";
 import type { HomeRow, Store } from "./store.js";
 
 /**
@@ -32,6 +32,10 @@ export interface Change {
 export interface OperationContext extends CallContext {
   store: Store;
   files: FileStore;
+  /** Renders Blueprint files to page images and text lines. */
+  renderPdf: PdfRenderer;
+  /** The folder holding uploads/ and rendered/, which the stored Blueprint paths are relative to. */
+  dataDir(): string;
   /** Now, as an ISO timestamp. */
   now(): string;
   /** A random integer from 0 up to, not including, `max`. */
@@ -58,6 +62,11 @@ export interface Operation<Input extends z.ZodObject = z.ZodObject, Output = unk
   handler(context: OperationContext, input: z.output<Input>): Output | Promise<Output>;
   /** For an Agent operation, the text the AI reads, rendered from the result. */
   text?(output: Output): string;
+  /**
+   * For an Agent operation that shows pictures (view_images): the images, which the MCP tool
+   * returns as image blocks after the text block, never as structuredContent.
+   */
+  images?(output: Output): { data: Uint8Array; mimeType: string }[];
 }
 
 export function defineOperation<Input extends z.ZodObject, Output>(

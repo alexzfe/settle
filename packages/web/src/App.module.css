@@ -78,6 +78,22 @@
   vertical-align: top;
 }
 
+a.tag {
+  color: inherit;
+}
+
+/** A Blueprint page at its natural size, scrolled within the page. */
+.viewer {
+  max-height: 80vh;
+  overflow: auto;
+  border: 1px solid #ccc;
+}
+
+.viewer img {
+  display: block;
+  max-width: none;
+}
+
 .error {
   color: #b00020;
 }

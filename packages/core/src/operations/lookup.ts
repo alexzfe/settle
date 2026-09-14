@@ -1,7 +1,16 @@
 import { CoreError } from "../errors.js";
-import { type NamedRecord, named } from "../render.js";
-import type { LevelRow, RoomRow, WallRow } from "../store.js";
+import { isMeasurement, type NamedRecord, named } from "../render.js";
+import type {
+  BlueprintPageRow,
+  BlueprintRow,
+  HomeRow,
+  LevelRow,
+  RoomRow,
+  Store,
+  WallRow,
+} from "../store.js";
 import type { HomeModel } from "./model.js";
+import type { Measurement } from "./schemas.js";
 import { sameName } from "./writer.js";
 
 // Finding the records a call names, within its Home only, with errors that list what exists.
@@ -59,4 +68,105 @@ export function findLevel(levels: LevelRow[], wanted: string): LevelRow | undefi
 
 export function list(records: NamedRecord[]): string {
   return records.map(named).join(", ");
+}
+
+/** A Blueprint by its label and slug: "Agent plan (agent-plan)". */
+export function blueprintName(blueprint: BlueprintRow): string {
+  return named({ name: blueprint.label, slug: blueprint.slug });
+}
+
+export function requireBlueprint(blueprints: BlueprintRow[], slug: string): BlueprintRow {
+  const blueprint = blueprints.find((each) => each.slug === slug);
+  if (blueprint) return blueprint;
+  throw new CoreError(
+    "not_found",
+    `This Home has no Blueprint "${slug}". ${blueprintsText(blueprints)}`,
+  );
+}
+
+export function requirePage(
+  pages: BlueprintPageRow[],
+  blueprint: BlueprintRow,
+  page: number,
+): BlueprintPageRow {
+  const row = pages.find((each) => each.blueprintId === blueprint.id && each.page === page);
+  if (row) return row;
+  throw new CoreError(
+    "not_found",
+    `${blueprintName(blueprint)} has no page ${page}: it has ${pageRange(blueprint.pageCount)}.`,
+  );
+}
+
+/**
+ * The Blueprint sources of a write: every length with blueprint Provenance must carry a source
+ * naming a page of one of this Home's Blueprints, and a source goes with blueprint Provenance
+ * only. Refuses the whole write, naming the field, before anything is stored.
+ */
+export function requireSources(store: Store, home: HomeRow, input: unknown): void {
+  let blueprints: BlueprintRow[] | undefined;
+  eachMeasurement(input, "", (measurement, where) => {
+    const { provenance, source } = measurement;
+    if (provenance !== "blueprint") {
+      if (!source) return;
+      throw new CoreError(
+        "validation",
+        `${where} has a source but ${provenance} Provenance. A source goes only with blueprint ` +
+          "Provenance, for a figure printed on a Blueprint: leave the source out, or make the " +
+          "Provenance blueprint.",
+      );
+    }
+    if (!source) {
+      throw new CoreError(
+        "validation",
+        `${where} has blueprint Provenance but no source. Give source { blueprint, page, ` +
+          "printed } with the text exactly as printed; a length scaled off the drawing is " +
+          "estimated.",
+      );
+    }
+    blueprints ??= store.list("blueprints", home.id);
+    const blueprint = blueprints.find((each) => each.slug === source.blueprint);
+    if (!blueprint) {
+      throw new CoreError(
+        "not_found",
+        `${where} names Blueprint "${source.blueprint}", which this Home does not have. ` +
+          blueprintsText(blueprints),
+      );
+    }
+    if (source.page > blueprint.pageCount) {
+      throw new CoreError(
+        "not_found",
+        `${where} names page ${source.page} of ${blueprintName(blueprint)}, which has ` +
+          `${pageRange(blueprint.pageCount)}.`,
+      );
+    }
+  });
+}
+
+/** Calls `visit` with every length in `value`, and where it is ("walls.3.length"). */
+function eachMeasurement(
+  value: unknown,
+  path: string,
+  visit: (measurement: Measurement, where: string) => void,
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((each, index) => {
+      eachMeasurement(each, `${path}.${index}`, visit);
+    });
+  } else if (isMeasurement(value)) {
+    visit(value, path);
+  } else if (typeof value === "object" && value !== null && !(value instanceof Uint8Array)) {
+    for (const [key, each] of Object.entries(value)) {
+      eachMeasurement(each, path ? `${path}.${key}` : key, visit);
+    }
+  }
+}
+
+function blueprintsText(blueprints: BlueprintRow[]): string {
+  return blueprints.length === 0
+    ? "It has no Blueprints yet: the user uploads them on the Home's page in the app."
+    : `Its Blueprints are ${blueprints.map(blueprintName).join(", ")}.`;
+}
+
+function pageRange(count: number): string {
+  return count === 1 ? "only page 1" : `pages 1 to ${count}`;
 }

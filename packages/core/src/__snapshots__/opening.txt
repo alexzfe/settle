@@ -11,6 +11,9 @@ Constraints:
 
 Unplaced Items: 1
 
+Blueprints:
+- Agent plan (agent-plan): 1 page; p.1 Ground
+
 Rooms:
 - Living room (living-room): Ground; living, dining; walls 5.20, 2.10, 1.50, 1.80, ~3.70, 3.90 m; ceiling 2.60 m; windows S, W; used evening, night; 4 Items
 - Kitchen (kitchen): Ground; kitchen; 3.40 × 2.80 m; ceiling 2.50 m; windows E; used morning, evening; 1 Item; Gaps: woodwork Surface

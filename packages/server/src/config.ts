@@ -5,7 +5,7 @@ export const DEFAULT_PORT = 4380;
 
 export interface Config {
   port: number;
-  /** Holds the database, and later uploads/ and rendered/. */
+  /** Holds the database, uploads/ (the Blueprint files), and rendered/ (their pages as PNGs). */
   dataDir: string;
 }
 

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Core, createCore } from "@idh/core";
+import { type Core, createCore, FIXTURE_FILES } from "@idh/core";
 import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
@@ -200,6 +200,7 @@ describe("the MCP endpoint", () => {
       ["get_room_sheet", true],
       ["find_items", true],
       ["search_notes", true],
+      ["view_images", true],
       ["save_home", false],
       ["save_room", false],
       ["save_items", false],
@@ -244,6 +245,154 @@ describe("the MCP endpoint", () => {
   it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @idh/server tools:json)", async () => {
     const saved = JSON.parse(readFileSync(TOOLS_JSON, "utf8")) as unknown;
     expect(await listTools(app, PORT)).toEqual(saved);
+  });
+});
+
+describe("Blueprints", () => {
+  const A3 = readFileSync(join(FIXTURE_FILES, "blueprint-a3.pdf"));
+  const THREE_PAGES = readFileSync(join(FIXTURE_FILES, "blueprint-3-pages.pdf"));
+  const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  function pngSize(png: Uint8Array): [number, number] {
+    const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+    return [view.getUint32(16), view.getUint32(20)];
+  }
+
+  function upload(fields: Record<string, string | File>, headers: Record<string, string> = {}) {
+    const form = new FormData();
+    for (const [name, value] of Object.entries(fields)) form.set(name, value);
+    return app.request("/api/upload_blueprint", { method: "POST", body: form, headers });
+  }
+
+  const pdf = (bytes: Uint8Array, name: string) =>
+    new File([new Uint8Array(bytes)], name, { type: "application/pdf" });
+
+  it("takes an upload as a multipart form, and serves each rendered page as a PNG", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+
+    const uploaded = await upload({
+      home: "my-flat",
+      file: pdf(A3, "plan.pdf"),
+      label: "Agent plan",
+    });
+    const page = await app.request(
+      "/api/get_blueprint_page?home=my-flat&blueprint=agent-plan&page=1",
+    );
+    const listed = await api("list_blueprints", { home: "my-flat" });
+
+    expect(uploaded.status).toBe(200);
+    expect(await uploaded.json()).toMatchObject({
+      blueprint: {
+        slug: "agent-plan",
+        label: "Agent plan",
+        fileName: "plan.pdf",
+        pageCount: 1,
+        pages: [{ page: 1, width: 2000, height: 1414, hasText: true }],
+      },
+    });
+    expect(page.status).toBe(200);
+    expect(page.headers.get("content-type")).toBe("image/png");
+    const png = new Uint8Array(await page.arrayBuffer());
+    expect([...png.subarray(0, 8)]).toEqual(PNG_SIGNATURE);
+    expect(pngSize(png)).toEqual([2000, 1414]);
+    expect(await listed.json()).toMatchObject({ blueprints: [{ slug: "agent-plan" }] });
+  });
+
+  it("answers a refused upload with 400 and a message for the user", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const text = new File(["rooms: 3"], "notes.txt", { type: "text/plain" });
+
+    const truncated = await upload({ home: "my-flat", file: pdf(A3.subarray(0, 600), "cut.pdf") });
+    const unsupported = await upload({ home: "my-flat", file: text });
+    const noFile = await upload({ home: "my-flat" });
+    const json = await api("upload_blueprint", { home: "my-flat" });
+    const evil = await upload(
+      { home: "my-flat", file: pdf(A3, "plan.pdf") },
+      { origin: "https://evil.example" },
+    );
+
+    expect([truncated.status, unsupported.status, noFile.status]).toEqual([400, 400, 400]);
+    expect(await truncated.json()).toEqual({
+      error: { code: "no_pages", message: expect.stringContaining("no pages") },
+    });
+    expect(await unsupported.json()).toEqual({
+      error: { code: "unsupported_file", message: expect.stringContaining("PDF, PNG, or JPEG") },
+    });
+    expect([json.status, evil.status]).toEqual([415, 403]);
+    const listed = await api("list_blueprints", { home: "my-flat" });
+    expect(await listed.json()).toEqual({ blueprints: [] });
+  });
+
+  it("answers a page that does not exist with 404, and a JSON call for the PNG with 405", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    await upload({ home: "my-flat", file: pdf(A3, "plan.pdf"), label: "Plan" });
+
+    const missing = await app.request("/api/get_blueprint_page?home=my-flat&blueprint=plan&page=2");
+    const asJson = await api("get_blueprint_page", { home: "my-flat", blueprint: "plan", page: 1 });
+
+    expect(missing.status).toBe(404);
+    expect(((await missing.json()) as { error: { message: string } }).error.message).toContain(
+      "has no page 2",
+    );
+    expect(asJson.status).toBe(405);
+  });
+
+  it("view_images returns the text block, then two image blocks, under the 25K-token cap", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    await upload({ home: "my-flat", file: pdf(THREE_PAGES, "plan.pdf"), label: "Plan" });
+    const opened = await callTool("my-flat", "open_session", { skill: "home-intake" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1];
+
+    const response = await mcp("my-flat", "tools/call", {
+      name: "view_images",
+      arguments: { session, blueprint: "plan", pages: [1, 2] },
+    });
+    const raw = await response.text();
+    const { result } = JSON.parse(raw) as {
+      result: {
+        content: { type: string; text?: string; data?: string; mimeType?: string }[];
+        structuredContent?: unknown;
+        isError?: boolean;
+      };
+    };
+
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent).toBeUndefined();
+    expect(result.content.map((block) => block.type)).toEqual(["text", "image", "image"]);
+    const [text, ...images] = result.content;
+    expect(text?.text).toMatch(/^Blueprint: Plan \(plan\), 3 pages/);
+    expect(text?.text).toContain("- Page 1:");
+    expect(text?.text).toContain("- Page 2:");
+    const decoded = images.map((image) => Buffer.from(image.data ?? "", "base64"));
+    expect(images.map((image) => image.mimeType)).toEqual(["image/png", "image/png"]);
+    expect(decoded.map(pngSize)).toEqual([
+      [1414, 2000],
+      [2000, 1414],
+    ]);
+    // Claude's image tokens are about width × height / 750 (spike 4 measured 3,904 for a
+    // 2000 × 1500 page); text is at most one token per character.
+    const tokens =
+      decoded.map(pngSize).reduce((sum, [width, height]) => sum + (width * height) / 750, 0) +
+      (text?.text?.length ?? 0);
+    expect(tokens).toBeLessThan(25_000);
+    // One tool result is one SSE event, which Claude Code refuses past 16 MB.
+    expect(raw.length).toBeLessThan(16 * 1024 * 1024);
+    for (const png of decoded) expect(png.length).toBeLessThan(1024 * 1024);
+  });
+
+  it("refuses more than 6 pages in one view_images call", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    await upload({ home: "my-flat", file: pdf(THREE_PAGES, "plan.pdf"), label: "Plan" });
+    const opened = await callTool("my-flat", "open_session", { skill: "home-intake" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1];
+
+    const result = await callTool("my-flat", "view_images", {
+      session,
+      blueprint: "plan",
+      pages: [1, 2, 3, 1, 2, 3, 1],
+    });
+
+    expect(result.isError).toBe(true);
   });
 });
 

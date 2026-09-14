@@ -36,7 +36,7 @@
     {
       "name": "get_room_sheet",
       "title": "Get room sheet",
-      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Changes nothing.",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -50,6 +50,10 @@
             "type": "string",
             "minLength": 1,
             "description": "The Room's slug as the opening lists it (\"living-room\"); its name also works."
+          },
+          "withSources": {
+            "description": "true to show, after each value printed on a Blueprint, its Blueprint, page, and the text exactly as printed: 3.62 m [agent-plan p.1: 3.62]. Only when a question needs them.",
+            "type": "boolean"
           }
         },
         "required": ["session", "room"]
@@ -154,9 +158,54 @@
       }
     },
     {
+      "name": "view_images",
+      "title": "View images",
+      "description": "Shows pages of one of this Home's Blueprints (the user's plans, uploaded in the app) as images, so you can read them: first a text block naming the Blueprint and each page returned, with the Level it shows when mapped and whether it has a text layer, then one image per page, 2000 px on its long edge, in that order. The Home Overview lists the Blueprints and their pages. At most 6 pages per call: ask for one Level's pages at a time, and call again for more. When printed text is too small to read, ask for the page again with `crop`: one quarter of it at twice the scale. Only text printed on the plan (Room names, dimension strings, areas) is Blueprint Provenance: record such a length with provenance blueprint and source { blueprint, page, printed }, `printed` exactly as printed on the page (e.g. 12'6\" or 3.62). A length scaled off the drawing is estimated. Each page stays in the conversation as an image, so fetch only the pages the work needs. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "blueprint": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The Blueprint's slug, as the Home Overview lists it."
+          },
+          "pages": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "description": "The pages to look at, from 1: at most 6 per call, usually the pages of one Level. Call again for more."
+          },
+          "crop": {
+            "description": "Only this quarter of each page (top-left, top-right, bottom-left, bottom-right), at twice the scale: for printed text too small to read on the whole page.",
+            "type": "string",
+            "enum": ["top-left", "top-right", "bottom-left", "bottom-right"]
+          }
+        },
+        "required": ["session", "blueprint", "pages"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
       "name": "save_home",
       "title": "Save home",
-      "description": "Records this Home's own facts and its Levels, and returns a receipt with one line per change. The facts: tenure (owned, rented, or other; it never implies a restriction by itself, since what the user may change is recorded as Constraints), planned stay, building type and era, whether there is a lift and its door width and car depth, and the narrowest point on the way into the Home with what it is (for getting furniture in). Levels: add one with its name and storey (0 for ground, -1 for a basement, 5 for a fifth-floor flat; a flat is a single Level), rename or renumber one by its slug (the slug never changes), or remove one no Room is on. Give only what the user stated; fields left out stay as they are. The Home's name, country, and city are set in the app. Lengths are whole millimetres with a Provenance: measured, blueprint, or estimated. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
+      "description": "Records this Home's own facts, its Levels, and which Level each Blueprint page shows, and returns a receipt with one line per change. The facts: tenure (owned, rented, or other; it never implies a restriction by itself, since what the user may change is recorded as Constraints), planned stay, building type and era, whether there is a lift and its door width and car depth, and the narrowest point on the way into the Home with what it is (for getting furniture in). Levels: add one with its name and storey (0 for ground, -1 for a basement, 5 for a fifth-floor flat; a flat is a single Level), rename or renumber one by its slug (the slug never changes), or remove one no Room is on. Blueprint pages: name each page's Level in blueprintPages (the Home Overview lists the Blueprints and their pages), before reading dimensions off it. Give only what the user stated; fields left out stay as they are. The Home's name, country, and city are set in the app. Lengths are whole millimetres with a Provenance: measured, blueprint, or estimated. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -213,17 +262,18 @@
                   "blueprint": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The Blueprint's slug."
+                    "description": "The Blueprint's slug, as the Home Overview lists it."
                   },
                   "page": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 9007199254740991
+                    "maximum": 9007199254740991,
+                    "description": "The page it is printed on, from 1."
                   },
                   "printed": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The text as printed, e.g. 12'6\"."
+                    "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                   }
                 },
                 "required": ["blueprint", "page", "printed"]
@@ -253,17 +303,18 @@
                   "blueprint": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The Blueprint's slug."
+                    "description": "The Blueprint's slug, as the Home Overview lists it."
                   },
                   "page": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 9007199254740991
+                    "maximum": 9007199254740991,
+                    "description": "The page it is printed on, from 1."
                   },
                   "printed": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The text as printed, e.g. 12'6\"."
+                    "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                   }
                 },
                 "required": ["blueprint", "page", "printed"]
@@ -293,17 +344,18 @@
                   "blueprint": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The Blueprint's slug."
+                    "description": "The Blueprint's slug, as the Home Overview lists it."
                   },
                   "page": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 9007199254740991
+                    "maximum": 9007199254740991,
+                    "description": "The page it is printed on, from 1."
                   },
                   "printed": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The text as printed, e.g. 12'6\"."
+                    "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                   }
                 },
                 "required": ["blueprint", "page", "printed"]
@@ -345,6 +397,32 @@
                   "type": "boolean"
                 }
               }
+            }
+          },
+          "blueprintPages": {
+            "description": "Which Level each Blueprint page shows. Applied after `levels`, so a Level added in the same call can be named. Pages not listed stay as they are.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "blueprint": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The Blueprint's slug, as the Home Overview lists it."
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991,
+                  "description": "The page, from 1."
+                },
+                "level": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The Level the page shows, by slug or name (\"ground\")."
+                }
+              },
+              "required": ["blueprint", "page", "level"]
             }
           },
           "overrideProvenance": {
@@ -439,17 +517,18 @@
                   "blueprint": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The Blueprint's slug."
+                    "description": "The Blueprint's slug, as the Home Overview lists it."
                   },
                   "page": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 9007199254740991
+                    "maximum": 9007199254740991,
+                    "description": "The page it is printed on, from 1."
                   },
                   "printed": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The text as printed, e.g. 12'6\"."
+                    "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                   }
                 },
                 "required": ["blueprint", "page", "printed"]
@@ -778,17 +857,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -953,17 +1033,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -992,17 +1073,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1032,17 +1114,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1072,17 +1155,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1161,17 +1245,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1200,17 +1285,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1240,17 +1326,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1337,17 +1424,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1376,17 +1464,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1415,17 +1504,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1610,17 +1700,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1649,17 +1740,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]
@@ -1688,17 +1780,18 @@
                         "blueprint": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The Blueprint's slug."
+                          "description": "The Blueprint's slug, as the Home Overview lists it."
                         },
                         "page": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 9007199254740991
+                          "maximum": 9007199254740991,
+                          "description": "The page it is printed on, from 1."
                         },
                         "printed": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "The text as printed, e.g. 12'6\"."
+                          "description": "The text exactly as printed, e.g. 12'6\" or 3.62."
                         }
                       },
                       "required": ["blueprint", "page", "printed"]

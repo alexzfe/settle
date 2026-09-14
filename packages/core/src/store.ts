@@ -1,6 +1,8 @@
 import type { SQLInputValue, StatementSync } from "node:sqlite";
+import type { TextLine } from "./files.js";
 import { migrate } from "./migrate.js";
 import type {
+  BlueprintFileType,
   BuildingType,
   Color,
   CompassPoint,
@@ -195,6 +197,36 @@ export interface NoteRow {
   archivedAt: string | null;
 }
 
+export interface BlueprintRow {
+  id: number;
+  homeId: number;
+  slug: string;
+  label: string;
+  /** The file's name as uploaded. */
+  fileName: string;
+  fileType: BlueprintFileType;
+  /** The uploaded file, relative to the data dir. */
+  filePath: string;
+  pageCount: number;
+  uploadedAt: string;
+}
+
+export interface BlueprintPageRow {
+  id: number;
+  homeId: number;
+  blueprintId: number;
+  page: number;
+  /** The Level the page shows, once mapped. */
+  levelId: number | null;
+  /** The rendered PNG, relative to the data dir. */
+  pngPath: string;
+  /** The PNG's size in pixels. */
+  widthPx: number;
+  heightPx: number;
+  /** Its text layer, in the PNG's pixels; empty for a scan. */
+  textLines: TextLine[];
+}
+
 export interface SessionSummary {
   changed: string;
   open: string;
@@ -240,6 +272,8 @@ export interface HomeTables {
   items: ItemRow;
   constraints: ConstraintRow;
   notes: NoteRow;
+  blueprints: BlueprintRow;
+  blueprint_pages: BlueprintPageRow;
 }
 
 export type HomeTable = keyof HomeTables;
@@ -313,7 +347,15 @@ const MEASUREMENT_KEYS = new Set([
   "clearWidth",
 ]);
 const BOOLEAN_KEYS = new Set(["lift", "outdoor", "windowless", "deciduous", "glazed", "noDoor"]);
-const JSON_KEYS = new Set(["functions", "timesOfUse", "materials", "color", "colors", "light"]);
+const JSON_KEYS = new Set([
+  "functions",
+  "timesOfUse",
+  "materials",
+  "color",
+  "colors",
+  "light",
+  "textLines",
+]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 
 const column = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);

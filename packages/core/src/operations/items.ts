@@ -4,7 +4,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, named, renderItems } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { ItemRow, RoomRow } from "../store.js";
-import { active, requireRoom, requireWall } from "./lookup.js";
+import { active, requireRoom, requireSources, requireWall } from "./lookup.js";
 import { type HomeModel, loadHome, roomById, toItem, wallSlug } from "./model.js";
 import {
   type FindItemsResult,
@@ -43,6 +43,7 @@ export const saveItems = defineOperation({
   handler(context, input): ReceiptResult {
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
+    requireSources(context.store, home, input);
     const receipt = context.write(session.slug, (log) => {
       const model = loadHome(context.store, home);
       const writer = new Writer(context.store, home, log, input.overrideProvenance);

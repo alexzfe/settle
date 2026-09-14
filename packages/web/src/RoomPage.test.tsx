@@ -247,6 +247,52 @@ it("renders the Room Sheet from get_room as structured sections", async () => {
   expect(listAfter("Gaps")).toEqual(["length of Wall 4", "woodwork Surface"]);
 });
 
+it("links every value printed on a Blueprint to its page, with the text as printed", async () => {
+  const onPlan = (mm: number, printed: string) => ({
+    mm,
+    provenance: "blueprint" as const,
+    source: { blueprint: "estate-agent-plan", page: 2, printed },
+  });
+  const room = livingRoom();
+  stubRoom(() => ({
+    ...room,
+    walls: [
+      {
+        slug: "living-room/wall-1",
+        position: 1,
+        length: onPlan(4190, `13'9"`),
+        beyond: { kind: "outside" },
+      },
+      ...room.walls.filter((wall) => wall.position === 3),
+    ],
+    windows: [
+      {
+        slug: "living-room-window",
+        wall: "living-room/wall-1",
+        width: onPlan(2400, "2400"),
+        height: onPlan(1500, "1500"),
+      },
+    ],
+    doors: [],
+  }));
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByRole("heading", { name: "Wall 1", level: 3 });
+
+  // Values printed on a Blueprint are tagged one by one, even when they share the Provenance.
+  expect(section("Wall 1")).toBe(
+    "Wall 1" +
+      `Length4.19 m Blueprint p.2: 13'9"` +
+      "BeyondOutside" +
+      "Windows and Doors" +
+      "Window, W 2.40 m Blueprint p.2: 2400 × H 1.50 m Blueprint p.2: 1500",
+  );
+  expect(screen.getByRole("link", { name: `Blueprint p.2: 13'9"` }).getAttribute("href")).toBe(
+    "/homes/flat/blueprints/estate-agent-plan/2",
+  );
+  // A Blueprint value recorded without its source keeps the plain tag.
+  expect(section("Wall 3")).toBe("Wall 3Length3.60 m BlueprintBeyondOutside");
+});
+
 it("says what is not recorded when the Room has nothing yet", async () => {
   stubRoom(() => ({
     slug: "box-room",

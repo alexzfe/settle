@@ -17,6 +17,7 @@ const TOOLS = [
   "get_room_sheet",
   "find_items",
   "search_notes",
+  "view_images",
   "save_home",
   "save_room",
   "save_items",
@@ -72,6 +73,155 @@ Let's go Room by Room, starting with the Main bedroom, which has one Item record
   ];
 }
 
+// ─── Blueprint cases ────────────────────────────────────────────────────────────────────────
+// Their own mocks give a new Home, Flat 5, whose only record so far is an uploaded Blueprint: the
+// one-page A3 ground floor of docs/research/spikes/fixtures/blueprint-a3.pdf. A mock can't return
+// images, so the view_images mock lists what the page prints, keeping two of its dimension
+// strings. The history's own writes get receipts in core's wording, since a canned mock answers
+// every save_room alike.
+
+const PLAN = "ground-floor-plan";
+
+/** The plan's Rooms, as the Room-list reply names them. */
+const PLAN_ROOMS = [
+  { name: "Kitchen", slug: "kitchen", functions: ["kitchen"] },
+  { name: "Utility", slug: "utility", functions: ["utility"] },
+  { name: "Living / Dining", slug: "living-dining", functions: ["living", "dining"] },
+  { name: "Hall", slug: "hall", functions: ["hallway"] },
+  { name: "Landing", slug: "landing", functions: ["hallway"] },
+  { name: "Bedroom 1", slug: "bedroom-1", functions: ["bedroom"] },
+  { name: "Bath", slug: "bath", functions: ["bathroom"] },
+  { name: "Bedroom 2", slug: "bedroom-2", functions: ["bedroom"] },
+];
+
+const NEW_ROOM_GAPS =
+  "wall lengths, ceiling height, Windows or windowless, times of use, walls Surface, " +
+  "ceiling Surface, floor Surface, woodwork Surface";
+
+const ROOM_LIST = `Working on Flat 5.
+
+The plan has one page, titled GROUND FLOOR, so I'd map page 1 to Ground. It labels eight Rooms:
+
+1. **Kitchen**: kitchen
+2. **Utility**: utility
+3. **Living / Dining**: living and dining, one open-plan Room
+4. **Hall**: hallway
+5. **Landing**: hallway
+6. **Bedroom 1**: bedroom
+7. **Bath**: bathroom
+8. **Bedroom 2**: bedroom
+
+Is page 1 the ground floor, and is that the Room list? Rename any Room to what you call it. *(Recommended: yes to both.)*`;
+
+const DIMENSIONS = `Recorded: page 1 shows Ground, and the eight Rooms are on Ground.
+
+Now the dimensions. The plan prints sizes for two Rooms. In each Room, Wall 1 is the wall with its entrance door, and the others follow clockwise as seen on the plan:
+
+1. **Kitchen**: *3.62 m x 4.00 m*. Its door is in the bottom wall, so Walls 1 and 3 are 3.62 m, and Walls 2 and 4 are 4.00 m.
+2. **Bedroom 2**: *3.81 m x 4.80 m*. Its door is in the top wall, so Walls 1 and 3 are 3.81 m, and Walls 2 and 4 are 4.80 m.
+3. **The other six Rooms** have no printed sizes, so their Wall lengths stay open until we go Room by Room after the plan.
+
+Shall I record those two? *(Recommended: yes.)*`;
+
+const OPENINGS = `Recorded: the Kitchen's and Bedroom 2's four Walls, with the sizes as printed.
+
+Now the Windows and Doors. They are drawn on the plan, not printed, so please check each one. Walls are numbered as before: Wall 1 has the Room's entrance door, then clockwise.
+
+**Windows**
+1. Kitchen: one, in Wall 3 (the top wall).
+2. Utility: one, in Wall 4 (top).
+3. Living / Dining: two, in Wall 3 (left) and Wall 2 (bottom).
+4. Bedroom 1: one, in Wall 3 (top).
+5. Bath: one, in Wall 3 (bottom).
+6. Bedroom 2: one, in Wall 2 (right).
+7. Hall and Landing: none, so both are windowless.
+
+**Doors**
+8. Hall to outside, in Hall Wall 1: the front door.
+9. Hall to Utility and to Living / Dining, both in Hall Wall 2.
+10. Hall to Landing, in Hall Wall 4.
+11. Kitchen to Living / Dining, in Kitchen Wall 1 and Living / Dining Wall 4.
+12. Landing to Bedroom 1 (Landing Wall 2), and to Bath and Bedroom 2 (both in Landing Wall 4).
+
+Are those right? *(Recommended: yes. None of them has a printed size, so sizes can wait.)*`;
+
+/** A Blueprint Session's start: the plan viewed, and the Room list read back for confirming. */
+function blueprintStart(context: HistoryContext): { turns: Turn[]; session: string } {
+  const { turns, session } = opening(
+    context,
+    "I've uploaded our floor plan in the app. Can you set up the rooms from it?",
+  );
+  const view = { session, blueprint: PLAN, pages: [1] };
+  return {
+    session,
+    turns: [
+      ...turns,
+      { tool: "view_images", input: view, result: context.answer("view_images", view) },
+      { assistant: ROOM_LIST },
+    ],
+  };
+}
+
+/** A figure of a printed dimension string: its millimetres, and the figure as printed. */
+type Printed = [mm: number, printed: string];
+
+/**
+ * The save_room that records a rectangular Room's four Walls from its printed "across x along"
+ * string, each Wall quoting its own figure.
+ */
+function sizedRoom(
+  session: string,
+  room: { name: string; slug: string },
+  across: Printed,
+  along: Printed,
+): Turn {
+  const walls = [across, along, across, along];
+  const input = {
+    session,
+    room: room.slug,
+    name: room.name,
+    walls: walls.map(([mm, printed], index) => ({
+      position: index + 1,
+      length: { mm, provenance: "blueprint", source: { blueprint: PLAN, page: 1, printed } },
+    })),
+  };
+  const lines = walls.map(
+    ([mm, printed], index) =>
+      `${room.slug}/wall-${index + 1}: length ${(mm / 1000).toFixed(2)} m ` +
+      `(Blueprint, ${PLAN} p.1: ${printed})`,
+  );
+  const gaps = NEW_ROOM_GAPS.replace("wall lengths, ", "");
+  return {
+    tool: "save_room",
+    input,
+    result: [...lines, `Gaps left in ${room.name} (${room.slug}): ${gaps}`].join("\n"),
+  };
+}
+
+function throughDimensions(context: HistoryContext): Turn[] {
+  const { turns, session } = blueprintStart(context);
+  const pages = { session, blueprintPages: [{ blueprint: PLAN, page: 1, level: "ground" }] };
+  const [kitchen, bedroom2] = [PLAN_ROOMS[0], PLAN_ROOMS[7]];
+  if (!kitchen || !bedroom2) throw new Error("PLAN_ROOMS lost the Kitchen or Bedroom 2");
+  return [
+    ...turns,
+    { user: "Yes to both." },
+    { tool: "save_home", input: pages, result: context.answer("save_home", pages) },
+    ...PLAN_ROOMS.map(
+      ({ name, slug, functions }): Turn => ({
+        tool: "save_room",
+        input: { session, name, level: "ground", functions },
+        result: `${name} (${slug}): created on Ground\nGaps left in ${name} (${slug}): ${NEW_ROOM_GAPS}`,
+      }),
+    ),
+    { assistant: DIMENSIONS },
+    { user: "Yes, record them." },
+    sizedRoom(session, kitchen, [3620, "3.62"], [4000, "4.00"]),
+    sizedRoom(session, bedroom2, [3810, "3.81"], [4800, "4.80"]),
+    { assistant: OPENINGS },
+  ];
+}
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -111,4 +261,13 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
       },
     ];
   },
+
+  // Graded turn: the user confirms the Room list and asks for the plan's sizes and facings from
+  // its north arrow. Only the two printed sizes are saved, as Blueprint with the printed text,
+  // and north is asked rather than read off the arrow.
+  "home-intake-fills-printed-only": (context) => blueprintStart(context).turns,
+
+  // Graded turn: the user confirms the Windows and Doors. The reply asks where north is before
+  // any Wall's facing is recorded.
+  "home-intake-asks-north": throughDimensions,
 };

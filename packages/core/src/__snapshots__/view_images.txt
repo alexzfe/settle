@@ -1,0 +1,9 @@
+Blueprint: Agent plan (agent-plan), 1 page. One image per page follows, in this order:
+- Page 1: shows Ground (ground); has a text layer
+
+Blueprint: Agent plan (agent-plan), 1 page. One image per page follows, in this order:
+- Page 1, top-left quarter at twice the scale: shows Ground (ground); has a text layer
+
+Blueprint: Survey (survey), 3 pages. One image per page follows, in this order:
+- Page 3: no Level mapped yet; no text layer (an image or a scan)
+- Page 1: no Level mapped yet; has a text layer

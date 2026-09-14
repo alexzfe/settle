@@ -1,15 +1,19 @@
 // The web API client: every operation is POST /api/<name> with JSON in and out, and a refusal
 // comes back as { error: { code, message } } with a message written for the reader. The shapes
 // are core's: the Zod schemas in packages/core/src/operations/ are their single source of truth.
+// Uploads are the exception to JSON: they post a multipart form, and answer the same way.
 
 import type {
   OperationName as CoreOperationName,
   OperationInput,
   OperationOutput,
   RoomDetail,
+  UploadBlueprintResult,
 } from "@idh/core";
 
 export type {
+  Blueprint,
+  BlueprintPage,
   ChangeEntry,
   Constraint,
   Door,
@@ -35,7 +39,7 @@ interface Shapes<Name extends CoreOperationName> {
   output: OperationOutput<Name>;
 }
 
-/** The operations the web UI calls. */
+/** The operations the web UI calls with JSON. */
 export interface Operations {
   list_homes: Shapes<"list_homes">;
   create_home: Shapes<"create_home">;
@@ -47,9 +51,17 @@ export interface Operations {
   list_constraints: Shapes<"list_constraints">;
   list_notes: Shapes<"list_notes">;
   get_change_log: Shapes<"get_change_log">;
+  list_blueprints: Shapes<"list_blueprints">;
 }
 
 export type OperationName = keyof Operations;
+
+/** The operations the web UI calls with a multipart form, and what they answer. */
+export interface Uploads {
+  upload_blueprint: UploadBlueprintResult;
+}
+
+export type UploadName = keyof Uploads;
 
 /** A refusal from the server, or a failure to reach it, with a code the UI can branch on. */
 export class ApiError extends Error {
@@ -65,23 +77,36 @@ export class ApiError extends Error {
   }
 }
 
-export async function call<Op extends OperationName>(
+export function call<Op extends OperationName>(
   operation: Op,
   input: Operations[Op]["input"],
 ): Promise<Operations[Op]["output"]> {
-  const url = `/api/${operation}`;
+  return send(`/api/${operation}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+/** Posts `form` as multipart form data; the browser sets the Content-Type and its boundary. */
+export function upload<Op extends UploadName>(operation: Op, form: FormData): Promise<Uploads[Op]> {
+  return send(`/api/${operation}`, { method: "POST", body: form });
+}
+
+/** Where the server serves one page of a Blueprint, rendered as a PNG. */
+export function blueprintPageUrl(home: string, blueprint: string, page: number): string {
+  return `/api/get_blueprint_page?${new URLSearchParams({ home, blueprint, page: String(page) })}`;
+}
+
+async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
+    response = await fetch(url, init);
   } catch {
     throw new ApiError("unreachable", "The server is not answering. Start it with pnpm dev.");
   }
   const body: unknown = await response.json().catch(() => undefined);
-  if (response.ok && body !== undefined) return body as Operations[Op]["output"];
+  if (response.ok && body !== undefined) return body as Output;
   const error = errorIn(body);
   if (error) throw new ApiError(error.code, error.message, response.status);
   throw new ApiError(

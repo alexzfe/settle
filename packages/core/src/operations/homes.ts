@@ -7,8 +7,16 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { HomeRow, LevelRow, RoomRow, SessionRow } from "../store.js";
-import { findLevel, list } from "./lookup.js";
 import {
+  blueprintName,
+  findLevel,
+  list,
+  requireBlueprint,
+  requirePage,
+  requireSources,
+} from "./lookup.js";
+import {
+  type blueprintPageLevelInput,
   type GetHomeResult,
   type Home,
   type Level,
@@ -124,14 +132,16 @@ export const getHome = defineOperation({
 export const saveHome = defineOperation({
   name: "save_home",
   description:
-    "Records this Home's own facts and its Levels, and returns a receipt with one line per " +
-    "change. The facts: tenure (owned, rented, or other; it never implies a restriction by " +
+    "Records this Home's own facts, its Levels, and which Level each Blueprint page shows, and " +
+    "returns a receipt with one line per change. The facts: tenure (owned, rented, or other; it never implies a restriction by " +
     "itself, since what the user may change is recorded as Constraints), planned stay, building " +
     "type and era, whether there is a lift and its door width and car depth, and the narrowest " +
     "point on the way into the Home with what it is (for getting furniture in). Levels: add one " +
     "with its name and storey (0 for ground, -1 for a basement, 5 for a fifth-floor flat; a flat " +
     "is a single Level), rename or renumber one by its slug (the slug never changes), or remove " +
-    "one no Room is on. Give only what the user stated; fields left out stay as they are. The " +
+    "one no Room is on. Blueprint pages: name each page's Level in blueprintPages (the Home " +
+    "Overview lists the Blueprints and their pages), before reading dimensions off it. Give " +
+    "only what the user stated; fields left out stay as they are. The " +
     "Home's name, country, and city are set in the app. Lengths are whole millimetres with a " +
     "Provenance: measured, blueprint, or estimated. A value is never replaced by one of weaker " +
     "Provenance (measured > blueprint > estimated) unless the user says so: that part is " +
@@ -143,12 +153,20 @@ export const saveHome = defineOperation({
   handler(context, input): ReceiptResult {
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
+    requireSources(context.store, home, input);
     const receipt = context.write(session.slug, (log) => {
       const writer = new Writer(context.store, home, log, input.overrideProvenance);
-      const { session: _session, levels, overrideProvenance: _override, ...facts } = input;
+      const {
+        session: _session,
+        levels,
+        blueprintPages,
+        overrideProvenance: _override,
+        ...facts
+      } = input;
       const subject = named(home);
       writer.line(subject, undefined, writer.patch("homes", "home", home, subject, facts));
       for (const level of levels ?? []) saveLevel(context, home, writer, level);
+      for (const page of blueprintPages ?? []) mapBlueprintPage(context, home, writer, page);
       return writer.receipt();
     });
     return { receipt };
@@ -192,9 +210,11 @@ function saveLevel(
         `${named(level)} is the Home's only Level, and every Home keeps at least one.`,
       );
     }
+    const unmapped = unmapLevel(context, home, writer, level);
     store.deleteLevel(level.id);
     writer.logged({ recordKind: "level", record: level, field: "removed", old: toLevel(level) });
     writer.line(named(level), "removed");
+    for (const page of unmapped) writer.line(page, "no longer shows a Level");
     return;
   }
   if (!level) {
@@ -222,6 +242,69 @@ function saveLevel(
     undefined,
     writer.patch("levels", "level", level, subject, { name: input.name, storey: input.storey }),
   );
+}
+
+/** Records which Level a Blueprint page shows. */
+function mapBlueprintPage(
+  context: OperationContext,
+  home: HomeRow,
+  writer: Writer,
+  input: z.output<typeof blueprintPageLevelInput>,
+): void {
+  const { store } = context;
+  const blueprint = requireBlueprint(store.list("blueprints", home.id), input.blueprint);
+  const page = requirePage(store.list("blueprint_pages", home.id), blueprint, input.page);
+  const levels = store.levels(home.id);
+  const level = findLevel(levels, input.level);
+  if (!level) {
+    throw new CoreError(
+      "not_found",
+      `This Home has no Level "${input.level}". Its Levels are ${list(levels)}. Name one of ` +
+        "those, or add the Level in `levels` in the same call.",
+    );
+  }
+  const subject = `${blueprintName(blueprint)} page ${page.page}`;
+  if (page.levelId === level.id) {
+    writer.line(subject, `already shows ${level.name}, nothing changed`);
+    return;
+  }
+  const was = levels.find((each) => each.id === page.levelId);
+  store.update("blueprint_pages", page.id, { levelId: level.id });
+  writer.logged({
+    recordKind: "blueprint",
+    record: blueprint,
+    field: `page ${page.page} level`,
+    old: was?.slug,
+    new: level.slug,
+  });
+  writer.line(subject, was ? `shows ${level.name}, was ${was.name}` : `shows ${level.name}`);
+}
+
+/** Before a Level is removed: the Blueprint pages showing it show no Level. Returns them. */
+function unmapLevel(
+  context: OperationContext,
+  home: HomeRow,
+  writer: Writer,
+  level: LevelRow,
+): string[] {
+  const { store } = context;
+  const blueprints = store.list("blueprints", home.id);
+  return store
+    .list("blueprint_pages", home.id)
+    .filter((page) => page.levelId === level.id)
+    .map((page) => {
+      const blueprint = blueprints.find((each) => each.id === page.blueprintId);
+      if (!blueprint) throw new Error(`Blueprint page ${page.id} has no Blueprint`);
+      store.update("blueprint_pages", page.id, { levelId: null });
+      writer.logged({
+        recordKind: "blueprint",
+        record: blueprint,
+        field: `page ${page.page} level`,
+        old: level.slug,
+        new: null,
+      });
+      return `${blueprintName(blueprint)} page ${page.page}`;
+    });
 }
 
 export const setUpHomeFolderOperation = defineOperation({

@@ -5,25 +5,31 @@ import { type RenderResult, render } from "@testing-library/react";
 import { createMemoryRouter, type RouteObject, RouterProvider } from "react-router";
 import { vi } from "vitest";
 import { routes as appRoutes } from "./App";
-import type { OperationName, Operations } from "./api";
+import type { OperationName, Operations, UploadName, Uploads } from "./api";
 import { createQueryClient } from "./queries";
 
 export type ApiHandlers = {
   [Op in OperationName]?: (input: Operations[Op]["input"]) => Operations[Op]["output"] | Response;
+} & {
+  [Op in UploadName]?: (form: FormData) => Uploads[Op] | Response;
 };
 
-/** Answers POST /api/<op> from the handlers; an operation without one gets a 404 error. */
+/**
+ * Answers POST /api/<op> from the handlers, passing each the parsed JSON input or, for an upload,
+ * the form; an operation without one gets a 404 error.
+ */
 export function stubApi(handlers: ApiHandlers) {
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     const operation = url.replace(/^\/api\//, "");
-    const handler = handlers[operation as OperationName] as
+    const handler = handlers[operation as OperationName | UploadName] as
       | ((input: unknown) => unknown)
       | undefined;
     if (!handler) {
       const error = { code: "not_found", message: `No stub for ${operation}.` };
       return Response.json({ error }, { status: 404 });
     }
-    const answer = handler(JSON.parse(String(init?.body)));
+    const body = init?.body;
+    const answer = handler(body instanceof FormData ? body : JSON.parse(String(body)));
     return answer instanceof Response ? answer : Response.json(answer);
   });
   vi.stubGlobal("fetch", fetch);

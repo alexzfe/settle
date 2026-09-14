@@ -15,6 +15,7 @@ export const queryKeys = {
   constraints: (home: string) => ["constraints", home],
   notes: (home: string) => ["notes", home],
   changeLog: (home: string) => ["change-log", home],
+  blueprints: (home: string) => ["blueprints", home],
 } as const;
 
 export function useHomes() {
@@ -65,6 +66,13 @@ export function useChangeLog(home: string) {
   return useQuery({
     queryKey: queryKeys.changeLog(home),
     queryFn: () => call("get_change_log", { home }),
+  });
+}
+
+export function useBlueprints(home: string) {
+  return useQuery({
+    queryKey: queryKeys.blueprints(home),
+    queryFn: () => call("list_blueprints", { home }),
   });
 }
 

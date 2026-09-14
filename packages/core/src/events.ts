@@ -11,6 +11,7 @@ export type RecordKind =
   | "item"
   | "constraint"
   | "note"
+  | "blueprint"
   | "session";
 
 /** Published once per changed record after a write commits. */

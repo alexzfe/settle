@@ -8,6 +8,7 @@ import {
   useParams,
 } from "react-router";
 import styles from "./App.module.css";
+import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
 import { HomeListPage } from "./HomeListPage";
 import { HomePage } from "./HomePage";
@@ -27,6 +28,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <HomePage /> },
           { path: "rooms/:room", element: <RoomPage /> },
+          { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
           { path: "items", element: <ItemsPage /> },
           { path: "log", element: <ChangeLogPage /> },
         ],

@@ -1,6 +1,15 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { type CallContext, type Core, type CoreOptions, createCore } from "../core.js";
 import type { Measurement } from "../operations/schemas.js";
 import { openStore } from "../store.js";
+
+/**
+ * The fixture files: blueprint-a3.pdf (a one-page A3 ground floor with a text layer) and
+ * blueprint-3-pages.pdf (portrait, /Rotate 90, and a scan), from docs/research/spikes/fixtures/.
+ * packages/core/fixture/, from both src/fixture and dist/fixture.
+ */
+export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
 
 /**
  * The fixture Home: fictional, built from code on every run, and the data behind every renderer
@@ -9,7 +18,10 @@ import { openStore } from "../store.js";
  * two Levels; four Rooms of different shapes (an L-shaped living room, a rectangular kitchen, a
  * T-shaped hallway, and a bedroom still mostly unmeasured) and an outdoor balcony; Windows; Doors,
  * one of them to outside and three shared between two Rooms; Surfaces; Features; Items, one
- * Unplaced and one Archived; Constraints, one of them removed; and Notes.
+ * Unplaced and one Archived; Constraints, one of them removed; and Notes. Slice 3 adds a
+ * Blueprint, "Agent plan" (the A3 fixture PDF, copied into the core's data dir on upload), whose
+ * page 1 shows Ground, and two living-room Wall lengths printed on it. The printed strings are the
+ * fixture's own: the A3 drawing stands in for the plan.
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -47,6 +59,12 @@ export async function createFixtureHome(
     country: "GB",
     city: "London",
   });
+  await core.run("upload_blueprint", web, {
+    home: home.slug,
+    file: readFileSync(join(FIXTURE_FILES, "blueprint-a3.pdf")),
+    fileName: "blueprint-a3.pdf",
+    label: "Agent plan",
+  });
   const agent = (session?: string): CallContext => ({
     caller: { kind: "session", session },
     home: home.slug,
@@ -63,6 +81,7 @@ export async function createFixtureHome(
     accessWidth: measured(760),
     accessNote: "the front door",
     levels: [{ name: "First", storey: 1 }],
+    blueprintPages: [{ blueprint: "agent-plan", page: 1, level: "ground" }],
   });
 
   await core.run("save_room", as, {
@@ -82,7 +101,7 @@ export async function createFixtureHome(
         deciduous: true,
         label: "bay wall",
       },
-      { position: 2, length: measured(2100) },
+      { position: 2, length: printed(2100, `6'11"`) },
       {
         position: 3,
         length: measured(1500),

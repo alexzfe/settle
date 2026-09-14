@@ -2,6 +2,7 @@
 // fields, mark Estimated values with ~, and name records by their names with their readable slugs
 // in brackets, never database ids.
 import type {
+  Blueprint,
   Color,
   Constraint,
   Door,
@@ -18,6 +19,7 @@ import type {
   Provenance,
   RoomDetail,
   Surface,
+  ViewImagesResult,
   Wall,
   Window,
 } from "./operations/schemas.js";
@@ -34,6 +36,8 @@ export interface OverviewView {
   /** The Constraints in force, not the Archived ones. */
   constraints: Constraint[];
   unplacedItems: number;
+  /** In the order they were uploaded. */
+  blueprints: Blueprint[];
   /** The Rooms not Archived, in the Overview's order. */
   rooms: RoomDetail[];
 }
@@ -50,13 +54,14 @@ export function renderOpening(view: OverviewView, blocks: readonly OpeningBlock[
 
 /**
  * The Home's name and its Home Overview: its facts, its Constraints, a count of Unplaced Items,
- * and one line per Room with its Gaps.
+ * its Blueprints with the Level each page shows, and one line per Room with its Gaps.
  */
 export function renderHomeOverview({
   home,
   levels,
   constraints,
   unplacedItems,
+  blueprints,
   rooms,
 }: OverviewView): string {
   const lines = [
@@ -85,6 +90,10 @@ export function renderHomeOverview({
       lines.push(`- ${named({ name: constraint.text, slug: constraint.slug })}`);
   }
   if (unplacedItems > 0) lines.push("", `Unplaced Items: ${unplacedItems}`);
+  if (blueprints.length > 0) {
+    lines.push("", "Blueprints:");
+    for (const blueprint of blueprints) lines.push(`- ${blueprintLine(blueprint)}`);
+  }
   lines.push("");
   if (rooms.length === 0) {
     lines.push("Rooms: none recorded yet");
@@ -142,28 +151,48 @@ function windowFacings(room: RoomDetail): string[] {
 
 /**
  * Everything recorded about one Room: its facts, Walls, Windows, Doors, Surfaces, Features,
- * lights, one line per Item, and its Gaps.
+ * lights, one line per Item, and its Gaps. With `sources`, every value printed on a Blueprint is
+ * followed by its Blueprint, page, and the text as printed: 1.80 m [agent-plan p.1: 5'11"].
  */
-export function renderRoomSheet(room: RoomDetail): string {
+export function renderRoomSheet(
+  room: RoomDetail,
+  { sources = false }: { sources?: boolean } = {},
+): string {
   const lines = [`Room: ${named(room)}`, `Level: ${room.level.name} (storey ${room.level.storey})`];
   if (room.archivedAt) {
     lines.push(`Archived: ${join(", ", [day(room.archivedAt), room.archivedReason])}`);
   }
   if (room.outdoor) lines.push("Outdoor: yes");
   if (room.functions.length > 0) lines.push(`Functions: ${room.functions.join(", ")}`);
-  if (room.ceilingHeight) lines.push(`Ceiling height: ${length(room.ceilingHeight)}`);
+  if (room.ceilingHeight) lines.push(`Ceiling height: ${measure(room.ceilingHeight, sources)}`);
   if (room.timesOfUse.length > 0) lines.push(`Times of use: ${room.timesOfUse.join(", ")}`);
   if (room.windowless) lines.push("Windowless: yes");
 
-  section(lines, "Walls, clockwise", room.walls.map(wallLine));
-  section(lines, "Windows", room.windows.map(windowLine));
-  section(lines, "Doors", room.doors.map(doorLine));
+  section(
+    lines,
+    "Walls, clockwise",
+    room.walls.map((wall) => wallLine(wall, sources)),
+  );
+  section(
+    lines,
+    "Windows",
+    room.windows.map((window) => windowLine(window, sources)),
+  );
+  section(
+    lines,
+    "Doors",
+    room.doors.map((door) => doorLine(door, sources)),
+  );
   section(
     lines,
     "Surfaces",
     room.surfaces.map((surface) => `${surface.part}: ${surfaceText(surface)}`),
   );
-  section(lines, "Features", room.features.map(featureLine));
+  section(
+    lines,
+    "Features",
+    room.features.map((feature) => featureLine(feature, sources)),
+  );
   section(
     lines,
     "Lights",
@@ -175,7 +204,7 @@ export function renderRoomSheet(room: RoomDetail): string {
   section(
     lines,
     "Items",
-    room.items.map((item) => itemLine(item, false)),
+    room.items.map((item) => itemLine(item, false, sources)),
   );
   lines.push("", room.gaps.length > 0 ? `Gaps: ${room.gaps.join(", ")}` : "Gaps: none");
   return lines.join("\n");
@@ -186,7 +215,7 @@ function section(lines: string[], title: string, entries: string[]): void {
   lines.push("", `${title}:`, ...entries.map((entry) => `- ${entry}`));
 }
 
-function wallLine(wall: Wall): string {
+function wallLine(wall: Wall, sources: boolean): string {
   const beyond =
     wall.beyond.kind === "outside"
       ? "outside"
@@ -197,7 +226,7 @@ function wallLine(wall: Wall): string {
   return entry(
     wall.slug,
     join("; ", [
-      wall.length && length(wall.length),
+      wall.length && measure(wall.length, sources),
       wall.facing && `faces ${compass(wall.facing)}`,
       beyond,
       join(" ", [sky, wall.deciduous ? "by deciduous trees" : undefined]),
@@ -212,7 +241,7 @@ function entry(subject: string, details: string): string {
   return details ? `${subject}: ${details}` : subject;
 }
 
-function windowLine(window: Window): string {
+function windowLine(window: Window, sources: boolean): string {
   const where =
     window.wall === "roof"
       ? `in the roof${window.roofFacing ? `, facing ${compass(window.roofFacing)}` : ""}`
@@ -220,17 +249,20 @@ function windowLine(window: Window): string {
   return `${window.slug}: ${join("; ", [
     where,
     window.kind === "bay" ? "bay" : undefined,
-    size([
-      ["W", window.width],
-      ["H", window.height],
-    ]),
-    window.sillHeight && `sill ${length(window.sillHeight)}`,
-    window.offset && `${length(window.offset)} from the Wall's start`,
+    size(
+      [
+        ["W", window.width],
+        ["H", window.height],
+      ],
+      sources,
+    ),
+    window.sillHeight && `sill ${measure(window.sillHeight, sources)}`,
+    window.offset && `${measure(window.offset, sources)} from the Wall's start`,
     window.glass && window.glass !== "clear" ? `${window.glass} glass` : undefined,
   ])}`;
 }
 
-function doorLine(door: Door): string {
+function doorLine(door: Door, sources: boolean): string {
   const to =
     door.to === "outside"
       ? "to outside"
@@ -239,34 +271,42 @@ function doorLine(door: Door): string {
         : "to an unknown side";
   return `${door.slug}: ${join("; ", [
     join(", ", [door.wall ? `in ${door.wall}` : undefined, to]),
-    door.clearWidth && `clear width ${length(door.clearWidth)}`,
-    door.height && `height ${length(door.height)}`,
-    door.sideA && door.offset ? `${length(door.offset)} from the Wall's start` : undefined,
+    door.clearWidth && `clear width ${measure(door.clearWidth, sources)}`,
+    door.height && `height ${measure(door.height, sources)}`,
+    door.sideA && door.offset
+      ? `${measure(door.offset, sources)} from the Wall's start`
+      : undefined,
     door.glazed ? "glazed" : undefined,
     door.noDoor ? "no door hanging" : undefined,
   ])}`;
 }
 
-function featureLine(feature: Feature): string {
+function featureLine(feature: Feature, sources: boolean): string {
   const name = featureName(feature.kind, feature.description);
   return entry(
     named({ name, slug: feature.slug }),
     join("; ", [
       feature.kind !== "other" ? feature.description : undefined,
       join(", ", [feature.wall && `on ${feature.wall}`, feature.positionNote]),
-      size([
-        ["W", feature.width],
-        ["H", feature.height],
-        ["D", feature.depth],
-      ]),
+      size(
+        [
+          ["W", feature.width],
+          ["H", feature.height],
+          ["D", feature.depth],
+        ],
+        sources,
+      ),
     ]),
   );
 }
 
 // ─── Items and Notes ────────────────────────────────────────────────────────────────────────
 
-/** One Item: where it is (with `where`), what it is, its size, colors, and materials. */
-export function itemLine(item: Item, where: boolean): string {
+/**
+ * One Item: where it is (with `where`), what it is, its size, colors, and materials; with
+ * `sources`, where its Blueprint sizes are printed.
+ */
+export function itemLine(item: Item, where: boolean, sources = false): string {
   const location = where
     ? item.room
       ? join(", ", [
@@ -280,11 +320,14 @@ export function itemLine(item: Item, where: boolean): string {
     item.category.replaceAll("-", " "),
     item.quantity > 1 ? `×${item.quantity}` : undefined,
     location,
-    size([
-      ["W", item.width],
-      ["D", item.depth],
-      ["H", item.height],
-    ]),
+    size(
+      [
+        ["W", item.width],
+        ["D", item.depth],
+        ["H", item.height],
+      ],
+      sources,
+    ),
     item.colors?.map(colorText).join(", "),
     item.materials?.join(", "),
     item.condition,
@@ -305,6 +348,39 @@ export function renderItems(items: Item[]): string {
 export function renderNotes(notes: Note[]): string {
   if (notes.length === 0) return "No Notes match.";
   return notes.map((note) => `- ${note.text} (${note.slug}), ${day(note.createdAt)}`).join("\n");
+}
+
+// ─── Blueprints ─────────────────────────────────────────────────────────────────────────────
+
+/** One Blueprint of the Overview: its pages, and the Level each shows. */
+function blueprintLine(blueprint: Blueprint): string {
+  const pages = blueprint.pages.map(
+    (page) => `p.${page.page} ${page.level?.name ?? "no Level yet"}`,
+  );
+  return `${named({ name: blueprint.label, slug: blueprint.slug })}: ${count(blueprint.pageCount, "page")}; ${pages.join(", ")}`;
+}
+
+/**
+ * view_images' text block, which comes before the images: the Blueprint, then one line per image
+ * in the images' order, with the Level the page shows and whether it has a text layer.
+ */
+export function renderViewedPages({ blueprint, pages }: ViewImagesResult): string {
+  const lines = [
+    `Blueprint: ${named({ name: blueprint.label, slug: blueprint.slug })}, ` +
+      `${count(blueprint.pageCount, "page")}. One image per page follows, in this order:`,
+  ];
+  for (const page of pages) {
+    const what = page.crop
+      ? `Page ${page.page}, ${page.crop} quarter at twice the scale`
+      : `Page ${page.page}`;
+    lines.push(
+      `- ${what}: ${join("; ", [
+        page.level ? `shows ${named(page.level)}` : "no Level mapped yet",
+        page.hasText ? "has a text layer" : "no text layer (an image or a scan)",
+      ])}`,
+    );
+  }
+  return lines.join("\n");
 }
 
 // ─── Receipts ───────────────────────────────────────────────────────────────────────────────
@@ -419,7 +495,7 @@ function fieldText(change: FieldChange): string {
 
 /** A field's value as a receipt shows it: lengths and colors with their Provenance. */
 function value(field: string, raw: unknown): string {
-  if (isMeasurement(raw)) return `${length(raw)} (${PROVENANCE[raw.provenance]})`;
+  if (isMeasurement(raw)) return `${length(raw)} (${provenanceText(raw)})`;
   if (isColor(raw)) return `${colorText(raw)} (${PROVENANCE[raw.provenance]})`;
   if (Array.isArray(raw)) {
     if (raw.length === 0) return "none";
@@ -484,15 +560,47 @@ function lengthNumber(measurement: Measurement): string {
   return `${tilde}${(measurement.mm / 1000).toFixed(2)}`;
 }
 
-/** "2.10 × 0.95 × 0.85 m (W × D × H)", or the sides that are known. */
-function size(sides: [string, Measurement | undefined][]): string | undefined {
+/** A length on a Room Sheet; with `sources`, a Blueprint value is followed by where it is printed. */
+function measure(measurement: Measurement, sources: boolean): string {
+  const source = sources ? sourceText(measurement) : undefined;
+  return source ? `${length(measurement)} [${source}]` : length(measurement);
+}
+
+/** Where a Blueprint value is printed: "agent-plan p.1: 5'11"". */
+function sourceText({ provenance, source }: Measurement): string | undefined {
+  return provenance === "blueprint" && source
+    ? `${source.blueprint} p.${source.page}: ${source.printed}`
+    : undefined;
+}
+
+/** A receipt's Provenance: "Measured", or "Blueprint, agent-plan p.1: 5'11"". */
+function provenanceText(measurement: Measurement): string {
+  const source = sourceText(measurement);
+  return source ? `${PROVENANCE.blueprint}, ${source}` : PROVENANCE[measurement.provenance];
+}
+
+/**
+ * "2.10 × 0.95 × 0.85 m (W × D × H)", or the sides that are known; with `sources`, followed by
+ * where its Blueprint sides are printed: [W agent-plan p.1: 2.10].
+ */
+function size(sides: [string, Measurement | undefined][], sources = false): string | undefined {
   const known = sides.filter((side): side is [string, Measurement] => side[1] !== undefined);
   if (known.length === 0) return undefined;
   if (known.length === 1) {
     const [side, measurement] = known[0] as [string, Measurement];
-    return `${SIDES[side]} ${length(measurement)}`;
+    return `${SIDES[side]} ${measure(measurement, sources)}`;
   }
-  return `${known.map(([, measurement]) => lengthNumber(measurement)).join(" × ")} m (${known.map(([side]) => side).join(" × ")})`;
+  const printed = sources
+    ? known.flatMap(([side, measurement]) => {
+        const source = sourceText(measurement);
+        return source ? [`${side} ${source}`] : [];
+      })
+    : [];
+  return (
+    `${known.map(([, measurement]) => lengthNumber(measurement)).join(" × ")} m ` +
+    `(${known.map(([side]) => side).join(" × ")})` +
+    (printed.length > 0 ? ` [${printed.join("; ")}]` : "")
+  );
 }
 
 const SIDES: Record<string, string> = { W: "width", H: "height", D: "depth" };

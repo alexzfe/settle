@@ -1,9 +1,18 @@
 import { randomInt } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { z } from "zod";
+import { mupdfRenderer } from "./blueprints/mupdf.js";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
-import { type FileStore, nodeFileStore } from "./files.js";
+import { type FileStore, nodeFileStore, type PdfRenderer } from "./files.js";
+import {
+  getBlueprintPage,
+  listBlueprints,
+  uploadBlueprint,
+  viewImages,
+} from "./operations/blueprints.js";
 import { getChangeLog } from "./operations/changes.js";
 import { listConstraints, setConstraints } from "./operations/constraints.js";
 import {
@@ -38,10 +47,14 @@ const operations = {
   list_constraints: listConstraints,
   list_notes: listNotes,
   get_change_log: getChangeLog,
+  list_blueprints: listBlueprints,
+  get_blueprint_page: getBlueprintPage,
+  upload_blueprint: uploadBlueprint,
   open_session: openSession,
   get_room_sheet: getRoomSheet,
   find_items: findItems,
   search_notes: searchNotes,
+  view_images: viewImages,
   save_home: saveHome,
   save_room: saveRoom,
   save_items: saveItems,
@@ -67,7 +80,14 @@ export interface CoreOptions {
   port?: number;
   /** This repository's root, written into Home Folder settings as the plugin marketplace. */
   repoRoot?: string;
+  /**
+   * The folder for uploads/ and rendered/: uploaded Blueprint files and their rendered pages. A
+   * temporary folder, removed by close(), when left out.
+   */
+  dataDir?: string;
   files?: FileStore;
+  /** Internal seam: renders Blueprint files; mupdf unless a test gives another. */
+  renderPdf?: PdfRenderer;
   clock?: () => Date;
   random?: (max: number) => number;
 }
@@ -97,10 +117,20 @@ export function createCore(options: CoreOptions = {}): Core {
   const registry = new Map<string, AnyOperation>(
     Object.values(operations).map((operation) => [operation.name, operation as AnyOperation]),
   );
+  let dataDir = options.dataDir;
+  let temporaryDataDir: string | undefined;
 
   const base = {
     store,
     files: options.files ?? nodeFileStore,
+    renderPdf: options.renderPdf ?? mupdfRenderer,
+    dataDir(): string {
+      if (dataDir === undefined) {
+        temporaryDataDir = mkdtempSync(join(tmpdir(), "idh-data-"));
+        dataDir = temporaryDataDir;
+      }
+      return dataDir;
+    },
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
     homeFolder: { port: options.port ?? 4380, repoRoot: options.repoRoot ?? REPO_ROOT },
@@ -158,7 +188,10 @@ export function createCore(options: CoreOptions = {}): Core {
       return (await operation.handler(operationContext, parsed.data)) as never;
     },
     subscribe: (listener) => bus.subscribe(listener),
-    close: () => store.close(),
+    close() {
+      store.close();
+      if (temporaryDataDir) rmSync(temporaryDataDir, { recursive: true, force: true });
+    },
   };
 }
 

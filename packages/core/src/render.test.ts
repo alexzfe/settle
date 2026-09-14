@@ -1,8 +1,15 @@
 // Snapshots of the text the AI reads, rendered from the fixture Home. A new line in a snapshot
 // must be justified against the Context tiers (docs/specs/home-model.md#context-tiers).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import type { CallContext, OperationInput } from "./core.js";
-import { createFixtureHome, FIXTURE_ROOMS, type FixtureHome } from "./fixture/fixture-home.js";
+import {
+  createFixtureHome,
+  FIXTURE_FILES,
+  FIXTURE_ROOMS,
+  type FixtureHome,
+} from "./fixture/fixture-home.js";
 import { slugify } from "./slug.js";
 
 let fixture: FixtureHome;
@@ -47,6 +54,41 @@ it("renders every Room's Room Sheet", async () => {
     const { sheet } = await fixture.core.run("get_room_sheet", agent(session), { session, room });
     await expect(sheet).toMatchFileSnapshot(snapshot(`room-sheet-${room}`));
   }
+});
+
+it("renders a Room Sheet with the Blueprint, page, and printed text of its Blueprint values", async () => {
+  const session = await openSession();
+  const { sheet } = await fixture.core.run("get_room_sheet", agent(session), {
+    session,
+    room: "living-room",
+    withSources: true,
+  });
+  await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-living-room-sources"));
+});
+
+it("renders the view_images text block, which comes before the images", async () => {
+  const session = await openSession();
+  await fixture.core.run(
+    "upload_blueprint",
+    { caller: { kind: "web" } },
+    {
+      home: fixture.home,
+      file: readFileSync(join(FIXTURE_FILES, "blueprint-3-pages.pdf")),
+      fileName: "survey.pdf",
+      label: "Survey",
+    },
+  );
+  const view = async (input: Omit<OperationInput<"view_images">, "session">) =>
+    toolText(
+      "view_images",
+      await fixture.core.run("view_images", agent(session), { session, ...input }),
+    );
+  const texts = [
+    await view({ blueprint: "agent-plan", pages: [1] }),
+    await view({ blueprint: "agent-plan", pages: [1], crop: "top-left" }),
+    await view({ blueprint: "survey", pages: [3, 1] }),
+  ];
+  await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("view_images"));
 });
 
 it("renders find_items lines", async () => {
@@ -155,6 +197,40 @@ it("renders the receipts of save_home, save_items, set_constraints, and save_not
   ];
   await expect(receipts.join("\n\n")).toMatchFileSnapshot(snapshot("receipts-other"));
 });
+
+it("renders a save_room receipt recording Blueprint values, with the Estimated ones they replace", async () => {
+  const session = await openSession();
+  const saveRoom = (input: Omit<OperationInput<"save_room">, "session">) =>
+    fixture.core.run("save_room", agent(session), { session, ...input });
+  const hallway = await saveRoom({
+    room: "hallway",
+    name: "Hallway",
+    walls: [
+      { position: 2, length: fromPlan(4150, `13'7"`) },
+      { position: 3, length: fromPlan(900, "0.90") },
+      { position: 7, length: fromPlan(1600, "1.60 m") },
+    ],
+  });
+  const living = await saveRoom({
+    room: "living-room",
+    name: "Living room",
+    walls: [
+      { position: 1, length: fromPlan(5150, `16'11"`) },
+      { position: 2, length: fromPlan(2100, "2.10") },
+    ],
+  });
+  await expect([hallway.receipt, living.receipt].join("\n\n")).toMatchFileSnapshot(
+    snapshot("receipt-save_room-blueprint"),
+  );
+});
+
+function fromPlan(mm: number, text: string) {
+  return {
+    mm,
+    provenance: "blueprint" as const,
+    source: { blueprint: "agent-plan", page: 1, printed: text },
+  };
+}
 
 function measured(mm: number) {
   return { mm, provenance: "measured" as const };

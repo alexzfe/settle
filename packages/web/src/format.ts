@@ -2,11 +2,13 @@
 // millimetres and shown in metres with two decimals (until the units setting exists), Estimated
 // values carry a leading ~, and Measured and Blueprint values read plain.
 
-import type { Provenance } from "@idh/core";
+import type { BlueprintSource, Provenance } from "@idh/core";
 
 export interface Measure {
   mm: number;
   provenance: Provenance;
+  /** Where on a Blueprint it is printed; with Blueprint Provenance only. */
+  source?: BlueprintSource;
 }
 
 export interface ColorText {
@@ -21,6 +23,14 @@ export const PROVENANCE_LABEL: Record<Provenance, string> = {
   blueprint: "Blueprint",
   estimated: "Estimated",
 };
+
+/** A Provenance, and for a value printed on a Blueprint where: "Blueprint p.2: 12'6"". */
+export function provenanceText(provenance: Provenance, source?: BlueprintSource): string {
+  if (provenance === "blueprint" && source) {
+    return `${PROVENANCE_LABEL.blueprint} p.${source.page}: ${source.printed}`;
+  }
+  return PROVENANCE_LABEL[provenance];
+}
 
 function estimatedMark(provenance: Provenance): string {
   return provenance === "estimated" ? "~" : "";
@@ -68,6 +78,11 @@ export function compass(direction: string): string {
   return direction.length <= 2 ? direction.toUpperCase() : sentence(direction);
 }
 
+/** A Level with its number: "Ground (Level 0)". */
+export function levelTitle(level: { name: string; storey: number }): string {
+  return `${level.name} (Level ${level.storey})`;
+}
+
 /** A Wall's name within its Room: position 1 is "Wall 1". */
 export function wallName(position: number): string {
   return `Wall ${position}`;
@@ -102,7 +117,9 @@ export function formatLogValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "yes" : "no";
   if (typeof value !== "object") return String(value);
   if (Array.isArray(value)) return value.map(formatLogValue).filter(Boolean).join(", ");
-  if (isMeasure(value)) return `${formatLength(value)} (${PROVENANCE_LABEL[value.provenance]})`;
+  if (isMeasure(value)) {
+    return `${formatLength(value)} (${provenanceText(value.provenance, value.source)})`;
+  }
   if (isColor(value)) return `${formatColor(value)} (${PROVENANCE_LABEL[value.provenance]})`;
   return Object.entries(value)
     .map(([field, fieldValue]) => [words(field), formatLogValue(fieldValue)])

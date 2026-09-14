@@ -54,6 +54,10 @@ describe("compass", () => {
 describe("formatLogValue", () => {
   it("reads lengths and colors with their Provenance", () => {
     expect(formatLogValue({ mm: 2600, provenance: "estimated" })).toBe("~2.60 m (Estimated)");
+    const source = { blueprint: "estate-agent-plan", page: 2, printed: `13'9"` };
+    expect(formatLogValue({ mm: 4190, provenance: "blueprint", source })).toBe(
+      `4.19 m (Blueprint p.2: 13'9")`,
+    );
     expect(formatLogValue({ name: "Setting Plaster", provenance: "measured" })).toBe(
       "Setting Plaster (Measured)",
     );

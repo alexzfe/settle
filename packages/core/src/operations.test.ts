@@ -412,6 +412,8 @@ describe("set_up_home_folder", () => {
       readText: (path) =>
         written.get(path) ?? (path.startsWith(REPO_ROOT) ? readFileSync(path, "utf8") : undefined),
       writeText: (path, text) => void written.set(path, text),
+      readBytes: () => undefined,
+      writeBytes: () => {},
     };
     const other = createCore({ files, port: 4390 });
     try {

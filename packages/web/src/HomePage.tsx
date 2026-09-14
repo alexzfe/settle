@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import { call, type Home, type Level, type Room } from "./api";
+import { BlueprintList, BlueprintUploadForm } from "./Blueprints";
 import { formatDate, formatTime, sentence } from "./format";
 import { queryKeys, useConstraints, useHome, useNotes, useSessions } from "./queries";
 import { ArchivedNote, Fact, Length } from "./Values";
@@ -27,6 +28,9 @@ export function HomePage() {
       <HomeFacts home={home.data.home} />
       <h2>Levels and Rooms</h2>
       <RoomList home={slug} levels={levels} rooms={rooms} />
+      <h2>Blueprints</h2>
+      <BlueprintList home={slug} />
+      <BlueprintUploadForm home={slug} />
       <h2>Items</h2>
       <p>
         <Link to={`/homes/${slug}/items`}>

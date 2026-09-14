@@ -6,9 +6,9 @@ Times of use: evening, night
 
 Walls, clockwise:
 - living-room/wall-1: 5.20 m; faces S; outside; sky partly blocked by deciduous trees; "bay wall"
-- living-room/wall-2: 2.10 m
+- living-room/wall-2: 2.10 m [agent-plan p.1: 6'11"]
 - living-room/wall-3: 1.50 m; "chimney wall"; Surface: wallpaper, color ~teal leaf print
-- living-room/wall-4: 1.80 m
+- living-room/wall-4: 1.80 m [agent-plan p.1: 5'11"]
 - living-room/wall-5: ~3.70 m; faces W; outside
 - living-room/wall-6: 3.90 m
 

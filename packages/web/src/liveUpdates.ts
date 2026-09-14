@@ -17,7 +17,9 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     case "home":
       return [queryKeys.homes, queryKeys.home(home)];
     // The Home page lists Levels and Rooms; a Room page names its Level and the Rooms beyond it.
+    // Blueprint pages name the Level they show.
     case "level":
+      return [queryKeys.home(home), queryKeys.rooms(home), queryKeys.blueprints(home)];
     case "room":
       return [queryKeys.home(home), queryKeys.rooms(home)];
     // Parts of a Room show only on Room pages. A Door is on two, so every Room page refetches.
@@ -36,6 +38,9 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
       return [queryKeys.notes(home)];
     case "session":
       return [queryKeys.sessions(home)];
+    // The Home page lists the Blueprints, and each page viewer reads the list.
+    case "blueprint":
+      return [queryKeys.home(home), queryKeys.blueprints(home)];
     default:
       return unmapped(recordKind);
   }
@@ -59,6 +64,7 @@ function queriesOfHome(home: string): QueryKey[] {
     queryKeys.constraints(home),
     queryKeys.notes(home),
     queryKeys.changeLog(home),
+    queryKeys.blueprints(home),
   ];
 }
 

@@ -1,20 +1,42 @@
 // Recorded values as the pages show them: lengths in metres with a Provenance tag, colors with a
 // swatch, and lines of parts that leave out whatever is not recorded.
 
-import type { Color as ColorValue, Light, Provenance } from "@idh/core";
+import type { BlueprintSource, Color as ColorValue, Light, Provenance } from "@idh/core";
 import { Children, type ReactNode } from "react";
+import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import { formatColor, formatDate, formatLength, type Measure, PROVENANCE_LABEL } from "./format";
+import { formatColor, formatDate, formatLength, type Measure, provenanceText } from "./format";
 
-export function ProvenanceTag({ provenance }: { provenance: Provenance }) {
-  return <span className={styles.tag}>{PROVENANCE_LABEL[provenance]}</span>;
+/**
+ * A value's Provenance. A value printed on a Blueprint links to the page it is printed on, with
+ * the text as printed: "Blueprint p.2: 12'6"".
+ */
+export function ProvenanceTag({
+  provenance,
+  source,
+}: {
+  provenance: Provenance;
+  source?: BlueprintSource | undefined;
+}) {
+  const { home = "" } = useParams();
+  if (provenance === "blueprint" && source) {
+    return (
+      <Link
+        className={styles.tag}
+        to={`/homes/${home}/blueprints/${source.blueprint}/${source.page}`}
+      >
+        {provenanceText(provenance, source)}
+      </Link>
+    );
+  }
+  return <span className={styles.tag}>{provenanceText(provenance)}</span>;
 }
 
 /** A length with its Provenance: "~3.60 m" tagged Estimated. */
 export function Length({ value }: { value: Measure }) {
   return (
     <span>
-      {formatLength(value)} <ProvenanceTag provenance={value.provenance} />
+      {formatLength(value)} <ProvenanceTag provenance={value.provenance} source={value.source} />
     </span>
   );
 }
@@ -22,13 +44,16 @@ export function Length({ value }: { value: Measure }) {
 /**
  * Labelled lengths such as width × depth × height, leaving out the missing ones, and undefined
  * when none is recorded, so a line of Parts leaves it out too. When they share a Provenance it is
- * tagged once, at the end.
+ * tagged once, at the end, unless they come from a Blueprint: each tag then shows where it is
+ * printed.
  */
 export function dimensions(parts: [label: string, value: Measure | undefined][]): ReactNode {
   const present = parts.filter((part): part is [string, Measure] => part[1] !== undefined);
   const [first] = present;
   if (!first) return undefined;
-  const shared = present.every(([, value]) => value.provenance === first[1].provenance);
+  const shared = present.every(
+    ([, value]) => value.provenance === first[1].provenance && value.source === undefined,
+  );
   if (shared) {
     const text = present.map(([label, value]) => `${label} ${formatLength(value)}`).join(" × ");
     return (

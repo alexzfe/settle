@@ -1,6 +1,6 @@
 import type { Core } from "@idh/core";
 import { Hono, type MiddlewareHandler } from "hono";
-import { handleApi } from "./api.js";
+import { handleApi, handleBlueprintPage, handleUpload } from "./api.js";
 import { streamChanges } from "./events.js";
 import { handleMcpRequest, mcpTools } from "./mcp.js";
 import { serveWeb } from "./web.js";
@@ -18,6 +18,9 @@ export function createApp({ core, port, webDist }: AppOptions): Hono {
   const app = new Hono();
   app.use("*", localOnly);
   app.get("/health", (c) => c.json({ status: "ok" }));
+  // Blueprints: a multipart upload in, and each rendered page out as a PNG.
+  app.post("/api/upload_blueprint", (c) => handleUpload(core, c));
+  app.get("/api/get_blueprint_page", (c) => handleBlueprintPage(core, c));
   app.post("/api/:operation", (c) => handleApi(core, c));
   app.get("/events", (c) => streamChanges(core, c));
   app.all("/mcp/homes/:home", (c) =>

@@ -12,6 +12,10 @@ export type CoreErrorCode =
   | "weaker_provenance"
   /** A record can't be removed while something else still refers to it. */
   | "referenced_cannot_delete"
+  /** An uploaded Blueprint file that renders to no pages: truncated, damaged, or empty. */
+  | "no_pages"
+  /** An uploaded file that is not a PDF, PNG, or JPEG (HEIC included, until conversion). */
+  | "unsupported_file"
   | "city_not_found"
   | "folder_belongs_to_other_home"
   | "home_folder_unusable";

@@ -11,7 +11,14 @@ export {
 } from "./core.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export type { ChangeEvent, ChangeListener, RecordKind } from "./events.js";
-export { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";
+export type {
+  BlueprintDocument,
+  FileStore,
+  PdfRenderer,
+  RenderedImage,
+  TextLine,
+} from "./files.js";
+export { createFixtureHome, FIXTURE_FILES, type FixtureHome } from "./fixture/fixture-home.js";
 export { MCP_SERVER_KEY } from "./home-folder.js";
 export { migrate } from "./migrate.js";
 export type { Session } from "./operations/homes.js";
@@ -27,4 +34,5 @@ export {
   renderOpening,
   renderReceipt,
   renderRoomSheet,
+  renderViewedPages,
 } from "./render.js";

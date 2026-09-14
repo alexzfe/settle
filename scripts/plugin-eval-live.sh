@@ -58,6 +58,21 @@ slug="$(node -e '
 [[ "${slug}" == "${HOME_SLUG}" ]] ||
   fail "create_home should have made the Home ${HOME_SLUG}; it answered: ${response}"
 
+# The Blueprint the view_images case reads: the spike's one-page A3 ground floor, uploaded the way
+# the web UI does. Its page stays unmapped, so the Agent names the Level from the page itself.
+BLUEPRINT_FILE=docs/research/spikes/fixtures/blueprint-a3.pdf
+BLUEPRINT_SLUG=ground-floor-plan
+echo "Uploading the fixture Blueprint..."
+response="$(curl -sS -X POST "${BASE}/api/upload_blueprint" -F "home=${HOME_SLUG}" \
+  -F "label=Ground floor plan" -F "file=@${BLUEPRINT_FILE};type=application/pdf")"
+blueprint="$(node -e '
+  try {
+    const { blueprint } = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+    process.stdout.write(`${blueprint?.slug ?? ""} ${blueprint?.pageCount ?? ""}`);
+  } catch { }' <<<"${response}")"
+[[ "${blueprint}" == "${BLUEPRINT_SLUG} 1" ]] ||
+  fail "upload_blueprint should have made the one-page Blueprint ${BLUEPRINT_SLUG}; it answered: ${response}"
+
 status=0
 claude plugin eval ./plugin --eval-dir evals-live --mocks off \
   --allow-tools "mcp__plugin_live-server_int-design-harness__*" \

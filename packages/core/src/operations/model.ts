@@ -2,6 +2,8 @@ import { roomGaps } from "../gaps.js";
 import { optional } from "../optional.js";
 import { featureName, type OverviewView } from "../render.js";
 import type {
+  BlueprintPageRow,
+  BlueprintRow,
   ConstraintRow,
   DoorRow,
   FeatureRow,
@@ -17,6 +19,8 @@ import type {
 } from "../store.js";
 import { toHome, toLevel } from "./homes.js";
 import {
+  type Blueprint,
+  type BlueprintPage,
   type Constraint,
   type Door,
   type Feature,
@@ -45,6 +49,9 @@ export interface HomeModel {
   features: FeatureRow[];
   items: ItemRow[];
   constraints: ConstraintRow[];
+  /** In the order they were uploaded. */
+  blueprints: BlueprintRow[];
+  blueprintPages: BlueprintPageRow[];
 }
 
 export function loadHome(store: Store, home: HomeRow): HomeModel {
@@ -59,6 +66,8 @@ export function loadHome(store: Store, home: HomeRow): HomeModel {
     features: store.list("features", home.id),
     items: store.list("items", home.id),
     constraints: store.list("constraints", home.id),
+    blueprints: store.list("blueprints", home.id),
+    blueprintPages: store.list("blueprint_pages", home.id),
   };
 }
 
@@ -71,7 +80,41 @@ export function overviewView(model: HomeModel): OverviewView {
     levels: model.levels.map(toLevel),
     constraints: model.constraints.filter(active).map(toConstraint),
     unplacedItems: model.items.filter((item) => active(item) && item.roomId === null).length,
+    blueprints: model.blueprints.map((blueprint) =>
+      toBlueprint(model.levels, model.blueprintPages, blueprint),
+    ),
     rooms: model.rooms.filter(active).map((room) => roomDetail(model, room)),
+  };
+}
+
+/** A Blueprint with its pages, from the Home's Levels and Blueprint pages. */
+export function toBlueprint(
+  levels: LevelRow[],
+  pages: BlueprintPageRow[],
+  row: BlueprintRow,
+): Blueprint {
+  return {
+    slug: row.slug,
+    label: row.label,
+    fileName: row.fileName,
+    fileType: row.fileType,
+    pageCount: row.pageCount,
+    uploadedAt: row.uploadedAt,
+    pages: pages
+      .filter((page) => page.blueprintId === row.id)
+      .sort((a, b) => a.page - b.page)
+      .map((page) => toBlueprintPage(levels, page)),
+  };
+}
+
+export function toBlueprintPage(levels: LevelRow[], row: BlueprintPageRow): BlueprintPage {
+  const level = row.levelId === null ? undefined : levels.find((each) => each.id === row.levelId);
+  return {
+    page: row.page,
+    ...(level ? { level: toLevel(level) } : {}),
+    width: row.widthPx,
+    height: row.heightPx,
+    hasText: row.textLines.length > 0,
   };
 }
 

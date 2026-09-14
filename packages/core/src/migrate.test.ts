@@ -21,6 +21,7 @@ describe("migrate", () => {
       { id: 0 },
       { id: 1 },
       { id: 2 },
+      { id: 3 },
     ]);
     db.close();
   });
@@ -29,17 +30,19 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 3 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 4 });
     db.close();
   });
 
-  it("creates the tables of slices 1 and 2", () => {
+  it("creates the tables of slices 1 to 3", () => {
     const db = migrate(":memory:");
     const tables = db
       .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name")
       .all()
       .map((row) => row.name);
     expect(tables).toEqual([
+      "blueprint_pages",
+      "blueprints",
       "change_log",
       "constraints",
       "doors",

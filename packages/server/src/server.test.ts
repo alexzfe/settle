@@ -1,6 +1,7 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FIXTURE_FILES } from "@idh/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { type RunningServer, startServer } from "./server.js";
 
@@ -115,6 +116,34 @@ it("sends one change event per record a save_room writes, with the record's kind
   } finally {
     controller.abort();
   }
+});
+
+it("keeps an uploaded Blueprint and its rendered pages in the data dir", async () => {
+  await api("create_home", { name: "Plan home", country: "GB", city: "London" });
+  const form = new FormData();
+  form.set("home", "plan-home");
+  form.set("label", "Agent plan");
+  form.set(
+    "file",
+    new File([readFileSync(join(FIXTURE_FILES, "blueprint-a3.pdf"))], "plan.pdf", {
+      type: "application/pdf",
+    }),
+  );
+
+  const response = await fetch(`${server.url}/api/upload_blueprint`, {
+    method: "POST",
+    body: form,
+  });
+  const page = await fetch(
+    `${server.url}/api/get_blueprint_page?home=plan-home&blueprint=agent-plan&page=1`,
+  );
+
+  expect(response.status).toBe(200);
+  expect(existsSync(join(root, "data", "uploads", "plan-home", "agent-plan.pdf"))).toBe(true);
+  expect(existsSync(join(root, "data", "rendered", "plan-home", "agent-plan", "page-1.png"))).toBe(
+    true,
+  );
+  expect(page.headers.get("content-type")).toBe("image/png");
 });
 
 async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {

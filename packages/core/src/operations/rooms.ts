@@ -4,12 +4,21 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, featureName, named, renderRoomSheet } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { DoorRow, RoomRow, WallRow } from "../store.js";
-import { active, findLevel, groundLevel, list, requireRoom, requireWall } from "./lookup.js";
+import {
+  active,
+  findLevel,
+  groundLevel,
+  list,
+  requireRoom,
+  requireSources,
+  requireWall,
+} from "./lookup.js";
 import { type HomeModel, loadHome, roomById, roomDetail, wallSlug } from "./model.js";
 import {
   type doorInput,
   type featureInput,
   type GetRoomResult,
+  type GetRoomSheetResult,
   getRoomInput,
   getRoomSheetInput,
   type ReceiptResult,
@@ -59,6 +68,7 @@ export const saveRoom = defineOperation({
     const { store } = context;
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
+    requireSources(store, home, input);
     const receipt = context.write(session.slug, (log) => {
       const model = loadHome(store, home);
       const writer = new Writer(store, home, log, input.overrideProvenance);
@@ -100,16 +110,20 @@ export const getRoomSheet = defineOperation({
     "woodwork); its Features; its lights; one line per Item in it; and its Gaps. Values marked " +
     "~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: " +
     "the receipts of later writes keep your picture current. Don't fetch every Room up front; " +
-    "the opening lists them all, and find_items finds an Item elsewhere. Changes nothing.",
+    "the opening lists them all, and find_items finds an Item elsewhere. Values printed on a " +
+    "Blueprint render plain; withSources adds after each one its Blueprint, page, and the text " +
+    "exactly as printed, for when a question needs them. Changes nothing.",
   input: getRoomSheetInput,
   readOnly: true,
   surface: "agent",
-  handler(context, input) {
+  handler(context, input): GetRoomSheetResult {
     const home = requireHome(context);
     requireSession(context, home, { open: false });
     const model = loadHome(context.store, home);
     const room = requireRoom(model, input.room, { archived: true });
-    return { sheet: renderRoomSheet(roomDetail(model, room)) };
+    return {
+      sheet: renderRoomSheet(roomDetail(model, room), { sources: input.withSources === true }),
+    };
   },
   text: ({ sheet }) => sheet,
 });

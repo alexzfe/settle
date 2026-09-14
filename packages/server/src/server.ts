@@ -30,7 +30,11 @@ export async function startServer(
   { webDist = WEB_DIST }: ServerOptions = {},
 ): Promise<RunningServer> {
   mkdirSync(config.dataDir, { recursive: true });
-  const core = createCore({ database: join(config.dataDir, "harness.sqlite"), port: config.port });
+  const core = createCore({
+    database: join(config.dataDir, "harness.sqlite"),
+    dataDir: config.dataDir,
+    port: config.port,
+  });
 
   // The MCP endpoint accepts only Host headers naming the port it listens on, and port 0 picks
   // that port only at listen time, so the app is built once the server listens. Requests are
