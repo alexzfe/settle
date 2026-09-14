@@ -34,9 +34,10 @@ Run on the user's own real home:
 
 ## Web UI
 
-- The user can view everything; create a Home; edit Rooms, Items, Notes, and Constraints through forms; upload Blueprints onto a Home and Photos onto a Room or an Item; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
+- The user can view everything; create a Home; upload Blueprints onto a Home and Photos onto a Room or an Item; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
+- Everything is ideally done through the Agent. Form-based editing of Rooms, Items, Notes, and Constraints exists for completeness and is expected to be used very little, so it is built in the web UI design session, after the PoC finish line (decided in the build-plan grilling of 2026-09-14). Until then the browser is a viewer plus the actions above, and the PoC's plain UI is judged on the AI and the Home record, not on its look.
 - A Shopping section shows two groups, the Shopping List and Considering. Each entry opens its Quick Guide, with the Full Guide one tap away. Every non-Rejected Purchase Decision has Guides. The AI writes them during Sessions, personalised to that Purchase Decision.
-- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC.
+- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, and the Decision page shows the Quick Guide's short URL as a QR code. No auth, since it is the user's own network.
 
 ## Deferred topics
 
@@ -55,4 +56,6 @@ Each of these gets its own research and grilling session.
 - Room Brief export for painters and contractors
 - To-do list for non-purchase Decisions that need action
 - Web UI form for recording Fulfilment (in the PoC, only the Agent records it)
+- Undo from the change log (in the PoC, the log is shown read-only)
+- Web UI design session, after the finish line: the look and flow of the whole UI, plus form-based editing of Rooms, Items, Notes, and Constraints
 - Shared library of category guides

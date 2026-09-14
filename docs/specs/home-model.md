@@ -16,6 +16,7 @@
   - **Measured** means the user measured it. For a color, it means the color was identified exactly (a paint code from the tin, or a match against the paint maker's card).
   - **Blueprint** means the figure was *printed* on a Blueprint. The value also stores which Blueprint, the page, and the text exactly as printed (e.g. `12'6"`).
   - **Estimated** means judged by eye: by the AI from a Photo, scaled off a drawing, or guessed by the user. Confirming an Estimated value does not make it Measured.
+- **Identifiers:** every record the AI or the web UI can name (a Level, Room, Wall, Window, Door, Feature, Item, Constraint, Note, Blueprint, Photo, Session, or Decision) has a slug, unique within its Home, that the platform derives from its name when it is created ("living-room", "sofa", "sofa-2"). A slug never changes afterwards, even if the name does, and the user never edits it. Slugs are the identifiers in tool calls and renderings; database ids stay internal. Walls are named by their Room and position ("living-room/wall-1").
 - **The Source column** in the tables below says who supplies each field:
   - *User*: stated by the user, through the AI or a UI form.
   - *Provenance*: the value carries a Provenance, as above.
@@ -35,7 +36,7 @@
 | name | The user's label for the Home | text | User | Req |
 | country | Country the Home is in; also sets the market for Listings | country | User | Req |
 | city | City or town. No street address and no coordinates, for privacy | text | User | Req |
-| latitude | Derived from the city, rounded to 0.1° (about 11 km). Sets the hemisphere, so compass advice flips correctly | degrees | Platform, from a built-in city table | Req |
+| latitude | Derived from the city, rounded to 0.1° (about 11 km). Sets the hemisphere, so compass advice flips correctly | degrees | Platform, from the bundled GeoNames `cities15000` table; the create-Home form asks for it directly when the city isn't found | Req |
 | Tenure | Owned, rented, or other. Never implies a restriction on its own; what the user may change is recorded as Constraints | enum | User | Opt |
 | planned stay | How long the user expects to live there. Tempers investment advice | under 1 yr / 1–3 / 3–10 / indefinitely | User | Opt |
 | building type | | house / apartment / other | User | Opt |
@@ -112,7 +113,7 @@ A rectangular Room starts with 4 Walls and an L-shaped one with 6. Walls are opt
 | no door | A doorway with nothing hanging in it | yes / no | User | Opt |
 | offset | Along the side-A Wall, as for Windows | mm | Provenance | Opt |
 
-A Door is one record shared by both Rooms it joins.
+A Door is one record shared by both Rooms it joins. `save_room` names a Door by the other Room's slug and, optionally, an existing Door slug. When no slug is given and a Door already joins those two Rooms, the server updates it and says so in the receipt. Two Doors between the same pair of Rooms need explicit slugs.
 
 ### Surface
 
@@ -217,9 +218,9 @@ No scale is stored, because values are never measured off the drawing: a value s
 
 ## Rules the Home model owns
 
-- **No weaker overwrites.** A value is never replaced by one with weaker Provenance (Measured > Blueprint > Estimated) unless the user explicitly says so. The server refuses such a write and says why. The weaker value is not stored.
+- **No weaker overwrites.** A value is never replaced by one with weaker Provenance (Measured > Blueprint > Estimated) unless the user explicitly says so. The server refuses such a write and says why. The weaker value is not stored. The user's say-so travels as an optional `override_provenance` reason on the write: the server then accepts the weaker value, requires the reason to be non-empty (the Skill quotes the user), and logs the override. The override exists because the stronger value can be wrong: a mis-typed measurement, a wall that has since changed, or a guess once recorded as Measured.
 - **Change log.** Every change to a Home record is logged with what changed, when, and whether it came from the web UI or from which Session. The log exists for undo and audit, and it is never loaded into the AI's context. The Home itself holds only current state. Earlier states survive in Fulfilled Decisions, Deviations, and dated Photos.
-- **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item. When a value a reason points at changes (the alcove is re-measured), the platform detects it and the Purchase Decision is flagged for review.
+- **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item, and optionally one field of it ("living-room/wall-2, length"). When a field is named, only a change to that field flags the Purchase Decision; when none is named, any change to the record does. The platform detects the change and raises the flag.
 - **Archiving, not deleting.** Anything a Requirement's reason can point at (a Room, Wall, Window, Door, Feature, or Item, as well as a Constraint) is Archived rather than deleted, so every reference keeps working. Removing a Room or a Constraint Archives it. Archived records leave the Home's current state.
 - **Gaps.** A Room's Gaps are worked out against the "enough for advice" list:
   - Wall lengths

@@ -179,13 +179,29 @@ the chair"). Not for property.
   - There is no time limit. A Session that never gets a summary stays unsummarised. That is harmless, because its record is built from its writes, and the web UI lists such Sessions without treating them as errors.
   - After a summary the Session is closed. A write carrying its id is refused with an error telling the AI to call `open_session`, which starts the next Session in the same conversation.
 
+## Decision kinds
+
+Settled in the build-plan grilling of 2026-09-14. A kind never limits what a Decision is about; it says what the platform does with it. A fridge, a towel, and a washing machine are all Purchase Decisions.
+
+| Kind | Scope | What the platform does with it |
+|---|---|---|
+| Design Direction | Home | Automatically in every Basis; loads in full at Session start. Content: mood, color temperature (warm / neutral / cool), contrast (low / medium / high), key materials, style references, and guiding principles (one line each) |
+| Room Direction | Room | Must refine the Design Direction (checked by the Skill, not the server). Content: one paragraph, plus optional overrides of mood and contrast |
+| Room use | Room | Fulfilment sets the Room's functions |
+| Palette | Home | Loads in full at Session start; enters the Basis only of Decisions that use one of its colors. Content: a list of colors, each a Color value with a role (base / secondary / accent) and an optional note on where it is meant to go |
+| Room color | Room | Names a Surface, a Palette color, and a finish; Fulfilment updates that Surface |
+| Purchase | Home or Room | Carries Requirements, Guides, and Listings; appears in the Shopping section; Fulfilment adds, replaces, or Archives Items and Features |
+| Other | Home or Room | Title, statement, Basis, Evidence, and state only ("knock through the wall") |
+
+The list is revised from real usage: a subject that piles up under Other gets its own kind, and a kind that goes unused or duplicates another is dropped.
+
 ## Rule enforcement
 
 Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment.md):
 - **The server** enforces everything it can check from the data, refusing with an actionable error.
 - **The Skills** own every judgment about what the user meant.
 - **No hooks and no confirmation dialogs** in the PoC.
-- **Agent writes only.** The Session rules below apply to writes from the Agent over MCP. Web UI changes need no Session and are logged as coming from the web UI.
+- **Agent writes only.** The Session rules below apply to writes from the Agent over MCP. Web UI changes need no Session and are logged as coming from the web UI. A state change from the web UI may carry a reason, but doesn't have to.
 
 | Server enforces (refuses the write) | Server supplies, the Skill says it | Skill instructions only |
 |---|---|---|
@@ -222,7 +238,7 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 
 - The user uploads files in the web UI: Blueprints onto the Home, Photos onto a Room or an Item.
 - A Skill fetches Blueprint pages with `view_images`, a few images per call. Claude Code caps a tool result at about 25K tokens.
-- The server converts HEIC to JPEG and PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs.
+- The server converts PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs. HEIC to JPEG conversion is deferred until a HEIC file actually arrives (decided in the build-plan grilling of 2026-09-14): Photos are scaffolding in the PoC, and Blueprints are normally PDFs or screenshots.
 - A tool result that carries images has no `structuredContent`, because Codex drops the images when it's present.
 - **Photos are scaffolding in the PoC.** The platform stores them, and the web UI uploads and shows them, but the AI neither sees nor uses them:
   - No Skill step depends on them.
@@ -246,7 +262,7 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `search_notes` | Notes matching a query | All |
 | `view_images` | A Blueprint's pages as images. Photos are scaffolding in the PoC, so it doesn't return them | Home Intake |
 | **Write** (each call carries the Session id and returns a receipt) | | |
-| `save_home` | Home facts and Levels | Home Intake; Purchase (access measurements) |
+| `save_home` | Home facts, Levels, and which Level each Blueprint page shows | Home Intake; Purchase (access measurements) |
 | `save_room` | One Room with its Walls, Windows, Doors, Features, and Surfaces | Home Intake; any Skill recording a fact the user states or a new measurement |
 | `save_items` | Several Items at once | Home Intake; any Skill recording a fact the user states |
 | `set_constraints` | Adds or removes (Archives) a batch of Constraints | All |
@@ -258,6 +274,8 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `record_fulfilment` | What was actually done, any Deviations, and the resulting Home changes: a new Item, an Archived Item, a changed Surface, a Room's changed functions, or a replaced (Archived) Feature | Purchase; Color (for painting); Design Direction (Room use) |
 | `flag_conflict` | Raises a Conflict against a Locked Decision | All |
 | `close_session` | The three-part summary | All |
+
+Every write tool that carries a value with Provenance also takes an optional `override_provenance` reason, for the one case where the user has said to replace a stronger value with a weaker one ([home-model.md](home-model.md#rules-the-home-model-owns)).
 
 **Write receipts.** Every write returns a short receipt, never the record it wrote:
 - one line per change ("Living room: ceiling height 2.60 m (Measured)")
@@ -281,9 +299,9 @@ The AI's picture of a Room is the Room Sheet it fetched plus the receipts since.
   - A build step inlines the shared protocol into each `SKILL.md` and writes the plugin into this repo.
   - Frontmatter uses only the spec fields, and each `name` matches its directory name.
   - Skills sit flat under `skills/`, and the manifest has no `skills` field.
-- **Setting up a Home Folder.** The web UI's "Set up Home Folder" action, available once the Home exists ([Home](home-model.md#home)), writes two files into a folder the user chooses:
+- **Setting up a Home Folder.** The web UI's "Set up Home Folder" action, available once the Home exists ([Home](home-model.md#home)), writes two files into a folder the user chooses. A browser can't hand the server a picked folder, so the user types an absolute path, defaulting to `~/Homes/<home slug>`. The server creates the folder if it's missing, refuses one that already holds another Home's `.mcp.json`, and stores the path on the Home. The two files:
   - **`.claude/settings.json`** enables the plugin for this folder only and names its marketplace, so Claude Code offers to install it. The plugin therefore costs nothing in unrelated Claude Code sessions.
-  - **`.mcp.json`** points to the server at `http://127.0.0.1:<fixed port>/mcp/homes/<home>`. That URL is how the server knows the folder's Home.
+  - **`.mcp.json`** points to the server at `http://127.0.0.1:4380/mcp/homes/<home slug>`. That URL is how the server knows the folder's Home. The port is fixed at 4380 and can be overridden by an environment variable, in which case the setup action writes the overridden port.
   - **Why the MCP config lives in the folder:** Codex doesn't expand variables, and MCP roots are deprecated, so there is no portable way for a plugin-level config to tell the server which Home a folder belongs to.
   - **To verify during the build:** that Claude Code asks once to approve the folder's server.
   - **Codex:** its equivalents join the same setup step when Codex is supported. Whether Codex can enable a plugin per project is unverified.
@@ -312,7 +330,7 @@ The AI's picture of a Room is the Room Sheet it fetched plus the receipts since.
 2. **Rented Homes:** yes. Home Intake asks one permissions question and proposes the answers as a batch of Constraints, added once the user agrees.
 3. **Times of use:** asked once at the end of Home Intake, in one table covering every Room. The user can skip it, and whatever is skipped stays a Gap.
 4. **Blueprint confirmation:** yes, in the stages you listed, with one reply per Level for each stage. Home Intake always asks where north is.
-5. **PDF Blueprints:** the server converts PDF pages to PNG, and HEIC to JPEG, before handing them to any Agent.
+5. **PDF Blueprints:** the server converts PDF pages to PNG before handing them to any Agent. HEIC conversion is deferred (see Blueprints and Photos).
 6. **Inspiration images:** not stored in the PoC. They are shown to the Agent in a Design Direction Session and summarised into the style references, and the Session is the Evidence.
 7. **Access checks:** yes. Large purchases get a *must* delivery Requirement based on the narrowest point on the way in, or a "measure first" line if that point is unknown.
 8. **Flags from Home changes:** the platform flags the Purchase Decision. The flag appears at Session open and in the web UI, and Purchase handles it when the user next works on that Decision.
