@@ -296,18 +296,7 @@ describe("the Design Direction in every Basis", () => {
     ]);
   });
 
-  it("joins the Basis of Decisions saved before it was settled", async () => {
-    await save(roomDirection());
-    await save(direction());
-    expect((await detail("calm-evenings")).basis).toEqual([]);
-
-    await setState("warm-minimalism", "leaning");
-
-    expect((await detail("calm-evenings")).basis).toEqual([
-      expect.objectContaining({ slug: "warm-minimalism", state: "leaning", automatic: true }),
-    ]);
-    expect((await detail("warm-minimalism")).basis).toEqual([]);
-  });
+  // A Decision saved before the Direction was settled: basis-rules.test.ts.
 });
 
 describe("the flag cascade", () => {

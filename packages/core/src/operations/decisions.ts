@@ -369,9 +369,11 @@ function fulfilRoomUse(
 }
 
 /**
- * Room color: its Surface (the Room's part, or one Wall's) takes the Palette color's Color value,
- * Measured when it has a brand and code and Estimated otherwise, and the finish applied. A color
- * that would replace a stronger one without overrideProvenance refuses the whole Fulfilment.
+ * Room color: its Surface (the Room's part, or one Wall's) takes the Color value of its color in
+ * the Palette stored in its Basis, not the Palette in force, Measured when it has a brand and code
+ * and Estimated otherwise, and the finish applied. It is refused when that Palette no longer has
+ * the color, or the Decision has no Palette: it needs Reopening. A color that would replace a
+ * stronger one without overrideProvenance refuses the whole Fulfilment.
  */
 function fulfilRoomColor(
   context: OperationContext,
@@ -383,17 +385,18 @@ function fulfilRoomColor(
 ): void {
   const subject = titled(decision);
   const content = decision.content as RoomColorContent;
-  const palette = inForce(model, "palette");
+  const palette = storedPalette(model, decision);
   const color = palette && colorOf(palette, content.color);
   if (!color) {
     throw new CoreError(
-      "validation",
-      `${subject} names the color ${content.color}, which ` +
-        (palette
-          ? `the Palette in force, ${titled(palette)}, no longer has.`
-          : "no Palette has: none is in force.") +
-        " Settle its color against the Palette first (Reopen it with the user's yes, save it " +
-        "with a color of the Palette, and Lock it again), then Fulfil it.",
+      "illegal_transition",
+      (palette
+        ? `${subject} names the color ${content.color}, which its Palette, ${titled(palette)}, ` +
+          `no longer has: the Palette changed after ${subject} was Locked.`
+        : `${subject} has no Palette in its Basis, so its color ${content.color} can't be ` +
+          "resolved.") +
+        " It needs Reopening with the user's yes, saving with a color of the Palette in force, " +
+        "and Locking again; then Fulfil it.",
     );
   }
   const { role: _role, note: _note, ...value } = color;
@@ -608,27 +611,80 @@ function usesColorsOf(model: DecisionModel, decision: DecisionRow, palette: Deci
   );
 }
 
+/** The kinds whose Decision in force joins a Basis automatically. */
+type AutomaticKind = "design-direction" | "palette";
+const AUTOMATIC_KINDS: readonly AutomaticKind[] = ["design-direction", "palette"];
+
 /**
- * A Decision's Basis: its automatic entries first, computed and never stored (the Design
- * Direction in force, for every Decision but a Design Direction; then the Palette in force, for
- * a Decision using its colors), then the Decisions given, without an automatic one a second time.
+ * The Decision of `kind` that joins a Decision's Basis automatically now: the Design Direction in
+ * force, for every Decision but a Design Direction; the Palette in force, for a Decision using its
+ * colors.
+ */
+function automaticFor(
+  model: DecisionModel,
+  decision: DecisionRow,
+  kind: AutomaticKind,
+): DecisionRow | undefined {
+  if (kind === "design-direction") {
+    return decision.kind === "design-direction" ? undefined : inForce(model, kind);
+  }
+  const palette = inForce(model, "palette");
+  return palette && usesColorsOf(model, decision, palette) ? palette : undefined;
+}
+
+/** A Decision's stored automatic entry of `kind`: the Design Direction or Palette it rests on. */
+function automaticEntry(
+  model: DecisionModel,
+  decision: DecisionRow,
+  kind: AutomaticKind,
+): DecisionBasisRow | undefined {
+  return model.basis.find(
+    (link) =>
+      link.decisionId === decision.id &&
+      link.automatic &&
+      decisionById(model, link.basisDecisionId).kind === kind,
+  );
+}
+
+/** The Palette stored in a Decision's Basis. */
+function storedPalette(model: DecisionModel, decision: DecisionRow): DecisionRow | undefined {
+  const entry = automaticEntry(model, decision, "palette");
+  return entry && decisionById(model, entry.basisDecisionId);
+}
+
+/** Rejected or Fulfilled: nothing about it is open for review, and its Basis stays as it is. */
+function closed(decision: DecisionRow): boolean {
+  return decision.state === "rejected" || decision.fulfilledAt !== null;
+}
+
+/**
+ * A Decision's Basis as stored: its automatic entries first (its Design Direction, then its
+ * Palette), then the Decisions given.
  */
 function basisOf(model: DecisionModel, decision: DecisionRow) {
-  const direction =
-    decision.kind === "design-direction" ? undefined : inForce(model, "design-direction");
-  const palette = inForce(model, "palette");
-  const automatic = [
-    direction,
-    palette && usesColorsOf(model, decision, palette) ? palette : undefined,
-  ].filter((row): row is DecisionRow => row !== undefined);
-  const given = model.basis
-    .filter((link) => link.decisionId === decision.id)
-    .map((link) => decisionById(model, link.basisDecisionId))
-    .filter((row) => !automatic.some((each) => each.id === row.id));
-  return [
-    ...automatic.map((row) => ({ row, automatic: true })),
-    ...given.map((row) => ({ row, automatic: false })),
-  ];
+  const automatic = AUTOMATIC_KINDS.map((kind) => automaticEntry(model, decision, kind)).filter(
+    (link): link is DecisionBasisRow => link !== undefined,
+  );
+  const given = model.basis.filter((link) => link.decisionId === decision.id && !link.automatic);
+  return [...automatic, ...given].map((link) => ({
+    row: decisionById(model, link.basisDecisionId),
+    automatic: link.automatic,
+  }));
+}
+
+/**
+ * The automatic entries a Decision lacks: a Design Direction or Palette in force that applies to
+ * it, and a Room color's Palette always. Each joins on its next save or state change; a Rejected
+ * or Fulfilled Decision lacks none, since its Basis stays as it is.
+ */
+function missingAutomatic(model: DecisionModel, decision: DecisionRow): AutomaticKind[] {
+  if (closed(decision)) return [];
+  return AUTOMATIC_KINDS.filter(
+    (kind) =>
+      !automaticEntry(model, decision, kind) &&
+      (automaticFor(model, decision, kind) !== undefined ||
+        (kind === "palette" && decision.kind === "room-color")),
+  );
 }
 
 const openFlags = (model: DecisionModel, decision: DecisionRow) =>
@@ -744,12 +800,14 @@ export function toSummary(model: DecisionModel, row: DecisionRow): DecisionSumma
 function toDetail(model: DecisionModel, row: DecisionRow): DecisionDetail {
   const { kind: _, colors: _colors, ...summary } = toSummary(model, row);
   const content = { kind: row.kind, content: row.content } as DecisionKindContent;
-  const palette = row.kind === "room-color" ? inForce(model, "palette") : undefined;
+  const palette = row.kind === "room-color" ? storedPalette(model, row) : undefined;
+  const missing = missingAutomatic(model, row);
   return {
     ...summary,
     ...optional({
       fulfilment: row.fulfilment,
       paletteColor: palette && colorOf(palette, (row.content as RoomColorContent).color),
+      missingAutomatic: missing.length > 0 ? missing : undefined,
     }),
     basis: basisOf(model, row).map(({ row: entry, automatic }) => ({
       slug: entry.slug,
@@ -1147,7 +1205,9 @@ class DecisionWrites {
   /**
    * Moves a Decision by the transitions table, recording the change with its Session and reason.
    * A Reopen or Reject clears the Decision's own flags and Conflicts and flags every Decision
-   * resting on it. Its current state keeps it as it is, clearing its flags and Conflicts.
+   * resting on it. Its current state keeps it as it is, clearing its flags and Conflicts. Keeping
+   * or Reopening it re-bases it where a cleared flag came from its own automatic entry, and any
+   * automatic entry it lacks joins, unless it is Rejected or Fulfilled.
    */
   move(decision: DecisionRow, to: DecisionState, reason: string | undefined): void {
     const from = decision.state;
@@ -1166,9 +1226,6 @@ class DecisionWrites {
     if (to === "locked") this.#requireOneLocked(decision);
     const model = this.#model;
     const { store } = this.#context;
-    const wasInForce =
-      (decision.kind === "design-direction" || decision.kind === "palette") &&
-      inForce(model, decision.kind)?.id === decision.id;
     store.update("decisions", decision.id, { state: to });
     this.#writer.logged({
       recordKind: "decision",
@@ -1194,15 +1251,20 @@ class DecisionWrites {
     const reopened = from === "locked" && to === "leaning";
     const rejected = to === "rejected";
     const cleared =
-      reopened || rejected ? this.#clear(decision, reopened ? "reopen" : "reject", reason) : [];
+      reopened || rejected
+        ? this.#clear(decision, reopened ? "reopen" : "reject", reason)
+        : { flags: [], slugs: [] };
     this.#writer.line(
       titled(decision),
-      [transitionText(from, to), cleared.length > 0 ? `cleared ${cleared.join(", ")}` : ""]
+      [
+        transitionText(from, to),
+        cleared.slugs.length > 0 ? `cleared ${cleared.slugs.join(", ")}` : "",
+      ]
         .filter(Boolean)
         .join("; "),
     );
-    if (reopened || rejected)
-      this.#cascade(decision, reopened ? "reopened" : "rejected", wasInForce);
+    this.#rebase(decision, reopened ? cleared.flags : [], reason);
+    if (reopened || rejected) this.#cascade(decision, reopened ? "reopened" : "rejected");
   }
 
   /** Resolves one flag or Conflict: keep clears it alone; reopen and reject move its Decision. */
@@ -1217,6 +1279,7 @@ class DecisionWrites {
       if ("flag" in target) this.#clearFlag(target.flag, "keep", reason);
       else this.#resolveConflict(target.conflict, "keep", reason);
       this.#writer.line(titled(decision), `kept as ${STATES[decision.state]}; cleared ${row.slug}`);
+      this.#rebase(decision, "flag" in target ? [target.flag] : [], reason);
       return;
     }
     if (resolution === "reopen" && decision.state !== "locked") {
@@ -1242,17 +1305,22 @@ class DecisionWrites {
           `${LEGAL_TRANSITIONS[state].join(" or ")}.${TRANSITION_HINTS[state]}`,
       );
     }
-    const cleared = this.#clear(decision, "keep", reason);
-    this.#writer.line(titled(decision), `kept as ${STATES[state]}; cleared ${cleared.join(", ")}`);
+    const { flags, slugs } = this.#clear(decision, "keep", reason);
+    this.#writer.line(titled(decision), `kept as ${STATES[state]}; cleared ${slugs.join(", ")}`);
+    this.#rebase(decision, flags, reason);
   }
 
-  /** Clears every open flag and Conflict of a Decision; returns their slugs. */
-  #clear(decision: DecisionRow, resolution: Resolution, reason: string | undefined): string[] {
+  /** Clears every open flag and Conflict of a Decision; returns the flags, and every slug. */
+  #clear(
+    decision: DecisionRow,
+    resolution: Resolution,
+    reason: string | undefined,
+  ): { flags: FlagRow[]; slugs: string[] } {
     const flags = openFlags(this.#model, decision);
     const conflicts = openConflicts(this.#model, decision);
     for (const flag of flags) this.#clearFlag(flag, resolution, reason);
     for (const conflict of conflicts) this.#resolveConflict(conflict, resolution, reason);
-    return [...flags, ...conflicts].map((each) => each.slug);
+    return { flags, slugs: [...flags, ...conflicts].map((each) => each.slug) };
   }
 
   #clearFlag(flag: FlagRow, resolution: Resolution, reason: string | undefined): void {
@@ -1282,26 +1350,16 @@ class DecisionWrites {
   }
 
   /**
-   * Flags every Decision resting on `changed`: those with it in their Basis; when it was the
-   * Design Direction in force, every other Decision; and when it was the Palette in force, every
-   * Decision using its colors. Rejected and Fulfilled ones are left alone: nothing about them is
-   * open for review.
+   * Flags every Decision holding `changed` in its stored Basis, automatic or given. Rejected and
+   * Fulfilled ones are left alone: nothing about them is open for review.
    */
-  #cascade(changed: DecisionRow, cause: FlagCause, wasInForce: boolean): void {
+  #cascade(changed: DecisionRow, cause: FlagCause): void {
     const model = this.#model;
     for (const decision of model.decisions) {
-      if (decision.id === changed.id || !active(decision)) continue;
-      if (decision.state === "rejected" || decision.fulfilledAt !== null) continue;
-      const automatic =
-        wasInForce &&
-        (changed.kind === "palette"
-          ? usesColorsOf(model, decision, changed)
-          : decision.kind !== "design-direction");
-      const rests =
-        automatic ||
-        model.basis.some(
-          (link) => link.decisionId === decision.id && link.basisDecisionId === changed.id,
-        );
+      if (decision.id === changed.id || !active(decision) || closed(decision)) continue;
+      const rests = model.basis.some(
+        (link) => link.decisionId === decision.id && link.basisDecisionId === changed.id,
+      );
       if (rests) this.#raise(decision, cause, changed);
     }
   }
@@ -1378,10 +1436,14 @@ class DecisionWrites {
           `${titled(self)} can't rest on itself: take ${slug} out of basis.`,
         );
       }
-      // The Design Direction is in every Basis automatically, and the Palette in force in every
-      // Room color's: never stored, so never listed twice.
+      // The Design Direction joins every Basis automatically, and the Palette in force every Room
+      // color's and every Basis that already holds it: never listed twice.
       const automatic =
-        row.kind === "design-direction" || (row.kind === "palette" && kind === "room-color");
+        row.kind === "design-direction" ||
+        (row.kind === "palette" &&
+          (kind === "room-color" ||
+            (self !== undefined &&
+              automaticEntry(this.#model, self, "palette")?.basisDecisionId === row.id)));
       if (automatic || rows.includes(row)) continue;
       rows.push(row);
     }
@@ -1529,6 +1591,9 @@ class DecisionWrites {
     );
     model.decisions.push(decision);
     this.#setBasis(decision, basis);
+    // Requirements first, so a Palette they name joins the Basis the receipt shows.
+    const requirementLines = this.#applyRequirements(decision, requirements);
+    this.#attach(decision);
     const parts = [
       `created as a Candidate ${KINDS[input.kind]}` +
         (room ? ` for ${named(room)}` : ", Home-wide"),
@@ -1536,7 +1601,7 @@ class DecisionWrites {
       this.#addEvidence(decision, evidence),
     ];
     this.#writer.line(titled(decision), parts.filter(Boolean).join("; "));
-    this.#applyRequirements(decision, requirements);
+    for (const [subject, head] of requirementLines) this.#writer.line(subject, head);
   }
 
   #edit(
@@ -1597,6 +1662,7 @@ class DecisionWrites {
       heads.push(`now about ${named(room)}`);
     }
     const was = { title: decision.title, content: decision.content };
+    const contentChanged = !equal(decision.content, content);
     const fields = writer.patch("decisions", "decision", decision, subject, {
       title: input.title,
       statement: input.statement,
@@ -1611,6 +1677,8 @@ class DecisionWrites {
     if (basis && this.#setBasis(decision, basis)) {
       heads.push(this.#basisText(decision) ?? "Basis now empty");
     }
+    const requirementLines = this.#applyRequirements(decision, requirements);
+    heads.push(...this.#attach(decision, contentChanged || requirementsChanged));
     const added = this.#addEvidence(decision, evidence);
     if (added) heads.push(added);
     const nothing = heads.length === 0 && !requirementsChanged;
@@ -1618,14 +1686,16 @@ class DecisionWrites {
       titled(decision),
       nothing ? "already recorded like this, nothing changed" : heads.join("; ") || undefined,
     );
-    this.#applyRequirements(decision, requirements);
+    for (const [subject, head] of requirementLines) writer.line(subject, head);
   }
 
   /** Replaces the Decisions given as a Decision's Basis; returns whether anything changed. */
   #setBasis(decision: DecisionRow, rows: DecisionRow[]): boolean {
     const model = this.#model;
     const { store } = this.#context;
-    const current = model.basis.filter((link) => link.decisionId === decision.id);
+    const current = model.basis.filter(
+      (link) => link.decisionId === decision.id && !link.automatic,
+    );
     const wanted = new Set(rows.map((row) => row.id));
     const kept = new Set(current.map((link) => link.basisDecisionId));
     const removed = current.filter((link) => !wanted.has(link.basisDecisionId));
@@ -1641,6 +1711,7 @@ class DecisionWrites {
           homeId: model.home.id,
           decisionId: decision.id,
           basisDecisionId: row.id,
+          automatic: false,
         }),
       );
     }
@@ -1652,6 +1723,103 @@ class DecisionWrites {
       new: rows.map((row) => row.slug),
     });
     return true;
+  }
+
+  /**
+   * Stores the automatic entries a Decision lacks: the Design Direction and the Palette in force
+   * that apply to it. With `recheck`, after its content or Requirements changed, its Palette also
+   * becomes the one in force when it now uses that one's colors (a Room color's color was just
+   * checked against it). Never takes an entry out. A Rejected or Fulfilled Decision's Basis stays
+   * as it is. Returns a receipt text per change.
+   */
+  #attach(decision: DecisionRow, recheck = false): string[] {
+    if (closed(decision)) return [];
+    const texts: string[] = [];
+    for (const kind of AUTOMATIC_KINDS) {
+      if (automaticEntry(this.#model, decision, kind) && !(recheck && kind === "palette")) continue;
+      const row = automaticFor(this.#model, decision, kind);
+      const text = row && this.#setAutomatic(decision, kind, row, undefined);
+      if (text) texts.push(text);
+    }
+    return texts;
+  }
+
+  /**
+   * After a Decision's flags were cleared by keeping or Reopening it, each automatic entry that
+   * was the source of one of them gives way to the one of its kind in force now, if any: a flag
+   * from a Decision given in its Basis moves nothing. Then any automatic entry it lacks joins.
+   * One receipt line per change.
+   */
+  #rebase(decision: DecisionRow, flags: FlagRow[], reason: string | undefined): void {
+    const texts: string[] = [];
+    for (const kind of closed(decision) ? [] : AUTOMATIC_KINDS) {
+      const entry = automaticEntry(this.#model, decision, kind);
+      const source = flags.some(
+        (flag) => flag.sourceKind === "decision" && flag.sourceId === entry?.basisDecisionId,
+      );
+      if (!entry || !source) continue;
+      const row = automaticFor(this.#model, decision, kind);
+      const text = this.#setAutomatic(decision, kind, row, reason);
+      if (text) texts.push(text);
+    }
+    texts.push(...this.#attach(decision));
+    for (const text of texts) this.#writer.line(titled(decision), text);
+  }
+
+  /**
+   * Makes `row` the Decision's automatic entry of `kind`, replacing the one it held, or with no
+   * row takes that entry out; logs the change and returns its receipt text, or undefined when
+   * nothing changed. A Decision already given in its Basis becomes automatic, never listed twice.
+   */
+  #setAutomatic(
+    decision: DecisionRow,
+    kind: AutomaticKind,
+    row: DecisionRow | undefined,
+    reason: string | undefined,
+  ): string | undefined {
+    const model = this.#model;
+    const { store } = this.#context;
+    const entry = automaticEntry(model, decision, kind);
+    const old = entry && decisionById(model, entry.basisDecisionId);
+    if (old?.id === row?.id) return undefined;
+    if (entry) {
+      store.removeBasis(entry.id);
+      model.basis.splice(model.basis.indexOf(entry), 1);
+    }
+    const given =
+      row &&
+      model.basis.find(
+        (link) => link.decisionId === decision.id && link.basisDecisionId === row.id,
+      );
+    if (given) {
+      store.update("decision_basis", given.id, { automatic: true });
+      given.automatic = true;
+    } else if (row) {
+      model.basis.push(
+        store.insert("decision_basis", {
+          homeId: model.home.id,
+          decisionId: decision.id,
+          basisDecisionId: row.id,
+          automatic: true,
+        }),
+      );
+    }
+    this.#writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: `automatic ${kind}`,
+      old: old?.slug,
+      new: row?.slug ?? null,
+      ...(reason ? { reason } : {}),
+    });
+    if (row) return `now rests on ${titled(row)}, the ${KINDS[kind]}`;
+    const palette = inForce(model, "palette");
+    return (
+      `no longer rests on ${old ? titled(old) : "?"}, the ${KINDS[kind]}: ` +
+      (kind === "palette" && palette
+        ? `none of its Requirements names ${titled(palette)}, the Palette in force`
+        : `no ${KINDS[kind]} is in force`)
+    );
   }
 
   /**
@@ -1709,9 +1877,11 @@ class DecisionWrites {
     return done.length > 0 ? `Evidence: ${done.join(", ")}` : undefined;
   }
 
-  #applyRequirements(decision: DecisionRow, steps: RequirementStep[]): void {
+  /** Stores the Requirement steps; returns their receipt lines, for after the Decision's own. */
+  #applyRequirements(decision: DecisionRow, steps: RequirementStep[]): [string, string][] {
     const model = this.#model;
     const { store } = this.#context;
+    const lines: [string, string][] = [];
     for (const step of steps) {
       const subject = `Requirement ${step.position} of ${titled(decision)}`;
       const field = `requirement ${step.position}`;
@@ -1731,10 +1901,7 @@ class DecisionWrites {
           }),
         );
         this.#writer.logged({ recordKind: "decision", record: decision, field, new: shown });
-        this.#writer.line(
-          subject,
-          `added: ${shown.strength}, ${shown.text} (reason: ${shown.reason})`,
-        );
+        lines.push([subject, `added: ${shown.strength}, ${shown.text} (reason: ${shown.reason})`]);
         continue;
       }
       const { row } = step;
@@ -1764,8 +1931,9 @@ class DecisionWrites {
         row.archivedAt = archivedAt;
         heads.push(step.archive ? "archived" : "restored");
       }
-      if (heads.length > 0) this.#writer.line(subject, heads.join("; "));
+      if (heads.length > 0) lines.push([subject, heads.join("; ")]);
     }
+    return lines;
   }
 }
 

@@ -23,6 +23,7 @@ describe("migrate", () => {
       { id: 2 },
       { id: 3 },
       { id: 4 },
+      { id: 5 },
     ]);
     db.close();
   });
@@ -31,7 +32,16 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 5 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 6 });
+    db.close();
+  });
+
+  it("marks each Basis entry automatic or given, given by default", () => {
+    const db = migrate(":memory:");
+    const columns = db.prepare("PRAGMA table_info(decision_basis)").all();
+    expect(columns).toContainEqual(
+      expect.objectContaining({ name: "automatic", notnull: 1, dflt_value: "0" }),
+    );
     db.close();
   });
 

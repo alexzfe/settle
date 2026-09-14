@@ -254,12 +254,16 @@ export interface DecisionRow {
   archivedAt: string | null;
 }
 
-/** One Decision of another's Basis, as given; the automatic Design Direction is never stored. */
+/**
+ * One Decision of another's Basis: given, or automatic (the Design Direction or Palette in force
+ * when it joined, stored until the user keeps or Reopens the Decision after a flag from it).
+ */
 export interface DecisionBasisRow {
   id: number;
   homeId: number;
   decisionId: number;
   basisDecisionId: number;
+  automatic: boolean;
 }
 
 export interface DecisionEvidenceRow {
@@ -458,7 +462,15 @@ const MEASUREMENT_KEYS = new Set([
   "offset",
   "clearWidth",
 ]);
-const BOOLEAN_KEYS = new Set(["lift", "outdoor", "windowless", "deciduous", "glazed", "noDoor"]);
+const BOOLEAN_KEYS = new Set([
+  "lift",
+  "outdoor",
+  "windowless",
+  "deciduous",
+  "glazed",
+  "noDoor",
+  "automatic",
+]);
 const JSON_KEYS = new Set([
   "functions",
   "timesOfUse",

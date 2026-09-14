@@ -513,7 +513,8 @@ function flagCause(flag: Flag): string {
 
 /**
  * get_decision: one Decision in full: its kind, scope, state, statement, content, Requirements,
- * open flags and Conflicts, then one line per Basis and Evidence entry.
+ * open flags and Conflicts, then one line per Basis entry (and per automatic entry it lacks) and
+ * per piece of Evidence.
  */
 export function renderDecision(decision: DecisionDetail): string {
   const lines = [
@@ -548,20 +549,21 @@ export function renderDecision(decision: DecisionDetail): string {
       (conflict) => `${conflict.slug}: ${conflict.description} (raised ${day(conflict.raisedAt)})`,
     ),
   );
-  section(
-    lines,
-    "Basis",
-    decision.basis.map(
-      (entry) =>
-        `${titled(entry)}: ${DECISION_KIND_LABELS[entry.kind]}, ${DECISION_STATE_LABELS[entry.state]}` +
-        (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt)}` : "") +
-        (entry.automatic
-          ? entry.kind === "palette"
-            ? "; in the Basis as the Palette whose colors it uses"
-            : "; in every Basis as the Design Direction"
-          : ""),
+  const basisLine = (entry: DecisionDetail["basis"][number]) =>
+    `${titled(entry)}: ${DECISION_KIND_LABELS[entry.kind]}, ${DECISION_STATE_LABELS[entry.state]}` +
+    (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt)}` : "") +
+    (entry.automatic
+      ? entry.kind === "palette"
+        ? "; in the Basis as the Palette whose colors it uses"
+        : "; in every Basis as the Design Direction"
+      : "");
+  section(lines, "Basis", [
+    ...decision.basis.filter((entry) => entry.automatic).map(basisLine),
+    ...(decision.missingAutomatic ?? []).map(
+      (kind) => `no ${DECISION_KIND_LABELS[kind]} in its Basis`,
     ),
-  );
+    ...decision.basis.filter((entry) => !entry.automatic).map(basisLine),
+  ]);
   section(lines, "Evidence", decision.evidence.map(evidenceLine));
   return lines.join("\n");
 }
@@ -618,7 +620,7 @@ function contentLines(
         `- Surface: ${content.wall ? `${content.surface} of ${wall} only` : content.surface}`,
         paletteColor
           ? `- Color: ${colorText(paletteColor)}, the Palette's ${paletteColor.role}`
-          : `- Color: ${content.color}, not a color of the Palette in force`,
+          : `- Color: ${content.color}, not a color of the Palette in its Basis`,
         `- Finish: ${content.finish}`,
       );
       break;

@@ -271,20 +271,8 @@ describe("the Palette in force in the Basis", () => {
     expect(paletteColor).toEqual(SETTING_PLASTER);
   });
 
-  it("is computed, never stored: another Palette in force takes its place", async () => {
-    await settled([SETTING_PLASTER, POINTING]);
-    await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("warm-clay", "rejected");
-    await save(palette("Warm clay two", [SETTING_PLASTER, HAGUE_BLUE]));
-    await setState("warm-clay-two", "leaning");
-
-    const { basis } = await detail("plaster-walls");
-
-    expect(basis.map((entry) => [entry.slug, entry.automatic])).toEqual([
-      ["warm-minimalism", true],
-      ["warm-clay-two", true],
-    ]);
-  });
+  // Stored, not computed, since slice 5b: another Palette in force takes its place only once the
+  // Room color is kept or Reopened (basis-rules.test.ts).
 
   it("is not in the Basis of a Decision that uses none of its colors", async () => {
     await settled();

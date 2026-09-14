@@ -1551,9 +1551,10 @@ export const basisEntrySchema = z.object({
   state: z.enum(DECISION_STATES),
   fulfilledAt: z.string().optional(),
   /**
-   * Computed, never stored: the Design Direction in force, which is in every other Decision's
-   * Basis, or the Palette in force, which is in the Basis of every Decision using its colors (a
-   * Room color, or a Purchase with a Requirement whose reason is the Palette). `kind` says which.
+   * Joined automatically and stored: the Design Direction in force when the Decision was created
+   * (in every Basis but a Design Direction's), or the Palette in force when it started using its
+   * colors (a Room color, or a Purchase with a Requirement whose reason is the Palette). It stays
+   * until the user keeps or Reopens the Decision after a flag from it. `kind` says which.
    */
   automatic: z.boolean(),
 });
@@ -1609,16 +1610,21 @@ export const decisionDetailSchema = decisionSummarySchema
   .extend({
     fulfilment: fulfilmentSchema.optional(),
     /**
-     * Room color: its color as the Palette in force has it (that Palette is its automatic Basis
-     * entry), for a swatch; absent when there is no Palette in force or it has no color of that
-     * name.
+     * Room color: its color as the Palette in its Basis has it, for a swatch; absent when it has
+     * no Palette in its Basis or that Palette has no color of that name.
      */
     paletteColor: paletteColorSchema.optional(),
     /**
-     * The automatic entries first (the Design Direction in force, then the Palette in force for a
-     * Decision using its colors), then the Decisions given, in their order.
+     * The automatic entries first (its Design Direction, then its Palette), then the Decisions
+     * given, in their order.
      */
     basis: z.array(basisEntrySchema),
+    /**
+     * The automatic entries it lacks: a Design Direction or Palette in force that applies to it
+     * but joined after it was last saved or moved, and a Room color's Palette always. Each joins
+     * on its next save or state change. Absent when it lacks none.
+     */
+    missingAutomatic: z.array(z.enum(["design-direction", "palette"])).optional(),
     evidence: z.array(evidenceEntrySchema),
     /** Not Archived, by position. */
     requirements: z.array(requirementSchema),

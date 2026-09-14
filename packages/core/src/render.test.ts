@@ -512,6 +512,87 @@ describe("Color receipts", () => {
   });
 });
 
+describe("A re-based Decision", () => {
+  // Its own fixture Home, since these writes replace the Palette the other snapshots show.
+  let own: FixtureHome;
+  let session: string;
+  beforeAll(async () => {
+    let next = 0;
+    own = await createFixtureHome({
+      random: (max) => next++ % max,
+      clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    });
+    session = (await own.core.run("open_session", ownAgent(), { skill: "color" })).session;
+  });
+  afterAll(() => own.core.close());
+
+  function ownAgent(id?: string): CallContext {
+    return { caller: { kind: "session", session: id }, home: own.home };
+  }
+
+  /** The text the AI reads from a tool call. */
+  async function run(name: string, input: Record<string, unknown>): Promise<string> {
+    return toolText(name, await own.core.run(name, ownAgent(session), { session, ...input }));
+  }
+
+  it("renders a Room color kept after its Palette was replaced: the receipts, then get_decision", async () => {
+    const sections: string[] = [];
+    const add = (title: string, text: string) => sections.push(`# ${title}\n${text}`);
+    add(
+      "set_decision_state: the Palette Rejected, flagging the Room color resting on it",
+      await run("set_decision_state", {
+        decision: "warm-clay",
+        to: "rejected",
+        reason: `The user: "scrap the palette, it's too pink"`,
+      }),
+    );
+    await run("save_decision", {
+      kind: "palette",
+      title: "Cool stone",
+      statement: "Pale stone greys, keeping Jitney for the living room.",
+      content: {
+        colors: [
+          {
+            name: "Skimming Stone",
+            brand: "Farrow & Ball",
+            code: "No. 241",
+            hex: "#d6cdc0",
+            provenance: "measured",
+            role: "base",
+          },
+          {
+            name: "Jitney",
+            brand: "Farrow & Ball",
+            code: "No. 293",
+            hex: "#bba68a",
+            provenance: "measured",
+            role: "secondary",
+            note: "the living room walls, as before",
+          },
+        ],
+      },
+    });
+    await run("set_decision_state", {
+      decision: "cool-stone",
+      to: "locked",
+      reason: 'The user: "lock the stone palette"',
+    });
+    add(
+      "set_decision_state: the Room color kept, so it now rests on the Palette in force",
+      await run("set_decision_state", {
+        decision: "living-room-walls-in-jitney",
+        to: "locked",
+        reason: 'The user: "keep Jitney for the living room"',
+      }),
+    );
+    add(
+      "get_decision: the re-based Room color",
+      await run("get_decision", { decision: "living-room-walls-in-jitney" }),
+    );
+    await expect(sections.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision-rebased"));
+  });
+});
+
 function fromPlan(mm: number, text: string) {
   return {
     mm,
