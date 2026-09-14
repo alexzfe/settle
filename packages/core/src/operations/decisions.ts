@@ -11,6 +11,7 @@ import {
   type OpeningView,
   renderDecision,
   renderDecisions,
+  renderRefused,
   DECISION_STATE_LABELS as STATES,
   titled,
 } from "../render.js";
@@ -29,9 +30,10 @@ import type {
   StateChangeRow,
   Store,
 } from "../store.js";
-import { active, requireRoom } from "./lookup.js";
+import { active, requireRoom, requireWall } from "./lookup.js";
 import { type HomeModel, loadHome, overviewView, roomById, roomDetail } from "./model.js";
 import {
+  type Color,
   DECISION_CONTENT,
   DECISION_KIND_SCOPES,
   type DecisionDetail,
@@ -46,6 +48,7 @@ import {
   type FindDecisionsResult,
   type Flag,
   type FlagCause,
+  type Fulfilment,
   findDecisionsInput,
   flagConflictInput,
   type GetDecisionResult,
@@ -54,10 +57,14 @@ import {
   LEGAL_TRANSITIONS,
   type ListDecisionsResult,
   listDecisionsInput,
+  type PaletteColor,
+  type PaletteContent,
   type ReceiptResult,
   type Requirement,
   type RequirementReasonKind,
   type Resolution,
+  type RoomColorContent,
+  type RoomFunction,
   type RoomUseContent,
   recordFulfilmentInput,
   type requirementInput,
@@ -71,6 +78,7 @@ import {
   setDecisionStateWebInput,
 } from "./schemas.js";
 import { requireHome, requireSession } from "./scope.js";
+import { saveSurface, surfaceSlug } from "./surfaces.js";
 import { sameName, Writer } from "./writer.js";
 
 type SaveDecision = z.output<typeof saveDecisionInput>;
@@ -89,15 +97,18 @@ export const saveDecision = defineOperation({
     "change its state only with set_decision_state. Its kind says what the app does with it: " +
     "design-direction (the Home's style, Home-wide; it names no colors), room-direction (how " +
     "one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), " +
-    "palette (the Home's named colors), room-color (a Surface's color from the Palette), " +
-    "purchase (with Requirements), or other. content holds the kind's own fields; each field " +
-    "says which kinds take it. Pass `decision` (its slug) to change one: title and statement are " +
-    "always given, content replaces what is recorded, basis replaces the Basis, and evidence " +
-    "entries are added. A Locked or Rejected Decision takes new Evidence only: to change it, " +
-    "Reopen or revive it first, with the user's yes. Basis: the Decisions it rests on (the " +
-    "Design Direction is in every Basis automatically); Evidence: the Notes, Sessions, or " +
-    "Decisions that support or undermine it. Every Basis and Evidence entry must exist in this " +
-    "Home. Needs the open Session's id as `session`.",
+    "palette (the Home's named colors, each with a role; one Locked at a time), room-color (a " +
+    "Surface's color and finish: its color must name a color of the Palette in force, the " +
+    "Locked Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with " +
+    "Requirements), or other. content holds the kind's own fields; each field says which kinds " +
+    "take it. Pass `decision` (its slug) to change one: title and statement are always given, " +
+    "content replaces what is recorded, basis replaces the Basis, and evidence entries are " +
+    "added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or " +
+    "revive it first, with the user's yes. Basis: the Decisions it rests on (the Design " +
+    "Direction is in every Basis automatically, and the Palette in force in the Basis of every " +
+    "Decision using its colors); Evidence: the Notes, Sessions, or Decisions that support or " +
+    "undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open " +
+    "Session's id as `session`.",
   input: saveDecisionInput,
   readOnly: false,
   surface: "agent",
@@ -260,11 +271,18 @@ export const recordFulfilment = defineOperation({
   description:
     "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a " +
     "state: it stays Locked), and changes the Home to match what was actually done. For now it " +
-    "takes Room use Decisions only: it sets the Room's functions to the Decision's, or to " +
-    "roomFunctions when what the user actually did differs. Fulfilled Decisions drop out of the " +
-    "Room Sheet and the opening, since the Home now records the result; find_decisions still " +
-    "lists them. Call it when the user says the change is made, and tell them what changed. " +
-    "Needs the open Session's id as `session`.",
+    "takes Room use and Room color Decisions. Room use: it sets the Room's functions to the " +
+    "Decision's, or to roomFunctions when what the user actually did differs. Room color: it " +
+    "paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or " +
+    "one Wall's) with its Palette color, Measured when that color has a brand and code and " +
+    "Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; " +
+    "the receipt gives the Surface's old and new color. A color that would replace one of " +
+    "stronger Provenance is refused and nothing is recorded: tell the user both colors in one " +
+    "line and ask; only if they say to replace it, call again with overrideProvenance quoting " +
+    "them. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now " +
+    "records the result; find_decisions still lists them. Call it only when the user says the " +
+    "change is made (painted, not planned), and tell them what changed. Needs the open " +
+    "Session's id as `session`.",
   input: recordFulfilmentInput,
   readOnly: false,
   surface: "agent",
@@ -272,15 +290,27 @@ export const recordFulfilment = defineOperation({
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
     const receipt = context.write(session.slug, (log) => {
-      const { model, writer } = begin(context, home, log, session);
+      const { model, writer } = begin(context, home, log, session, input.overrideProvenance);
       const decision = requireDecision(model, input.decision);
       const subject = titled(decision);
-      if (decision.kind !== "room-use" || decision.scopeRoomId === null) {
+      if (
+        (decision.kind !== "room-use" && decision.kind !== "room-color") ||
+        decision.scopeRoomId === null
+      ) {
         throw new CoreError(
           "validation",
-          `record_fulfilment takes Room use Decisions for now, and ${subject} is a ` +
-            `${KINDS[decision.kind]}. Room colors arrive with the Color Skill, purchases with ` +
-            "the Purchase Skill.",
+          `record_fulfilment takes Room use and Room color Decisions for now, and ${subject} is ` +
+            `a ${KINDS[decision.kind]}. Purchases arrive with the Purchase Skill.`,
+        );
+      }
+      const misplaced =
+        decision.kind === "room-use"
+          ? input.finish !== undefined && "finish is for a Room color"
+          : input.roomFunctions !== undefined && "roomFunctions is for a Room use";
+      if (misplaced) {
+        throw new CoreError(
+          "validation",
+          `${misplaced}, and ${subject} is a ${KINDS[decision.kind]}: leave it out.`,
         );
       }
       if (decision.state !== "locked") {
@@ -297,26 +327,11 @@ export const recordFulfilment = defineOperation({
         );
       }
       const room = roomById(model, decision.scopeRoomId);
-      const decided = (decision.content as RoomUseContent).functions;
-      const functions = input.roomFunctions ?? decided;
-      const at = context.now();
-      context.store.update("decisions", decision.id, {
-        fulfilledAt: at,
-        fulfilment: { roomFunctions: functions },
-      });
-      writer.logged({ recordKind: "decision", record: decision, field: "fulfilledAt", new: at });
-      writer.line(
-        subject,
-        equal(functions, decided)
-          ? "Fulfilled"
-          : `Fulfilled, differently from what was decided (${decided.join(", ")})`,
-      );
-      const fields = writer.patch("rooms", "room", room, named(room), { functions });
-      writer.line(
-        named(room),
-        fields.length > 0 ? undefined : `functions already ${functions.join(", ")}`,
-        fields,
-      );
+      if (decision.kind === "room-use") {
+        fulfilRoomUse(context, writer, decision, room, input.roomFunctions);
+      } else {
+        fulfilRoomColor(context, model, writer, decision, room, input.finish);
+      }
       const after = loadHome(context.store, home);
       const detail = roomDetail(after, roomById(after, room.id));
       return writer.receipt(room.archivedAt ? [] : [{ room: detail, gaps: detail.gaps }]);
@@ -325,6 +340,107 @@ export const recordFulfilment = defineOperation({
   },
   text: ({ receipt }) => receipt,
 });
+
+/** Room use: the Room's functions become the Decision's, or what the user actually did. */
+function fulfilRoomUse(
+  context: OperationContext,
+  writer: Writer,
+  decision: DecisionRow,
+  room: RoomRow,
+  actual: RoomFunction[] | undefined,
+): void {
+  const decided = (decision.content as RoomUseContent).functions;
+  const functions = actual ?? decided;
+  markFulfilled(
+    context,
+    writer,
+    decision,
+    { roomFunctions: functions },
+    equal(functions, decided)
+      ? "Fulfilled"
+      : `Fulfilled, differently from what was decided (${decided.join(", ")})`,
+  );
+  const fields = writer.patch("rooms", "room", room, named(room), { functions });
+  writer.line(
+    named(room),
+    fields.length > 0 ? undefined : `functions already ${functions.join(", ")}`,
+    fields,
+  );
+}
+
+/**
+ * Room color: its Surface (the Room's part, or one Wall's) takes the Palette color's Color value,
+ * Measured when it has a brand and code and Estimated otherwise, and the finish applied. A color
+ * that would replace a stronger one without overrideProvenance refuses the whole Fulfilment.
+ */
+function fulfilRoomColor(
+  context: OperationContext,
+  model: DecisionModel,
+  writer: Writer,
+  decision: DecisionRow,
+  room: RoomRow,
+  actualFinish: string | undefined,
+): void {
+  const subject = titled(decision);
+  const content = decision.content as RoomColorContent;
+  const palette = inForce(model, "palette");
+  const color = palette && colorOf(palette, content.color);
+  if (!color) {
+    throw new CoreError(
+      "validation",
+      `${subject} names the color ${content.color}, which ` +
+        (palette
+          ? `the Palette in force, ${titled(palette)}, no longer has.`
+          : "no Palette has: none is in force.") +
+        " Settle its color against the Palette first (Reopen it with the user's yes, save it " +
+        "with a color of the Palette, and Lock it again), then Fulfil it.",
+    );
+  }
+  const { role: _role, note: _note, ...value } = color;
+  const applied: Color = {
+    ...value,
+    provenance: color.brand && color.code ? "measured" : "estimated",
+  };
+  const finish = actualFinish ?? content.finish;
+  const wall = content.wall === undefined ? undefined : requireWall(model, room, content.wall);
+  markFulfilled(
+    context,
+    writer,
+    decision,
+    { surface: surfaceSlug(room, content.surface, wall), color: applied, finish },
+    finish === content.finish
+      ? "Fulfilled"
+      : `Fulfilled, in a different finish from what was decided (${content.finish})`,
+  );
+  const lines = writer.lines.length;
+  const surface = saveSurface(model, writer, room, content.surface, wall, {
+    color: applied,
+    finish,
+  });
+  if (writer.refused.length > 0) {
+    throw new CoreError(
+      "weaker_provenance",
+      `${writer.refused.map(renderRefused).join("\n")} Nothing was recorded, and ${subject} ` +
+        "is not Fulfilled.",
+    );
+  }
+  if (writer.lines.length === lines) {
+    writer.line(surface, "already this color and finish, nothing changed");
+  }
+}
+
+function markFulfilled(
+  context: OperationContext,
+  writer: Writer,
+  decision: DecisionRow,
+  fulfilment: Fulfilment,
+  head: string,
+): void {
+  const at = context.now();
+  context.store.update("decisions", decision.id, { fulfilledAt: at, fulfilment });
+  writer.logged({ recordKind: "decision", record: decision, field: "fulfilledAt", new: at });
+  writer.line(titled(decision), head);
+}
 
 export const listDecisions = defineOperation({
   name: "list_decisions",
@@ -407,9 +523,10 @@ function begin(
   home: HomeRow,
   log: (change: Change) => void,
   session: SessionRow | undefined,
+  overrideProvenance?: string,
 ) {
   const model = loadDecisions(context.store, home);
-  const writer = new Writer(context.store, home, log, undefined);
+  const writer = new Writer(context.store, home, log, overrideProvenance);
   return { model, writer, writes: new DecisionWrites(context, model, writer, session) };
 }
 
@@ -468,19 +585,48 @@ function inForce(model: DecisionModel, kind: "design-direction" | "palette") {
   );
 }
 
+/** A Palette's color by name, in any case and spacing. */
+function colorOf(palette: DecisionRow, name: string): PaletteColor | undefined {
+  return (palette.content as PaletteContent).colors.find((color) => sameName(color.name, name));
+}
+
 /**
- * A Decision's Basis: the Design Direction in force first, for every Decision but a Design
- * Direction, then the Decisions given, without the Design Direction a second time.
+ * Whether a Decision uses the colors of `palette`, so that Palette, when in force, enters its
+ * Basis: a Room color always, and a Decision with a Requirement whose reason is that Palette.
+ */
+function usesColorsOf(model: DecisionModel, decision: DecisionRow, palette: DecisionRow): boolean {
+  if (decision.id === palette.id) return false;
+  return (
+    decision.kind === "room-color" ||
+    model.requirements.some(
+      (requirement) =>
+        requirement.decisionId === decision.id &&
+        requirement.archivedAt === null &&
+        requirement.reasonKind === "decision" &&
+        requirement.reasonId === palette.id,
+    )
+  );
+}
+
+/**
+ * A Decision's Basis: its automatic entries first, computed and never stored (the Design
+ * Direction in force, for every Decision but a Design Direction; then the Palette in force, for
+ * a Decision using its colors), then the Decisions given, without an automatic one a second time.
  */
 function basisOf(model: DecisionModel, decision: DecisionRow) {
   const direction =
     decision.kind === "design-direction" ? undefined : inForce(model, "design-direction");
+  const palette = inForce(model, "palette");
+  const automatic = [
+    direction,
+    palette && usesColorsOf(model, decision, palette) ? palette : undefined,
+  ].filter((row): row is DecisionRow => row !== undefined);
   const given = model.basis
     .filter((link) => link.decisionId === decision.id)
     .map((link) => decisionById(model, link.basisDecisionId))
-    .filter((row) => row.id !== direction?.id);
+    .filter((row) => !automatic.some((each) => each.id === row.id));
   return [
-    ...(direction ? [{ row: direction, automatic: true }] : []),
+    ...automatic.map((row) => ({ row, automatic: true })),
     ...given.map((row) => ({ row, automatic: false })),
   ];
 }
@@ -589,15 +735,22 @@ export function toSummary(model: DecisionModel, row: DecisionRow): DecisionSumma
     createdAt: row.createdAt,
     openFlags: openFlags(model, row).map((flag) => toFlag(model, flag)),
     openConflicts: openConflicts(model, row).map((conflict) => toConflict(model, conflict)),
+    ...optional({
+      colors: row.kind === "palette" ? (row.content as PaletteContent).colors : undefined,
+    }),
   };
 }
 
 function toDetail(model: DecisionModel, row: DecisionRow): DecisionDetail {
-  const { kind: _, ...summary } = toSummary(model, row);
+  const { kind: _, colors: _colors, ...summary } = toSummary(model, row);
   const content = { kind: row.kind, content: row.content } as DecisionKindContent;
+  const palette = row.kind === "room-color" ? inForce(model, "palette") : undefined;
   return {
     ...summary,
-    ...optional({ fulfilment: row.fulfilment }),
+    ...optional({
+      fulfilment: row.fulfilment,
+      paletteColor: palette && colorOf(palette, (row.content as RoomColorContent).color),
+    }),
     basis: basisOf(model, row).map(({ row: entry, automatic }) => ({
       slug: entry.slug,
       title: entry.title,
@@ -922,11 +1075,15 @@ class DecisionWrites {
           "requirements out.",
       );
     }
-    const content =
+    let content =
       input.content === undefined && existing
         ? existing.content
         : validContent(kind, input.content);
-    const basis = input.basis === undefined ? undefined : this.#basis(input.basis, existing);
+    // A Room color's color is checked against the Palette in force whenever its content changes.
+    if (kind === "room-color" && scopeRoom && !(existing && equal(existing.content, content))) {
+      content = this.#roomColor(scopeRoom, content as RoomColorContent);
+    }
+    const basis = input.basis === undefined ? undefined : this.#basis(input.basis, existing, kind);
     const evidence = (input.evidence ?? []).map((entry) => this.#evidence(entry, existing));
     const requirements = this.#planRequirements(existing, input.requirements ?? []);
     if (!existing) {
@@ -934,6 +1091,57 @@ class DecisionWrites {
     } else {
       this.#edit(existing, input, room, content, basis, evidence, requirements);
     }
+  }
+
+  /**
+   * A Room color's content, with its color spelled as the Palette in force spells it. Refused
+   * when no Palette is in force, when that Palette has no color of the name (listing its colors),
+   * and when a Wall is named for anything but the walls, or is not one of the Room's.
+   */
+  #roomColor(room: RoomRow, content: RoomColorContent): RoomColorContent {
+    const model = this.#model;
+    if (content.wall !== undefined) {
+      if (content.surface !== "walls") {
+        throw new CoreError(
+          "validation",
+          `A Room color names a Wall only for surface walls, as that one Wall's color. For the ` +
+            `${content.surface}, leave wall out.`,
+        );
+      }
+      requireWall(model, room, content.wall);
+    }
+    const palette = inForce(model, "palette");
+    if (!palette) {
+      const candidates = model.decisions.filter(
+        (each) => active(each) && each.kind === "palette" && each.state === "candidate",
+      );
+      throw new CoreError(
+        "validation",
+        "A Room color's color comes from the Palette in force (the Locked Palette, else the " +
+          "Leaning one), and this Home has none yet" +
+          (candidates.length > 0
+            ? ` (only Candidates: ${candidates.map(titled).join(", ")})`
+            : "") +
+          ". Settle the Palette with the user first (save_decision with kind palette, then lean " +
+          "or Lock it), then save the Room color.",
+      );
+    }
+    const color = colorOf(palette, content.color);
+    if (!color) {
+      const colors = (palette.content as PaletteContent).colors.map(
+        (each) => `${each.name} (${each.role})`,
+      );
+      throw new CoreError(
+        "validation",
+        `"${content.color}" is not a color of the Palette in force, ${titled(palette)}, ` +
+          `${STATES[palette.state]}. Its colors are ${colors.join(", ")}: name one of them. A ` +
+          "color the Palette lacks is a change to the Palette first" +
+          (palette.state === "locked"
+            ? ": Reopen it with the user's yes, add the color, and Lock it again."
+            : ": add it to the Palette, with the user."),
+      );
+    }
+    return { ...content, color: color.name };
   }
 
   /**
@@ -958,7 +1166,9 @@ class DecisionWrites {
     if (to === "locked") this.#requireOneLocked(decision);
     const model = this.#model;
     const { store } = this.#context;
-    const wasInForce = inForce(model, "design-direction")?.id === decision.id;
+    const wasInForce =
+      (decision.kind === "design-direction" || decision.kind === "palette") &&
+      inForce(model, decision.kind)?.id === decision.id;
     store.update("decisions", decision.id, { state: to });
     this.#writer.logged({
       recordKind: "decision",
@@ -1072,17 +1282,23 @@ class DecisionWrites {
   }
 
   /**
-   * Flags every Decision resting on `changed`: those with it in their Basis, and when it was
-   * the Design Direction in force, every other Decision. Rejected and Fulfilled ones are left
-   * alone: nothing about them is open for review.
+   * Flags every Decision resting on `changed`: those with it in their Basis; when it was the
+   * Design Direction in force, every other Decision; and when it was the Palette in force, every
+   * Decision using its colors. Rejected and Fulfilled ones are left alone: nothing about them is
+   * open for review.
    */
   #cascade(changed: DecisionRow, cause: FlagCause, wasInForce: boolean): void {
     const model = this.#model;
     for (const decision of model.decisions) {
       if (decision.id === changed.id || !active(decision)) continue;
       if (decision.state === "rejected" || decision.fulfilledAt !== null) continue;
+      const automatic =
+        wasInForce &&
+        (changed.kind === "palette"
+          ? usesColorsOf(model, decision, changed)
+          : decision.kind !== "design-direction");
       const rests =
-        (wasInForce && decision.kind !== "design-direction") ||
+        automatic ||
         model.basis.some(
           (link) => link.decisionId === decision.id && link.basisDecisionId === changed.id,
         );
@@ -1152,7 +1368,7 @@ class DecisionWrites {
     );
   }
 
-  #basis(slugs: string[], self: DecisionRow | undefined): DecisionRow[] {
+  #basis(slugs: string[], self: DecisionRow | undefined, kind: DecisionKind): DecisionRow[] {
     const rows: DecisionRow[] = [];
     for (const slug of slugs) {
       const row = requireDecision(this.#model, slug);
@@ -1162,8 +1378,11 @@ class DecisionWrites {
           `${titled(self)} can't rest on itself: take ${slug} out of basis.`,
         );
       }
-      // The Design Direction is in every Basis automatically, never listed twice.
-      if (row.kind === "design-direction" || rows.includes(row)) continue;
+      // The Design Direction is in every Basis automatically, and the Palette in force in every
+      // Room color's: never stored, so never listed twice.
+      const automatic =
+        row.kind === "design-direction" || (row.kind === "palette" && kind === "room-color");
+      if (automatic || rows.includes(row)) continue;
       rows.push(row);
     }
     return rows;
@@ -1435,13 +1654,16 @@ class DecisionWrites {
     return true;
   }
 
-  /** "Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; …". */
+  /**
+   * "Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Warm clay
+   * (warm-clay), the Palette, automatically; …".
+   */
   #basisText(decision: DecisionRow): string | undefined {
     const basis = basisOf(this.#model, decision);
     if (basis.length === 0) return undefined;
     return `Basis: ${basis
       .map(({ row, automatic }) =>
-        automatic ? `${titled(row)}, the Design Direction, automatically` : titled(row),
+        automatic ? `${titled(row)}, the ${KINDS[row.kind]}, automatically` : titled(row),
       )
       .join("; ")}`;
   }

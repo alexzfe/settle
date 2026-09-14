@@ -1257,11 +1257,16 @@ export const decisionContentInput = z
       .describe("room-color, required: walls, ceiling, floor, or woodwork."),
     wall: wallPosition
       .optional()
-      .describe("room-color: a Wall's position, when the color is for that Wall alone."),
+      .describe(
+        "room-color, with surface walls: a Wall's position, when the color is for that Wall alone.",
+      ),
     color: text
       .max(100)
       .optional()
-      .describe("room-color, required: the name of a color of the Palette."),
+      .describe(
+        "room-color, required: the name of a color of the Palette in force (the Locked one, else " +
+          "the Leaning one); any other is refused.",
+      ),
     finish: text.max(60).optional().describe('room-color, required: e.g. "matt", "eggshell".'),
   })
   .describe(
@@ -1351,7 +1356,8 @@ export const saveDecisionInput = z.object({
     .optional()
     .describe(
       "The slugs of the Decisions it rests on, replacing the recorded Basis. The Design " +
-        "Direction is in every Basis automatically: don't list it.",
+        "Direction is in every Basis automatically, and the Palette in force in a room-color's: " +
+        "don't list them.",
     ),
   evidence: z
     .array(evidenceInput)
@@ -1421,6 +1427,18 @@ export const recordFulfilmentInput = z.object({
       "Room use: the functions the Room actually has now, only when they differ from what was " +
         "decided.",
     ),
+  finish: text
+    .max(60)
+    .optional()
+    .describe(
+      'Room color: the finish actually applied (e.g. "satin"), only when it differs from what ' +
+        "was decided.",
+    ),
+  overrideProvenance: overrideProvenanceInput.describe(
+    "Room color: only when the user has said to replace the Surface's color with a weaker-" +
+      "Provenance one (e.g. one identified by its code with one that has none): their words, " +
+      "quoted. Without it such a replacement is refused and nothing is recorded.",
+  ),
 });
 
 export type SetDecisionStateInput = z.input<typeof setDecisionStateInput>;
@@ -1521,6 +1539,8 @@ export const decisionSummarySchema = z.object({
   fulfilledAt: z.string().optional(),
   openFlags: z.array(flagSchema),
   openConflicts: z.array(conflictSchema),
+  /** A Palette's colors, for swatches in a list; absent for every other kind. */
+  colors: z.array(paletteColorSchema).optional(),
 });
 
 /** A Decision of the Basis. */
@@ -1530,7 +1550,11 @@ export const basisEntrySchema = z.object({
   kind: z.enum(DECISION_KINDS),
   state: z.enum(DECISION_STATES),
   fulfilledAt: z.string().optional(),
-  /** The Design Direction in force, which is in every other Decision's Basis automatically. */
+  /**
+   * Computed, never stored: the Design Direction in force, which is in every other Decision's
+   * Basis, or the Palette in force, which is in the Basis of every Decision using its colors (a
+   * Room color, or a Purchase with a Requirement whose reason is the Palette). `kind` says which.
+   */
   automatic: z.boolean(),
 });
 
@@ -1571,14 +1595,29 @@ export const stateChangeSchema = z.object({
 export const fulfilmentSchema = z.object({
   /** Room use: the Room's functions as set. */
   roomFunctions: z.array(z.enum(ROOM_FUNCTIONS)).optional(),
+  /** Room color: the Surface painted, by slug ("living-room/walls", "living-room/wall-3/surface"). */
+  surface: z.string().optional(),
+  /** Room color: the color the Surface now has, with its Provenance. */
+  color: colorSchema.optional(),
+  /** Room color: the finish applied. */
+  finish: z.string().optional(),
 });
 
 /** One Decision in full, for get_decision and the Decision page. Its content narrows by kind. */
 export const decisionDetailSchema = decisionSummarySchema
-  .omit({ kind: true })
+  .omit({ kind: true, colors: true })
   .extend({
     fulfilment: fulfilmentSchema.optional(),
-    /** The Design Direction in force first (automatic), then in the order given. */
+    /**
+     * Room color: its color as the Palette in force has it (that Palette is its automatic Basis
+     * entry), for a swatch; absent when there is no Palette in force or it has no color of that
+     * name.
+     */
+    paletteColor: paletteColorSchema.optional(),
+    /**
+     * The automatic entries first (the Design Direction in force, then the Palette in force for a
+     * Decision using its colors), then the Decisions given, in their order.
+     */
     basis: z.array(basisEntrySchema),
     evidence: z.array(evidenceEntrySchema),
     /** Not Archived, by position. */

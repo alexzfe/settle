@@ -1,0 +1,38 @@
+Room: Kitchen (kitchen)
+Level: Ground (storey 0)
+Functions: kitchen
+Ceiling height: 2.50 m
+Times of use: morning, evening
+
+Walls, clockwise:
+- kitchen/wall-1: 3.40 m; faces E; outside; open sky
+- kitchen/wall-2: 2.80 m
+- kitchen/wall-3: 3.40 m; beyond Living room (living-room)
+- kitchen/wall-4: 2.80 m
+
+Windows:
+- kitchen-window: in kitchen/wall-1; 1.20 × 1.10 m (W × H); obscured glass
+
+Doors:
+- hallway-kitchen-door: in kitchen/wall-4, to Hallway (hallway) at hallway/wall-6; clear width ~0.70 m; no door hanging
+
+Surfaces:
+- walls: color ~cream, eggshell finish
+- ceiling: plaster
+- floor: vinyl
+
+Features:
+- Fitted units (kitchen-fitted-units): oak shaker units; on kitchen/wall-2
+- Tiling or panelling (kitchen-tiling-or-panelling): white metro splashback; on kitchen/wall-2
+- Light point (kitchen-light-point): four downlights
+
+Lights:
+- Light point (kitchen-light-point), Feature: task, cool, 450 lm, dimmable
+
+Items:
+- Kitchen table (kitchen-table): tables; width 1.20 m
+
+Decisions:
+- Kitchen walls in Setting Plaster (kitchen-walls-in-setting-plaster): Room color, Leaning. The kitchen walls in Setting Plaster, eggshell.
+
+Gaps: woodwork Surface

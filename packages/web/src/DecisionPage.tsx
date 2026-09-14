@@ -11,6 +11,7 @@ import {
   type Requirement,
 } from "./api";
 import {
+  automaticBasisNote,
   decisionPath,
   flagCause,
   KIND_LABEL,
@@ -20,7 +21,8 @@ import {
 } from "./decisions";
 import { formatDate, sentence, wallName, words } from "./format";
 import { useDecision } from "./queries";
-import { Color, Fact, Parts } from "./Values";
+import { Swatch, SwatchSquare } from "./Swatch";
+import { Fact, Parts } from "./Values";
 
 const EVIDENCE_KIND: Record<EvidenceEntry["kind"], string> = {
   note: "Note",
@@ -182,8 +184,7 @@ function Content({ decision }: { decision: DecisionDetail }) {
             {decision.content.colors.map((color) => (
               <li key={color.name}>
                 <Parts>
-                  <Color color={color} />
-                  {color.role}
+                  <Swatch color={color} />
                   {color.note}
                 </Parts>
               </li>
@@ -193,16 +194,32 @@ function Content({ decision }: { decision: DecisionDetail }) {
       );
     case "room-color": {
       const { content } = decision;
+      const palette = decision.basis.find((entry) => entry.kind === "palette");
+      const painted = decision.fulfilment?.color;
       return (
         <>
           <h2>Color</h2>
           <dl className={styles.facts}>
-            <Fact term="Surface">
-              {content.wall === undefined ? sentence(content.surface) : wallName(content.wall)}
+            <Fact term="Surface">{sentence(content.surface)}</Fact>
+            <Fact term="Wall">{content.wall !== undefined && wallName(content.wall)}</Fact>
+            <Fact term="Color">
+              {decision.paletteColor ? (
+                <Swatch color={decision.paletteColor} />
+              ) : (
+                <Unresolved
+                  name={content.color}
+                  why={palette ? `not a color of ${palette.title}` : "no Palette in its Basis"}
+                />
+              )}
             </Fact>
-            <Fact term="Palette color">{content.color}</Fact>
             <Fact term="Finish">{content.finish}</Fact>
           </dl>
+          {painted && (
+            <p>
+              Fulfilled as: <Swatch color={painted} />
+              {decision.fulfilment?.finish && `, ${decision.fulfilment.finish}`}
+            </p>
+          )}
         </>
       );
     }
@@ -235,8 +252,18 @@ function BasisLine({ home, entry }: { home: string; entry: BasisEntry }) {
       {KIND_LABEL[entry.kind]}
       {STATE_LABEL[entry.state]}
       {entry.fulfilledAt && "Fulfilled"}
-      {entry.automatic && "in every Basis"}
+      {entry.automatic && automaticBasisNote(entry.kind)}
     </Parts>
+  );
+}
+
+/** A Room color whose color the Palette in force lacks: its name, the placeholder, and why. */
+function Unresolved({ name, why }: { name: string; why: string }) {
+  return (
+    <span>
+      <SwatchSquare />
+      {name} <span className={styles.muted}>({why})</span>
+    </span>
   );
 }
 

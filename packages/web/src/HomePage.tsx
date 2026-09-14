@@ -3,11 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import { call, type Home, type Level, type Room } from "./api";
+import { call, type DecisionSummary, type Home, type Level, type Room } from "./api";
 import { BlueprintList, BlueprintUploadForm } from "./Blueprints";
+import { decisionPath, paletteInForce, STATE_LABEL } from "./decisions";
 import { FlagsAndConflicts } from "./Flags";
 import { formatDate, formatTime, sentence } from "./format";
-import { queryKeys, useConstraints, useHome, useNotes, useSessions } from "./queries";
+import { queryKeys, useConstraints, useDecisions, useHome, useNotes, useSessions } from "./queries";
+import { Swatch } from "./Swatch";
 import { ArchivedNote, Fact, Length } from "./Values";
 
 const PLANNED_STAY: Record<PlannedStay, string> = {
@@ -27,6 +29,8 @@ export function HomePage() {
     <>
       <h1>{home.data.home.name}</h1>
       <HomeFacts home={home.data.home} />
+      <h2>Palette</h2>
+      <PaletteInForce home={slug} />
       <h2>Flags and Conflicts</h2>
       <FlagsAndConflicts home={slug} />
       <h2>Levels and Rooms</h2>
@@ -48,6 +52,35 @@ export function HomePage() {
       <HomeFolderSetup home={home.data.home} />
       <h2>Sessions</h2>
       <SessionList home={slug} />
+    </>
+  );
+}
+
+/** The Palette in force (Locked, else Leaning) as a row of swatches, linking to its Decision. */
+function PaletteInForce({ home }: { home: string }) {
+  const decisions = useDecisions(home);
+  if (decisions.isPending) return <p>Loading…</p>;
+  if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
+  const palette = paletteInForce(decisions.data.decisions);
+  if (!palette) return <p>No Palette yet.</p>;
+  return <PaletteRow home={home} palette={palette} />;
+}
+
+/** The Palette's name and state, then its colors, which list_decisions carries for a Palette. */
+function PaletteRow({ home, palette }: { home: string; palette: DecisionSummary }) {
+  return (
+    <>
+      <p>
+        <Link to={decisionPath(home, palette.slug)}>{palette.title}</Link>,{" "}
+        {STATE_LABEL[palette.state]}
+      </p>
+      <ul className={styles.swatchRow}>
+        {palette.colors?.map((color) => (
+          <li key={color.name}>
+            <Swatch color={color} provenance={false} />
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

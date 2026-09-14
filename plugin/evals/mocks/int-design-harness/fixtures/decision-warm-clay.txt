@@ -1,0 +1,18 @@
+Decision: Warm clay (warm-clay)
+Kind: Palette
+Scope: the whole Home
+State: Locked
+Statement: Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
+
+Content:
+- Colors:
+  - base: Pointing (Farrow & Ball No. 2003); ceilings and woodwork throughout
+  - base: Setting Plaster (Farrow & Ball No. 231), LRV 63; walls in the kitchen and the main bedroom
+  - secondary: Jitney (Farrow & Ball No. 293); living room walls, warm under lamplight
+  - accent: ~warm terracotta; cushions and a rug, echoing the dining-end tiles
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+
+Evidence:
+- supports: Session color-jkmn, 2026-09-14, color: The user held the samples up to the bay window at dusk.

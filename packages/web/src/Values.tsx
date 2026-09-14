@@ -1,11 +1,11 @@
-// Recorded values as the pages show them: lengths in metres with a Provenance tag, colors with a
-// swatch, and lines of parts that leave out whatever is not recorded.
+// Recorded values as the pages show them: lengths in metres with a Provenance tag, and lines of
+// parts that leave out whatever is not recorded. Colors are shown by Swatch.tsx.
 
-import type { BlueprintSource, Color as ColorValue, Light, Provenance } from "@idh/core";
+import type { BlueprintSource, Light, Provenance } from "@idh/core";
 import { Children, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import { formatColor, formatDate, formatLength, type Measure, provenanceText } from "./format";
+import { formatDate, formatLength, type Measure, provenanceText } from "./format";
 
 /**
  * A value's Provenance. A value printed on a Blueprint links to the page it is printed on, with
@@ -70,20 +70,6 @@ export function dimensions(parts: [label: string, value: Measure | undefined][])
         </span>
       ))}
     </Parts>
-  );
-}
-
-/** A color by name, with a swatch from its approximate hex, its LRV, and its Provenance. */
-export function Color({ color }: { color: ColorValue }) {
-  return (
-    <span>
-      {color.hex && (
-        <span className={styles.swatch} style={{ backgroundColor: color.hex }} aria-hidden />
-      )}
-      {formatColor(color)}
-      {color.lrv !== undefined && `, LRV ${color.lrv}`}{" "}
-      <ProvenanceTag provenance={color.provenance} />
-    </span>
   );
 }
 

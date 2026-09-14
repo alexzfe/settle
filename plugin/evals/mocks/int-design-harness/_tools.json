@@ -2106,7 +2106,7 @@
     {
       "name": "save_decision",
       "title": "Save decision",
-      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors), room-color (a Surface's color from the Palette), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
+      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors, each with a role; one Locked at a time), room-color (a Surface's color and finish: its color must name a color of the Palette in force, the Locked Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically, and the Palette in force in the Basis of every Decision using its colors); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2284,13 +2284,13 @@
                 "enum": ["walls", "ceiling", "floor", "woodwork"]
               },
               "wall": {
-                "description": "room-color: a Wall's position, when the color is for that Wall alone.",
+                "description": "room-color, with surface walls: a Wall's position, when the color is for that Wall alone.",
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 99
               },
               "color": {
-                "description": "room-color, required: the name of a color of the Palette.",
+                "description": "room-color, required: the name of a color of the Palette in force (the Locked one, else the Leaning one); any other is refused.",
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 100
@@ -2305,7 +2305,7 @@
             "description": "The kind's own fields, replacing any recorded content; each field says which kinds take it. Leave out for purchase and other."
           },
           "basis": {
-            "description": "The slugs of the Decisions it rests on, replacing the recorded Basis. The Design Direction is in every Basis automatically: don't list it.",
+            "description": "The slugs of the Decisions it rests on, replacing the recorded Basis. The Design Direction is in every Basis automatically, and the Palette in force in a room-color's: don't list them.",
             "type": "array",
             "items": {
               "type": "string",
@@ -2461,7 +2461,7 @@
     {
       "name": "record_fulfilment",
       "title": "Record fulfilment",
-      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. For now it takes Room use Decisions only: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it when the user says the change is made, and tell them what changed. Needs the open Session's id as `session`.",
+      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. For now it takes Room use and Room color Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it only when the user says the change is made (painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2496,6 +2496,17 @@
                 "other"
               ]
             }
+          },
+          "finish": {
+            "description": "Room color: the finish actually applied (e.g. \"satin\"), only when it differs from what was decided.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "overrideProvenance": {
+            "description": "Room color: only when the user has said to replace the Surface's color with a weaker-Provenance one (e.g. one identified by its code with one that has none): their words, quoted. Without it such a replacement is refused and nothing is recorded.",
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": ["session", "decision"]

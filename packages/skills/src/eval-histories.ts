@@ -41,6 +41,21 @@ const TOOLS = {
     "save_note",
     "close_session",
   ],
+  color: [
+    "open_session",
+    "get_room_sheet",
+    "find_items",
+    "find_decisions",
+    "get_decision",
+    "search_notes",
+    "save_decision",
+    "set_decision_state",
+    "record_fulfilment",
+    "flag_conflict",
+    "set_constraints",
+    "save_note",
+    "close_session",
+  ],
 } as const;
 
 type Skill = keyof typeof TOOLS;
@@ -315,6 +330,64 @@ Where next? *(Recommended: 1.)*
 2. **Main bedroom.** No Room Direction yet.
 3. **Kitchen.** No Room Direction yet.`;
 
+// ─── Color cases ────────────────────────────────────────────────────────────────────────────
+// The Fixture Home at different points in settling its colors. The suite's color opening has the
+// Design Direction Locked and no Palette yet; each case's own opening sets its point instead (a
+// Locked Palette "Warm clay", or a Leaning Direction) and says so.
+
+/** A Color Session's start on one Room: the opening, the Room's Sheet, then its Rejected ones. */
+function colorRoomStart(
+  context: HistoryContext,
+  message: string,
+  room: string,
+): { turns: Turn[]; session: string } {
+  const { turns, session } = opening(context, message, "color");
+  const sheet = { session, room };
+  const lookup = { session, room, state: "rejected" };
+  return {
+    session,
+    turns: [
+      ...turns,
+      { tool: "get_room_sheet", input: sheet, result: context.answer("get_room_sheet", sheet) },
+      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+    ],
+  };
+}
+
+const BEDROOM_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the Main bedroom's colours come from Warm clay's four: Pointing, Setting Plaster, Jitney, and warm terracotta.
+
+The Main bedroom faces west over the balcony and you use it at night, so its daylight is warmest late in the day and it's mostly seen under lamps. None of its Surfaces is recorded yet. First round:
+
+1. **Feel.** Restful and enveloping, or light and airy? *(Recommended: restful, since it's a night-time room.)*
+2. **What stays.** What colours are the bed and the bedding? *(Recommended: tell me roughly; the walls should sit with them.)*
+3. **Ceiling.** The same as the walls, or lighter? *(Recommended: Pointing, the Palette's warm white, in flat matt.)*
+4. **Woodwork.** Pointing, as elsewhere, or the wall colour for a softer look? *(Recommended: Pointing, in eggshell.)*`;
+
+const DIRECTION_LEANING = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked, and the Palette rests on it: its warm temperature, its low contrast, and its oak, linen, plaster, and terracotta are what the colours have to suit.
+
+I'd recommend settling the direction first in Design Direction, which can take over right here; then we come back to colours. If we start on colours anyway, the Palette can go as far as Leaning, and it waits to be Locked until the direction is.
+
+Settle the direction in Design Direction now, or start on colours anyway? *(Recommended: the direction first.)*`;
+
+const PALETTE_ROUND = `Colours it is. First round, one question per colour, each drawn from the Direction and the house's light:
+
+1. **Base, for most walls.** A warm plaster pink that glows in the south-facing living room and stays soft under lamps in the windowless hallway. *(Recommended: Setting Plaster (Farrow & Ball No. 231), which the living room walls already have.)*
+2. **Ceilings and woodwork.** A warm white rather than a brilliant one, so the contrast stays low. *(Recommended: Pointing (Farrow & Ball No. 2003).)*
+3. **Accent.** An earthy terracotta for the front door and one feature wall, echoing the tiles at the dining end. *(Recommended: a warm terracotta; we can pin down the exact paint later.)*`;
+
+const KITCHEN_LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction and your Palette, **Warm clay**, are both Locked.
+
+The Kitchen's walls are Leaning towards **Setting Plaster in eggshell** (*Kitchen walls in Setting Plaster*): the Palette's warm plaster pink stays soft in the Kitchen's east-facing morning light and sits well with the oak units and the white metro splashback, and eggshell wipes clean near the cooker. It would replace today's cream.
+
+It's ready to Lock. Shall I Lock it? *(Recommended: yes.)*`;
+
+const KITCHEN_LOCKED = `Locked: Room color 'Kitchen walls in Setting Plaster', in eggshell.
+
+Next, the Kitchen's woodwork, which has nothing recorded yet:
+
+1. **Colour.** *(Recommended: Pointing, the Palette's warm white, as for the other woodwork.)*
+2. **Finish.** *(Recommended: satin, which wipes clean.)*`;
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -437,4 +510,62 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     ...directionStart(context, "Can we finish off our style? I think we're nearly there.").turns,
     { assistant: LOCK_OFFER },
   ],
+
+  // Graded turn: the user asks which color the Main bedroom's walls should be, and to save it.
+  // The case's own opening has the Palette "Warm clay" Locked; the Room color names one of its
+  // colors, and no other color is offered.
+  "color-rests-on-palette": (context) => [
+    ...colorRoomStart(context, "Let's do the colours for the main bedroom.", "main-bedroom").turns,
+    { assistant: BEDROOM_ROUND },
+  ],
+
+  // Graded turn: after the first Palette round, the user commits and asks to Lock the Palette.
+  // The case's own opening has the Design Direction Leaning, so nothing is Locked, and the reply
+  // says why.
+  "color-no-palette-without-locked-direction": (context) => {
+    const { turns, session } = opening(
+      context,
+      "Can we choose our colours? We'd like to start painting soon.",
+      "color",
+    );
+    const lookup = { session, kind: "palette", state: "rejected" };
+    return [
+      ...turns,
+      { assistant: DIRECTION_LEANING },
+      { user: "Colours now, please. The direction is basically right, and we're keen to paint." },
+      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+      { assistant: PALETTE_ROUND },
+    ];
+  },
+
+  // Graded turn: the user says they will paint the Kitchen's walls next weekend. Their Room color
+  // has just been Locked; record_fulfilment waits for the painting. The case's own opening has
+  // the Palette Locked, and its own record_fulfilment answers the call it should never make.
+  "color-fulfils-only-when-done": (context) => {
+    const { turns, session } = colorRoomStart(
+      context,
+      "Let's finish off the kitchen colours.",
+      "kitchen",
+    );
+    const lock = {
+      session,
+      decision: "kitchen-walls-in-setting-plaster",
+      to: "locked",
+      reason: 'The user: "Yes, lock it in."',
+    };
+    return [
+      ...turns,
+      { assistant: KITCHEN_LOCK_OFFER },
+      { user: "Yes, lock it in." },
+      // The case has no set_decision_state mock of its own, so the Lock gets its receipt in core's
+      // wording here.
+      {
+        tool: "set_decision_state",
+        input: lock,
+        result:
+          "Kitchen walls in Setting Plaster (kitchen-walls-in-setting-plaster): Locked, was Leaning",
+      },
+      { assistant: KITCHEN_LOCKED },
+    ];
+  },
 };

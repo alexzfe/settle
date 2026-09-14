@@ -42,5 +42,6 @@ Items:
 Decisions:
 - Calm evenings (calm-evenings): Room Direction, Locked. A low, warm room for long evenings.
 - Wool rug (wool-rug): Purchase, Leaning; 1 open flag. A large wool rug under the sofa.
+- Living room walls in Jitney (living-room-walls-in-jitney): Room color, Locked. The living room walls in Jitney, matt, for a warmer glow in the evenings.
 
 Gaps: none

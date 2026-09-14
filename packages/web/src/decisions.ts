@@ -2,7 +2,14 @@
 // allows from each state (core's LEGAL_TRANSITIONS), and the pages' paths. The web bundle takes
 // only types from @idh/core, so the lists are spelled out here, typed against core's.
 
-import type { DecisionKind, DecisionState, Flag, FlagCause, Resolution } from "./api";
+import type {
+  DecisionKind,
+  DecisionState,
+  DecisionSummary,
+  Flag,
+  FlagCause,
+  Resolution,
+} from "./api";
 
 export const KIND_LABEL: Record<DecisionKind, string> = {
   "design-direction": "Design Direction",
@@ -70,4 +77,31 @@ const CAUSE: Record<FlagCause, string> = {
 /** Why a Decision was flagged: "Warm minimalism was reopened". */
 export function flagCause(flag: Flag): string {
   return `${flag.source.name} ${CAUSE[flag.cause]}`;
+}
+
+/**
+ * Why an automatic Basis entry is there: the Design Direction is under every Decision, and the
+ * Palette under every Decision that uses one of its colors.
+ */
+export function automaticBasisNote(kind: DecisionKind): string {
+  switch (kind) {
+    case "design-direction":
+      return "in every Basis";
+    case "palette":
+      return "in every Basis using its colors";
+    default:
+      return "automatic";
+  }
+}
+
+/**
+ * The Palette in force, as core picks it: the Locked one, else the latest Leaning one. The list is
+ * in the order the Decisions were created, so the latest is the last.
+ */
+export function paletteInForce(decisions: readonly DecisionSummary[]): DecisionSummary | undefined {
+  const palettes = decisions.filter((decision) => decision.kind === "palette");
+  return (
+    palettes.find((decision) => decision.state === "locked") ??
+    palettes.filter((decision) => decision.state === "leaning").at(-1)
+  );
 }

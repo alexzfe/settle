@@ -1,3 +1,4 @@
+import type { PaletteColor } from "@idh/core";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
@@ -355,4 +356,91 @@ it("shows the Notes, newest first", async () => {
   expect([...(list?.querySelectorAll("li") ?? [])].map((li) => li.firstChild?.textContent)).toEqual(
     ["The cat scratches fabric.", "We might get a dog."],
   );
+});
+
+const earthyColors: PaletteColor[] = [
+  {
+    name: "Setting Plaster",
+    brand: "Farrow & Ball",
+    code: "231",
+    hex: "#e3c9b6",
+    provenance: "measured",
+    role: "base",
+  },
+  { name: "Olive", provenance: "estimated", role: "accent", note: "cushions" },
+];
+
+/** A Palette as list_decisions gives it: its colors come with it, for swatches. */
+function palette(slug: string, title: string, state: DecisionSummary["state"]): DecisionSummary {
+  return { ...summary(slug, title, "palette", state), colors: earthyColors };
+}
+
+/** The Palette section: the line naming the Palette, and the row of its colors. */
+function paletteSection(): { line: string | null | undefined; colors: (string | null)[] } {
+  const line = screen.getByRole("heading", { name: "Palette" }).nextElementSibling;
+  const row = line?.nextElementSibling;
+  return {
+    line: line?.textContent,
+    colors: [...(row?.querySelectorAll("li") ?? [])].map((li) => li.textContent),
+  };
+}
+
+it("shows the Locked Palette as a row of swatches linking to its Decision", async () => {
+  const fetch = stubHomePage({
+    list_decisions: () => ({
+      decisions: [
+        palette("sunny-palette", "Sunny palette", "leaning"),
+        palette("earthy-palette", "Earthy palette", "locked"),
+        palette("cool-palette", "Cool palette", "candidate"),
+      ],
+    }),
+  });
+  renderRoutes("/homes/flat");
+  await screen.findByText(/Setting Plaster/);
+  expect(paletteSection()).toEqual({
+    line: "Earthy palette, Locked",
+    colors: ["Setting Plaster (Farrow & Ball 231), base", "~Olive, accent"],
+  });
+  expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/earthy-palette",
+  );
+  expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
+  expect(screen.getByTitle("No screen color recorded")).toBeDefined();
+  // The list carries the colors, so no Decision is fetched for them.
+  expect(inputsTo(fetch, "get_decision")).toEqual([]);
+});
+
+it("shows the latest Leaning Palette when none is Locked", async () => {
+  stubHomePage({
+    list_decisions: () => ({
+      decisions: [
+        palette("sunny-palette", "Sunny palette", "leaning"),
+        palette("earthy-palette", "Earthy palette", "leaning"),
+      ],
+    }),
+  });
+  renderRoutes("/homes/flat");
+  await screen.findByText(/Setting Plaster/);
+  expect(paletteSection().line).toBe("Earthy palette, Leaning");
+});
+
+it("says there is no Palette yet, and shows one the Agent Locks", async () => {
+  let decisions = [
+    palette("earthy-palette", "Earthy palette", "candidate"),
+    palette("pastel-palette", "Pastels", "rejected"),
+  ];
+  stubHomePage({ list_decisions: () => ({ decisions }) });
+  renderRoutes("/homes/flat");
+  expect(await screen.findByText("No Palette yet.")).toBeDefined();
+
+  decisions = [palette("earthy-palette", "Earthy palette", "locked")];
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "decision",
+      recordSlug: "earthy-palette",
+    }),
+  );
+  await screen.findByText(/Setting Plaster/);
+  expect(paletteSection().line).toBe("Earthy palette, Locked");
 });

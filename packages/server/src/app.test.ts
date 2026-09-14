@@ -1,7 +1,14 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Core, createCore, FIXTURE_FILES } from "@idh/core";
+import {
+  type Core,
+  createCore,
+  FIXTURE_FILES,
+  type GetDecisionResult,
+  type GetRoomResult,
+  type ListDecisionsResult,
+} from "@idh/core";
 import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
@@ -382,6 +389,70 @@ describe("Decisions", () => {
       },
     });
     expect(agentOnly.status).toBe(404);
+  });
+
+  it("runs Color over MCP: a Palette, a refused color, a Room color, and its Fulfilment painting the Surface", async () => {
+    const { tool } = await setUp();
+    const jitney = {
+      name: "Jitney",
+      brand: "Farrow & Ball",
+      code: "No. 293",
+      hex: "#bba68a",
+      provenance: "measured",
+    };
+    await tool("save_decision", direction);
+    await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+    await tool("save_decision", {
+      kind: "palette",
+      title: "Warm clay",
+      statement: "Clay tones.",
+      content: { colors: [{ ...jitney, role: "base" }] },
+    });
+    await tool("set_decision_state", { decision: "warm-clay", to: "locked", reason });
+    const wall = { kind: "room-color", room: "living-room", statement: "Matt walls." };
+    const refused = await tool("save_decision", {
+      ...wall,
+      title: "Blue walls",
+      content: { surface: "walls", color: "Hague Blue", finish: "matt" },
+    });
+    await tool("save_decision", {
+      ...wall,
+      title: "Jitney walls",
+      content: { surface: "walls", color: "Jitney", finish: "matt" },
+    });
+    await tool("set_decision_state", { decision: "jitney-walls", to: "locked", reason });
+    const fulfilled = await tool("record_fulfilment", {
+      decision: "jitney-walls",
+      finish: "eggshell",
+    });
+    const detail = (await (
+      await api("get_decision", { home: "my-flat", decision: "jitney-walls" })
+    ).json()) as GetDecisionResult;
+    const { room } = (await (
+      await api("get_room", { home: "my-flat", room: "living-room" })
+    ).json()) as GetRoomResult;
+    const { decisions } = (await (
+      await api("list_decisions", { home: "my-flat", kind: "palette" })
+    ).json()) as ListDecisionsResult;
+
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]?.text).toContain("Its colors are Jitney (base)");
+    expect(fulfilled.content[0]?.text).toContain(
+      "Living room walls Surface (living-room/walls): recorded; color Jitney (Farrow & Ball " +
+        "No. 293) (Measured); finish eggshell",
+    );
+    expect(detail.decision.basis.map((entry) => [entry.slug, entry.automatic])).toEqual([
+      ["warm-minimalism", true],
+      ["warm-clay", true],
+    ]);
+    expect(detail.decision).toMatchObject({
+      paletteColor: { ...jitney, role: "base" },
+      fulfilment: { surface: "living-room/walls", color: jitney, finish: "eggshell" },
+    });
+    expect(room.surfaces).toEqual([
+      { slug: "living-room/walls", part: "walls", color: jitney, finish: "eggshell" },
+    ]);
+    expect(decisions[0]?.colors).toEqual([{ ...jitney, role: "base" }]);
   });
 });
 

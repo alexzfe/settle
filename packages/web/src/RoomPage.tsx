@@ -17,7 +17,8 @@ import { DecisionLine } from "./DecisionsPage";
 import { compass, type Measure, sentence, wallName, wallNameOf, words } from "./format";
 import { ItemList } from "./ItemsPage";
 import { useRoom } from "./queries";
-import { ArchivedNote, Color, dimensions, Fact, Length, lightText, Parts } from "./Values";
+import { Swatch } from "./Swatch";
+import { ArchivedNote, dimensions, Fact, Length, lightText, Parts } from "./Values";
 
 const SURFACE_PART: Record<SurfacePart, string> = {
   walls: "Walls",
@@ -334,7 +335,7 @@ function SurfaceLine({ surface }: { surface: Surface }) {
       {surface.materials
         ?.map(({ material, where }) => (where ? `${material} (${where})` : material))
         .join(", ")}
-      {surface.color && <Color color={surface.color} />}
+      {surface.color && <Swatch color={surface.color} />}
       {surface.finish && words(surface.finish)}
     </Parts>
   );

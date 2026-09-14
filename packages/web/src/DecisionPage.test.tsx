@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import type { PaletteColor } from "@idh/core";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BasisEntry, DecisionDetail, DecisionState, DecisionSummary, Flag, Home } from "./api";
 import { formatDate } from "./format";
@@ -315,7 +316,9 @@ it("renders each kind's content", async () => {
   cleanup();
 
   await show("living-room-walls", "Color");
-  expect(after("Color")).toBe("SurfaceWall 2" + "Palette colorSetting Plaster" + "Finishmatt");
+  expect(after("Color")).toBe(
+    "SurfaceWalls" + "WallWall 2" + "ColorSetting Plaster (no Palette in its Basis)" + "Finishmatt",
+  );
 });
 
 it("shows a cleared flag when a flag change event arrives", async () => {
@@ -344,4 +347,139 @@ it("shows a cleared flag when a flag change event arrives", async () => {
         `cleared ${formatDate(cleared)}, kept`,
     ),
   ).toBeDefined();
+});
+
+/** The Palette's base color, identified exactly. */
+const settingPlaster: PaletteColor = {
+  name: "Setting Plaster",
+  brand: "Farrow & Ball",
+  code: "231",
+  lrv: 62,
+  hex: "#e3c9b6",
+  provenance: "measured",
+  role: "base",
+  note: "walls throughout",
+};
+
+/** A Locked Palette resting on the Design Direction: one color identified exactly, one by eye. */
+const earthy: DecisionDetail = {
+  ...blank,
+  slug: "earthy-palette",
+  title: "Earthy palette",
+  kind: "palette",
+  state: "locked",
+  statement: "Warm plaster with olive accents.",
+  basis: [direction],
+  content: {
+    colors: [
+      settingPlaster,
+      { name: "Olive", provenance: "estimated", role: "accent", note: "cushions" },
+    ],
+  },
+};
+
+/**
+ * A Room color for the living room's Wall 1 with the Palette in force in its Basis, and, as
+ * get_decision gives it, its color as that Palette has it when it has one of that name.
+ */
+function windowWall(color = settingPlaster.name): DecisionDetail {
+  return {
+    ...blank,
+    slug: "window-wall-color",
+    title: "Plaster on the window wall",
+    kind: "room-color",
+    state: "leaning",
+    room: livingRoom,
+    basis: [
+      direction,
+      {
+        slug: "earthy-palette",
+        title: "Earthy palette",
+        kind: "palette",
+        state: "locked",
+        automatic: true,
+      },
+    ],
+    content: { surface: "walls", wall: 1, color, finish: "eggshell" },
+    ...(color === settingPlaster.name ? { paletteColor: settingPlaster } : {}),
+  };
+}
+
+it("lists a Palette's colors with swatches, roles, and notes, and a placeholder without a hex", async () => {
+  stubDecision(() => earthy);
+  renderRoutes("/homes/flat/decisions/earthy-palette");
+  await screen.findByRole("heading", { name: "Colors" });
+  expect(listAfter("Colors")).toEqual([
+    "Setting Plaster (Farrow & Ball 231), LRV 62 Measured, base, walls throughout",
+    "~Olive Estimated, accent, cushions",
+  ]);
+  const list = screen.getByRole("heading", { name: "Colors" }).nextElementSibling as HTMLElement;
+  const [plaster, olive] = [...list.querySelectorAll("li")];
+  const swatch = within(plaster as HTMLElement).getByTitle("Approximately #e3c9b6");
+  expect(swatch.style.backgroundColor).toBe("rgb(227, 201, 182)");
+  const placeholder = within(olive as HTMLElement).getByTitle("No screen color recorded");
+  expect(placeholder.style.backgroundColor).toBe("");
+});
+
+it("shows a Room color's Surface, Wall, and finish, with its color from the Palette in its Basis", async () => {
+  const fetch = stubDecision(() => windowWall());
+  renderRoutes("/homes/flat/decisions/window-wall-color");
+  await screen.findByText(/Farrow & Ball 231/);
+  expect(after("Color")).toBe(
+    "SurfaceWalls" +
+      "WallWall 1" +
+      "ColorSetting Plaster (Farrow & Ball 231), LRV 62 Measured, base" +
+      "Finisheggshell",
+  );
+  expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
+  // The color comes with the Room color, so the Palette is not fetched for it.
+  expect(inputsTo(fetch, "get_decision")).toEqual([
+    { home: "flat", decision: "window-wall-color" },
+  ]);
+  // The Palette is marked automatic, as the Design Direction is.
+  expect(listAfter("Basis")).toEqual([
+    "Warm minimalism, Design Direction, Leaning, in every Basis",
+    "Earthy palette, Palette, Locked, in every Basis using its colors",
+  ]);
+  expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/earthy-palette",
+  );
+});
+
+it("keeps the placeholder for a Room color the Palette in its Basis does not have", async () => {
+  stubDecision(() => windowWall("Inchyra Blue"));
+  renderRoutes("/homes/flat/decisions/window-wall-color");
+  await screen.findByText(/not a color of/);
+  expect(after("Color")).toBe(
+    "SurfaceWalls" +
+      "WallWall 1" +
+      "ColorInchyra Blue (not a color of Earthy palette)" +
+      "Finisheggshell",
+  );
+  expect(screen.getByTitle("No screen color recorded")).toBeDefined();
+});
+
+it("shows the color and finish a Fulfilled Room color left on its Surface", async () => {
+  stubDecision(() => ({
+    ...windowWall(),
+    state: "locked",
+    fulfilledAt: "2026-09-14T15:00:00Z",
+    fulfilment: {
+      surface: "living-room/wall-1/surface",
+      color: {
+        name: "Setting Plaster",
+        brand: "Farrow & Ball",
+        code: "231",
+        hex: "#e3c9b6",
+        provenance: "measured",
+      },
+      finish: "satin",
+    },
+  }));
+  renderRoutes("/homes/flat/decisions/window-wall-color");
+  const painted = await screen.findByText(/^Fulfilled as:/);
+  expect(painted.textContent).toBe(
+    "Fulfilled as: Setting Plaster (Farrow & Ball 231) Measured, satin",
+  );
+  expect(within(painted).getByTitle("Approximately #e3c9b6")).toBeDefined();
 });

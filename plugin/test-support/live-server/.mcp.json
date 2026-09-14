@@ -2,7 +2,7 @@
   "mcpServers": {
     "int-design-harness": {
       "type": "http",
-      "url": "http://127.0.0.1:4390/mcp/homes/fixture-home"
+      "url": "http://127.0.0.1:4390/mcp/homes/${EVAL_IDH_HOME:-fixture-home}"
     }
   }
 }

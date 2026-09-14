@@ -31,6 +31,7 @@ import {
   type windowInput,
 } from "./schemas.js";
 import { requireHome, requireSession } from "./scope.js";
+import { saveSurface } from "./surfaces.js";
 import { given, sameName, Writer } from "./writer.js";
 
 type SaveRoom = z.output<typeof saveRoomInput>;
@@ -337,39 +338,7 @@ class RoomParts {
   }
 
   surface(part: SurfacePart, wall: WallRow | undefined, input: SurfaceInput): void {
-    const { model, writer, room } = this;
-    const slug = wall ? `${wall.slug}/surface` : `${room.slug}/${part}`;
-    const subject = wall
-      ? `Surface of ${wall.slug} (${slug})`
-      : `${room.name} ${part} Surface (${slug})`;
-    const values = { materials: input.materials, color: input.color, finish: input.finish };
-    const existing = model.surfaces.find((surface) => surface.slug === slug);
-    if (existing) {
-      writer.line(
-        subject,
-        undefined,
-        writer.patch("surfaces", "surface", existing, subject, values),
-      );
-      return;
-    }
-    if (given(values).length === 0) return;
-    const created = writer.create(
-      "surfaces",
-      "surface",
-      {
-        homeId: model.home.id,
-        slug,
-        roomId: room.id,
-        part,
-        wallId: wall?.id ?? null,
-        materials: values.materials ?? null,
-        color: values.color ?? null,
-        finish: values.finish ?? null,
-      },
-      values,
-    );
-    model.surfaces.push(created);
-    writer.line(subject, "recorded", given(values));
+    saveSurface(this.model, this.writer, this.room, part, wall, input);
   }
 
   window(input: WindowIn): void {

@@ -24,6 +24,7 @@ import type {
   Material,
   Measurement,
   Note,
+  PaletteColor,
   PlannedStay,
   Provenance,
   Requirement,
@@ -527,7 +528,10 @@ export function renderDecision(decision: DecisionDetail): string {
     );
   }
   lines.push(`Statement: ${decision.statement}`);
-  const content = contentLines(decision);
+  const content = contentLines(decision, {
+    room: decision.room?.slug,
+    paletteColor: decision.paletteColor,
+  });
   if (content.length > 0) lines.push("", "Content:", ...content);
   if (decision.requirements.length > 0) {
     lines.push("", "Requirements:", ...decision.requirements.map(requirementLine));
@@ -551,15 +555,25 @@ export function renderDecision(decision: DecisionDetail): string {
       (entry) =>
         `${titled(entry)}: ${DECISION_KIND_LABELS[entry.kind]}, ${DECISION_STATE_LABELS[entry.state]}` +
         (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt)}` : "") +
-        (entry.automatic ? "; in every Basis as the Design Direction" : ""),
+        (entry.automatic
+          ? entry.kind === "palette"
+            ? "; in the Basis as the Palette whose colors it uses"
+            : "; in every Basis as the Design Direction"
+          : ""),
     ),
   );
   section(lines, "Evidence", decision.evidence.map(evidenceLine));
   return lines.join("\n");
 }
 
-/** A Decision's content, one line per field, in the kind's own order. */
-function contentLines(decision: DecisionKindContent): string[] {
+/**
+ * A Decision's content, one line per field, in the kind's own order. A Room color's Wall is named
+ * by its slug when `room` is given, and its color in full when `paletteColor` is.
+ */
+function contentLines(
+  decision: DecisionKindContent,
+  { room, paletteColor }: { room?: string; paletteColor?: PaletteColor } = {},
+): string[] {
   const out: (string | false | undefined)[] = [];
   switch (decision.kind) {
     case "design-direction": {
@@ -599,9 +613,12 @@ function contentLines(decision: DecisionKindContent): string[] {
       break;
     case "room-color": {
       const { content } = decision;
+      const wall = room ? `${room}/wall-${content.wall}` : `Wall ${content.wall}`;
       out.push(
-        `- Surface: ${content.wall ? `Wall ${content.wall}` : content.surface}`,
-        `- Color: ${content.color}`,
+        `- Surface: ${content.wall ? `${content.surface} of ${wall} only` : content.surface}`,
+        paletteColor
+          ? `- Color: ${colorText(paletteColor)}, the Palette's ${paletteColor.role}`
+          : `- Color: ${content.color}, not a color of the Palette in force`,
         `- Finish: ${content.finish}`,
       );
       break;
@@ -631,8 +648,15 @@ function evidenceLine(evidence: EvidenceEntry): string {
   return `${evidence.stance}: ${source}${evidence.note ? `: ${evidence.note}` : ""}`;
 }
 
+/** What was done: a Room use's functions, or the Surface a Room color painted, as it now is. */
 function fulfilmentText(fulfilment: Fulfilment | undefined): string | undefined {
-  return fulfilment?.roomFunctions && `functions ${fulfilment.roomFunctions.join(", ")}`;
+  if (fulfilment?.roomFunctions) return `functions ${fulfilment.roomFunctions.join(", ")}`;
+  if (!fulfilment?.surface) return undefined;
+  return join(", ", [
+    `${fulfilment.surface} painted` +
+      (fulfilment.color ? ` ${value("color", fulfilment.color)}` : ""),
+    fulfilment.finish && `${fulfilment.finish} finish`,
+  ]);
 }
 
 // ─── Blueprints ─────────────────────────────────────────────────────────────────────────────

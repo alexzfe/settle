@@ -1,0 +1,3 @@
+Hallway bench (hallway-bench): created as a Candidate Purchase for Hallway (hallway); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically
+Requirement 1 of Hallway bench (hallway-bench): added: must, At most 35 cm deep (reason: Door hallway-outside-door)
+Requirement 2 of Hallway bench (hallway-bench): added: prefer, Oak (reason: Decision Warm minimalism (warm-minimalism))

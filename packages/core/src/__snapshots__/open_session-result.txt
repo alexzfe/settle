@@ -1,5 +1,5 @@
-Session: home-intake-jkmn
-Pass session "home-intake-jkmn" on every write in this conversation.
+Session: home-intake-pqrs
+Pass session "home-intake-pqrs" on every write in this conversation.
 
 Home: Fixture Home
 Location: London, GB (latitude 51.5° N)

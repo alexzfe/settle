@@ -32,7 +32,10 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * Home-wide "Keep the original floors" with an open Conflict; a Locked living-room Room Direction
  * "Calm evenings" resting on both; a Candidate Room use for the Hallway; a Rejected hallway paint
  * idea; and a Leaning "Wool rug" Purchase with two Requirements and Evidence, resting on the Room
- * Direction and flagged because it was reopened (and then Locked again).
+ * Direction and flagged because it was reopened (and then Locked again). Slice 5 adds, from a
+ * Color Session, a Locked Palette "Warm clay" of four colors (one Estimated, without a code or
+ * hex) resting on the Design Direction, and a Locked Room color painting the living-room walls
+ * in its Jitney, not yet Fulfilled.
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -471,6 +474,84 @@ export async function createFixtureHome(
         "living room's Calm evenings.",
       open: "Storage in the hallway; the wool rug; a Conflict over the terracotta tiles.",
       next: "Color: a Palette for Warm minimalism.",
+    },
+  });
+
+  const { session: color } = await core.run("open_session", agent(), { skill: "color" });
+  const withColor = agent(color);
+  await core.run("save_decision", withColor, {
+    session: color,
+    kind: "palette",
+    title: "Warm clay",
+    statement:
+      "Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.",
+    content: {
+      colors: [
+        {
+          name: "Pointing",
+          brand: "Farrow & Ball",
+          code: "No. 2003",
+          hex: "#ece5d3",
+          provenance: "measured",
+          role: "base",
+          note: "ceilings and woodwork throughout",
+        },
+        {
+          name: "Setting Plaster",
+          brand: "Farrow & Ball",
+          code: "No. 231",
+          lrv: 63,
+          hex: "#d8b9a6",
+          provenance: "measured",
+          role: "base",
+          note: "walls in the kitchen and the main bedroom",
+        },
+        {
+          name: "Jitney",
+          brand: "Farrow & Ball",
+          code: "No. 293",
+          hex: "#bba68a",
+          provenance: "measured",
+          role: "secondary",
+          note: "living room walls, warm under lamplight",
+        },
+        {
+          name: "warm terracotta",
+          provenance: "estimated",
+          role: "accent",
+          note: "cushions and a rug, echoing the dining-end tiles",
+        },
+      ],
+    },
+    evidence: [
+      {
+        kind: "session",
+        id: color,
+        stance: "supports",
+        note: "The user held the samples up to the bay window at dusk.",
+      },
+    ],
+  });
+  const colorMove = (decision: string, to: DecisionState, reason: string) =>
+    core.run("set_decision_state", withColor, { session: color, decision, to, reason });
+  await colorMove("warm-clay", "leaning", 'The user: "I like these together"');
+  await colorMove("warm-clay", "locked", 'The user: "lock the palette"');
+  await core.run("save_decision", withColor, {
+    session: color,
+    kind: "room-color",
+    room: "living-room",
+    title: "Living room walls in Jitney",
+    statement: "The living room walls in Jitney, matt, for a warmer glow in the evenings.",
+    content: { surface: "walls", color: "Jitney", finish: "matt" },
+    basis: ["calm-evenings"],
+  });
+  await colorMove("living-room-walls-in-jitney", "locked", 'The user: "Jitney it is, lock it"');
+  await core.run("close_session", withColor, {
+    session: color,
+    summary: {
+      changed: "Locked the Palette Warm clay and Jitney for the living room walls.",
+      open: "Painting the living room.",
+      next: "Color again once the living room is painted, to record it.",
     },
   });
   return { core, home: home.slug, session };

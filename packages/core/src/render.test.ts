@@ -52,6 +52,21 @@ it("renders the opening for Design Direction: the Home-wide Decisions after the 
   await expect(result.opening).toMatchFileSnapshot(snapshot("opening-design-direction"));
 });
 
+it("renders the opening for Color: the Locked Palette in full, every color with its role and note", async () => {
+  const result = await fixture.core.run("open_session", agent(), { skill: "color" });
+  await expect(result.opening).toMatchFileSnapshot(snapshot("opening-color"));
+});
+
+it("renders get_decision for a Palette and a Room color resting on it", async () => {
+  const session = await openSession();
+  const texts = [];
+  for (const decision of ["warm-clay", "living-room-walls-in-jitney"]) {
+    const result = await fixture.core.run("get_decision", agent(session), { session, decision });
+    texts.push(toolText("get_decision", result));
+  }
+  await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision-color"));
+});
+
 it("renders a join: only the blocks the Session has not been sent yet", async () => {
   const session = await openSession();
   const join = await fixture.core.run("open_session", agent(session), {
@@ -371,6 +386,129 @@ describe("Decision receipts", () => {
       }),
     );
     await expect(receipts.join("\n\n")).toMatchFileSnapshot(snapshot("receipts-decisions"));
+  });
+});
+
+describe("Color receipts", () => {
+  // Their own fixture Home, since these writes paint the living room the other snapshots show.
+  let own: FixtureHome;
+  let session: string;
+  beforeAll(async () => {
+    let next = 0;
+    own = await createFixtureHome({
+      random: (max) => next++ % max,
+      clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    });
+    session = (await own.core.run("open_session", ownAgent(), { skill: "color" })).session;
+  });
+  afterAll(() => own.core.close());
+
+  function ownAgent(id?: string): CallContext {
+    return { caller: { kind: "session", session: id }, home: own.home };
+  }
+
+  /** The text the AI reads from a tool call. */
+  async function run(name: string, input: Record<string, unknown>): Promise<string> {
+    return toolText(name, await own.core.run(name, ownAgent(session), { session, ...input }));
+  }
+
+  /** A refused call's message, which the MCP tool returns as its isError text. */
+  async function refusal(name: string, input: Record<string, unknown>): Promise<string> {
+    try {
+      await own.core.run(name, ownAgent(session), { session, ...input });
+    } catch (error) {
+      if (error instanceof Error) return error.message;
+    }
+    throw new Error(`${name} was not refused`);
+  }
+
+  it("renders a Palette and Room colors saved, a refused color, Fulfilments, and a Palette Reopen, then the Room Sheet after Fulfilment", async () => {
+    const sections: [string, string][] = [];
+    const add = (title: string, text: string) => sections.push([title, text]);
+    add(
+      "save_decision: a second Palette, which stays a Candidate",
+      await run("save_decision", {
+        kind: "palette",
+        title: "Cool linen",
+        statement: "Pale stone greys, for a cooler house.",
+        content: {
+          colors: [
+            {
+              name: "Skimming Stone",
+              brand: "Farrow & Ball",
+              code: "No. 241",
+              hex: "#d6cdc0",
+              provenance: "measured",
+              role: "base",
+            },
+            { name: "soft slate", provenance: "estimated", role: "accent", note: "doors only" },
+          ],
+        },
+      }),
+    );
+    add(
+      "save_decision: a Room color, resting on the Palette in force automatically",
+      await run("save_decision", {
+        kind: "room-color",
+        room: "kitchen",
+        title: "Kitchen woodwork in Pointing",
+        statement: "The kitchen woodwork in Pointing, satin, to match the ceilings.",
+        content: { surface: "woodwork", color: "pointing", finish: "satin" },
+      }),
+    );
+    add(
+      "save_decision: a Room color naming a color the Palette lacks, refused",
+      await refusal("save_decision", {
+        kind: "room-color",
+        room: "hallway",
+        title: "Hallway walls in Hague Blue",
+        statement: "A deep blue hallway.",
+        content: { surface: "walls", color: "Hague Blue", finish: "matt" },
+      }),
+    );
+    add(
+      "record_fulfilment: the living room walls painted",
+      await run("record_fulfilment", { decision: "living-room-walls-in-jitney" }),
+    );
+    const { sheet } = await own.core.run("get_room_sheet", ownAgent(session), {
+      session,
+      room: "living-room",
+    });
+    await run("set_decision_state", {
+      decision: "kitchen-woodwork-in-pointing",
+      to: "locked",
+      reason: 'The user: "yes, Pointing for the woodwork"',
+    });
+    add(
+      "record_fulfilment: the kitchen woodwork, in another finish than decided",
+      await run("record_fulfilment", {
+        decision: "kitchen-woodwork-in-pointing",
+        finish: "eggshell",
+      }),
+    );
+    add(
+      "get_decision: the Fulfilled living room walls",
+      await run("get_decision", { decision: "living-room-walls-in-jitney" }),
+    );
+    await run("save_decision", {
+      kind: "room-color",
+      room: "main-bedroom",
+      title: "Bedroom walls in Setting Plaster",
+      statement: "The main bedroom walls in Setting Plaster, matt.",
+      content: { surface: "walls", color: "Setting Plaster", finish: "matt" },
+    });
+    add(
+      "set_decision_state: the Palette Reopened, flagging only the Room color still open",
+      await run("set_decision_state", {
+        decision: "warm-clay",
+        to: "leaning",
+        reason: `The user: "let's rethink the accent"`,
+      }),
+    );
+    await expect(
+      sections.map(([title, text]) => `# ${title}\n${text}`).join("\n\n"),
+    ).toMatchFileSnapshot(snapshot("receipts-color"));
+    await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-living-room-fulfilled"));
   });
 });
 

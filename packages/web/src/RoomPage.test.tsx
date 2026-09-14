@@ -1,4 +1,4 @@
-import { act, cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { DecisionSummary, Home, RoomDetail } from "./api";
 import { FakeEventSource, renderRoutes, stubApi } from "./testSupport";
@@ -423,4 +423,72 @@ it("shows the new value when the Agent saves the Room while the page is open", a
 
   expect(await screen.findByText("3.62 m")).toBeDefined();
   expect(screen.queryByText("~3.60 m")).toBeNull();
+});
+
+/** The value of one term in the Surfaces list: "Walls", or a Wall's name for its exception. */
+function surfaceFact(term: string): HTMLElement {
+  const surfaces = screen.getByRole("heading", { name: "Surfaces" }).nextElementSibling;
+  return within(surfaces as HTMLElement).getByText(term).nextElementSibling as HTMLElement;
+}
+
+it("shows each Surface color as a swatch, with a placeholder when it has no hex", async () => {
+  stubRoom(livingRoom);
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByRole("heading", { name: "Surfaces" });
+  const swatch = within(surfaceFact("Walls")).getByTitle("Approximately #e3c9b6");
+  expect(swatch.style.backgroundColor).toBe("rgb(227, 201, 182)");
+  expect(within(surfaceFact("Wall 3")).getByTitle("No screen color recorded")).toBeDefined();
+});
+
+it("shows the new Surface color when a Room color is Fulfilled while the page is open", async () => {
+  let room = livingRoom();
+  let decisions = [
+    roomDecision("olive-walls", "Olive walls", "room-color", "locked"),
+    roomDecision("low-sofa", "A low sofa", "purchase", "leaning"),
+  ];
+  stubRoom(
+    () => room,
+    () => decisions,
+  );
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByText("Olive walls");
+  // A Room color is listed with the Room's other open Decisions.
+  expect(listAfter("Decisions")).toEqual([
+    "Olive walls, Room color, Locked",
+    "A low sofa, Purchase, Leaning",
+  ]);
+
+  // Fulfilment changes the walls Surface and publishes a surface change, then a decision one.
+  room = {
+    ...room,
+    surfaces: room.surfaces.map((surface) =>
+      surface.part === "walls"
+        ? {
+            ...surface,
+            color: { name: "Olive", hex: "#708238", provenance: "estimated" },
+            finish: "eggshell",
+          }
+        : surface,
+    ),
+  };
+  decisions = decisions.filter((decision) => decision.slug !== "olive-walls");
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "surface",
+      recordSlug: "living-room/walls",
+    }),
+  );
+  expect(await screen.findByTitle("Approximately #708238")).toBeDefined();
+  expect(surfaceFact("Walls").textContent).toBe("plaster, ~Olive Estimated, eggshell");
+  expect(screen.queryByTitle("Approximately #e3c9b6")).toBeNull();
+
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "decision",
+      recordSlug: "olive-walls",
+    }),
+  );
+  await waitFor(() => expect(listAfter("Decisions")).toEqual(["A low sofa, Purchase, Leaning"]));
 });

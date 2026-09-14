@@ -1,1 +1,1 @@
-Dark and restful (dark-and-restful): created as a Candidate Room Direction for Main bedroom (main-bedroom); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Evidence: Session design-direction-jkmn supports
+{{file:fixtures/receipt-save_decision-{input.kind}.txt}}

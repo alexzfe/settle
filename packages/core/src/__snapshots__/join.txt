@@ -1,5 +1,5 @@
-Session: home-intake-tuvw
-Pass session "home-intake-tuvw" on every write in this conversation.
+Session: home-intake-789a
+Pass session "home-intake-789a" on every write in this conversation.
 
 Home-wide Decisions in force:
 
@@ -15,12 +15,18 @@ Calm, warm rooms of natural materials that age well.
   - Daylight first, then low warm lamps
   - Nothing the cats can shred
 
-Palette: none chosen yet
+Palette: Warm clay (warm-clay), Locked
+Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
+- Colors:
+  - base: Pointing (Farrow & Ball No. 2003); ceilings and woodwork throughout
+  - base: Setting Plaster (Farrow & Ball No. 231), LRV 63; walls in the kitchen and the main bedroom
+  - secondary: Jitney (Farrow & Ball No. 293); living room walls, warm under lamplight
+  - accent: ~warm terracotta; cushions and a rug, echoing the dining-end tiles
 
 Other Home-wide Decisions, Locked:
 - Keep the original floors (keep-the-original-floors): Other, Locked; 1 open Conflict. The oak boards and terracotta tiles stay.
 
-Session: home-intake-tuvw
-Pass session "home-intake-tuvw" on every write in this conversation.
+Session: home-intake-789a
+Pass session "home-intake-789a" on every write in this conversation.
 
 This Session already has the opening. If the Home Overview is no longer in view, call open_session again with resend: true.

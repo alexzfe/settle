@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Live smoke suite: runs plugin/evals-live against a real server on a dedicated port, with a
-# throwaway data dir holding only the fixture Home, so no write can reach the user's Homes on 4380.
+# throwaway data dir holding only the fixture Homes, so no write can reach the user's Homes on 4380.
 # Extra arguments go to `claude plugin eval`, e.g. `pnpm plugin:eval:live --case home-intake-opens-live`.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# plugin/test-support/live-server/.mcp.json names this port and Home slug.
+# plugin/test-support/live-server/.mcp.json names this port, and this Home slug unless a case's
+# EVAL_IDH_HOME names another.
 PORT=4390
 HOME_SLUG=fixture-home
 BASE="http://127.0.0.1:${PORT}"
@@ -72,6 +73,21 @@ blueprint="$(node -e '
   } catch { }' <<<"${response}")"
 [[ "${blueprint}" == "${BLUEPRINT_SLUG} 1" ]] ||
   fail "upload_blueprint should have made the one-page Blueprint ${BLUEPRINT_SLUG}; it answered: ${response}"
+
+# The Color case's Home: a second Home with a Locked Design Direction, which the case picks with
+# EVAL_IDH_HOME. A Locked Direction on the fixture Home would change what the Design Direction case
+# sees, since that case saves the Home's first Direction.
+COLOR_HOME_SLUG=fixture-flat
+echo "Creating ${COLOR_HOME_SLUG} with a Locked Design Direction..."
+response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
+  -d '{"name":"Fixture Flat","country":"GB","city":"London"}')"
+slug="$(node -e '
+  try { process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).home?.slug ?? ""); }
+  catch { }' <<<"${response}")"
+[[ "${slug}" == "${COLOR_HOME_SLUG}" ]] ||
+  fail "create_home should have made the Home ${COLOR_HOME_SLUG}; it answered: ${response}"
+node scripts/seed-live-direction.mjs "${BASE}/mcp/homes/${COLOR_HOME_SLUG}" ||
+  fail "Seeding the Design Direction of ${COLOR_HOME_SLUG} failed."
 
 status=0
 claude plugin eval ./plugin --eval-dir evals-live --mocks off \

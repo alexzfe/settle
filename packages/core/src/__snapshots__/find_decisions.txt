@@ -1,8 +1,10 @@
 # every Decision
 - Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide. Calm, warm rooms of natural materials that age well.
 - Keep the original floors (keep-the-original-floors): Other, Locked; Home-wide; 1 open Conflict. The oak boards and terracotta tiles stay.
+- Warm clay (warm-clay): Palette, Locked; Home-wide. Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
 - Calm evenings (calm-evenings): Room Direction, Locked; Living room (living-room). A low, warm room for long evenings.
 - Wool rug (wool-rug): Purchase, Leaning; Living room (living-room); 1 open flag. A large wool rug under the sofa.
+- Living room walls in Jitney (living-room-walls-in-jitney): Room color, Locked; Living room (living-room). The living room walls in Jitney, matt, for a warmer glow in the evenings.
 - Storage in the hallway (storage-in-the-hallway): Room use, Candidate; Hallway (hallway). The hallway also holds coats, shoes, and the vacuum.
 - Paint the hallway dark green (paint-the-hallway-dark-green): Other, Rejected; Hallway (hallway). A dark green hallway.
 
@@ -13,9 +15,10 @@
 # Home-wide
 - Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide. Calm, warm rooms of natural materials that age well.
 - Keep the original floors (keep-the-original-floors): Other, Locked; Home-wide; 1 open Conflict. The oak boards and terracotta tiles stay.
+- Warm clay (warm-clay): Palette, Locked; Home-wide. Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
 
 # Rejected
 - Paint the hallway dark green (paint-the-hallway-dark-green): Other, Rejected; Hallway (hallway). A dark green hallway.
 
 # Palettes
-No Decisions match.
+- Warm clay (warm-clay): Palette, Locked; Home-wide. Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.

@@ -1,0 +1,1 @@
+{{input.title}}: created as a Candidate Room color for Main bedroom (main-bedroom); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Warm clay (warm-clay), the Palette, automatically

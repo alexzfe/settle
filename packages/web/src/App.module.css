@@ -67,6 +67,26 @@
   vertical-align: middle;
 }
 
+/** A color with no approximate hex recorded: outlined only, never a guessed fill. */
+.swatchPlaceholder {
+  border-style: dashed;
+  background: transparent;
+}
+
+/** A Palette as a row of swatches. */
+.swatchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.swatchRow .swatch {
+  width: 1.4em;
+  height: 1.4em;
+}
+
 .muted {
   color: #666;
 }

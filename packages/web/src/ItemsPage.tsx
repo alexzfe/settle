@@ -4,7 +4,8 @@ import styles from "./App.module.css";
 import type { Item, Room } from "./api";
 import { sentence, wallNameOf } from "./format";
 import { useHome, useItems } from "./queries";
-import { ArchivedNote, Color, dimensions, lightText, Parts } from "./Values";
+import { Swatch } from "./Swatch";
+import { ArchivedNote, dimensions, lightText, Parts } from "./Values";
 
 export interface ItemGroup {
   /** Unique among the groups. */
@@ -123,7 +124,7 @@ export function ItemLine({ item }: { item: Item }) {
         ["H", item.height],
       ])}
       {item.colors?.map((color) => (
-        <Color key={color.name} color={color} />
+        <Swatch key={color.name} color={color} />
       ))}
       {item.materials?.join(", ")}
       {item.condition}
