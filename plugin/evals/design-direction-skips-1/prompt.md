@@ -1,5 +1,5 @@
 ---
-description: Near miss. A style direction for a website is brand and web design, even in the Skill's own words.
+description: "Near miss. A style direction for a website is brand and web design, even in the Skill's own words."
 tags: [trigger, design-direction, near-miss]
 max_turns: 8
 timeout_seconds: 300

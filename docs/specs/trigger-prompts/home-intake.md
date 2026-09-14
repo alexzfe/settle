@@ -1,6 +1,6 @@
 # Home Intake trigger prompts
 
-**Status: DRAFT, for the user to revise.** Written in slice 1 from the draft trigger description in [skill-set.md](../skill-set.md#trigger-descriptions). Until the user has revised this set, only the two prompts marked *committed* are eval cases in `plugin/evals/`. Once it is revised, each prompt becomes a `home-intake-fires-<n>` or `home-intake-skips-<n>` case.
+**Status: approved by the user on 2026-09-14; every prompt below is a trigger case in `plugin/evals/`.** Originally written in slice 1 from the draft trigger description in [skill-set.md](../skill-set.md#trigger-descriptions). The two prompts marked *committed* were the only cases until the approval; the rest were added then. A prompt that changes here changes its case.
 
 ## Should fire
 
@@ -35,4 +35,5 @@
 ## Notes for the revision
 
 - The should-fire set covers the description's three uses (set up the Home, add or fix a Room or a measurement, record owned furniture), plus a Blueprint and a read-back. Slice 1's Home Intake only records Rooms by name and Level. Prompts 5, 6 and 9 still belong in the set, because they test the trigger, not what the Skill can do yet.
+- After the first full run (2026-09-14), "ask what is recorded about a room" was added to the trigger description, because prompt 10 opened a Session without the Skill. It still did on the rerun: the Agent answers a read-back with the open_session tool directly, which is reasonable. **Open:** the user decides whether the case should grade only that a Session is opened, or the prompt should leave the set.
 - The near misses cover each "Not for" clause (design advice, colors, shopping, property) and four senses of "home" or "room" outside a dwelling.

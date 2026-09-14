@@ -214,7 +214,7 @@ Threads every layer once, with the smallest possible Home model.
 
 | Item | Owner | When |
 |---|---|---|
-| Revise the four trigger descriptions and each Skill's trigger prompt sets before they are committed | the user | the slice that ships each Skill |
+| Revise each Skill's trigger description and prompt set before it is committed: Home Intake and Design Direction approved on 2026-09-14 (every prompt is a case); Color and Purchase remain | the user | the slice that ships each Skill |
 | Upload the real plan to the real Home (the demo ran on a copy) | the user | whenever |
 | Whether Blueprint pages need tiles: no, the four quarter crops read every figure on the real plan | decided by the slice 3 demo | done |
 | Web UI design session, including form-based editing | the user schedules it | after the finish line |

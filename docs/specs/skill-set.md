@@ -105,18 +105,20 @@ Each description:
 - puts the key use case first, because both Agents shorten descriptions when the Skill list overflows
 
 ```
-home-intake: Records the rooms, measurements, windows, doors and belongings of the
-user's home, from an uploaded floor plan or a room-by-room interview. Use
-when the user wants to set up their home, add or fix a room or a measurement, or
-tell it about furniture they already own ("add the spare bedroom", "the living
-room is 4.2 m, not 4"). Not for design advice, colors or shopping; not for buying
-or evaluating property.
+home-intake: Records the rooms, measurements, windows, doors and belongings of
+the user's home, from an uploaded floor plan or a room-by-room interview. Use
+when the user wants to set up their home, add or fix a room or a measurement,
+ask what is recorded about a room, or tell it about furniture they already own
+("add the spare bedroom", "the living room is 4.2 m, not 4"). Not for design
+advice, colors or shopping; not for buying or evaluating property.
 
 design-direction: Interviews the user to settle their home's overall style,
 normally once: mood, warmth, key materials, style references, guiding
 principles. Use only when the home has no design direction yet, or when the user
-says outright that they want to work out or rethink their overall style ("I
-don't know what style I like", "let's rethink the direction, it feels too
+asks about the style of the home as a whole: to work it out or rethink it, or
+whether a look, a style reference, a set of materials, or their saved
+inspiration images suit the whole house ("I don't know what style I like", "is
+Japandi right for the house?", "let's rethink the direction, it feels too
 cold"). It also settles a room's direction and what an undecided room is for,
 but only when invoked by name or when another skill hands it the question; a
 request about one room on its own is not a reason to use it. Not for specific

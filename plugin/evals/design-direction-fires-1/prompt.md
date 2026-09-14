@@ -1,5 +1,5 @@
 ---
-description: Should fire. The user wants help working out their style.
+description: "Should fire. The user wants help working out their style."
 tags: [trigger, design-direction]
 max_turns: 12
 timeout_seconds: 300
