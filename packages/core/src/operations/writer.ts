@@ -15,13 +15,15 @@ import {
 } from "../render.js";
 import type { HomeRow, HomeTables, Store } from "../store.js";
 import type { Color } from "./schemas.js";
+import { flagValueChanges } from "./value-changes.js";
 
 type Rows = HomeTables & { homes: HomeRow };
 type Row = { id: number; slug: string };
 
 /**
  * One Agent write, field by field: it applies the Provenance rule to every length and color,
- * logs every change, and collects the receipt's lines and refused parts.
+ * logs every change, and collects the receipt's lines and refused parts. Before the receipt, it
+ * flags every Purchase with a Requirement resting on a value the write changed.
  */
 export class Writer {
   readonly lines: ReceiptLine[] = [];
@@ -30,21 +32,36 @@ export class Writer {
   readonly flagged: FlaggedDecision[] = [];
   /** Whether anything was stored. */
   changed = false;
-  readonly #store: Store;
-  readonly #home: HomeRow;
+  readonly store: Store;
+  readonly home: HomeRow;
+  readonly #now: () => string;
   readonly #log: (change: Change) => void;
   readonly #override: string | undefined;
+  /** Every change logged so far, for the value_changed flags. */
+  readonly #changes: Change[] = [];
 
   constructor(
-    store: Store,
+    context: { store: Store; now(): string },
     home: HomeRow,
     log: (change: Change) => void,
     override: string | undefined,
   ) {
-    this.#store = store;
-    this.#home = home;
-    this.#log = log;
+    this.store = context.store;
+    this.home = home;
+    this.#now = () => context.now();
+    this.#log = (change) => {
+      this.#changes.push(change);
+      log(change);
+    };
     this.#override = override;
+  }
+
+  get #store(): Store {
+    return this.store;
+  }
+
+  get #home(): HomeRow {
+    return this.home;
   }
 
   /** Adds a row and logs it as created, with `logged` as what the change log shows. */
@@ -196,6 +213,7 @@ export class Writer {
     if (!this.changed && this.refused.length > 0) {
       throw new CoreError("weaker_provenance", this.refused.map(renderRefused).join("\n"));
     }
+    flagValueChanges(this, [...this.#changes], this.#now());
     return renderReceipt({ lines: this.lines, refused: this.refused, gaps, flagged: this.flagged });
   }
 

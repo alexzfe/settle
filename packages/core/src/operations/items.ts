@@ -46,7 +46,7 @@ export const saveItems = defineOperation({
     requireSources(context.store, home, input);
     const receipt = context.write(session.slug, (log) => {
       const model = loadHome(context.store, home);
-      const writer = new Writer(context.store, home, log, input.overrideProvenance);
+      const writer = new Writer(context, home, log, input.overrideProvenance);
       for (const item of input.items) saveItem(context, model, writer, item);
       return writer.receipt();
     });
@@ -101,12 +101,13 @@ export const listItems = defineOperation({
   },
 });
 
-function saveItem(
+/** Adds an Item, or changes the one `item` names; returns it, with a receipt line. */
+export function saveItem(
   context: OperationContext,
   model: HomeModel,
   writer: Writer,
   input: ItemIn,
-): void {
+): ItemRow {
   const existing = input.item === undefined ? undefined : requireItem(model, input.item);
   if (input.room !== undefined && input.unplaced) {
     throw new CoreError("validation", "Give an Item either a `room` or unplaced: true, not both.");
@@ -189,7 +190,7 @@ function saveItem(
       room ? `added in ${named(room)}` : "added as Unplaced",
       given({ ...shown, wall: wall?.slug }),
     );
-    return;
+    return created;
   }
 
   const subject = named({ name: input.name ?? existing.name, slug: existing.slug });
@@ -226,6 +227,7 @@ function saveItem(
           input.archiveReason,
         );
   writer.line(subject, done, fields);
+  return existing;
 }
 
 function requireItem(model: HomeModel, slug: string): ItemRow {

@@ -36,7 +36,7 @@ import {
 } from "./operations/homes.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
-import { saveGuides } from "./operations/purchases.js";
+import { recordListing, saveGuides } from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
 import { closeSession, openSession } from "./operations/sessions.js";
 import { optional } from "./optional.js";
@@ -81,6 +81,7 @@ const operations = {
   save_decision: saveDecision,
   set_decision_state: setDecisionState,
   save_guides: saveGuides,
+  record_listing: recordListing,
   record_fulfilment: recordFulfilment,
   flag_conflict: flagConflict,
   close_session: closeSession,

@@ -5,6 +5,7 @@ import { type FieldChange, featureName, named, renderRoomSheet } from "../render
 import { uniqueSlug } from "../slug.js";
 import type { DoorRow, RoomRow, WallRow } from "../store.js";
 import { loadDecisions, roomDecisions } from "./decisions.js";
+import { addFeature } from "./features.js";
 import {
   active,
   findLevel,
@@ -73,7 +74,7 @@ export const saveRoom = defineOperation({
     requireSources(store, home, input);
     const receipt = context.write(session.slug, (log) => {
       const model = loadHome(store, home);
-      const writer = new Writer(store, home, log, input.overrideProvenance);
+      const writer = new Writer(context, home, log, input.overrideProvenance);
       const parts = new RoomParts(
         context,
         model,
@@ -639,44 +640,7 @@ class RoomParts {
       light: input.light,
     };
     if (!existing) {
-      if (!input.kind) {
-        throw new CoreError(
-          "validation",
-          "To add a Feature, give its `kind`. For something the kinds don't cover, use " +
-            '"other" with a description.',
-        );
-      }
-      if (input.kind === "other" && !input.description) {
-        throw new CoreError("validation", 'A Feature of kind "other" needs a description.');
-      }
-      const name = featureName(input.kind, input.description);
-      const slug = uniqueSlug(`${room.slug} ${name}`, "feature", (taken) =>
-        this.context.store.slugTaken("features", taken, model.home.id),
-      );
-      const created = writer.create(
-        "features",
-        "feature",
-        {
-          homeId: model.home.id,
-          roomId: room.id,
-          slug,
-          kind: input.kind,
-          description: values.description ?? null,
-          wallId: wall?.id ?? null,
-          positionNote: values.positionNote ?? null,
-          width: values.width ?? null,
-          height: values.height ?? null,
-          depth: values.depth ?? null,
-          light: values.light ?? null,
-          archivedAt: null,
-          archivedReason: null,
-          replacedByFeatureId: null,
-        },
-        { room: room.slug, wall: wall?.slug, ...values },
-      );
-      model.features.push(created);
-      const { kind: _, ...shown } = values;
-      writer.line(named({ name, slug }), "added", given({ wall: wall?.slug, ...shown }));
+      addFeature(this.context, model, writer, room, input);
       return;
     }
     const subject = named({

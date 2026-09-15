@@ -27,3 +27,4 @@ Rooms:
 Open flags and Conflicts:
 - Keep the original floors (keep-the-original-floors), Home-wide: Conflict raised on 2026-09-14: The user now says the terracotta tiles crack every winter and wants them gone.
 - Wool rug (wool-rug), Living room (living-room): flagged on 2026-09-14, Calm evenings (calm-evenings) was reopened
+- Books by color (books-by-color), Living room (living-room): flagged on 2026-09-14, Oak bookcase (oak-bookcase) was Fulfilled with a Deviation from a must Requirement

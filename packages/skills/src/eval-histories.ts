@@ -490,6 +490,15 @@ The alcove by the stairs is the Hallway's Wall 4, next to the understairs cupboa
 4. **Material.** *(Recommended: oak, one of the Direction's key materials.)*
 5. **Finish.** Bare oak, or painted? *(Recommended: bare oak; if painted, Pointing, the Palette's warm white, as for the woodwork.)*`;
 
+const BEDROOM_RUG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the rug's colour comes from Warm clay: Pointing, Setting Plaster, Jitney, or the warm terracotta accent.
+
+The Main bedroom has the double bed against Wall 2 (1.60 × 2.10 m), a west window onto the balcony, and you use it at night. None of its floor is recorded yet, and you have two cats, which scratch fabric. First round:
+
+1. **Where it goes.** Under the bed, or beside it? *(Recommended: under the lower two-thirds of the bed, showing about 50 cm either side.)*
+2. **Size.** *(Recommended: about 1.6 × 2.3 m, which does that for a 1.60 m bed.)*
+3. **Pile.** *(Recommended: a flat, tightly woven wool: claws don't catch in it.)*
+4. **Colour.** *(Recommended: warm terracotta, the Palette's accent, which warms a room used at night.)*`;
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -763,5 +772,18 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
       "shoes hallway",
     ).turns,
     { assistant: ALCOVE_ROUND },
+  ],
+
+  // Graded turn: the user wants a deep forest green rug, which the Locked Palette lacks, and asks
+  // to save it with the green. No Palette change is saved, and the reply asks "settle this in
+  // Color now, or park it?"
+  "purchase-hands-missing-color-to-color": (context) => [
+    ...purchaseRoomStart(
+      context,
+      "We'd like a rug for the main bedroom, something soft underfoot in the mornings.",
+      "main-bedroom",
+      "rug cats",
+    ).turns,
+    { assistant: BEDROOM_RUG_ROUND },
   ],
 };

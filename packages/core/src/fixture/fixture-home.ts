@@ -37,8 +37,10 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * hex) resting on the Design Direction, and a Locked Room color painting the living-room walls
  * in its Jitney, not yet Fulfilled. Slice 6 adds, from a Purchase Session, two more Requirements
  * for the Wool rug (a must resting on the Estimated west wall, so its Quick Guide starts with a
- * Measure first line, and a prefer resting on the Palette, which joins its Basis) and both its
- * Guides.
+ * Measure first line, and a prefer resting on the Palette, which joins its Basis), both its
+ * Guides, and two Listings, one passing every must and one failing one; and an "Oak bookcase"
+ * Purchase, Fulfilled with a Deviation from a must and one from a prefer, whose new Item replaced
+ * the Billy bookcase and whose Deviation flagged the Candidate "Books by color" resting on it.
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -589,10 +591,94 @@ export async function createFixtureHome(
     ],
     fullGuide: WOOL_RUG_GUIDE,
   });
+  const listing = (input: Omit<OperationInput<"record_listing">, "session" | "decision">) =>
+    core.run("record_listing", withPurchase, { session: purchase, decision: "wool-rug", ...input });
+  await listing({
+    name: "Hay Plain rug",
+    url: "https://example.com/hay-plain-rug",
+    price: "£450",
+    dimensions: { width: 2000, depth: 3000 },
+    checks: [
+      { requirement: 1, result: "pass", note: "2.0 × 3.0 m" },
+      { requirement: 2, result: "pass", note: "cut pile wool" },
+      { requirement: 3, result: "pass", note: "3.0 m long" },
+      { requirement: 4, result: "unknown", note: "rust in the photos; see it in daylight" },
+    ],
+  });
+  await listing({
+    name: "Jute loop rug",
+    url: "https://example.com/jute-loop-rug",
+    price: "£120",
+    dimensions: { width: 1200, depth: 1700 },
+    checks: [
+      { requirement: 1, result: "fail", note: "1.2 × 1.7 m" },
+      { requirement: 2, result: "fail", note: "loop pile, jute blend" },
+      { requirement: 3, result: "pass", note: "1.7 m long" },
+      { requirement: 4, result: "pass", note: "terracotta" },
+    ],
+  });
+
+  const purchaseMove = (decision: string, to: DecisionState, reason: string) =>
+    core.run("set_decision_state", withPurchase, { session: purchase, decision, to, reason });
+  await core.run("save_decision", withPurchase, {
+    session: purchase,
+    kind: "purchase",
+    room: "living-room",
+    title: "Oak bookcase",
+    statement: "A solid oak bookcase in place of the Billy.",
+    requirements: [
+      {
+        text: "At most 80 cm wide, to stand where the Billy stands",
+        strength: "must",
+        reason: { kind: "item", id: "bookcase", field: "width" },
+      },
+      {
+        text: "Solid oak or oak veneer",
+        strength: "must",
+        reason: { kind: "decision", id: "warm-minimalism" },
+      },
+      {
+        text: "Closed cupboards at the bottom, out of the cats' reach",
+        strength: "prefer",
+        reason: { kind: "constraint", id: "two-cats" },
+      },
+    ],
+  });
+  await purchaseMove("oak-bookcase", "locked", `The user: "that's the one, lock it"`);
+  await core.run("save_decision", withPurchase, {
+    session: purchase,
+    kind: "other",
+    room: "living-room",
+    title: "Books by color",
+    statement: "The books on the oak bookcase arranged by the color of their spines.",
+    basis: ["oak-bookcase"],
+  });
+  await core.run("record_fulfilment", withPurchase, {
+    session: purchase,
+    decision: "oak-bookcase",
+    bought: "Oak bookcase, 85 cm wide, open shelves to the floor, £620",
+    deviations: [
+      { requirement: 1, text: "85 cm wide, not at most 80 cm" },
+      { requirement: 3, text: "open shelves to the floor, no cupboards" },
+    ],
+    item: {
+      name: "Oak bookcase",
+      category: "storage",
+      wall: 4,
+      width: measured(850),
+      depth: measured(300),
+      height: measured(1900),
+      materials: ["oak"],
+      price: "£620",
+    },
+    replacesItem: "bookcase",
+  });
   await core.run("close_session", withPurchase, {
     session: purchase,
     summary: {
-      changed: "Two more Requirements for the wool rug, and both its Guides.",
+      changed:
+        "Two more Requirements for the wool rug, both its Guides, and two rugs checked; the oak " +
+        "bookcase bought, wider than asked, in place of the Billy.",
       open: "The west wall of the living room needs measuring before buying the rug.",
       next: "Purchase again with a rug to check against the Requirements.",
     },

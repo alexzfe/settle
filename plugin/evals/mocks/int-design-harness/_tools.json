@@ -2508,9 +2508,117 @@
       }
     },
     {
+      "name": "record_listing",
+      "title": "Record listing",
+      "description": "Records a Listing for one Purchase Decision (a real product the user brings: its name, link, price, size, and photo) checked against every Requirement, and returns a receipt with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from it, with a few words on what decided it. A new Listing needs a check for every Requirement not Archived. Pass `listing` (its slug) to change one: the fields given replace what is recorded, and the checks given replace those of their Requirements; it must then have a check for every Requirement, those added since included. Tell the user plainly which musts it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase takes none. Needs the open Session's id as `session`.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The slug of the Purchase the Listing is for."
+          },
+          "listing": {
+            "description": "The slug of a Listing already recorded, to change it; leave out to add one.",
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "description": "Needed to add one: the product as its listing names it, e.g. \"Hay Plain rug\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "url": {
+            "description": "The product page.",
+            "type": "string",
+            "format": "uri"
+          },
+          "price": {
+            "description": "With the currency, e.g. \"£450\".",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "dimensions": {
+            "description": "Its size as the listing states it, replacing any recorded.",
+            "type": "object",
+            "properties": {
+              "width": {
+                "description": "Whole millimetres.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "depth": {
+                "description": "Whole millimetres.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "height": {
+                "description": "Whole millimetres.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            }
+          },
+          "photo": {
+            "description": "A link to the product's photo.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "checks": {
+            "description": "Its result against each Requirement, by position. Adding a Listing needs one for every Requirement; changing one replaces the checks given and keeps the others, and it must then have one for every Requirement too.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "requirement": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 99,
+                  "description": "The Requirement's position, as get_decision numbers it."
+                },
+                "result": {
+                  "type": "string",
+                  "enum": ["pass", "fail", "unknown"],
+                  "description": "pass, fail, or unknown (the listing doesn't say, or can't be judged from it)."
+                },
+                "note": {
+                  "description": "What decided it, in a few words: \"200 × 140 cm\", \"not stated\", \"loop pile\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": ["requirement", "result"]
+            }
+          }
+        },
+        "required": ["session", "decision"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
       "name": "record_fulfilment",
       "title": "Record fulfilment",
-      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. For now it takes Room use and Room color Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it only when the user says the change is made (painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
+      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. It takes Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each Requirement it differs from, by position, with the difference; `item` adds the Item bought to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and `replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought (a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a must flags every Decision resting on the Purchase for review; one from a prefer flags nothing. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it only when the user says it is done (bought, painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

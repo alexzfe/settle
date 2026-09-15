@@ -10,6 +10,7 @@ import type {
   DecisionKindContent,
   DecisionState,
   DecisionSummary,
+  Deviation,
   Door,
   EvidenceEntry,
   Feature,
@@ -510,7 +511,10 @@ const FLAG_CAUSES: Record<FlagCause, string> = {
 };
 
 function flagCause(flag: Flag): string {
-  return `${named(flag.source)} ${FLAG_CAUSES[flag.cause]}`;
+  const source = recordText(flag.source);
+  if (flag.cause !== "value_changed") return `${source} ${FLAG_CAUSES[flag.cause]}`;
+  if (flag.source.field === "archivedAt") return `${source} was Archived or restored`;
+  return `${source}${flag.source.field ? ` ${fieldLabel(flag.source.field)}` : ""} changed`;
 }
 
 /**
@@ -650,6 +654,12 @@ function requirementLine(requirement: Requirement): string {
  */
 function purchaseLines(decision: DecisionDetail): string[] {
   const lines: string[] = [];
+  // Once Fulfilled, its Guides served their purpose: what was bought and how it differs remain.
+  if (decision.fulfilledAt) {
+    section(lines, "Listings", decision.listings.map(listingLine));
+    section(lines, "Deviations", decision.deviations.map(deviationLine));
+    return lines;
+  }
   section(
     lines,
     "Quick Guide, besides the Requirements",
@@ -688,8 +698,15 @@ function purchaseLines(decision: DecisionDetail): string[] {
   return lines;
 }
 
+function deviationLine(deviation: Deviation): string {
+  return (
+    `Requirement ${deviation.requirement}, ${deviation.strength} (${deviation.requirementText}): ` +
+    deviation.text
+  );
+}
+
 /** One Listing: name, price, its pass, fail, and unknown counts, and any must it fails. */
-function listingLine(listing: Listing): string {
+export function listingLine(listing: Listing): string {
   const fails = listing.checks.filter(
     (check) => check.strength === "must" && check.result === "fail",
   );
@@ -745,9 +762,23 @@ function evidenceLine(evidence: EvidenceEntry): string {
   return `${evidence.stance}: ${source}${evidence.note ? `: ${evidence.note}` : ""}`;
 }
 
-/** What was done: a Room use's functions, or the Surface a Room color painted, as it now is. */
+/**
+ * What was done: a Room use's functions, the Surface a Room color painted as it now is, or what a
+ * Purchase bought with the Item or Feature it added and the one it replaced.
+ */
 function fulfilmentText(fulfilment: Fulfilment | undefined): string | undefined {
   if (fulfilment?.roomFunctions) return `functions ${fulfilment.roomFunctions.join(", ")}`;
+  if (fulfilment?.bought) {
+    const added = (noun: string, slug: string | undefined, was: string | undefined) =>
+      slug
+        ? `added ${noun} ${slug}${was ? `, replacing ${was}` : ""}`
+        : was && `${noun} ${was} Archived`;
+    return join("; ", [
+      `bought ${fulfilment.bought}`,
+      added("Item", fulfilment.item, fulfilment.replacedItem),
+      added("Feature", fulfilment.feature, fulfilment.replacedFeature),
+    ]);
+  }
   if (!fulfilment?.surface) return undefined;
   return join(", ", [
     `${fulfilment.surface} painted` +
@@ -817,11 +848,48 @@ export interface RefusedPart {
   reason?: string;
 }
 
-/** A Decision a write flagged, because a Decision in its Basis changed. */
+/**
+ * A Decision a write flagged: a Decision in its Basis was reopened, rejected, or Fulfilled with a
+ * Deviation from a must, or a value one of its Requirements' reasons points at changed.
+ */
 export interface FlaggedDecision {
   decision: NamedRecord;
+  /** The Decision in its Basis, or for value_changed the changed record. */
   source: NamedRecord;
   cause: FlagCause;
+  /** value_changed: the field that changed. */
+  field?: string;
+  /** value_changed: the position of the Requirement resting on it. */
+  requirement?: number;
+}
+
+const FLAGGED: Record<FlagCause, string> = {
+  reopened: "now reopened",
+  rejected: "now rejected",
+  deviation: "Fulfilled with a Deviation from a must Requirement",
+  value_changed: "changed",
+};
+
+function flaggedLine(each: FlaggedDecision): string {
+  if (each.cause === "value_changed") {
+    const archived = each.field === "archivedAt";
+    return (
+      `Flagged for review: ${named(each.decision)}, whose Requirement ${each.requirement} rests ` +
+      `on ${recordText(each.source)}` +
+      (archived
+        ? ", which was Archived or restored"
+        : `${each.field ? ` ${label(each.field)}` : ""}, which changed`)
+    );
+  }
+  return (
+    `Flagged for review: ${named(each.decision)}, which rests on ${named(each.source)}, ` +
+    FLAGGED[each.cause]
+  );
+}
+
+/** A record by its slug alone when its name is its slug (a Wall), else by name and slug. */
+function recordText(record: NamedRecord): string {
+  return record.name === record.slug ? record.slug : named(record);
 }
 
 export interface Receipt {
@@ -843,12 +911,7 @@ export function renderReceipt({ lines, refused, gaps, flagged = [] }: Receipt): 
     .map((text, index) => (text ? `${lines[index]?.subject}: ${text}` : undefined))
     .filter((text) => text !== undefined);
   out.push(...refused.map(renderRefused));
-  for (const each of flagged) {
-    out.push(
-      `Flagged for review: ${named(each.decision)}, which rests on ${named(each.source)}, ` +
-        `now ${each.cause === "reopened" ? "reopened" : "rejected"}`,
-    );
-  }
+  for (const each of flagged) out.push(flaggedLine(each));
   if (out.length === 0) out.push("Nothing changed.");
   for (const room of gaps) {
     out.push(

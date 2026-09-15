@@ -96,6 +96,11 @@ const INLINE =
 
 const SAFE_LINK = /^(?:https?:|mailto:)/i;
 
+/** Whether a link goes to a web page or an email address, the only links the pages follow. */
+export function isSafeLink(href: string): boolean {
+  return SAFE_LINK.test(href);
+}
+
 /** A line's inline marks as elements, keyed by where each starts in the line. */
 function inline(text: string): ReactNode[] {
   const parts: ReactNode[] = [];

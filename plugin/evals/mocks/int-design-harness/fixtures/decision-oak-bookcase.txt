@@ -1,0 +1,18 @@
+Decision: Oak bookcase (oak-bookcase)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Locked
+Fulfilled: 2026-09-14; bought Oak bookcase, 85 cm wide, open shelves to the floor, £620; added Item oak-bookcase, replacing bookcase
+Statement: A solid oak bookcase in place of the Billy.
+
+Requirements:
+1. must: At most 80 cm wide, to stand where the Billy stands (reason: Item Bookcase (bookcase), width)
+2. must: Solid oak or oak veneer (reason: Decision Warm minimalism (warm-minimalism))
+3. prefer: Closed cupboards at the bottom, out of the cats' reach (reason: Constraint Two cats (two-cats))
+
+Deviations:
+- Requirement 1, must (At most 80 cm wide, to stand where the Billy stands): 85 cm wide, not at most 80 cm
+- Requirement 3, prefer (Closed cupboards at the bottom, out of the cats' reach): open shelves to the floor, no cupboards
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction

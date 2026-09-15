@@ -124,13 +124,19 @@ it("renders the Quick Guide of a Purchase: Measure first, the musts, the prefers
 it("renders get_decision for a Purchase with Requirements, Guides, and the Full Guide line, then with includeFullGuide", async () => {
   const session = await openSession();
   const texts = [];
-  for (const includeFullGuide of [false, true]) {
+  for (const [decision, includeFullGuide] of [
+    ["wool-rug", false],
+    ["wool-rug", true],
+    ["oak-bookcase", false],
+  ] as const) {
     const result = await fixture.core.run("get_decision", agent(session), {
       session,
-      decision: "wool-rug",
+      decision,
       includeFullGuide,
     });
-    texts.push(`# includeFullGuide: ${includeFullGuide}\n${toolText("get_decision", result)}`);
+    texts.push(
+      `# ${decision}, includeFullGuide: ${includeFullGuide}\n${toolText("get_decision", result)}`,
+    );
   }
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision-purchase"));
 });
@@ -533,6 +539,122 @@ describe("Color receipts", () => {
       sections.map(([title, text]) => `# ${title}\n${text}`).join("\n\n"),
     ).toMatchFileSnapshot(snapshot("receipts-color"));
     await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-living-room-fulfilled"));
+  });
+});
+
+describe("Purchase receipts", () => {
+  // Their own fixture Home, since these writes Fulfil the Wool rug the other snapshots show.
+  let own: FixtureHome;
+  let session: string;
+  beforeAll(async () => {
+    let next = 0;
+    own = await createFixtureHome({
+      random: (max) => next++ % max,
+      clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    });
+    session = (await own.core.run("open_session", ownAgent(), { skill: "purchase" })).session;
+  });
+  afterAll(() => own.core.close());
+
+  function ownAgent(id?: string): CallContext {
+    return { caller: { kind: "session", session: id }, home: own.home };
+  }
+
+  /** The text the AI reads from a tool call. */
+  async function run(name: string, input: Record<string, unknown>): Promise<string> {
+    return toolText(name, await own.core.run(name, ownAgent(session), { session, ...input }));
+  }
+
+  /** A refused call's message, which the MCP tool returns as its isError text. */
+  async function refusal(name: string, input: Record<string, unknown>): Promise<string> {
+    try {
+      await own.core.run(name, ownAgent(session), { session, ...input });
+    } catch (error) {
+      if (error instanceof Error) return error.message;
+    }
+    throw new Error(`${name} was not refused`);
+  }
+
+  it("renders Listings recorded and refused, a value_changed flag, and a Fulfilment with Deviations and the flag it raised", async () => {
+    const sections: string[] = [];
+    const add = (title: string, text: string) => sections.push(`# ${title}\n${text}`);
+    const checks = [
+      { requirement: 1, result: "pass", note: "1.7 × 2.4 m" },
+      { requirement: 2, result: "pass", note: "hand-tufted wool" },
+      { requirement: 3, result: "pass", note: "2.4 m long" },
+    ];
+    add(
+      "record_listing: a Listing missing a check, refused",
+      await refusal("record_listing", { decision: "wool-rug", name: "Tufted rug", checks }),
+    );
+    add(
+      "record_listing: a third Listing",
+      await run("record_listing", {
+        decision: "wool-rug",
+        name: "Tufted wool rug",
+        price: "£310",
+        checks: [...checks, { requirement: 4, result: "fail", note: "cool grey" }],
+      }),
+    );
+    add(
+      "record_listing: the jute rug marked down",
+      await run("record_listing", {
+        decision: "wool-rug",
+        listing: "jute-loop-rug",
+        price: "£95",
+      }),
+    );
+    add(
+      "save_room: the west wall measured, flagging the rug resting on it",
+      await run("save_room", {
+        room: "living-room",
+        name: "Living room",
+        walls: [{ position: 5, length: measured(3620) }],
+      }),
+    );
+    await run("save_decision", {
+      kind: "purchase",
+      room: "living-room",
+      title: "Rug pad",
+      statement: "A felt pad cut to the rug.",
+      basis: ["wool-rug"],
+      requirements: [
+        {
+          text: "Cut 5 cm inside the rug's edges",
+          strength: "must",
+          reason: { kind: "decision", id: "wool-rug" },
+        },
+      ],
+    });
+    await run("set_decision_state", {
+      decision: "wool-rug",
+      to: "locked",
+      reason: 'The user: "the Hay rug, lock it"',
+    });
+    add(
+      "record_fulfilment: the rug bought, longer than asked and rust, flagging the rug pad",
+      await run("record_fulfilment", {
+        decision: "wool-rug",
+        bought: "Hay Plain rug, 200 × 350 cm, rust, £495",
+        deviations: [
+          { requirement: 3, text: "3.5 m long, not at most 3.4 m" },
+          { requirement: 4, text: "rust, darker than the Palette's terracotta" },
+        ],
+        item: {
+          name: "Wool rug",
+          category: "rugs",
+          width: measured(2000),
+          depth: measured(3500),
+          colors: [{ name: "rust", provenance: "estimated" }],
+          materials: ["wool"],
+          brand: "Hay",
+          model: "Plain",
+          price: "£495",
+        },
+      }),
+    );
+    add("get_decision: the rug pad, flagged", await run("get_decision", { decision: "rug-pad" }));
+    await expect(sections.join("\n\n")).toMatchFileSnapshot(snapshot("receipts-purchase"));
   });
 });
 

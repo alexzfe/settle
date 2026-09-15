@@ -11,5 +11,6 @@ Kitchen table (kitchen-table): moved out of its Room: now Unplaced
 Two cats (two-cats): already recorded, nothing changed
 No smoking (no-smoking): added
 Two cats (two-cats): removed (Archived)
+Flagged for review: Wool rug (wool-rug), whose Requirement 2 rests on Two cats (two-cats), which was Archived or restored
 
 Note (the-landlord-visits-every-spring): saved: The landlord visits every spring

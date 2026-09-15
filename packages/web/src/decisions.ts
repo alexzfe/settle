@@ -11,6 +11,7 @@ import type {
   Requirement,
   Resolution,
 } from "./api";
+import { words } from "./format";
 
 export const KIND_LABEL: Record<DecisionKind, string> = {
   "design-direction": "Design Direction",
@@ -62,22 +63,24 @@ export function decisionPath(home: string, decision: string): string {
 }
 
 /**
- * The page showing the record a Requirement's reason points at: a Decision's page; the Room's page
- * for a Room or any part of it; the Items list for an Item; the Home page for the Home, a
- * Constraint, or a Note. A Wall or Surface names its Room before a slash ("living-room/wall-2"),
- * but a Window, Door, or Feature only starts with it ("living-room-window-2"), so it is found
- * among the Home's `rooms`, the longest slug that starts it; undefined when none does.
+ * The page showing a record, by its kind (a Requirement reason's kinds) and slug: a Decision's
+ * page; the Room's page for a Room or any part of it; the Items list for an Item; the Home page
+ * for the Home, a Constraint, or a Note. A Wall or Surface names its Room before a slash
+ * ("living-room/wall-2"), but a Window, Door, or Feature only starts with it
+ * ("living-room-window-2"), so it is found among the Home's `rooms`, the longest slug that starts
+ * it. Undefined when no page shows it, or for a kind the pages do not know.
  */
-export function reasonPath(
+export function recordPath(
   home: string,
-  reason: Requirement["reason"],
+  kind: string,
+  slug: string,
   rooms: readonly { slug: string }[] = [],
 ): string | undefined {
   const homePath = `/homes/${home}`;
   const roomPath = (room: string) => `${homePath}/rooms/${room}`;
-  switch (reason.kind) {
+  switch (kind) {
     case "decision":
-      return decisionPath(home, reason.id);
+      return decisionPath(home, slug);
     case "home":
     case "constraint":
     case "note":
@@ -85,20 +88,31 @@ export function reasonPath(
     case "item":
       return `${homePath}/items`;
     case "room":
-      return roomPath(reason.id);
+      return roomPath(slug);
     case "wall":
     case "surface":
-      return roomPath(reason.id.split("/")[0] ?? reason.id);
+      return roomPath(slug.split("/")[0] ?? slug);
     case "window":
     case "door":
     case "feature": {
       const [room] = rooms
         .map((each) => each.slug)
-        .filter((slug) => reason.id.startsWith(`${slug}-`))
+        .filter((each) => slug.startsWith(`${each}-`))
         .toSorted((a, b) => b.length - a.length);
       return room === undefined ? undefined : roomPath(room);
     }
+    default:
+      return undefined;
   }
+}
+
+/** The page showing the record a Requirement's reason points at. */
+export function reasonPath(
+  home: string,
+  reason: Requirement["reason"],
+  rooms?: readonly { slug: string }[],
+): string | undefined {
+  return recordPath(home, reason.kind, reason.id, rooms);
 }
 
 /** How a cleared flag or resolved Conflict was settled. */
@@ -109,15 +123,20 @@ export const RESOLUTION_LABEL: Record<Resolution, string> = {
 };
 
 const CAUSE: Record<FlagCause, string> = {
-  reopened: "was reopened",
-  rejected: "was rejected",
-  deviation: "was Fulfilled with a Deviation from a must Requirement",
-  value_changed: "changed",
+  reopened: " was reopened",
+  rejected: " was rejected",
+  deviation: " was Fulfilled with a Deviation from a must Requirement",
+  value_changed: " changed",
 };
 
-/** Why a Decision was flagged: "Warm minimalism was reopened". */
-export function flagCause(flag: Flag): string {
-  return `${flag.source.name} ${CAUSE[flag.cause]}`;
+/**
+ * Why a Decision was flagged, in the words after its source's name: " was reopened"; for a changed
+ * value, the field that changed when the Requirement's reason names one: "'s length changed".
+ */
+export function flagCauseText(flag: Flag): string {
+  const { field } = flag.source;
+  if (flag.cause === "value_changed" && field) return `'s ${words(field)} changed`;
+  return CAUSE[flag.cause];
 }
 
 /**

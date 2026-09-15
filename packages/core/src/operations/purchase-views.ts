@@ -45,8 +45,9 @@ export function measureFirst(model: DecisionModel, decision: DecisionRow): strin
   for (const requirement of activeRequirements(model, decision)) {
     if (requirement.strength !== "must") continue;
     const record = reasonRecord(model, requirement.reasonKind, requirement.reasonId);
-    if (!record) continue;
-    const row = record.row as Record<string, unknown>;
+    const row = record?.row as Record<string, unknown> | undefined;
+    // An Archived record's values are history: there is nothing left there to measure.
+    if (!record || !row || (row.archivedAt !== undefined && row.archivedAt !== null)) continue;
     const fields =
       requirement.reasonField !== null
         ? [requirement.reasonField]

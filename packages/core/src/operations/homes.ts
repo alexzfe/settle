@@ -155,7 +155,7 @@ export const saveHome = defineOperation({
     const session = requireSession(context, home, { open: true });
     requireSources(context.store, home, input);
     const receipt = context.write(session.slug, (log) => {
-      const writer = new Writer(context.store, home, log, input.overrideProvenance);
+      const writer = new Writer(context, home, log, input.overrideProvenance);
       const {
         session: _session,
         levels,

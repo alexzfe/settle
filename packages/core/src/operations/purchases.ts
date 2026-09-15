@@ -1,11 +1,25 @@
 import { CoreError } from "../errors.js";
+import { optional } from "../optional.js";
 import { equal } from "../provenance.js";
 import { defineOperation, type OperationContext } from "../registry.js";
-import { DECISION_KIND_LABELS as KINDS, titled } from "../render.js";
-import type { DecisionRow } from "../store.js";
+import { DECISION_KIND_LABELS as KINDS, listingLine, titled } from "../render.js";
+import { uniqueSlug } from "../slug.js";
+import type { DecisionRow, ListingRow, RequirementRow } from "../store.js";
 import { type DecisionModel, loadDecisions, requireDecision } from "./decisions.js";
-import { activeRequirements, guideOf, measureFirst, outOfDate } from "./purchase-views.js";
-import { type ReceiptResult, saveGuidesInput } from "./schemas.js";
+import {
+  activeRequirements,
+  guideOf,
+  measureFirst,
+  outOfDate,
+  toListings,
+} from "./purchase-views.js";
+import {
+  type CheckResult,
+  type ListingDimensions,
+  type ReceiptResult,
+  recordListingInput,
+  saveGuidesInput,
+} from "./schemas.js";
 import { requireHome, requireSession } from "./scope.js";
 import { Writer } from "./writer.js";
 
@@ -39,7 +53,7 @@ export const saveGuides = defineOperation({
     }
     const receipt = context.write(session.slug, (log) => {
       const model = loadDecisions(context.store, home);
-      const writer = new Writer(context.store, home, log, undefined);
+      const writer = new Writer(context, home, log, undefined);
       const decision = requirePurchase(model, input.decision, "Guides");
       if (decision.state === "rejected") {
         throw new CoreError(
@@ -58,6 +72,256 @@ export const saveGuides = defineOperation({
   },
   text: ({ receipt }) => receipt,
 });
+
+export const recordListing = defineOperation({
+  name: "record_listing",
+  description:
+    "Records a Listing for one Purchase Decision (a real product the user brings: its name, " +
+    "link, price, size, and photo) checked against every Requirement, and returns a receipt " +
+    "with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from " +
+    "what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from " +
+    "it, with a few words on what decided it. A new Listing needs a check for every Requirement " +
+    "not Archived. Pass `listing` (its slug) to change one: the fields given replace what is " +
+    "recorded, and the checks given replace those of their Requirements; it must then have a " +
+    "check for every Requirement, those added since included. Tell the user plainly which musts " +
+    "it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase " +
+    "takes none. Needs the open Session's id as `session`.",
+  input: recordListingInput,
+  readOnly: false,
+  surface: "agent",
+  handler(context, input): ReceiptResult {
+    const home = requireHome(context);
+    const session = requireSession(context, home, { open: true });
+    const receipt = context.write(session.slug, (log) => {
+      const model = loadDecisions(context.store, home);
+      const writer = new Writer(context, home, log, undefined);
+      const decision = requirePurchase(model, input.decision, "Listings");
+      const subject = titled(decision);
+      if (decision.state === "rejected") {
+        throw new CoreError(
+          "illegal_transition",
+          `${subject} is Rejected, so it takes no Listings. Revive it (set_decision_state to ` +
+            "candidate) only if the user asks.",
+        );
+      }
+      if (decision.fulfilledAt !== null) {
+        throw new CoreError(
+          "validation",
+          `${subject} was Fulfilled on ${decision.fulfilledAt.slice(0, 10)}: what was bought is ` +
+            "recorded, so it takes no more Listings.",
+        );
+      }
+      const requirements = activeRequirements(model, decision);
+      if (requirements.length === 0) {
+        throw new CoreError(
+          "validation",
+          `${subject} has no Requirements yet to check a Listing against: save them with ` +
+            "save_decision first.",
+        );
+      }
+      const own = model.listings.filter((each) => each.decisionId === decision.id);
+      const listing =
+        input.listing === undefined ? undefined : own.find((each) => each.slug === input.listing);
+      if (input.listing !== undefined && !listing) {
+        throw new CoreError(
+          "not_found",
+          `${subject} has no Listing "${input.listing}"` +
+            (own.length > 0
+              ? `; its Listings are ${own.map((each) => each.slug).join(", ")}`
+              : "") +
+            ". Leave out listing to add one.",
+        );
+      }
+      if (!listing && !input.name) {
+        throw new CoreError(
+          "validation",
+          "To add a Listing, give its name and a check for every Requirement. To change a " +
+            "recorded one, give its slug as `listing`.",
+        );
+      }
+      const checks = planChecks(model, subject, requirements, listing, input.checks ?? []);
+      const row = storeListing(context, model, writer, decision, listing, input);
+      const changedChecks = storeChecks(context, model, row, checks);
+      if (listing && changedChecks > 0) {
+        writer.logged({
+          recordKind: "decision",
+          record: decision,
+          field: `listing ${row.slug} checks`,
+          new: checks.map(({ requirement, result, note }) => ({
+            requirement: requirement.position,
+            result,
+            ...optional({ note }),
+          })),
+        });
+      }
+      const view = toListings(model, decision).find((each) => each.slug === row.slug);
+      const head = !listing
+        ? "added"
+        : writer.changed
+          ? "changed"
+          : "already recorded like this, nothing changed";
+      writer.line(`Listing for ${subject}`, `${head}: ${view ? listingLine(view) : row.slug}`);
+      return writer.receipt();
+    });
+    return { receipt };
+  },
+  text: ({ receipt }) => receipt,
+});
+
+interface PlannedCheck {
+  requirement: RequirementRow;
+  result: CheckResult;
+  note: string | undefined;
+}
+
+/**
+ * The checks given, each naming a Requirement not Archived, once. Refused unless the Listing then
+ * has a check for every Requirement, naming those missing.
+ */
+function planChecks(
+  model: DecisionModel,
+  subject: string,
+  requirements: RequirementRow[],
+  listing: ListingRow | undefined,
+  inputs: { requirement: number; result: CheckResult; note?: string | undefined }[],
+): PlannedCheck[] {
+  const planned: PlannedCheck[] = [];
+  for (const input of inputs) {
+    const requirement = requirements.find((each) => each.position === input.requirement);
+    if (!requirement) {
+      throw new CoreError(
+        "not_found",
+        `${subject} has no Requirement ${input.requirement} to check (Archived ones take no ` +
+          `checks); its Requirements are ${requirements.map((each) => each.position).join(", ")}.`,
+      );
+    }
+    if (planned.some((each) => each.requirement === requirement)) {
+      throw new CoreError(
+        "validation",
+        `Two checks name Requirement ${requirement.position}: give one for each Requirement.`,
+      );
+    }
+    planned.push({ requirement, result: input.result, note: input.note });
+  }
+  const checked = new Set([
+    ...planned.map((each) => each.requirement.id),
+    ...(listing
+      ? model.listingChecks
+          .filter((each) => each.listingId === listing.id)
+          .map((each) => each.requirementId)
+      : []),
+  ]);
+  const missing = requirements.filter((each) => !checked.has(each.id));
+  if (missing.length > 0) {
+    throw new CoreError(
+      "validation",
+      "A Listing needs a check for every Requirement. Give one for " +
+        missing.map((each) => `${each.position} (${each.strength}: ${each.text})`).join(", ") +
+        " too, with result unknown when the listing doesn't say. Nothing was recorded.",
+    );
+  }
+  return planned;
+}
+
+/** Adds a Listing, or changes the fields given of one recorded; returns its row. */
+function storeListing(
+  context: OperationContext,
+  model: DecisionModel,
+  writer: Writer,
+  decision: DecisionRow,
+  listing: ListingRow | undefined,
+  input: {
+    name?: string | undefined;
+    url?: string | undefined;
+    price?: string | undefined;
+    dimensions?: ListingDimensions | undefined;
+    photo?: string | undefined;
+  },
+): ListingRow {
+  const { store } = context;
+  const values = {
+    name: input.name,
+    url: input.url,
+    price: input.price,
+    dimensions: input.dimensions,
+    photoPath: input.photo,
+  };
+  if (!listing) {
+    const name = input.name as string;
+    const slug = uniqueSlug(name, "listing", (taken) =>
+      store.slugTaken("listings", taken, model.home.id),
+    );
+    const row = store.insert("listings", {
+      homeId: model.home.id,
+      decisionId: decision.id,
+      slug,
+      name,
+      url: values.url ?? null,
+      price: values.price ?? null,
+      dimensions: values.dimensions ?? null,
+      photoPath: values.photoPath ?? null,
+      recordedAt: context.now(),
+    });
+    model.listings.push(row);
+    writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: `listing ${slug}`,
+      new: optional(values),
+    });
+    return row;
+  }
+  const current = listing as unknown as Record<string, unknown>;
+  const patch = Object.fromEntries(
+    Object.entries(values).filter(
+      ([key, value]) => value !== undefined && !equal(value, current[key] ?? null),
+    ),
+  );
+  if (Object.keys(patch).length > 0) {
+    store.update("listings", listing.id, patch);
+    writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: `listing ${listing.slug}`,
+      old: Object.fromEntries(Object.keys(patch).map((key) => [key, current[key]])),
+      new: patch,
+    });
+    Object.assign(listing, patch);
+  }
+  return listing;
+}
+
+/** Stores the planned checks of a Listing; returns how many changed. */
+function storeChecks(
+  context: OperationContext,
+  model: DecisionModel,
+  listing: ListingRow,
+  checks: PlannedCheck[],
+): number {
+  let changed = 0;
+  for (const { requirement, result, note } of checks) {
+    const row = model.listingChecks.find(
+      (each) => each.listingId === listing.id && each.requirementId === requirement.id,
+    );
+    if (row) {
+      if (row.result === result && row.note === (note ?? null)) continue;
+      context.store.update("listing_checks", row.id, { result, note: note ?? null });
+      Object.assign(row, { result, note: note ?? null });
+    } else {
+      model.listingChecks.push(
+        context.store.insert("listing_checks", {
+          homeId: model.home.id,
+          listingId: listing.id,
+          requirementId: requirement.id,
+          result,
+          note: note ?? null,
+        }),
+      );
+    }
+    changed++;
+  }
+  return changed;
+}
 
 /** A Purchase of the Home by slug; `what` names what belongs to Purchases alone. */
 export function requirePurchase(model: DecisionModel, slug: string, what: string): DecisionRow {

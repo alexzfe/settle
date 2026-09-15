@@ -218,6 +218,7 @@ describe("the MCP endpoint", () => {
       ["save_decision", false],
       ["set_decision_state", false],
       ["save_guides", false],
+      ["record_listing", false],
       ["record_fulfilment", false],
       ["flag_conflict", false],
       ["close_session", false],

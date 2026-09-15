@@ -18,6 +18,10 @@ Quick Guide, besides the Requirements:
 
 Full Guide: written 2026-09-14, up to date; includeFullGuide shows it
 
+Listings:
+- Hay Plain rug (hay-plain-rug), £450: 3 pass, 0 fail, 1 unknown
+- Jute loop rug (jute-loop-rug), £120: 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
+
 Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 

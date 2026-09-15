@@ -1,4 +1,4 @@
-# includeFullGuide: false
+# wool-rug, includeFullGuide: false
 Decision: Wool rug (wool-rug)
 Kind: Purchase
 Scope: Living room (living-room)
@@ -19,6 +19,10 @@ Quick Guide, besides the Requirements:
 
 Full Guide: written 2026-09-14, up to date; includeFullGuide shows it
 
+Listings:
+- Hay Plain rug (hay-plain-rug), £450: 3 pass, 0 fail, 1 unknown
+- Jute loop rug (jute-loop-rug), £120: 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
+
 Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
@@ -30,7 +34,7 @@ Basis:
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
 
-# includeFullGuide: true
+# wool-rug, includeFullGuide: true
 Decision: Wool rug (wool-rug)
 Kind: Purchase
 Scope: Living room (living-room)
@@ -68,6 +72,10 @@ Full Guide, written 2026-09-14, up to date:
 - **Warm terracotta** (prefer). The accent of the Warm clay Palette, echoing the dining-end
   tiles; a rug is the one large surface in the room that can carry it.
 
+Listings:
+- Hay Plain rug (hay-plain-rug), £450: 3 pass, 0 fail, 1 unknown
+- Jute loop rug (jute-loop-rug), £120: 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
+
 Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
@@ -78,3 +86,23 @@ Basis:
 
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
+
+# oak-bookcase, includeFullGuide: false
+Decision: Oak bookcase (oak-bookcase)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Locked
+Fulfilled: 2026-09-14; bought Oak bookcase, 85 cm wide, open shelves to the floor, £620; added Item oak-bookcase, replacing bookcase
+Statement: A solid oak bookcase in place of the Billy.
+
+Requirements:
+1. must: At most 80 cm wide, to stand where the Billy stands (reason: Item Bookcase (bookcase), width)
+2. must: Solid oak or oak veneer (reason: Decision Warm minimalism (warm-minimalism))
+3. prefer: Closed cupboards at the bottom, out of the cats' reach (reason: Constraint Two cats (two-cats))
+
+Deviations:
+- Requirement 1, must (At most 80 cm wide, to stand where the Billy stands): 85 cm wide, not at most 80 cm
+- Requirement 3, prefer (Closed cupboards at the bottom, out of the cats' reach): open shelves to the floor, no cupboards
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction

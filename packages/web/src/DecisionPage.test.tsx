@@ -103,19 +103,33 @@ function stubDecision(decision: () => DecisionDetail, handlers: ApiHandlers = {}
   });
 }
 
+/** The form of state-change buttons, apart from the actions on each open flag. */
+function stateForm(): HTMLElement {
+  return screen.getByRole("heading", { name: "Change its state" })
+    .nextElementSibling as HTMLElement;
+}
+
 /** The labels of the state-change buttons on offer. */
 function moves(): (string | null)[] {
-  const form = screen.getByRole("heading", { name: "Change its state" }).nextElementSibling;
-  return [...(form?.querySelectorAll("button") ?? [])].map((button) => button.textContent);
+  return [...stateForm().querySelectorAll("button")].map((button) => button.textContent);
 }
 
 function after(heading: string): string | null | undefined {
   return screen.getByRole("heading", { name: heading }).nextElementSibling?.textContent;
 }
 
-function listAfter(heading: string): (string | null)[] {
-  const list = screen.getByRole("heading", { name: heading }).nextElementSibling;
-  return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) => li.textContent);
+function listElement(heading: string): HTMLElement {
+  return screen.getByRole("heading", { name: heading }).nextElementSibling as HTMLElement;
+}
+
+/** The text of each item of the list after `heading`, leaving out any actions form in it. */
+function listAfter(heading: string): string[] {
+  return [...listElement(heading).querySelectorAll(":scope > li")].map((li) =>
+    [...li.childNodes]
+      .filter((node) => node.nodeName !== "FORM")
+      .map((node) => node.textContent)
+      .join(""),
+  );
 }
 
 it("shows the Decision with its content, Basis, Evidence, and flags", async () => {
@@ -138,9 +152,11 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   expect(listAfter("Basis")).toEqual([
     "Warm minimalism, Design Direction, Leaning, in every Basis",
   ]);
-  expect(screen.getByRole("link", { name: "Warm minimalism" }).getAttribute("href")).toBe(
-    "/homes/flat/decisions/design-direction",
-  );
+  expect(
+    within(listElement("Basis"))
+      .getByRole("link", { name: "Warm minimalism" })
+      .getAttribute("href"),
+  ).toBe("/homes/flat/decisions/design-direction");
   expect(listAfter("Evidence")).toEqual([
     "Supports: Note We mostly sit here in the evening.",
     "Undermines: Decision Earthy palette (its accent is loud)",
@@ -150,6 +166,16 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   );
   expect(listAfter("Flags")).toEqual([
     `Warm minimalism was reopened, raised ${formatDate(raised)}: open`,
+  ]);
+  // The open flag's source links to it, and it offers the actions that clear it.
+  const flags = listElement("Flags");
+  expect(within(flags).getByRole("link", { name: "Warm minimalism" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/design-direction",
+  );
+  expect([...flags.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+    "Keep",
+    "Reopen",
+    "Reject",
   ]);
   expect(after("Conflicts")).toBe("None.");
 });
@@ -177,15 +203,15 @@ it("posts the state change with the reason, then shows the new state and its mov
   renderRoutes("/homes/flat/decisions/living-room-direction");
   await screen.findByRole("heading", { name: "Change its state" });
 
-  fireEvent.change(screen.getByLabelText("Reason (optional)"), {
+  fireEvent.change(within(stateForm()).getByLabelText("Reason (optional)"), {
     target: { value: "  we want it brighter  " },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
+  fireEvent.click(within(stateForm()).getByRole("button", { name: "Reopen" }));
   await waitFor(() => expect(moves()).toEqual(["Move to Candidate", "Lock", "Reject"]));
   expect(screen.getByText("State").nextElementSibling?.textContent).toBe("Leaning");
 
   // Without a reason, none is sent.
-  fireEvent.click(screen.getByRole("button", { name: "Lock" }));
+  fireEvent.click(within(stateForm()).getByRole("button", { name: "Lock" }));
   await waitFor(() => expect(moves()).toEqual(["Reopen", "Reject"]));
   expect(inputsTo(fetch, "set_decision_state")).toEqual([
     {
@@ -343,12 +369,14 @@ it("shows a cleared flag when a flag change event arrives", async () => {
     }),
   );
 
-  expect(
-    await screen.findByText(
+  await waitFor(() =>
+    expect(listAfter("Flags")).toEqual([
       `Warm minimalism was reopened, raised ${formatDate(raised)}: ` +
         `cleared ${formatDate(cleared)}, kept`,
-    ),
-  ).toBeDefined();
+    ]),
+  );
+  // A cleared flag offers no actions.
+  expect(listElement("Flags").querySelectorAll("button")).toHaveLength(0);
 });
 
 /** The Palette's base color, identified exactly. */

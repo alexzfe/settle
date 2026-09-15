@@ -1,0 +1,17 @@
+Decision: Rug pad (rug-pad)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Candidate
+Statement: A felt pad cut to the rug.
+
+Requirements:
+1. must: Cut 5 cm inside the rug's edges (reason: Decision Wool rug (wool-rug))
+
+Guides: none saved yet
+
+Open flags:
+- rug-pad/flag-1: Wool rug (wool-rug) was Fulfilled with a Deviation from a must Requirement on 2026-09-14
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Wool rug (wool-rug): Purchase, Locked, Fulfilled 2026-09-14

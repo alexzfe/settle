@@ -1,8 +1,18 @@
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { DecisionDetail, Guides, Home, Level, QuickGuide, Room } from "./api";
+import type {
+  DecisionDetail,
+  DecisionSummary,
+  Flag,
+  Guides,
+  Home,
+  Level,
+  Listing,
+  QuickGuide,
+  Room,
+} from "./api";
 import { formatDate } from "./format";
-import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
+import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
 const ground: Level = { slug: "ground", name: "Ground", storey: 0 };
@@ -15,6 +25,7 @@ const rooms: Room[] = [
 const createdAt = "2026-09-10T10:00:00Z";
 const written = "2026-09-12T09:00:00Z";
 const changed = "2026-09-13T18:00:00Z";
+const fulfilled = "2026-09-14T15:00:00Z";
 
 /** The rug's Quick Guide as core assembles it: Measure first, the musts, the prefers, the AI's. */
 const quickGuide: QuickGuide = {
@@ -50,11 +61,25 @@ const markdown = [
   "See [the care notes](https://example.com/care).",
 ].join("\n");
 
+type Parts = Partial<
+  Pick<
+    DecisionDetail,
+    | "quickGuide"
+    | "guides"
+    | "listings"
+    | "deviations"
+    | "fulfilledAt"
+    | "fulfilment"
+    | "flags"
+    | "openFlags"
+  >
+>;
+
 /**
  * A Locked Purchase with Requirements listed by position, a prefer first, and each reason a
- * different kind of record; with its Quick Guide and Guides when given.
+ * different kind of record; with its Guides, Listings, Fulfilment, and flags when given.
  */
-function rug(parts: { quickGuide?: QuickGuide; guides?: Guides } = {}): DecisionDetail {
+function rug(parts: Parts = {}): DecisionDetail {
   return {
     slug: "wool-rug",
     title: "Wool rug",
@@ -114,6 +139,12 @@ function rug(parts: { quickGuide?: QuickGuide; guides?: Guides } = {}): Decision
   };
 }
 
+/** The rug's line, as a resolution answers it. */
+function rugSummary(): DecisionSummary {
+  const { slug, kind, title, statement, state, room, createdAt } = rug();
+  return { slug, kind, title, statement, state, room, createdAt, openFlags: [], openConflicts: [] };
+}
+
 beforeEach(() => {
   FakeEventSource.instances = [];
   vi.stubGlobal("EventSource", FakeEventSource);
@@ -125,7 +156,7 @@ afterEach(() => {
 });
 
 /** The rug's page from the fake API, which gives the Full Guide's text only when asked for it. */
-function showRug(parts: { quickGuide?: QuickGuide; guides?: Guides } = {}) {
+function showRug(parts: Parts = {}, handlers: ApiHandlers = {}) {
   const fetch = stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({ home: flat, levels: [ground], rooms, unplacedItems: 0 }),
@@ -137,6 +168,7 @@ function showRug(parts: { quickGuide?: QuickGuide; guides?: Guides } = {}) {
       }
       return { decision };
     },
+    ...handlers,
   });
   renderRoutes("/homes/flat/decisions/wool-rug");
   return fetch;
@@ -227,7 +259,7 @@ it("marks the Full Guide out of date when a Requirement changed after it was wri
   expect(screen.getByText("Out of date").tagName).toBe("STRONG");
 });
 
-it("says so when the Agent has not written the Guides yet", async () => {
+it("says so when the Agent has written no Guides and checked no Listing yet", async () => {
   showRug();
   await screen.findByRole("heading", { name: "Quick Guide" });
   expect(after("Quick Guide")?.textContent).toBe(
@@ -235,4 +267,261 @@ it("says so when the Agent has not written the Guides yet", async () => {
   );
   expect(after("Full Guide")?.textContent).toBe("None yet.");
   expect(screen.queryByRole("button", { name: "Show the Full Guide" })).toBeNull();
+  expect(after("Listings")?.textContent).toBe(
+    "None yet: the Agent checks a product you bring it against the Requirements.",
+  );
+  // Not Fulfilled, so no Fulfilment and no Deviations.
+  expect(screen.queryByRole("heading", { name: "Fulfilment" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Deviations" })).toBeNull();
+});
+
+/** One Listing that passes every must, and one that fails a must and a prefer. */
+const listings: Listing[] = [
+  {
+    slug: "hay-plain-rug",
+    name: "Hay Plain rug",
+    url: "https://example.com/hay-plain",
+    price: "£450",
+    dimensions: { width: 2000, depth: 3000 },
+    photo: "https://example.com/hay-plain.jpg",
+    recordedAt: written,
+    checks: [
+      { requirement: 1, text: "Wool, low pile", strength: "prefer", result: "pass", note: "wool" },
+      {
+        requirement: 2,
+        text: "At least 2.0 × 1.4 m",
+        strength: "must",
+        result: "pass",
+        note: "200 × 300 cm",
+      },
+      {
+        requirement: 3,
+        text: "Rolls to fit through the hallway door",
+        strength: "must",
+        result: "pass",
+      },
+      {
+        requirement: 4,
+        text: "In the Palette's clay",
+        strength: "prefer",
+        result: "unknown",
+        note: "only a photo",
+      },
+      // Added after the Listing was checked.
+      {
+        requirement: 5,
+        text: "No wider than the sofa",
+        strength: "prefer",
+        result: "unknown",
+        unchecked: true,
+      },
+    ],
+    counts: { pass: 3, fail: 0, unknown: 2 },
+    failedMusts: [],
+  },
+  {
+    slug: "viscose-runner",
+    name: "Viscose runner",
+    price: "£89",
+    recordedAt: written,
+    checks: [
+      {
+        requirement: 1,
+        text: "Wool, low pile",
+        strength: "prefer",
+        result: "fail",
+        note: "viscose",
+      },
+      {
+        requirement: 2,
+        text: "At least 2.0 × 1.4 m",
+        strength: "must",
+        result: "fail",
+        note: "80 × 250 cm",
+      },
+      {
+        requirement: 3,
+        text: "Rolls to fit through the hallway door",
+        strength: "must",
+        result: "pass",
+      },
+      { requirement: 4, text: "In the Palette's clay", strength: "prefer", result: "pass" },
+      { requirement: 5, text: "No wider than the sofa", strength: "prefer", result: "unknown" },
+    ],
+    counts: { pass: 2, fail: 2, unknown: 1 },
+    failedMusts: [2],
+  },
+];
+
+function section(name: string): HTMLElement {
+  return screen.getByRole("heading", { name, level: 3 }).closest("section") as HTMLElement;
+}
+
+function paragraphs(within: HTMLElement): (string | null)[] {
+  return [...within.querySelectorAll("p")].map((p) => p.textContent);
+}
+
+/** Each check's row: the Requirement, the result, the note. */
+function rows(within: HTMLElement): (string | null)[][] {
+  return [...within.querySelectorAll("tbody tr")].map((row) =>
+    [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+  );
+}
+
+it("shows each Listing with its counts and checks, musts first, a failed must marked", async () => {
+  showRug({ quickGuide, guides, listings });
+  await screen.findByRole("heading", { name: "Hay Plain rug", level: 3 });
+  const date = formatDate(written);
+
+  const hay = section("Hay Plain rug");
+  expect(within(hay).getByRole("link", { name: "Hay Plain rug" }).getAttribute("href")).toBe(
+    "https://example.com/hay-plain",
+  );
+  expect(within(hay).getByRole("link", { name: "photo" }).getAttribute("href")).toBe(
+    "https://example.com/hay-plain.jpg",
+  );
+  expect(paragraphs(hay)).toEqual([
+    `£450, W 2.00 m × D 3.00 m, photo, recorded ${date}`,
+    "3 pass, 0 fail, 2 unknown.",
+  ]);
+  expect(rows(hay)).toEqual([
+    ["Must: At least 2.0 × 1.4 m", "Pass", "200 × 300 cm"],
+    ["Must: Rolls to fit through the hallway door", "Pass", ""],
+    ["Prefer: Wool, low pile", "Pass", "wool"],
+    ["Prefer: In the Palette's clay", "Unknown", "only a photo"],
+    ["Prefer: No wider than the sofa", "Unknown: added after it was checked", ""],
+  ]);
+  expect(hay.querySelectorAll("strong")).toHaveLength(0);
+
+  const runner = section("Viscose runner");
+  // Without a web address, the name is not a link.
+  expect(within(runner).queryByRole("link")).toBeNull();
+  expect(paragraphs(runner)).toEqual([
+    `£89, recorded ${date}`,
+    "2 pass, 2 fail, 1 unknown. Fails a must: At least 2.0 × 1.4 m.",
+  ]);
+  expect(within(runner).getByText("Fails a must: At least 2.0 × 1.4 m.").tagName).toBe("STRONG");
+  expect(rows(runner)).toEqual([
+    ["Must: At least 2.0 × 1.4 m", "Fail", "80 × 250 cm"],
+    ["Must: Rolls to fit through the hallway door", "Pass", ""],
+    ["Prefer: Wool, low pile", "Fail", "viscose"],
+    ["Prefer: In the Palette's clay", "Pass", ""],
+    ["Prefer: No wider than the sofa", "Unknown", ""],
+  ]);
+  // Only the failed must is marked, not the failed prefer.
+  expect([...runner.querySelectorAll("tbody strong")].map((each) => each.textContent)).toEqual([
+    "Fail",
+  ]);
+});
+
+it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations", async () => {
+  showRug({
+    quickGuide,
+    guides,
+    listings,
+    fulfilledAt: fulfilled,
+    fulfilment: {
+      bought: "Hay Plain rug, 190 × 290 cm, rust, £450",
+      item: "hay-plain-rug",
+      replacedItem: "old-jute-rug",
+    },
+    deviations: [
+      {
+        slug: "wool-rug/deviation-2",
+        requirement: 4,
+        requirementText: "In the Palette's clay",
+        strength: "prefer",
+        text: "rust, not clay",
+        recordedAt: fulfilled,
+      },
+      {
+        slug: "wool-rug/deviation-1",
+        requirement: 2,
+        requirementText: "At least 2.0 × 1.4 m",
+        strength: "must",
+        text: "1.9 × 2.9 m, a little narrow",
+        recordedAt: fulfilled,
+      },
+    ],
+  });
+  await screen.findByRole("heading", { name: "Fulfilment" });
+  expect(after("Fulfilment")?.textContent).toBe(
+    "BoughtHay Plain rug, 190 × 290 cm, rust, £450" +
+      "Item addedhay-plain-rug" +
+      "Item replaced (Archived)old-jute-rug",
+  );
+  expect(href("hay-plain-rug")).toBe("/homes/flat/items");
+  expect(href("old-jute-rug")).toBe("/homes/flat/items");
+  // The must's first, and marked as the one that flags the Decisions resting on this one.
+  expect(listAfter("Deviations")).toEqual([
+    "Must: At least 2.0 × 1.4 m. Deviation: 1.9 × 2.9 m, a little narrow " +
+      "(from a must, so every Decision resting on this one is flagged)",
+    "Prefer: In the Palette's clay. Deviation: rust, not clay",
+  ]);
+});
+
+it("names the changed record and field of a value_changed flag, and clears it with Keep", async () => {
+  const raised = "2026-09-14T09:00:00Z";
+  const cleared = "2026-09-14T11:00:00Z";
+  const flag: Flag = {
+    slug: "wool-rug/flag-1",
+    decision: { slug: "wool-rug", title: "Wool rug" },
+    cause: "value_changed",
+    source: {
+      kind: "wall",
+      slug: "living-room/wall-2",
+      name: "Living room, Wall 2",
+      field: "length",
+    },
+    raisedAt: raised,
+  };
+  let flags = [flag];
+  const fetch = stubApi({
+    list_homes: () => ({ homes: [flat] }),
+    get_home: () => ({ home: flat, levels: [ground], rooms, unplacedItems: 0 }),
+    get_decision: () => ({
+      decision: rug({ flags, openFlags: flags.filter((each) => !each.clearedAt) }),
+    }),
+    resolve_flag: () => {
+      flags = [{ ...flag, clearedAt: cleared, resolution: "keep" }];
+      return { receipt: "Kept Wool rug.", decision: rugSummary() };
+    },
+  });
+  renderRoutes("/homes/flat/decisions/wool-rug");
+  await screen.findByRole("heading", { name: "Flags" });
+
+  const list = after("Flags") as HTMLElement;
+  const lines = () =>
+    [...list.querySelectorAll(":scope > li")].map((li) => ({
+      text: [...li.childNodes]
+        .filter((node) => node.nodeName !== "FORM")
+        .map((node) => node.textContent)
+        .join(""),
+      buttons: [...li.querySelectorAll("button")].map((button) => button.textContent),
+    }));
+  expect(lines()).toEqual([
+    {
+      text: `Living room, Wall 2's length changed, raised ${formatDate(raised)}: open`,
+      buttons: ["Keep", "Reopen", "Reject"],
+    },
+  ]);
+  expect(within(list).getByRole("link", { name: "Living room, Wall 2" }).getAttribute("href")).toBe(
+    "/homes/flat/rooms/living-room",
+  );
+
+  fireEvent.click(within(list).getByRole("button", { name: "Keep" }));
+
+  await waitFor(() =>
+    expect(lines()).toEqual([
+      {
+        text:
+          `Living room, Wall 2's length changed, raised ${formatDate(raised)}: ` +
+          `cleared ${formatDate(cleared)}, kept`,
+        buttons: [],
+      },
+    ]),
+  );
+  expect(inputsTo(fetch, "resolve_flag")).toEqual([
+    { home: "flat", flag: "wool-rug/flag-1", resolution: "keep" },
+  ]);
 });

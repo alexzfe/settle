@@ -35,7 +35,7 @@ export const setConstraints = defineOperation({
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
     const receipt = context.write(session.slug, (log) => {
-      const writer = new Writer(store, home, log, undefined);
+      const writer = new Writer(context, home, log, undefined);
       const constraints = store.list("constraints", home.id);
       for (const text of input.add ?? []) {
         const same = constraints.find((each) => active(each) && sameName(each.text, text));

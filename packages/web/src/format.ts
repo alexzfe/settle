@@ -36,10 +36,15 @@ function estimatedMark(provenance: Provenance): string {
   return provenance === "estimated" ? "~" : "";
 }
 
+/** Millimetres in metres with two decimals: 3600 is "3.60 m". */
+export function metres(mm: number): string {
+  // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point.
+  return `${(Math.round(mm / 10) / 100).toFixed(2)} m`;
+}
+
 /** A length in metres with two decimals, "~" in front when it is Estimated: "~3.60 m". */
 export function formatLength(value: Measure): string {
-  // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point.
-  return `${estimatedMark(value.provenance)}${(Math.round(value.mm / 10) / 100).toFixed(2)} m`;
+  return `${estimatedMark(value.provenance)}${metres(value.mm)}`;
 }
 
 /** A color by name, with its maker and code when known: "~Setting Plaster (Farrow & Ball 231)". */

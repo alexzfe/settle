@@ -33,7 +33,7 @@ export const saveNote = defineOperation({
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
     const receipt = context.write(session.slug, (log) => {
-      const writer = new Writer(store, home, log, undefined);
+      const writer = new Writer(context, home, log, undefined);
       const slug = uniqueSlug(input.text, "note", (taken) =>
         store.slugTaken("notes", taken, home.id),
       );

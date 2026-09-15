@@ -4,10 +4,12 @@ import { optional } from "../optional.js";
 import { equal } from "../provenance.js";
 import { type Change, defineOperation, type OperationContext } from "../registry.js";
 import {
+  featureName,
   type HomeDecisionsView,
   DECISION_KIND_LABELS as KINDS,
   named,
   type OpeningView,
+  type Receipt,
   renderDecision,
   renderDecisions,
   renderRefused,
@@ -21,9 +23,11 @@ import type {
   DecisionEvidenceRow,
   DecisionRow,
   DeviationRow,
+  FeatureRow,
   FlagRow,
   GuideRow,
   HomeRow,
+  ItemRow,
   ListingCheckRow,
   ListingRow,
   NoteRow,
@@ -33,9 +37,18 @@ import type {
   StateChangeRow,
   Store,
 } from "../store.js";
-import { active, requireRoom, requireWall } from "./lookup.js";
+import { addFeature } from "./features.js";
+import { saveItem } from "./items.js";
+import { active, requireRoom, requireSources, requireWall } from "./lookup.js";
 import { type HomeModel, loadHome, overviewView, roomById, roomDetail } from "./model.js";
-import { guideOf, toDeviations, toGuides, toListings, toQuickGuide } from "./purchase-views.js";
+import {
+  activeRequirements,
+  guideOf,
+  toDeviations,
+  toGuides,
+  toListings,
+  toQuickGuide,
+} from "./purchase-views.js";
 import { reasonLabel, reasonRecord, resolveReason } from "./reasons.js";
 import {
   type Color,
@@ -282,8 +295,8 @@ export const recordFulfilment = defineOperation({
   name: "record_fulfilment",
   description:
     "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a " +
-    "state: it stays Locked), and changes the Home to match what was actually done. For now it " +
-    "takes Room use and Room color Decisions. Room use: it sets the Room's functions to the " +
+    "state: it stays Locked), and changes the Home to match what was actually done. It takes " +
+    "Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the " +
     "Decision's, or to roomFunctions when what the user actually did differs. Room color: it " +
     "paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or " +
     "one Wall's) with its Palette color, Measured when that color has a brand and code and " +
@@ -291,10 +304,16 @@ export const recordFulfilment = defineOperation({
     "the receipt gives the Surface's old and new color. A color that would replace one of " +
     "stronger Provenance is refused and nothing is recorded: tell the user both colors in one " +
     "line and ask; only if they say to replace it, call again with overrideProvenance quoting " +
-    "them. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now " +
-    "records the result; find_decisions still lists them. Call it only when the user says the " +
-    "change is made (painted, not planned), and tell them what changed. Needs the open " +
-    "Session's id as `session`.",
+    "them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each " +
+    "Requirement it differs from, by position, with the difference; `item` adds the Item bought " +
+    "to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and " +
+    "`replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought " +
+    "(a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a " +
+    "must flags every Decision resting on the Purchase for review; one from a prefer flags " +
+    "nothing. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now " +
+    "records the result; find_decisions still lists them. Call it only when the user says it is " +
+    "done (bought, painted, not planned), and tell them what changed. Needs the open Session's " +
+    "id as `session`.",
   input: recordFulfilmentInput,
   readOnly: false,
   surface: "agent",
@@ -302,23 +321,27 @@ export const recordFulfilment = defineOperation({
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
     const receipt = context.write(session.slug, (log) => {
-      const { model, writer } = begin(context, home, log, session, input.overrideProvenance);
+      const { model, writer, writes } = begin(
+        context,
+        home,
+        log,
+        session,
+        input.overrideProvenance,
+      );
       const decision = requireDecision(model, input.decision);
       const subject = titled(decision);
-      if (
-        (decision.kind !== "room-use" && decision.kind !== "room-color") ||
-        decision.scopeRoomId === null
-      ) {
+      const fulfillable =
+        decision.kind === "purchase" ||
+        ((decision.kind === "room-use" || decision.kind === "room-color") &&
+          decision.scopeRoomId !== null);
+      if (!fulfillable) {
         throw new CoreError(
           "validation",
-          `record_fulfilment takes Room use and Room color Decisions for now, and ${subject} is ` +
-            `a ${KINDS[decision.kind]}. Purchases arrive with the Purchase Skill.`,
+          `record_fulfilment takes Room use, Room color, and Purchase Decisions, and ${subject} ` +
+            `is a ${KINDS[decision.kind]}: nothing in the Home record changes when it is done.`,
         );
       }
-      const misplaced =
-        decision.kind === "room-use"
-          ? input.finish !== undefined && "finish is for a Room color"
-          : input.roomFunctions !== undefined && "roomFunctions is for a Room use";
+      const misplaced = misplacedField(decision.kind, input);
       if (misplaced) {
         throw new CoreError(
           "validation",
@@ -338,20 +361,239 @@ export const recordFulfilment = defineOperation({
           `${subject} was already Fulfilled on ${day(decision.fulfilledAt)}.`,
         );
       }
-      const room = roomById(model, decision.scopeRoomId);
+      if (decision.kind === "purchase") {
+        const rooms = fulfilPurchase(context, model, writer, writes, decision, input);
+        return writer.receipt(gapsOf(context, home, rooms));
+      }
+      const room = roomById(model, decision.scopeRoomId as number);
       if (decision.kind === "room-use") {
         fulfilRoomUse(context, writer, decision, room, input.roomFunctions);
       } else {
         fulfilRoomColor(context, model, writer, decision, room, input.finish);
       }
-      const after = loadHome(context.store, home);
-      const detail = roomDetail(after, roomById(after, room.id));
-      return writer.receipt(room.archivedAt ? [] : [{ room: detail, gaps: detail.gaps }]);
+      return writer.receipt(gapsOf(context, home, [room.id]));
     });
     return { receipt };
   },
   text: ({ receipt }) => receipt,
 });
+
+type RecordFulfilment = z.output<typeof recordFulfilmentInput>;
+
+/** Which kind each of record_fulfilment's own fields belongs to. */
+const FULFILMENT_FIELDS = {
+  roomFunctions: "room-use",
+  finish: "room-color",
+  bought: "purchase",
+  deviations: "purchase",
+  item: "purchase",
+  replacesItem: "purchase",
+  feature: "purchase",
+  replacesFeature: "purchase",
+} as const satisfies Partial<Record<keyof RecordFulfilment, DecisionKind>>;
+
+/** "finish is for a Room color", when a field of another kind is given. */
+function misplacedField(kind: DecisionKind, input: RecordFulfilment): string | undefined {
+  for (const [field, owner] of Object.entries(FULFILMENT_FIELDS)) {
+    if (owner !== kind && input[field as keyof typeof FULFILMENT_FIELDS] !== undefined) {
+      return `${field} is for a ${KINDS[owner]}`;
+    }
+  }
+  return undefined;
+}
+
+/** The remaining Gaps of the Rooms a Fulfilment touched, Archived Rooms left out. */
+function gapsOf(context: OperationContext, home: HomeRow, roomIds: number[]): Receipt["gaps"] {
+  const after = loadHome(context.store, home);
+  return [...new Set(roomIds)]
+    .map((id) => roomById(after, id))
+    .filter((room) => room.archivedAt === null)
+    .map((room) => {
+      const detail = roomDetail(after, room);
+      return { room: detail, gaps: detail.gaps };
+    });
+}
+
+/**
+ * Purchase: what was bought, its Deviations, and the Home change: the Item bought added (in the
+ * Purchase's Room unless told otherwise), the Item it replaces Archived, a Feature bought added,
+ * and the Feature it replaces Archived. A Deviation from a must flags every Decision resting on
+ * the Purchase. Everything is checked before anything changes. Returns the Rooms it touched.
+ */
+function fulfilPurchase(
+  context: OperationContext,
+  model: DecisionModel,
+  writer: Writer,
+  writes: DecisionWrites,
+  decision: DecisionRow,
+  input: RecordFulfilment,
+): number[] {
+  const subject = titled(decision);
+  const { bought } = input;
+  if (!bought) {
+    throw new CoreError(
+      "validation",
+      `To Fulfil ${subject}, give bought: what was actually bought, in one line.`,
+    );
+  }
+  const requirements = activeRequirements(model, decision);
+  const deviations = (input.deviations ?? []).map((each) => {
+    const requirement = requirements.find((row) => row.position === each.requirement);
+    if (!requirement) {
+      throw new CoreError(
+        "not_found",
+        `${subject} has no Requirement ${each.requirement}` +
+          (requirements.length > 0
+            ? `; its Requirements are ${requirements.map((row) => row.position).join(", ")}.`
+            : ", and no Requirements at all.") +
+          " Name the Requirement each Deviation differs from by its position.",
+      );
+    }
+    return { requirement, text: each.text };
+  });
+  const twice = deviations.find(
+    (each, index) =>
+      deviations.findIndex((other) => other.requirement === each.requirement) !== index,
+  );
+  if (twice) {
+    throw new CoreError(
+      "validation",
+      `Two Deviations name Requirement ${twice.requirement.position}: give one, with every ` +
+        "difference in it.",
+    );
+  }
+  const scope = decision.scopeRoomId === null ? undefined : roomById(model, decision.scopeRoomId);
+  const oldItem =
+    input.replacesItem === undefined
+      ? undefined
+      : replaced(model.items, input.replacesItem, "Item", "find_items lists the Items");
+  const oldFeature =
+    input.replacesFeature === undefined
+      ? undefined
+      : replaced(model.features, input.replacesFeature, "Feature", "Room Sheets list them");
+  const featureRoom =
+    input.feature === undefined
+      ? undefined
+      : input.feature.room !== undefined
+        ? requireRoom(model, input.feature.room)
+        : scope;
+  if (input.feature && !featureRoom) {
+    throw new CoreError(
+      "validation",
+      `A Feature is part of a Room, and ${subject} is Home-wide: give feature.room, the Room ` +
+        "it is in.",
+    );
+  }
+  requireSources(context.store, model.home, { item: input.item, feature: input.feature });
+
+  const count = deviations.length;
+  markFulfilled(
+    context,
+    writer,
+    decision,
+    { bought },
+    `Fulfilled${count > 0 ? ` with ${count} Deviation${count === 1 ? "" : "s"}` : ""}: bought ${bought}`,
+  );
+  const at = context.now();
+  const numbered = model.deviations.filter((each) => each.decisionId === decision.id).length;
+  deviations.forEach(({ requirement, text }, index) => {
+    const number = numbered + index + 1;
+    model.deviations.push(
+      context.store.insert("deviations", {
+        homeId: model.home.id,
+        decisionId: decision.id,
+        slug: `${decision.slug}/deviation-${number}`,
+        requirementId: requirement.id,
+        text,
+        recordedAt: at,
+      }),
+    );
+    writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: `deviation ${number}`,
+      new: { requirement: requirement.position, text },
+    });
+    writer.line(
+      `Deviation from Requirement ${requirement.position} of ${subject}`,
+      `${requirement.strength}, "${requirement.text}": ${text}`,
+    );
+  });
+
+  const rooms: number[] = scope ? [scope.id] : [];
+  let item: ItemRow | undefined;
+  if (input.item) {
+    const { room, unplaced, ...rest } = input.item;
+    const where = unplaced ? undefined : (room ?? scope?.slug);
+    item = saveItem(
+      context,
+      model,
+      writer,
+      where === undefined ? { ...rest, unplaced: true } : { ...rest, room: where },
+    );
+    if (item.roomId !== null) rooms.push(item.roomId);
+  }
+  let feature: FeatureRow | undefined;
+  if (input.feature && featureRoom) {
+    const { room: _room, ...rest } = input.feature;
+    feature = addFeature(context, model, writer, featureRoom, rest);
+    rooms.push(featureRoom.id);
+  }
+  const featureNamed = (row: FeatureRow) =>
+    named({ name: featureName(row.kind, row.description ?? undefined), slug: row.slug });
+  if (oldItem) {
+    const by = item ? named(item) : bought;
+    writer.archive("items", "item", oldItem, true, at, `replaced by ${by}`);
+    if (item) context.store.update("items", oldItem.id, { replacedByItemId: item.id });
+    writer.line(named(oldItem), `archived, replaced by ${by}`);
+    if (oldItem.roomId !== null) rooms.push(oldItem.roomId);
+  }
+  if (oldFeature) {
+    const by = feature ? featureNamed(feature) : item ? named(item) : bought;
+    writer.archive("features", "feature", oldFeature, true, at, `replaced by ${by}`);
+    if (feature) {
+      context.store.update("features", oldFeature.id, { replacedByFeatureId: feature.id });
+    }
+    writer.line(featureNamed(oldFeature), `archived, replaced by ${by}`);
+    rooms.push(oldFeature.roomId);
+  }
+  const fulfilment = {
+    bought,
+    ...optional({
+      item: item?.slug,
+      replacedItem: oldItem?.slug,
+      feature: feature?.slug,
+      replacedFeature: oldFeature?.slug,
+    }),
+  };
+  context.store.update("decisions", decision.id, { fulfilment });
+  decision.fulfilment = fulfilment;
+  if (deviations.some(({ requirement }) => requirement.strength === "must")) {
+    writes.cascade(decision, "deviation");
+  }
+  return rooms;
+}
+
+/** The Item or Feature a Purchase replaces: one of the Home's, not yet Archived. */
+function replaced<T extends { slug: string; archivedAt: string | null }>(
+  rows: T[],
+  slug: string,
+  noun: string,
+  hint: string,
+): T {
+  const row = rows.find((each) => each.slug === slug);
+  if (!row) {
+    throw new CoreError("not_found", `This Home has no ${noun} "${slug}" to replace; ${hint}.`);
+  }
+  if (row.archivedAt !== null) {
+    throw new CoreError(
+      "validation",
+      `The ${noun} ${slug} was already Archived on ${day(row.archivedAt)}, so there is nothing ` +
+        "to replace: leave it out.",
+    );
+  }
+  return row;
+}
 
 /** Room use: the Room's functions become the Decision's, or what the user actually did. */
 function fulfilRoomUse(
@@ -541,7 +783,7 @@ function begin(
   overrideProvenance?: string,
 ) {
   const model = loadDecisions(context.store, home);
-  const writer = new Writer(context.store, home, log, overrideProvenance);
+  const writer = new Writer(context, home, log, overrideProvenance);
   return { model, writer, writes: new DecisionWrites(context, model, writer, session) };
 }
 
@@ -882,14 +1124,21 @@ export function toDetail(
 
 function toFlag(model: DecisionModel, row: FlagRow): Flag {
   const decision = decisionById(model, row.decisionId);
-  const source = row.sourceKind === "decision" ? decisionById(model, row.sourceId) : undefined;
+  const source =
+    row.sourceKind === "decision"
+      ? decisionById(model, row.sourceId)
+      : reasonRecord(model, row.sourceKind as RequirementReasonKind, row.sourceId);
+  const name = source === undefined ? "?" : "title" in source ? source.title : source.name;
   return {
     slug: row.slug,
     decision: { slug: decision.slug, title: decision.title },
     cause: row.cause,
-    source: source
-      ? { kind: "decision", slug: source.slug, name: source.title }
-      : { kind: row.sourceKind, slug: String(row.sourceId), name: row.sourceKind },
+    source: {
+      kind: row.sourceKind,
+      slug: source?.slug ?? "?",
+      name,
+      ...optional({ field: row.sourceField }),
+    },
     raisedAt: row.raisedAt,
     ...optional({ clearedAt: row.clearedAt, resolution: row.resolution, reason: row.reason }),
   };
@@ -1226,7 +1475,7 @@ class DecisionWrites {
         .join("; "),
     );
     this.#rebase(decision, reopened ? cleared.flags : [], reason);
-    if (reopened || rejected) this.#cascade(decision, reopened ? "reopened" : "rejected");
+    if (reopened || rejected) this.cascade(decision, reopened ? "reopened" : "rejected");
   }
 
   /** Resolves one flag or Conflict: keep clears it alone; reopen and reject move its Decision. */
@@ -1315,7 +1564,7 @@ class DecisionWrites {
    * Flags every Decision holding `changed` in its stored Basis, automatic or given. Rejected and
    * Fulfilled ones are left alone: nothing about them is open for review.
    */
-  #cascade(changed: DecisionRow, cause: FlagCause): void {
+  cascade(changed: DecisionRow, cause: FlagCause): void {
     const model = this.#model;
     for (const decision of model.decisions) {
       if (decision.id === changed.id || !active(decision) || closed(decision)) continue;

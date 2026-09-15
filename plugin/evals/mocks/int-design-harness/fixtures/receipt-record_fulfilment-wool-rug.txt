@@ -1,0 +1,6 @@
+Wool rug (wool-rug): Fulfilled with 2 Deviations: bought Hay Plain rug, 200 × 350 cm, rust, £495
+Deviation from Requirement 3 of Wool rug (wool-rug): must, "No longer than 3.4 m, to keep the walk past the west window clear": 3.5 m long, not at most 3.4 m
+Deviation from Requirement 4 of Wool rug (wool-rug): prefer, "Warm terracotta, the Palette's accent, or close to it": rust, darker than the Palette's terracotta
+Wool rug (wool-rug): added in Living room (living-room); category rugs; width 2.00 m (Measured); depth 3.50 m (Measured); colors ~rust (Estimated); materials wool; brand Hay; model Plain; price £495
+Flagged for review: Rug pad (rug-pad), which rests on Wool rug (wool-rug), Fulfilled with a Deviation from a must Requirement
+Living room (living-room): no Gaps left

@@ -5,4 +5,5 @@ Gaps left in Hallway (hallway): wall lengths (hallway/wall-8), ceiling height, t
 
 living-room/wall-2: length 2.10 m (Blueprint, agent-plan p.1: 2.10), was 2.10 m (Blueprint, agent-plan p.1: 6'11")
 Refused: living-room/wall-1 length 5.15 m (Blueprint, agent-plan p.1: 16'11"). The recorded 5.20 m (Measured) is stronger, so it stays. If the user says to replace it, call again with overrideProvenance quoting their words.
+Flagged for review: Wool rug (wool-rug), whose Requirement 1 rests on living-room/wall-2 length, which changed
 Living room (living-room): no Gaps left

@@ -171,6 +171,84 @@ it("reopens the Decision in Conflict through resolve_conflict", async () => {
   ]);
 });
 
+it("names the source of Deviation and value_changed flags, and the field that changed", async () => {
+  const cushions = summary("clay-cushions", "Clay cushions", "purchase", "leaning");
+  const flag = (decision: DecisionSummary, n: number, rest: Pick<Flag, "cause" | "source">) => ({
+    slug: `${decision.slug}/flag-${n}`,
+    decision: { slug: decision.slug, title: decision.title },
+    raisedAt: raised,
+    ...rest,
+  });
+  const decisions: DecisionSummary[] = [
+    {
+      ...cushions,
+      openFlags: [
+        flag(cushions, 1, {
+          cause: "deviation",
+          source: { kind: "decision", slug: "wool-rug", name: "Wool rug" },
+        }),
+      ],
+    },
+    {
+      ...sofa,
+      openFlags: [
+        flag(sofa, 1, {
+          cause: "value_changed",
+          source: { kind: "wall", slug: "living-room/wall-2", name: "Wall 2", field: "length" },
+        }),
+        // A reason naming no field: any change to the record flags it.
+        flag(sofa, 2, {
+          cause: "value_changed",
+          source: { kind: "door", slug: "living-room-hallway-door", name: "Hallway door" },
+        }),
+      ],
+    },
+  ];
+  const fetch = stubHomePage({
+    get_home: () => ({
+      home: flat,
+      levels: [ground],
+      rooms: [{ slug: "living-room", name: "Living room", level: "ground" }],
+      unplacedItems: 0,
+    }),
+    list_decisions: () => ({ decisions }),
+    resolve_flag: () => ({ receipt: "Reopened A low sofa.", decision: sofa }),
+  });
+  renderRoutes("/homes/flat");
+  await screen.findByText(/length changed/);
+  const date = formatDate(raised);
+  expect(reviewLines()).toEqual([
+    {
+      text:
+        `Flag on Clay cushions (Purchase, Leaning): Wool rug was Fulfilled with a Deviation ` +
+        `from a must Requirement, raised ${date}.`,
+      buttons: ["Keep", "Reject"],
+    },
+    {
+      text: `Flag on A low sofa (Purchase, Locked): Wall 2's length changed, raised ${date}.`,
+      buttons: ["Keep", "Reopen", "Reject"],
+    },
+    {
+      text: `Flag on A low sofa (Purchase, Locked): Hallway door changed, raised ${date}.`,
+      buttons: ["Keep", "Reopen", "Reject"],
+    },
+  ]);
+  // Each source links to the page showing it; a Door's Room is found among the Home's Rooms.
+  const href = (name: string) => screen.getByRole("link", { name }).getAttribute("href");
+  expect(href("Wool rug")).toBe("/homes/flat/decisions/wool-rug");
+  expect(href("Wall 2")).toBe("/homes/flat/rooms/living-room");
+  expect((await screen.findByRole("link", { name: "Hallway door" })).getAttribute("href")).toBe(
+    "/homes/flat/rooms/living-room",
+  );
+
+  const line = screen.getByText(/length changed/).closest("li") as HTMLElement;
+  fireEvent.click(within(line).getByRole("button", { name: "Reopen" }));
+  await waitFor(() => expect(inputsTo(fetch, "resolve_flag")).toHaveLength(1));
+  expect(inputsTo(fetch, "resolve_flag")).toEqual([
+    { home: "flat", flag: "sofa/flag-1", resolution: "reopen" },
+  ]);
+});
+
 it("shows a new flag when a flag change event arrives", async () => {
   let flags: Flag[] = [];
   stubHomePage({ list_decisions: () => ({ decisions: [{ ...calm, openFlags: flags }] }) });

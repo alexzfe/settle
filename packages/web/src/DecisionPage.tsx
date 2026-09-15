@@ -12,12 +12,12 @@ import {
 import {
   automaticBasisNote,
   decisionPath,
-  flagCause,
   KIND_LABEL,
   MOVES,
   RESOLUTION_LABEL,
   STATE_LABEL,
 } from "./decisions";
+import { FlagCause, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
 import { PurchaseParts } from "./Purchase";
 import { useDecision } from "./queries";
@@ -101,7 +101,10 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
         <ul>
           {decision.flags.map((flag) => (
             <li key={flag.slug}>
-              <FlagState flag={flag} />
+              <FlagState home={home} flag={flag} />
+              {!flag.clearedAt && (
+                <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
+              )}
             </li>
           ))}
         </ul>
@@ -273,10 +276,10 @@ function settled(at: string | undefined, verb: string, mark: Flag | Conflict): s
   return `${verb} ${formatDate(at)}${how}${mark.reason ? ` (${mark.reason})` : ""}`;
 }
 
-function FlagState({ flag }: { flag: Flag }) {
+function FlagState({ home, flag }: { home: string; flag: Flag }) {
   return (
     <>
-      {flagCause(flag)}, raised {formatDate(flag.raisedAt)}:{" "}
+      <FlagCause home={home} flag={flag} />, raised {formatDate(flag.raisedAt)}:{" "}
       {settled(flag.clearedAt, "cleared", flag)}
     </>
   );

@@ -1,0 +1,40 @@
+# record_listing: a Listing missing a check, refused
+A Listing needs a check for every Requirement. Give one for 4 (prefer: Warm terracotta, the Palette's accent, or close to it) too, with result unknown when the listing doesn't say. Nothing was recorded.
+
+# record_listing: a third Listing
+Listing for Wool rug (wool-rug): added: Tufted wool rug (tufted-wool-rug), £310: 3 pass, 1 fail, 0 unknown
+
+# record_listing: the jute rug marked down
+Listing for Wool rug (wool-rug): changed: Jute loop rug (jute-loop-rug), £95: 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
+
+# save_room: the west wall measured, flagging the rug resting on it
+living-room/wall-5: length 3.62 m (Measured), was ~3.70 m (Estimated)
+Flagged for review: Wool rug (wool-rug), whose Requirement 3 rests on living-room/wall-5 length, which changed
+Living room (living-room): no Gaps left
+
+# record_fulfilment: the rug bought, longer than asked and rust, flagging the rug pad
+Wool rug (wool-rug): Fulfilled with 2 Deviations: bought Hay Plain rug, 200 × 350 cm, rust, £495
+Deviation from Requirement 3 of Wool rug (wool-rug): must, "No longer than 3.4 m, to keep the walk past the west window clear": 3.5 m long, not at most 3.4 m
+Deviation from Requirement 4 of Wool rug (wool-rug): prefer, "Warm terracotta, the Palette's accent, or close to it": rust, darker than the Palette's terracotta
+Wool rug (wool-rug): added in Living room (living-room); category rugs; width 2.00 m (Measured); depth 3.50 m (Measured); colors ~rust (Estimated); materials wool; brand Hay; model Plain; price £495
+Flagged for review: Rug pad (rug-pad), which rests on Wool rug (wool-rug), Fulfilled with a Deviation from a must Requirement
+Living room (living-room): no Gaps left
+
+# get_decision: the rug pad, flagged
+Decision: Rug pad (rug-pad)
+Kind: Purchase
+Scope: Living room (living-room)
+State: Candidate
+Statement: A felt pad cut to the rug.
+
+Requirements:
+1. must: Cut 5 cm inside the rug's edges (reason: Decision Wool rug (wool-rug))
+
+Guides: none saved yet
+
+Open flags:
+- rug-pad/flag-1: Wool rug (wool-rug) was Fulfilled with a Deviation from a must Requirement on 2026-09-14
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Wool rug (wool-rug): Purchase, Locked, Fulfilled 2026-09-14
