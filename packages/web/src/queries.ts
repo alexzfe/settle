@@ -21,6 +21,8 @@ export const queryKeys = {
   decision: (home: string, decision: string) => ["decisions", home, decision],
   /** A Purchase with its Full Guide in full, refreshed whenever its Decision page is. */
   fullGuide: (home: string, decision: string) => ["decisions", home, decision, "full-guide"],
+  /** The Shopping section: the Purchases, with Measure-first lines from recorded values. */
+  shopping: (home: string) => ["shopping", home],
 } as const;
 
 export function useHomes() {
@@ -105,6 +107,13 @@ export function useFullGuide(home: string, decision: string, enabled: boolean) {
     queryKey: queryKeys.fullGuide(home, decision),
     queryFn: () => call("get_decision", { home, decision, includeFullGuide: true }),
     enabled,
+  });
+}
+
+export function useShopping(home: string) {
+  return useQuery({
+    queryKey: queryKeys.shopping(home),
+    queryFn: () => call("get_shopping", { home }),
   });
 }
 

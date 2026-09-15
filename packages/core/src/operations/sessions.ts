@@ -63,7 +63,9 @@ export const openSession = defineOperation({
       .optional()
       .describe("With `session`: return the whole opening again, not only what is new."),
   }),
-  readOnly: true,
+  // It records a Session (or a joining Skill), so it is no read tool, though it never changes
+  // the Home.
+  readOnly: false,
   surface: "agent",
   handler(context, input): OpenSessionResult {
     const home = requireHome(context);

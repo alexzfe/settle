@@ -89,9 +89,24 @@ slug="$(node -e '
 node scripts/seed-live-direction.mjs "${BASE}/mcp/homes/${COLOR_HOME_SLUG}" ||
   fail "Seeding the Design Direction of ${COLOR_HOME_SLUG} failed."
 
+# The Purchase case's Home: a third Home with a Locked Design Direction and a Locked Palette, which
+# the case picks with EVAL_IDH_HOME. A Locked Palette on Fixture Flat would change what the Color
+# case sees, since that case saves the Home's first Palette.
+PURCHASE_HOME_SLUG=fixture-loft
+echo "Creating ${PURCHASE_HOME_SLUG} with a Locked Design Direction and Palette..."
+response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
+  -d '{"name":"Fixture Loft","country":"GB","city":"London"}')"
+slug="$(node -e '
+  try { process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).home?.slug ?? ""); }
+  catch { }' <<<"${response}")"
+[[ "${slug}" == "${PURCHASE_HOME_SLUG}" ]] ||
+  fail "create_home should have made the Home ${PURCHASE_HOME_SLUG}; it answered: ${response}"
+node scripts/seed-live-palette.mjs "${BASE}/mcp/homes/${PURCHASE_HOME_SLUG}" ||
+  fail "Seeding the Design Direction and Palette of ${PURCHASE_HOME_SLUG} failed."
+
 status=0
 claude plugin eval ./plugin --eval-dir evals-live --mocks off \
   --allow-tools "mcp__plugin_live-server_int-design-harness__*" \
-  --trust-plugin --ablation none --no-publish --runs 1 --max-cost-usd 3 \
+  --trust-plugin --ablation none --no-publish --runs 1 --max-cost-usd 4 \
   --model claude-sonnet-5 "$@" || status=$?
 exit "${status}"

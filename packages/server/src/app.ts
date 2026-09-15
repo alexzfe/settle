@@ -3,6 +3,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { handleApi, handleBlueprintPage, handleUpload } from "./api.js";
 import { streamChanges } from "./events.js";
 import { handleMcpRequest, mcpTools } from "./mcp.js";
+import { handleExport, handleGuidePage } from "./pages.js";
 import { serveWeb } from "./web.js";
 
 export interface AppOptions {
@@ -21,7 +22,12 @@ export function createApp({ core, port, webDist }: AppOptions): Hono {
   // Blueprints: a multipart upload in, and each rendered page out as a PNG.
   app.post("/api/upload_blueprint", (c) => handleUpload(core, c));
   app.get("/api/get_blueprint_page", (c) => handleBlueprintPage(core, c));
+  // The exports as files, for a link to open; POST gives the same as JSON.
+  app.get("/api/export_shopping_list", (c) => handleExport(core, c, "export_shopping_list"));
+  app.get("/api/export_guides", (c) => handleExport(core, c, "export_guides"));
   app.post("/api/:operation", (c) => handleApi(core, c));
+  // The Quick Guide's phone page. In LAN mode the LAN listener serves it by token (lan.ts).
+  app.get("/guide/:slug", (c) => handleGuidePage(core, c));
   app.get("/events", (c) => streamChanges(core, c));
   app.all("/mcp/homes/:home", (c) =>
     handleMcpRequest(c.req.raw, { core, tools, home: c.req.param("home"), port }),

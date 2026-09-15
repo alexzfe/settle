@@ -739,6 +739,52 @@ describe("A re-based Decision", () => {
   });
 });
 
+describe("The Shopping exports and the phone page", () => {
+  // Their own fixture Home, since the Wool rug is Locked here to put it on the Shopping List.
+  let own: FixtureHome;
+  const web: CallContext = { caller: { kind: "web" } };
+  beforeAll(async () => {
+    let next = 0;
+    own = await createFixtureHome({
+      random: (max) => next++ % max,
+      clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    });
+    await own.core.run("set_decision_state", web, {
+      home: own.home,
+      decision: "wool-rug",
+      to: "locked",
+    });
+  });
+  afterAll(() => own.core.close());
+
+  const file = (name: string) => `./__snapshots__/${name}`;
+
+  it("renders the Quick Guide's phone page: no JavaScript, Measure first on top, the Full Guide one tap away", async () => {
+    const { text } = await own.core.run("get_guide_page", web, {
+      home: own.home,
+      decision: "wool-rug",
+    });
+    await expect(text).toMatchFileSnapshot(file("guide-page.html"));
+  });
+
+  it("renders the Shopping List as a printable page and as CSV", async () => {
+    for (const format of ["html", "csv"] as const) {
+      const { text } = await own.core.run("export_shopping_list", web, { home: own.home, format });
+      await expect(text).toMatchFileSnapshot(file(`export-shopping-list.${format}`));
+    }
+  });
+
+  it("renders the Shopping Guides as Markdown and as a printable page", async () => {
+    for (const [format, extension] of [
+      ["markdown", "md"],
+      ["html", "html"],
+    ] as const) {
+      const { text } = await own.core.run("export_guides", web, { home: own.home, format });
+      await expect(text).toMatchFileSnapshot(file(`export-guides.${extension}`));
+    }
+  });
+});
+
 function fromPlan(mm: number, text: string) {
   return {
     mm,

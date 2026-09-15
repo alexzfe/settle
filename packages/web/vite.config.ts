@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      proxy: { "/health": server, "/api": server, "/events": server },
+      proxy: { "/health": server, "/api": server, "/events": server, "/guide": server },
     },
     test: {
       environment: "jsdom",

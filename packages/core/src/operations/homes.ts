@@ -125,6 +125,7 @@ export const getHome = defineOperation({
       unplacedItems: context.store
         .list("items", home.id)
         .filter((item) => item.archivedAt === null && item.roomId === null).length,
+      ...optional({ lanUrl: context.lanUrl }),
     };
   },
 });

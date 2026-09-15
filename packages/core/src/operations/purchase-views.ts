@@ -97,6 +97,11 @@ export function toQuickGuide(model: DecisionModel, decision: DecisionRow): Quick
   };
 }
 
+/** Whether a Purchase has Guides: Quick Guide lines of the AI's or a Full Guide saved. */
+export function hasGuides(guide: GuideRow | undefined): boolean {
+  return guide !== undefined && (guide.quickLines.length > 0 || guide.fullMarkdown !== null);
+}
+
 /** Whether a Purchase's Full Guide is out of date: a Requirement changed after it was written. */
 export function outOfDate(guide: GuideRow | undefined): boolean {
   return guide?.writtenAt != null && guide.requirementsChangedAt !== null;

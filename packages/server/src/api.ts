@@ -18,6 +18,7 @@ const OWN_ROUTES: Record<string, string> = {
   upload_blueprint:
     "POST /api/upload_blueprint, as multipart/form-data with the fields home, file, and label",
   get_blueprint_page: "GET /api/get_blueprint_page?home=<slug>&blueprint=<slug>&page=<number>",
+  get_guide_page: "GET /guide/<decision slug>?home=<home slug>, as a page",
 };
 
 const web = { caller: { kind: "web" } } as const;
@@ -116,12 +117,17 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
 }
 
 /** Runs `respond`, turning core's refusal into { error: { code, message } } with its status. */
-async function answer(c: Context, respond: () => Promise<Response>): Promise<Response> {
+export async function answer(c: Context, respond: () => Promise<Response>): Promise<Response> {
   try {
     return await respond();
   } catch (error) {
     if (!(error instanceof CoreError)) throw error;
     const { code, message } = error;
-    return c.json({ error: { code, message } }, STATUS[code] ?? 409);
+    return c.json({ error: { code, message } }, statusOf(code));
   }
+}
+
+/** The HTTP status of core's refusal. */
+export function statusOf(code: CoreErrorCode): ContentfulStatusCode {
+  return STATUS[code] ?? 409;
 }

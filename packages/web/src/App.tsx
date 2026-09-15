@@ -18,6 +18,7 @@ import { ItemsPage } from "./ItemsPage";
 import { useLiveUpdates } from "./liveUpdates";
 import { useHomes } from "./queries";
 import { RoomPage } from "./RoomPage";
+import { ShoppingPage } from "./ShoppingPage";
 
 export const routes: RouteObject[] = [
   {
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
           { path: "decisions", element: <DecisionsPage /> },
           { path: "decisions/:decision", element: <DecisionPage /> },
           { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
+          { path: "shopping", element: <ShoppingPage /> },
           { path: "items", element: <ItemsPage /> },
           { path: "log", element: <ChangeLogPage /> },
         ],
@@ -71,6 +73,7 @@ function HomeScope({ home }: { home: string }) {
           Home
         </NavLink>
         <NavLink to={`/homes/${home}/decisions`}>Decisions</NavLink>
+        <NavLink to={`/homes/${home}/shopping`}>Shopping</NavLink>
         <NavLink to={`/homes/${home}/items`}>Items</NavLink>
         <NavLink to={`/homes/${home}/log`}>Change log</NavLink>
       </nav>

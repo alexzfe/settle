@@ -8,7 +8,7 @@ import type { Hono } from "hono";
 export const WEB_DIST = join(import.meta.dirname, "..", "..", "web", "dist");
 
 // Paths the server answers itself, which the history fallback must never swallow.
-const SERVER_PATHS = /^\/(api|events|mcp|health)(\/|$)/;
+const SERVER_PATHS = /^\/(api|events|mcp|health|guide)(\/|$)/;
 
 const PLACEHOLDER_PAGE = `<!doctype html>
 <html lang="en">

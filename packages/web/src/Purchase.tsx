@@ -17,9 +17,11 @@ import type {
   Requirement,
   Room,
 } from "./api";
+import { guidesExportUrl } from "./api";
 import { reasonPath, recordPath } from "./decisions";
 import { formatDate, metres, sentence, words } from "./format";
 import { isSafeLink, Markdown } from "./Markdown";
+import { QrCode } from "./QrCode";
 import { useFullGuide, useHome } from "./queries";
 import { Fact, Parts } from "./Values";
 
@@ -51,6 +53,7 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
       ) : (
         <p>None yet: the Agent writes the Guides in a Purchase Session.</p>
       )}
+      {quickLines.length > 0 && <GuidesElsewhere home={home} decision={decision} />}
       <h2>Full Guide</h2>
       {fullGuide ? (
         <FullGuideSection home={home} decision={decision.slug} fullGuide={fullGuide} />
@@ -129,6 +132,44 @@ function QuickGuideBlock({ lines }: { lines: QuickGuideLine[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The Quick Guide's phone page and the Guides' printable page and Markdown; in LAN mode, the
+ * phone page's address on the user's network as a QR code, to take the Quick Guide shopping.
+ */
+function GuidesElsewhere({ home, decision }: { home: string; decision: DecisionDetail }) {
+  const lanUrl = decision.guides?.lanUrl;
+  return (
+    <>
+      <nav className={styles.nav} aria-label="The Guides elsewhere">
+        {decision.quickGuide && (
+          <a href={decision.quickGuide.path} target="_blank" rel="noreferrer">
+            Phone page
+          </a>
+        )}
+        {decision.guides && (
+          <>
+            <a href={guidesExportUrl(home, "html", decision.slug)} target="_blank" rel="noreferrer">
+              Printable Guides
+            </a>
+            <a href={guidesExportUrl(home, "markdown", decision.slug)} download>
+              Guides as Markdown
+            </a>
+          </>
+        )}
+      </nav>
+      {lanUrl && (
+        <figure className={styles.qr}>
+          <QrCode text={lanUrl} />
+          <figcaption>
+            Scan it with a phone on this network to take the Quick Guide shopping:{" "}
+            <a href={lanUrl}>{lanUrl}</a>
+          </figcaption>
+        </figure>
+      )}
+    </>
   );
 }
 

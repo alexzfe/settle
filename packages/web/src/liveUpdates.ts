@@ -12,26 +12,33 @@ export function queriesShowing(recordKind: string, home: string): QueryKey[] {
   return shown ? [...shown, queryKeys.changeLog(home)] : queriesOfHome(home);
 }
 
+// The Shopping section names each Purchase's Room, and its Measure-first lines read values of the
+// Home, its Rooms and their parts, and its Items, so a change to any of them refetches it.
 function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
   switch (recordKind) {
     case "home":
-      return [queryKeys.homes, queryKeys.home(home)];
+      return [queryKeys.homes, queryKeys.home(home), queryKeys.shopping(home)];
     // The Home page lists Levels and Rooms; a Room page names its Level and the Rooms beyond it.
     // Blueprint pages name the Level they show.
     case "level":
       return [queryKeys.home(home), queryKeys.rooms(home), queryKeys.blueprints(home)];
     case "room":
-      return [queryKeys.home(home), queryKeys.rooms(home)];
+      return [queryKeys.home(home), queryKeys.rooms(home), queryKeys.shopping(home)];
     // Parts of a Room show only on Room pages. A Door is on two, so every Room page refetches.
     case "wall":
     case "window":
     case "door":
     case "surface":
     case "feature":
-      return [queryKeys.rooms(home)];
+      return [queryKeys.rooms(home), queryKeys.shopping(home)];
     // The Home page counts the Unplaced Items.
     case "item":
-      return [queryKeys.items(home), queryKeys.rooms(home), queryKeys.home(home)];
+      return [
+        queryKeys.items(home),
+        queryKeys.rooms(home),
+        queryKeys.home(home),
+        queryKeys.shopping(home),
+      ];
     case "constraint":
       return [queryKeys.constraints(home)];
     case "note":
@@ -41,13 +48,14 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     // The Home page lists the Blueprints, and each page viewer reads the list.
     case "blueprint":
       return [queryKeys.home(home), queryKeys.blueprints(home)];
-    // Every Decision query (the list, each Decision page, the Home page's flags and Conflicts) and
-    // the Room pages, which list their Room's Decisions. A state change may flag others, and a
-    // Decision's page shows its Basis's states, so one change refetches them all.
+    // Every Decision query (the list, each Decision page with its Guides, Listings, and
+    // Fulfilment, the Home page's flags and Conflicts), the Room pages, which list their Room's
+    // Decisions, and the Shopping section. A state change may flag others, and a Decision's page
+    // shows its Basis's states, so one change refetches them all.
     case "decision":
     case "flag":
     case "conflict":
-      return [queryKeys.decisions(home), queryKeys.rooms(home)];
+      return [queryKeys.decisions(home), queryKeys.rooms(home), queryKeys.shopping(home)];
     default:
       return unmapped(recordKind);
   }
@@ -73,6 +81,7 @@ function queriesOfHome(home: string): QueryKey[] {
     queryKeys.changeLog(home),
     queryKeys.blueprints(home),
     queryKeys.decisions(home),
+    queryKeys.shopping(home),
   ];
 }
 

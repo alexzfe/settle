@@ -198,12 +198,13 @@ describe("the MCP endpoint", () => {
       tools: {
         name: string;
         description: string;
-        inputSchema: { required?: string[] };
+        inputSchema: { required?: string[]; properties?: Record<string, unknown> };
         annotations: { readOnlyHint: boolean };
       }[];
     };
     expect(tools.map((tool) => [tool.name, tool.annotations.readOnlyHint])).toEqual([
-      ["open_session", true],
+      // It records a Session, so it is a write, though it never changes the Home.
+      ["open_session", false],
       ["get_room_sheet", true],
       ["find_items", true],
       ["find_decisions", true],
@@ -224,6 +225,11 @@ describe("the MCP endpoint", () => {
       ["close_session", false],
     ]);
     for (const tool of tools.filter((each) => !each.annotations.readOnlyHint)) {
+      // open_session takes a Session only to join one; without it, it opens a new one.
+      if (tool.name === "open_session") {
+        expect(Object.keys(tool.inputSchema.properties ?? {})).toContain("session");
+        continue;
+      }
       expect(tool.inputSchema.required).toContain("session");
     }
     for (const tool of tools) expect(tool.description.length).toBeGreaterThan(200);

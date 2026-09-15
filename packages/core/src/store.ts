@@ -493,6 +493,9 @@ export interface Store {
   sessions(homeId: number): SessionRow[];
   updateSession(session: SessionRow): void;
 
+  /** Looks across every Home: a Quick Guide's LAN token is unique app-wide. */
+  guideByLanToken(token: string): GuideRow | undefined;
+
   appendChange(change: ChangeRow): void;
   /** Oldest first. */
   changes(homeId: number): ChangeRow[];
@@ -712,6 +715,7 @@ export function openStore(path: string): Store {
       );
       return { id, ...session };
     },
+    guideByLanToken: (token) => one<GuideRow>("SELECT * FROM guides WHERE lan_token = ?", token),
     session(slug) {
       const row = get<RawSession>(`SELECT ${SESSION_COLUMNS} FROM sessions WHERE slug = ?`, slug);
       return row && parseSession(row);

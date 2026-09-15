@@ -949,7 +949,7 @@ function missingAutomatic(model: DecisionModel, decision: DecisionRow): Automati
   );
 }
 
-const openFlags = (model: DecisionModel, decision: DecisionRow) =>
+export const openFlags = (model: DecisionModel, decision: DecisionRow) =>
   model.flags.filter((flag) => flag.decisionId === decision.id && flag.clearedAt === null);
 
 const openConflicts = (model: DecisionModel, decision: DecisionRow) =>
@@ -958,7 +958,7 @@ const openConflicts = (model: DecisionModel, decision: DecisionRow) =>
   );
 
 /** Home-wide Decisions first, then each Room's in the Rooms' order, each in creation order. */
-function sorted(model: DecisionModel, rows: DecisionRow[]): DecisionRow[] {
+export function sorted(model: DecisionModel, rows: DecisionRow[]): DecisionRow[] {
   const order = new Map(model.rooms.map((room, index) => [room.id, index + 1]));
   const place = (decision: DecisionRow) =>
     decision.scopeRoomId === null ? 0 : (order.get(decision.scopeRoomId) ?? model.rooms.length + 1);

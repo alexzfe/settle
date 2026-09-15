@@ -39,6 +39,12 @@ import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
 import { recordListing, saveGuides } from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
 import { closeSession, openSession } from "./operations/sessions.js";
+import {
+  exportGuides,
+  exportShoppingList,
+  getGuidePage,
+  getShopping,
+} from "./operations/shopping.js";
 import { optional } from "./optional.js";
 import type { CallContext, Operation, OperationContext } from "./registry.js";
 import { openStore, type Store } from "./store.js";
@@ -64,6 +70,10 @@ const operations = {
   get_blueprint_page: getBlueprintPage,
   upload_blueprint: uploadBlueprint,
   list_decisions: listDecisions,
+  get_shopping: getShopping,
+  export_shopping_list: exportShoppingList,
+  export_guides: exportGuides,
+  get_guide_page: getGuidePage,
   resolve_flag: resolveFlag,
   resolve_conflict: resolveConflict,
   open_session: openSession,

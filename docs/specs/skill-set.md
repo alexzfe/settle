@@ -255,12 +255,13 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 
 ## MCP tool surface
 
-There are nineteen tools, shaped around tasks. Read tools and write tools are separate, so Codex can auto-approve reads. Claude Code loads the full tool definitions only when they're needed. Every tool is available to every Skill; the "Used by" column shows which Skills rely on it.
+There are nineteen tools, shaped around tasks. Read tools and write tools are separate, so Codex can auto-approve reads, and a read tool never writes anything. `open_session` returns the opening but records a Session (or the Skill joining one), so it is declared a write, without `readOnlyHint`, though it never changes the Home; it takes `session` only to join one (slice 6 fix). Claude Code loads the full tool definitions only when they're needed. Every tool is available to every Skill; the "Used by" column shows which Skills rely on it.
 
 | Tool | What it does | Used by |
 |---|---|---|
-| **Read** | | |
+| **Session** (a write: it records the Session, never the Home, and returns no receipt) | | |
 | `open_session` | Opens a Session, or joins one by id and records the joining Skill. Returns the opening (see Opening above): the Home Overview, open flags and Conflicts, and, for every Skill except Home Intake, the Home-wide Decisions in force. A join returns only what the Session hasn't been sent yet; `resend` returns the whole opening again, for use after compaction | All |
+| **Read** | | |
 | `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `with_sources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
 | `find_items` | One line per Item, filtered by Room, Unplaced, category, or text. `archived` includes Archived Items | All |
 | `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Covers every state, including Fulfilled and Rejected ones | All |

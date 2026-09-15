@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
   DecisionDetail,
@@ -524,4 +524,47 @@ it("names the changed record and field of a value_changed flag, and clears it wi
   expect(inputsTo(fetch, "resolve_flag")).toEqual([
     { home: "flat", flag: "wool-rug/flag-1", resolution: "keep" },
   ]);
+});
+
+it("links to the phone page and the Guides' exports, with a QR code only in LAN mode", async () => {
+  showRug({ quickGuide, guides });
+  await screen.findByRole("heading", { name: "Quick Guide" });
+  const elsewhere = screen.getByRole("navigation", { name: "The Guides elsewhere" });
+  expect(
+    [...elsewhere.querySelectorAll("a")].map((link) => [
+      link.textContent,
+      link.getAttribute("href"),
+    ]),
+  ).toEqual([
+    ["Phone page", "/guide/wool-rug?home=flat"],
+    ["Printable Guides", "/api/export_guides?home=flat&format=html&decision=wool-rug"],
+    ["Guides as Markdown", "/api/export_guides?home=flat&format=markdown&decision=wool-rug"],
+  ]);
+  // Not in LAN mode: no address a phone could reach, so no QR code.
+  expect(screen.queryByRole("img", { name: /^QR code/ })).toBeNull();
+  cleanup();
+
+  const lanUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
+  showRug({ quickGuide, guides: { ...guides, lanUrl } });
+  const qr = await screen.findByRole("img", { name: `QR code for ${lanUrl}` });
+  expect(qr.querySelector("path")?.getAttribute("d")).toMatch(/^M4 4h1v1h-1z/);
+  expect(screen.getByRole("link", { name: lanUrl }).getAttribute("href")).toBe(lanUrl);
+});
+
+it("shows a Listing the Agent records without a reload", async () => {
+  const parts: Parts = { quickGuide, guides };
+  showRug(parts);
+  await screen.findByText(
+    "None yet: the Agent checks a product you bring it against the Requirements.",
+  );
+
+  parts.listings = listings;
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "decision",
+      recordSlug: "wool-rug",
+    }),
+  );
+  expect(await screen.findByRole("heading", { name: "Hay Plain rug", level: 3 })).toBeDefined();
 });

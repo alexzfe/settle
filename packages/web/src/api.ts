@@ -6,8 +6,12 @@
 import type {
   OperationName as CoreOperationName,
   DecisionReceiptResult,
+  ExportGuidesInput,
+  ExportShoppingListInput,
   GetDecisionResult,
   GetDecisionWebInput,
+  GetShoppingInput,
+  GetShoppingResult,
   ListDecisionsInput,
   ListDecisionsResult,
   OperationInput,
@@ -52,6 +56,7 @@ export type {
   Room,
   RoomDetail,
   Session,
+  ShoppingEntry,
   Wall,
   Window,
 } from "@idh/core";
@@ -86,6 +91,7 @@ export interface Operations {
   set_decision_state: { input: SetDecisionStateWebInput; output: DecisionReceiptResult };
   resolve_flag: { input: ResolveFlagInput; output: DecisionReceiptResult };
   resolve_conflict: { input: ResolveConflictInput; output: DecisionReceiptResult };
+  get_shopping: { input: GetShoppingInput; output: GetShoppingResult };
 }
 
 export type OperationName = keyof Operations;
@@ -130,6 +136,27 @@ export function upload<Op extends UploadName>(operation: Op, form: FormData): Pr
 /** Where the server serves one page of a Blueprint, rendered as a PNG. */
 export function blueprintPageUrl(home: string, blueprint: string, page: number): string {
   return `/api/get_blueprint_page?${new URLSearchParams({ home, blueprint, page: String(page) })}`;
+}
+
+// The exports are files, rendered by the server from stored data, so the pages link to them.
+
+/** Where the server serves the Shopping List: a printable page, or a CSV file. */
+export function shoppingListExportUrl(
+  home: string,
+  format: ExportShoppingListInput["format"],
+): string {
+  return `/api/export_shopping_list?${new URLSearchParams({ home, format })}`;
+}
+
+/** Where the server serves the Shopping Guides of one Purchase, or of every one with Guides. */
+export function guidesExportUrl(
+  home: string,
+  format: ExportGuidesInput["format"],
+  decision?: string,
+): string {
+  const query = new URLSearchParams({ home, format });
+  if (decision) query.set("decision", decision);
+  return `/api/export_guides?${query}`;
 }
 
 async function send<Output>(url: string, init: RequestInit): Promise<Output> {
