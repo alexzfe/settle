@@ -685,6 +685,17 @@ function purchaseLines(decision: DecisionDetail): string[] {
       lines.push("", `Full Guide, written ${day(full.writtenAt)}, ${state}:`, "", full.markdown);
     }
   }
+  // How the Quick Guide gets into the shop: the LAN address a phone opens (shown as a QR code on
+  // the Decision page in LAN mode), else the page on this computer.
+  if (decision.guides?.lanUrl) {
+    lines.push("", `Phone: ${decision.guides.lanUrl} (the Decision page shows it as a QR code)`);
+  } else if (decision.guides && decision.quickGuide) {
+    lines.push(
+      "",
+      `Phone: ${decision.quickGuide.path} on this computer only; started with IDH_LAN=1, the app ` +
+        "gives a LAN address and the Decision page shows it as a QR code",
+    );
+  }
   section(lines, "Listings", decision.listings.map(listingLine));
   section(
     lines,
