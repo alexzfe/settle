@@ -300,33 +300,56 @@ function directionStart(
   };
 }
 
+/**
+ * A Design Direction Session that proposes: its start, then what the user owns looked up, so the
+ * proposals can name it (the Skill's "Read the Home").
+ */
+function directionRead(
+  context: HistoryContext,
+  message: string,
+): { turns: Turn[]; session: string } {
+  const { turns, session } = directionStart(context, message);
+  const input = { session };
+  return {
+    session,
+    turns: [...turns, { tool: "find_items", input, result: context.answer("find_items", input) }],
+  };
+}
+
 const NO_DIRECTION_YET = `Working on Fixture Home, in London. It has no Design Direction yet, and the Palette, each Room's direction, and what you buy will all rest on it, so let's start there.`;
+
+// The proposals round: what the opening and find_items say, then three whole Directions to react
+// to, one recommended. No colors: the Palette chooses them.
+const DIRECTION_PROPOSALS = `What I'm working from: a 1930s semi you rent for one to three years, two cats, a living room facing south and west that you use in the evening, and six oak dining chairs and a linen sofa. Three directions that would suit it:
+
+- **A. Warm minimalism.** Calm, warm, low contrast; oak, linen, wool, limewashed plaster. It builds on the oak chairs and the linen sofa, and everything moves with you when the lease ends. *My pick.*
+- **B. Rustic Mediterranean.** Relaxed, warm, medium contrast; terracotta, rough plaster, rush, olive wood. More texture and pattern, and it glows in evening lamplight.
+- **C. The 1930s, kept.** Cosy, neutral, medium contrast; walnut, brass, ribbed glass, tightly woven wool. It plays up the house's own era: the one you may not have thought of.`;
 
 const FIRST_ROUND = `${NO_DIRECTION_YET}
 
-First round, about how you live and what you love:
+${DIRECTION_PROPOSALS}
 
-1. **Coming home.** How do you want the house to feel when you walk in? *(Recommended: calm and uncluttered, somewhere to unwind.)*
-2. **Places you've loved.** Homes, hotels, or places you've felt good in, and what you liked about them. Pictures are welcome. *(Recommended: two or three places, a line each.)*
-3. **Everyday life.** With two cats and a rented house, what should the direction make easy? *(Recommended: tough, washable fabrics, and pieces you can take with you.)*
-4. **What stays.** Anything you own and love that the direction should work around? *(Recommended: the oak dining chairs.)*`;
+1. **Which is closest?** And what does it get wrong? *(Recommended: A, borrowing B's rough plaster for the dining end.)*
+2. **Coming home.** How should the house feel when you walk in? *(If you skip it, I'll take "calm and uncluttered", which A gives.)*
+3. **Places you've loved.** A home, hotel, or place whose feel you'd like here. Pictures are welcome. *(If you skip it, I'll work from A alone.)*
+4. **The cats.** I'd rule out loose weaves and loop pile throughout. *(Recommended: yes.)*`;
 
 const MOOD_ROUND = `Saved as a Candidate: Design Direction 'Calm and natural'.
 
-Your two places pull in slightly different directions, so this round is about the mood:
+You're between A and B: Copenhagen's calm and Provence's earth. My pick is to let the calm lead and take the earth as materials, so the rooms feel warm in the evening without getting busy. This round settles the three lines that decide it:
 
-1. **Mood.** Copenhagen reads calm, airy, and pared back; Provence reads warm, earthy, and lived-in. Which is closer to how you want home to feel, or is it a mix? *(Recommended: a mix, calm and pared back with earthy warmth.)*
-2. **Temperature.** Warm, neutral, or cool overall? *(Recommended: warm, since you said never cold.)*
-3. **Contrast.** Low, medium, or high? *(Recommended: low, with soft steps between light and dark.)*`;
+1. **Mood.** Which leads: the calm, pared-back feel or the relaxed, earthy one? *(Recommended: calm and pared back, with earthy warmth from the plaster and terracotta.)*
+2. **Temperature.** Warm, neutral, or cool overall? *(Recommended: warm. Your living room faces south and west and you sit in it in the evening, so warm suits the light you actually live in.)*
+3. **Contrast.** Low, medium, or high? *(Recommended: low, with soft steps between light and dark; high contrast would fight the calm you asked for.)*`;
 
-const CHARACTER_ROUND = `${NO_DIRECTION_YET}
+const CHARACTER_ROUND = `${NO_DIRECTION_YET} Industrial loft was ruled out earlier, so it isn't among these.
 
-First round:
+${DIRECTION_PROPOSALS}
 
-1. **Coming home.** How do you want the house to feel when you walk in? *(Recommended: relaxed and welcoming.)*
-2. **What you're drawn to.** Places, eras, or things you love the look of. *(Recommended: two or three, with what you like about each.)*
-3. **Everyday life.** With two cats, what should the direction make easy? *(Recommended: tough, washable fabrics.)*
-4. **What stays.** Anything you own that the direction should work around? *(Recommended: the oak dining chairs.)*`;
+1. **Which is closest?** And what does it get wrong? *(Recommended: A, since the oak and linen you own already fit it.)*
+2. **Coming home.** How should the house feel when you walk in? *(If you skip it, I'll take "relaxed and welcoming".)*
+3. **The cats.** I'd rule out loose weaves and loop pile throughout. *(Recommended: yes.)*`;
 
 const LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked:
 
@@ -548,10 +571,11 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   // any Wall's facing is recorded.
   "home-intake-asks-north": throughDimensions,
 
-  // Graded turn: the user is still weighing two moods. Nothing is Locked, and the reply asks.
+  // Graded turn: after the proposals round and a Candidate from the user's pick, the user is still
+  // weighing two moods. Nothing is Locked, and the reply asks.
   // The case's own opening has no Design Direction yet.
   "design-direction-no-lock-without-commitment": (context) => {
-    const { turns, session } = directionStart(
+    const { turns, session } = directionRead(
       context,
       "I don't know what style I like. Can you help me work it out?",
     );
@@ -574,7 +598,7 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
       ...turns,
       { assistant: FIRST_ROUND },
       {
-        user: "Calm, definitely, but not cold. We loved a small hotel in Copenhagen, all pale wood and linen, and a friend's farmhouse in Provence with terracotta floors and rough plaster walls. Yes to cat-proof fabrics, and the oak chairs stay.",
+        user: "Somewhere between A and B, I think. Calm, definitely, but not cold. We loved a small hotel in Copenhagen, all pale wood and linen, and a friend's farmhouse in Provence with terracotta floors and rough plaster walls. Yes to cat-proof fabrics, and the oak chairs stay.",
       },
       // The case's save_decision mock answers the graded turn's edits, so the create gets its
       // receipt in core's wording here.
@@ -588,10 +612,11 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     ];
   },
 
-  // Graded turn: the user asks for directions that suit their love of character. The case's
-  // find_decisions mock lists a Rejected "Industrial loft" Direction, which is never offered again.
+  // Graded turn: after three proposals, the user asks for more that suit their love of character.
+  // The case's find_decisions mock lists a Rejected "Industrial loft" Direction, which is never
+  // offered again.
   "design-direction-never-reproposes-rejected": (context) => [
-    ...directionStart(context, "Help us pick a style for the house.").turns,
+    ...directionRead(context, "Help us pick a style for the house.").turns,
     { assistant: CHARACTER_ROUND },
   ],
 

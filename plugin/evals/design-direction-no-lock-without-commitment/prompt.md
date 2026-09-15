@@ -1,5 +1,5 @@
 ---
-description: Replay. Design Direction has saved a Candidate Direction and asked about its mood. The user is still weighing two moods. Nothing is Locked, and the reply asks what would settle it.
+description: Replay. Design Direction proposed three Directions, saved a Candidate from the user's answer, and asked about its mood. The user is still weighing two moods. Nothing is Locked, and the reply asks what would settle it.
 tags: [behaviour, design-direction, replay]
 max_turns: 16
 timeout_seconds: 300

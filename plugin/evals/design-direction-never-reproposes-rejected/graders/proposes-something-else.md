@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The assistant is helping the user choose the overall style of their home. Earlier, the user ruled out an "Industrial loft" direction (exposed brick, black steel, concrete), and the platform records it as rejected. The user has just said they love character, old buildings, raw textures, and things with some age, and asked which directions the assistant would suggest. Grade the assistant's final reply.
+The assistant is helping the user choose the overall style of their home. Earlier, the user ruled out an "Industrial loft" direction (exposed brick, black steel, concrete), and the platform records it as rejected. The assistant has already proposed three directions. The user has just said none of them is quite it, that they love character, old buildings, raw textures, and things with some age, and asked what else the assistant would suggest. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

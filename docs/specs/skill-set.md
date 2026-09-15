@@ -154,9 +154,11 @@ the chair"). Not for property.
   - a separate protocol Skill that has to load alongside the others
 - **App not running.** A Skill's first step checks that the platform's tools are present. If they are missing, the Skill tells the user to start the app and then reconnect with `/mcp`, and does nothing else until the tools are back. Starting the app automatically is deferred to the Hosting and Docker topic.
 - **Round format.**
-  - Each round asks 3–5 numbered questions, each with a recommended answer. The user can accept them all, or answer some and skip the rest.
+  - The Agent brings a view (the user's note of 2026-09-15: "follow the user's idea just a little bit less; be willing to give pushback and ideas"). When work starts from nothing, the Skill opens with a proposal to react to: two or three Design Directions, or two or three Palettes.
+  - A round asks every question that is ready now, numbered, at most five, each with a recommended answer the Agent commits to and its reason from the Home. Facts come from the read tools, never from the user. The user can accept them all, or answer some and skip the rest.
+  - Pushing back: once, plainly, with a reason from the Home and what the Agent would do instead; then the user decides and it is not raised again in that Session. Accepting recommendations or picking a proposal is never a commitment to Lock.
   - Writes happen after every round, so quitting mid-Session loses nothing.
-  - Depth varies by Skill: Design Direction digs deep, while a lamp Purchase takes one or two rounds.
+  - Depth varies by Skill: Design Direction brings ideas first and then digs into the chosen one, while a lamp Purchase takes one or two rounds.
   - Once the current Decision could be Locked, every round offers to stop there.
   - A Session should take roughly 15–40 minutes.
 - **Opening.** The first Skill calls `open_session`, which returns:
