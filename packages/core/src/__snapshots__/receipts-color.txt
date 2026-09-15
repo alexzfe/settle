@@ -37,4 +37,5 @@ Basis:
 
 # set_decision_state: the Palette Reopened, flagging only the Room color still open
 Warm clay (warm-clay): Reopened to Leaning, was Locked
+Flagged for review: Wool rug (wool-rug), which rests on Warm clay (warm-clay), now reopened
 Flagged for review: Bedroom walls in Setting Plaster (bedroom-walls-in-setting-plaster), which rests on Warm clay (warm-clay), now reopened

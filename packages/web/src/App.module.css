@@ -126,3 +126,24 @@ a.tag {
 .error {
   color: #b00020;
 }
+
+/** What needs the reader's attention: a Full Guide out of date, a failed must. */
+.warning {
+  color: #8a4b00;
+}
+
+/** The Quick Guide as one block, about a phone screen wide. */
+.guide {
+  max-width: 28rem;
+  margin-block: 0.5rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.75rem;
+  border: 1px solid #999;
+  border-radius: 0.25rem;
+}
+
+/** The Full Guide, set off from the page around it. */
+.fullGuide {
+  max-width: 40rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid #ccc;
+}

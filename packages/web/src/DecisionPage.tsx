@@ -8,7 +8,6 @@ import {
   type DecisionDetail,
   type EvidenceEntry,
   type Flag,
-  type Requirement,
 } from "./api";
 import {
   automaticBasisNote,
@@ -20,6 +19,7 @@ import {
   STATE_LABEL,
 } from "./decisions";
 import { formatDate, sentence, wallName, words } from "./format";
+import { PurchaseParts } from "./Purchase";
 import { useDecision } from "./queries";
 import { Swatch, SwatchSquare } from "./Swatch";
 import { Fact, Parts } from "./Values";
@@ -69,7 +69,7 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
       <h2>Change its state</h2>
       {/* Keyed by state, so a refusal from before the change does not linger after it. */}
       <Actions key={decision.state} home={home} actions={moves} />
-      <Content decision={decision} />
+      <Content home={home} decision={decision} />
       <h2>Basis</h2>
       {decision.basis.length === 0 ? (
         <p>None: it rests on no other Decision.</p>
@@ -123,7 +123,7 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
 }
 
 /** What the Decision decides, as its kind records it; an Other Decision has only its statement. */
-function Content({ decision }: { decision: DecisionDetail }) {
+function Content({ home, decision }: { home: string; decision: DecisionDetail }) {
   switch (decision.kind) {
     case "design-direction": {
       const { content } = decision;
@@ -224,22 +224,7 @@ function Content({ decision }: { decision: DecisionDetail }) {
       );
     }
     case "purchase":
-      return (
-        <>
-          <h2>Requirements</h2>
-          {decision.requirements.length === 0 ? (
-            <p>None yet.</p>
-          ) : (
-            <ul>
-              {decision.requirements.map((requirement) => (
-                <li key={requirement.position}>
-                  <RequirementLine requirement={requirement} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      );
+      return <PurchaseParts home={home} decision={decision} />;
     case "other":
       return null;
   }
@@ -277,17 +262,6 @@ function EvidenceLine({ home, entry }: { home: string; entry: EvidenceEntry }) {
         entry.name
       )}
       {entry.note && ` (${entry.note})`}
-    </>
-  );
-}
-
-/** "Must: under 85 cm tall (Front door, clear width)": what it asks for and where it comes from. */
-function RequirementLine({ requirement }: { requirement: Requirement }) {
-  const { reason } = requirement;
-  return (
-    <>
-      <strong>{sentence(requirement.strength)}</strong>: {requirement.text} ({reason.name}
-      {reason.field && `, ${words(reason.field)}`})
     </>
   );
 }

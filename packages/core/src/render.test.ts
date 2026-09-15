@@ -10,6 +10,7 @@ import {
   FIXTURE_ROOMS,
   type FixtureHome,
 } from "./fixture/fixture-home.js";
+import { renderQuickGuide } from "./render.js";
 import { slugify } from "./slug.js";
 
 let fixture: FixtureHome;
@@ -109,6 +110,29 @@ it("renders get_decision: a Room Direction, a flagged Purchase, and a Decision w
     texts.push(toolText("get_decision", result));
   }
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision"));
+});
+
+it("renders the Quick Guide of a Purchase: Measure first, the musts, the prefers, then the AI's lines", async () => {
+  const session = await openSession();
+  const { decision } = await fixture.core.run("get_decision", agent(session), {
+    session,
+    decision: "wool-rug",
+  });
+  await expect(renderQuickGuide(decision)).toMatchFileSnapshot(snapshot("quick-guide"));
+});
+
+it("renders get_decision for a Purchase with Requirements, Guides, and the Full Guide line, then with includeFullGuide", async () => {
+  const session = await openSession();
+  const texts = [];
+  for (const includeFullGuide of [false, true]) {
+    const result = await fixture.core.run("get_decision", agent(session), {
+      session,
+      decision: "wool-rug",
+      includeFullGuide,
+    });
+    texts.push(`# includeFullGuide: ${includeFullGuide}\n${toolText("get_decision", result)}`);
+  }
+  await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision-purchase"));
 });
 
 it("renders every Room's Room Sheet", async () => {

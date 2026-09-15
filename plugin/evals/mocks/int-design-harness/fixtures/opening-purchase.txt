@@ -1,0 +1,54 @@
+Session: purchase-mnop
+Pass session "purchase-mnop" on every write in this conversation.
+
+Home: Fixture Home
+Location: London, GB (latitude 51.5° N)
+Tenure: rented, planned stay 1-3 years
+Building: house, 1930s semi-detached
+Narrowest access: 0.76 m, the front door
+Levels: Ground (ground, storey 0), First (first, storey 1)
+
+Constraints:
+- Rented: no drilling into the chimney breast (rented-no-drilling-into-the-chimney-breast)
+- Two cats (two-cats)
+
+Unplaced Items: 1
+
+Blueprints:
+- Agent plan (agent-plan): 1 page; p.1 Ground
+
+Rooms:
+- Living room (living-room): Ground; living, dining; walls 5.20, 2.10, 1.50, 1.80, ~3.70, 3.90 m; ceiling 2.60 m; windows S, W; used evening, night; 4 Items
+- Kitchen (kitchen): Ground; kitchen; 3.40 × 2.80 m; ceiling 2.50 m; windows E; used morning, evening; 1 Item; Gaps: woodwork Surface
+- Hallway (hallway): Ground; hallway; walls 1.10, ~4.20, ~0.90, ~1.20, ~1.00, ~1.20, ?, ? m; windowless; Gaps: wall lengths (hallway/wall-7, hallway/wall-8), ceiling height, times of use, walls Surface, ceiling Surface, woodwork Surface
+- Balcony (balcony): First; outdoor; dining; Gaps: times of use
+- Main bedroom (main-bedroom): First; bedroom; ~3.60 × ? m; windows W; used night; 1 Item; Gaps: wall lengths (main-bedroom/wall-2, main-bedroom/wall-3, main-bedroom/wall-4), ceiling height, walls Surface, ceiling Surface, floor Surface, woodwork Surface
+
+Home-wide Decisions in force:
+
+Design Direction: Warm minimalism (warm-minimalism), Locked
+Calm, warm rooms of natural materials that age well.
+- Mood: calm, grounded
+- Color temperature: warm
+- Contrast: low
+- Key materials: oak, linen, limewash, unlacquered brass
+- Style references: Japandi; 1970s Danish modern
+- Principles:
+  - Fewer, better things
+  - Daylight first, then low warm lamps
+  - Nothing the cats can shred
+
+Palette: Warm clay (warm-clay), Locked
+Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
+- Colors:
+  - base: Pointing (Farrow & Ball No. 2003); ceilings and woodwork throughout
+  - base: Setting Plaster (Farrow & Ball No. 231), LRV 63; walls in the kitchen and the main bedroom
+  - secondary: Jitney (Farrow & Ball No. 293); living room walls, warm under lamplight
+  - accent: ~warm terracotta; cushions and a rug, echoing the dining-end tiles
+
+Other Home-wide Decisions, Locked:
+- Keep the original floors (keep-the-original-floors): Other, Locked; 1 open Conflict. The oak boards and terracotta tiles stay.
+
+Open flags and Conflicts:
+- Keep the original floors (keep-the-original-floors), Home-wide: Conflict raised on 2026-09-14: The user now says the terracotta tiles crack every winter and wants them gone.
+- Wool rug (wool-rug), Living room (living-room): flagged on 2026-09-14, Calm evenings (calm-evenings) was reopened

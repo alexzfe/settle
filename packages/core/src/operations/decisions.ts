@@ -4,7 +4,6 @@ import { optional } from "../optional.js";
 import { equal } from "../provenance.js";
 import { type Change, defineOperation, type OperationContext } from "../registry.js";
 import {
-  featureName,
   type HomeDecisionsView,
   DECISION_KIND_LABELS as KINDS,
   named,
@@ -21,8 +20,12 @@ import type {
   DecisionBasisRow,
   DecisionEvidenceRow,
   DecisionRow,
+  DeviationRow,
   FlagRow,
+  GuideRow,
   HomeRow,
+  ListingCheckRow,
+  ListingRow,
   NoteRow,
   RequirementRow,
   RoomRow,
@@ -32,6 +35,8 @@ import type {
 } from "../store.js";
 import { active, requireRoom, requireWall } from "./lookup.js";
 import { type HomeModel, loadHome, overviewView, roomById, roomDetail } from "./model.js";
+import { guideOf, toDeviations, toGuides, toListings, toQuickGuide } from "./purchase-views.js";
+import { reasonLabel, reasonRecord, resolveReason } from "./reasons.js";
 import {
   type Color,
   DECISION_CONTENT,
@@ -68,7 +73,6 @@ import {
   type RoomUseContent,
   recordFulfilmentInput,
   type requirementInput,
-  type requirementReasonInput,
   resolveConflictInput,
   resolveFlagInput,
   type Stance,
@@ -84,7 +88,6 @@ import { sameName, Writer } from "./writer.js";
 type SaveDecision = z.output<typeof saveDecisionInput>;
 type EvidenceIn = z.output<typeof evidenceInput>;
 type RequirementIn = z.output<typeof requirementInput>;
-type ReasonIn = z.output<typeof requirementReasonInput>;
 
 // ─── The operations ─────────────────────────────────────────────────────────────────────────
 
@@ -193,7 +196,11 @@ export const getDecision = defineOperation({
   description:
     "Returns one Decision of this Home in full: its kind, scope, state, statement, the kind's " +
     "content, its Requirements, its open flags and Conflicts, then one line per Decision of its " +
-    "Basis and per piece of Evidence. The opening, Room Sheets, and find_decisions give only " +
+    "Basis and per piece of Evidence. For a Purchase it also gives the Quick Guide's lines " +
+    "besides the Requirements (Measure first, then your own), the Full Guide as one line (when " +
+    "it was written, and whether it is out of date; includeFullGuide gives its text), one line " +
+    "per Listing (price, pass, fail, and unknown counts, and any must it fails), and after " +
+    "Fulfilment its Deviations. The opening, Room Sheets, and find_decisions give only " +
     "one line per Decision (except the Design Direction and Palette, which the opening gives in " +
     "full): fetch this when the work turns to a Decision, for example before changing it or " +
     "resolving its flag. Changes nothing.",
@@ -205,7 +212,12 @@ export const getDecision = defineOperation({
     const home = requireHome(context);
     if (context.caller.kind === "session") requireSession(context, home, { open: false });
     const model = loadDecisions(context.store, home);
-    return { decision: toDetail(model, requireDecision(model, input.decision)) };
+    return {
+      decision: toDetail(model, requireDecision(model, input.decision), {
+        includeFullGuide: input.includeFullGuide === true,
+        ...optional({ lanUrl: context.lanUrl }),
+      }),
+    };
   },
   text: ({ decision }) => renderDecision(decision),
 });
@@ -546,6 +558,10 @@ export interface DecisionModel extends HomeModel {
   flags: FlagRow[];
   conflicts: ConflictRow[];
   stateChanges: StateChangeRow[];
+  guides: GuideRow[];
+  listings: ListingRow[];
+  listingChecks: ListingCheckRow[];
+  deviations: DeviationRow[];
 }
 
 export function loadDecisions(store: Store, home: HomeRow): DecisionModel {
@@ -560,6 +576,10 @@ export function loadDecisions(store: Store, home: HomeRow): DecisionModel {
     flags: store.list("flags", home.id),
     conflicts: store.list("conflicts", home.id),
     stateChanges: store.list("state_changes", home.id),
+    guides: store.list("guides", home.id),
+    listings: store.list("listings", home.id),
+    listingChecks: store.list("listing_checks", home.id),
+    deviations: store.list("deviations", home.id),
   };
 }
 
@@ -797,18 +817,35 @@ export function toSummary(model: DecisionModel, row: DecisionRow): DecisionSumma
   };
 }
 
-function toDetail(model: DecisionModel, row: DecisionRow): DecisionDetail {
+/** How toDetail shows a Purchase's Guides. */
+export interface DetailOptions {
+  /** The Full Guide's Markdown in full, not only its state. */
+  includeFullGuide?: boolean;
+  /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
+  lanUrl?: string;
+}
+
+export function toDetail(
+  model: DecisionModel,
+  row: DecisionRow,
+  options: DetailOptions = {},
+): DecisionDetail {
   const { kind: _, colors: _colors, ...summary } = toSummary(model, row);
   const content = { kind: row.kind, content: row.content } as DecisionKindContent;
   const palette = row.kind === "room-color" ? storedPalette(model, row) : undefined;
   const missing = missingAutomatic(model, row);
+  const purchase = row.kind === "purchase";
   return {
     ...summary,
     ...optional({
       fulfilment: row.fulfilment,
       paletteColor: palette && colorOf(palette, (row.content as RoomColorContent).color),
       missingAutomatic: missing.length > 0 ? missing : undefined,
+      quickGuide: purchase ? toQuickGuide(model, row) : undefined,
+      guides: purchase ? toGuides(guideOf(model, row), options) : undefined,
     }),
+    listings: purchase ? toListings(model, row) : [],
+    deviations: purchase ? toDeviations(model, row) : [],
     basis: basisOf(model, row).map(({ row: entry, automatic }) => ({
       slug: entry.slug,
       title: entry.title,
@@ -906,7 +943,7 @@ function evidenceSource(
 }
 
 function toRequirement(model: DecisionModel, row: RequirementRow): Requirement {
-  const record = reasonRecords(model, row.reasonKind).find((each) => each.id === row.reasonId);
+  const record = reasonRecord(model, row.reasonKind, row.reasonId);
   return {
     position: row.position,
     text: row.text,
@@ -918,81 +955,6 @@ function toRequirement(model: DecisionModel, row: RequirementRow): Requirement {
       ...optional({ field: row.reasonField }),
     },
   };
-}
-
-interface ReasonRecord {
-  id: number;
-  slug: string;
-  name: string;
-  row: object;
-}
-
-/** The records a Requirement's reason of `kind` can point at, with a readable name each. */
-function reasonRecords(model: DecisionModel, kind: RequirementReasonKind): ReasonRecord[] {
-  const bySlug = (rows: { id: number; slug: string }[]) =>
-    rows.map((row) => ({ id: row.id, slug: row.slug, name: row.slug, row }));
-  switch (kind) {
-    case "home":
-      return [{ id: model.home.id, slug: model.home.slug, name: model.home.name, row: model.home }];
-    case "decision":
-      return model.decisions.map((row) => ({ id: row.id, slug: row.slug, name: row.title, row }));
-    case "constraint":
-      return model.constraints.map((row) => ({ id: row.id, slug: row.slug, name: row.text, row }));
-    case "note":
-      return model.notes.map((row) => ({ id: row.id, slug: row.slug, name: row.text, row }));
-    case "room":
-      return model.rooms.map((row) => ({ id: row.id, slug: row.slug, name: row.name, row }));
-    case "item":
-      return model.items.map((row) => ({ id: row.id, slug: row.slug, name: row.name, row }));
-    case "feature":
-      return model.features.map((row) => ({
-        id: row.id,
-        slug: row.slug,
-        name: featureName(row.kind, row.description ?? undefined),
-        row,
-      }));
-    case "wall":
-      return bySlug(model.walls);
-    case "window":
-      return bySlug(model.windows);
-    case "door":
-      return bySlug(model.doors);
-    case "surface":
-      return bySlug(model.surfaces);
-  }
-}
-
-function resolveReason(
-  model: DecisionModel,
-  reason: ReasonIn,
-): { kind: RequirementReasonKind; id: number; field: string | null } {
-  const records = reasonRecords(model, reason.kind);
-  if (reason.kind !== "home" && reason.id === undefined) {
-    throw new CoreError(
-      "validation",
-      `A Requirement's ${reason.kind} reason needs its id: the ${reason.kind}'s slug.`,
-    );
-  }
-  const record =
-    reason.kind === "home"
-      ? reason.id === undefined || reason.id === model.home.slug
-        ? records[0]
-        : undefined
-      : records.find((each) => each.slug === reason.id);
-  if (!record) {
-    throw new CoreError(
-      "not_found",
-      `This Home has no ${reason.kind} "${reason.id}" for a Requirement's reason to point at.`,
-    );
-  }
-  if (reason.field !== undefined && !(reason.field in record.row)) {
-    throw new CoreError(
-      "validation",
-      `The ${reason.kind} ${record.slug} has no field "${reason.field}". Name one it records, ` +
-        'e.g. "length" of a Wall, or leave field out when the whole record matters.',
-    );
-  }
-  return { kind: reason.kind, id: record.id, field: reason.field ?? null };
 }
 
 /** The kind's content, validated against the kind's own schema. */
@@ -1385,6 +1347,7 @@ class DecisionWrites {
         cause,
         sourceKind: "decision",
         sourceId: source.id,
+        sourceField: null,
         raisedAt: this.#context.now(),
         clearedAt: null,
         resolution: null,
@@ -1877,8 +1840,33 @@ class DecisionWrites {
     return done.length > 0 ? `Evidence: ${done.join(", ")}` : undefined;
   }
 
-  /** Stores the Requirement steps; returns their receipt lines, for after the Decision's own. */
+  /**
+   * Stores the Requirement steps; returns their receipt lines, for after the Decision's own. Any
+   * Requirement added, changed, Archived, or restored after its Full Guide was written marks the
+   * Full Guide out of date, until save_guides writes it again.
+   */
   #applyRequirements(decision: DecisionRow, steps: RequirementStep[]): [string, string][] {
+    const lines = this.#storeRequirements(decision, steps);
+    const guide = guideOf(this.#model, decision);
+    if (lines.length > 0 && guide?.writtenAt != null && guide.requirementsChangedAt === null) {
+      const at = this.#context.now();
+      this.#context.store.update("guides", guide.id, { requirementsChangedAt: at });
+      guide.requirementsChangedAt = at;
+      this.#writer.logged({
+        recordKind: "decision",
+        record: decision,
+        field: "guides requirementsChangedAt",
+        new: at,
+      });
+      lines.push([
+        titled(decision),
+        "its Full Guide is now out of date: rewrite it with save_guides",
+      ]);
+    }
+    return lines;
+  }
+
+  #storeRequirements(decision: DecisionRow, steps: RequirementStep[]): [string, string][] {
     const model = this.#model;
     const { store } = this.#context;
     const lines: [string, string][] = [];
@@ -1946,22 +1934,4 @@ function transitionText(from: DecisionState, to: DecisionState): string {
 function changedKeys(was: Record<string, unknown>, now: Record<string, unknown>): string {
   const keys = [...new Set([...Object.keys(was), ...Object.keys(now)])];
   return keys.filter((key) => !equal(was[key] ?? null, now[key] ?? null)).join(", ");
-}
-
-/** A Requirement's reason as a receipt shows it: "Wall living-room/wall-2, length". */
-function reasonLabel(
-  model: DecisionModel,
-  reason: { reasonKind: RequirementReasonKind; reasonId: number; reasonField: string | null },
-): string {
-  const record = reasonRecords(model, reason.reasonKind).find(
-    (each) => each.id === reason.reasonId,
-  );
-  const what =
-    record === undefined
-      ? "?"
-      : record.name === record.slug
-        ? record.slug
-        : named({ name: record.name, slug: record.slug });
-  const noun = reason.reasonKind.charAt(0).toUpperCase() + reason.reasonKind.slice(1);
-  return `${noun} ${what}${reason.reasonField ? `, ${reason.reasonField}` : ""}`;
 }

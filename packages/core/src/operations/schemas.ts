@@ -993,6 +993,12 @@ export const getHomeResult = z.object({
   rooms: z.array(roomSchema),
   /** How many Items of the Inventory are in no Room. */
   unplacedItems: z.number(),
+  /**
+   * In LAN mode (IDH_LAN=1): the address phones on the user's network reach, e.g.
+   * "http://192.168.1.20:4380". It serves only the Quick Guide pages, at each Purchase's
+   * guides.lanUrl.
+   */
+  lanUrl: z.string().optional(),
 });
 
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
@@ -1417,9 +1423,76 @@ export const flagConflictInput = z.object({
     .describe("What contradicts it, in a sentence or two, e.g. what the user now says."),
 });
 
+/** A Requirement of a Purchase, by its position: its identity for as long as it lives. */
+const requirementPosition = z
+  .number()
+  .int()
+  .min(1)
+  .max(99)
+  .describe("The Requirement's position, as get_decision numbers it.");
+
+/** One difference between what a Purchase asked for and what was bought. */
+export const deviationInput = z.object({
+  requirement: requirementPosition,
+  text: line.describe(
+    'The difference, in plain words: "92 cm tall, not under 85 cm", "rust, not terracotta".',
+  ),
+});
+
+/** The Item a Purchase bought: a new Item of the Inventory. */
+export const fulfilmentItemInput = itemInput
+  .omit({ item: true, archive: true, archiveReason: true })
+  .extend({
+    name: text.max(100).describe('What it is called, e.g. "Wool rug", "Oak armchair".'),
+    category: itemInput.shape.category
+      .unwrap()
+      .describe(itemInput.shape.category.description ?? ""),
+    room: slugInput
+      .optional()
+      .describe("The slug of the Room it is in; the Purchase's Room when left out."),
+    unplaced: z.boolean().optional().describe("true when it is in no Room yet: still boxed."),
+  });
+
+/** A part of the building a Purchase bought (a radiator): a new Feature of a Room. */
+export const fulfilmentFeatureInput = featureInput
+  .omit({ feature: true, archive: true, archiveReason: true })
+  .extend({
+    kind: featureInput.shape.kind.unwrap().describe(featureInput.shape.kind.description ?? ""),
+    room: slugInput
+      .optional()
+      .describe("The slug of the Room it is in; the Purchase's Room when left out."),
+  });
+
 export const recordFulfilmentInput = z.object({
   session: sessionInput,
   decision: decisionSlugInput.describe("The slug of the Locked Decision that was carried out."),
+  bought: line
+    .optional()
+    .describe(
+      'Purchase, required: what was actually bought, in one line, e.g. "Hay Plain rug, 200 × ' +
+        '300 cm, rust, £450".',
+    ),
+  deviations: z
+    .array(deviationInput)
+    .optional()
+    .describe(
+      "Purchase: each Requirement what was bought differs from, with the difference. A " +
+        "Deviation from a must flags every Decision resting on this Purchase.",
+    ),
+  item: fulfilmentItemInput
+    .optional()
+    .describe("Purchase: the Item bought, added to the Inventory. Leave out when it is a Feature."),
+  replacesItem: slugInput
+    .optional()
+    .describe("Purchase: the slug of the Item it replaces, which is Archived as replaced by it."),
+  feature: fulfilmentFeatureInput
+    .optional()
+    .describe("Purchase: a part of the building bought (a radiator, a light point), as a Feature."),
+  replacesFeature: slugInput
+    .optional()
+    .describe(
+      "Purchase: the slug of the Feature it replaces, which is Archived as replaced by it.",
+    ),
   roomFunctions: z
     .array(z.enum(ROOM_FUNCTIONS))
     .optional()
@@ -1445,6 +1518,126 @@ export type SetDecisionStateInput = z.input<typeof setDecisionStateInput>;
 export type SetDecisionStateWebInput = z.input<typeof setDecisionStateWebInput>;
 export type FlagConflictInput = z.input<typeof flagConflictInput>;
 export type RecordFulfilmentInput = z.input<typeof recordFulfilmentInput>;
+export type DeviationInput = z.input<typeof deviationInput>;
+export type FulfilmentItemInput = z.input<typeof fulfilmentItemInput>;
+export type FulfilmentFeatureInput = z.input<typeof fulfilmentFeatureInput>;
+
+// ─── Purchases (slice 6): save_guides, record_listing, and the web's Shopping operations ─────
+
+/** A Listing's result against one Requirement. */
+export const CHECK_RESULTS = ["pass", "fail", "unknown"] as const;
+export type CheckResult = (typeof CHECK_RESULTS)[number];
+
+export const saveGuidesInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput.describe("The slug of the Purchase the Guides are for."),
+  quickLines: z
+    .array(line)
+    .max(8)
+    .optional()
+    .describe(
+      "The Quick Guide's own lines, replacing any saved: what to avoid and what to test in the " +
+        'shop, one short line each ("Avoid loop pile: claws catch in it", "Press the pile: it ' +
+        'should spring back"). Not the Requirements and not "Measure first": the app puts those ' +
+        "in itself, from the Requirements, so they never go stale.",
+    ),
+  fullGuide: z
+    .string()
+    .trim()
+    .min(1)
+    .max(20000)
+    .optional()
+    .describe(
+      "The Full Guide, in Markdown under headings you pick for the product, replacing any " +
+        "saved: what to look for and why, to read ahead of time. Every must Requirement explains " +
+        "why. It is marked out of date when a Requirement changes after it was written.",
+    ),
+});
+
+export type SaveGuidesInput = z.input<typeof saveGuidesInput>;
+
+export const listingCheckInput = z.object({
+  requirement: requirementPosition,
+  result: z
+    .enum(CHECK_RESULTS)
+    .describe("pass, fail, or unknown (the listing doesn't say, or can't be judged from it)."),
+  note: line
+    .optional()
+    .describe('What decided it, in a few words: "200 × 140 cm", "not stated", "loop pile".'),
+});
+
+/** A product's size as its listing states it: no Provenance, since nobody measured it here. */
+export const listingDimensionsSchema = z.object({
+  width: z.number().int().min(1).optional().describe("Whole millimetres."),
+  depth: z.number().int().min(1).optional().describe("Whole millimetres."),
+  height: z.number().int().min(1).optional().describe("Whole millimetres."),
+});
+
+export const recordListingInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput.describe("The slug of the Purchase the Listing is for."),
+  listing: slugInput
+    .optional()
+    .describe("The slug of a Listing already recorded, to change it; leave out to add one."),
+  name: text
+    .max(150)
+    .optional()
+    .describe('Needed to add one: the product as its listing names it, e.g. "Hay Plain rug".'),
+  url: z.url().optional().describe("The product page."),
+  price: text.max(40).optional().describe('With the currency, e.g. "£450".'),
+  dimensions: listingDimensionsSchema
+    .optional()
+    .describe("Its size as the listing states it, replacing any recorded."),
+  photo: text.max(500).optional().describe("A link to the product's photo."),
+  checks: z
+    .array(listingCheckInput)
+    .optional()
+    .describe(
+      "Its result against each Requirement, by position. Adding a Listing needs one for every " +
+        "Requirement; changing one replaces the checks given and keeps the others, and it must " +
+        "then have one for every Requirement too.",
+    ),
+});
+
+export type ListingCheckInput = z.input<typeof listingCheckInput>;
+export type ListingDimensions = z.infer<typeof listingDimensionsSchema>;
+export type RecordListingInput = z.input<typeof recordListingInput>;
+
+/** get_shopping: the Home's Shopping List and Considering. */
+export const getShoppingInput = z.object({ home: homeInput });
+
+export const EXPORT_SHOPPING_FORMATS = ["html", "csv"] as const;
+export const EXPORT_GUIDE_FORMATS = ["html", "markdown"] as const;
+
+/** export_shopping_list: the Shopping List as a printable page or CSV. */
+export const exportShoppingListInput = z.object({
+  home: homeInput,
+  format: z.enum(EXPORT_SHOPPING_FORMATS),
+});
+
+/** export_guides: the Shopping Guides of one Purchase, or of every one, as a page or Markdown. */
+export const exportGuidesInput = z.object({
+  home: homeInput,
+  decision: slugInput
+    .optional()
+    .describe("One Purchase's slug; every Purchase with Guides when left out."),
+  format: z.enum(EXPORT_GUIDE_FORMATS),
+});
+
+/**
+ * get_guide_page: the Quick Guide as a phone-readable HTML page without JavaScript, by the
+ * Home and the Decision's slug (the loopback route), or by its LAN token alone (the LAN route).
+ */
+export const getGuidePageInput = z.object({
+  home: homeInput.optional(),
+  decision: slugInput.optional(),
+  token: z.string().min(1).optional(),
+});
+
+export type GetShoppingInput = z.input<typeof getShoppingInput>;
+export type ExportShoppingListInput = z.input<typeof exportShoppingListInput>;
+export type ExportGuidesInput = z.input<typeof exportGuidesInput>;
+export type GetGuidePageInput = z.input<typeof getGuidePageInput>;
 
 // ─── find_decisions, get_decision, and the web's Decision operations ────────────────────────
 
@@ -1456,10 +1649,26 @@ export const findDecisionsInput = z.object({
   state: z.enum(DECISION_STATES).optional().describe("Only Decisions in this state."),
 });
 
-export const getDecisionInput = z.object({ session: sessionInput, decision: decisionSlugInput });
+const includeFullGuideInput = z
+  .boolean()
+  .optional()
+  .describe(
+    "true to include a Purchase's Full Guide in full; otherwise it is one line saying when it " +
+      "was written and whether it is out of date. Only when the work needs its text.",
+  );
+
+export const getDecisionInput = z.object({
+  session: sessionInput,
+  decision: decisionSlugInput,
+  includeFullGuide: includeFullGuideInput,
+});
 
 /** get_decision from the web UI, for the Decision page. */
-export const getDecisionWebInput = z.object({ home: homeInput, decision: decisionSlugInput });
+export const getDecisionWebInput = z.object({
+  home: homeInput,
+  decision: decisionSlugInput,
+  includeFullGuide: includeFullGuideInput,
+});
 
 export const listDecisionsInput = z.object({
   home: homeInput,
@@ -1502,8 +1711,17 @@ export const flagSchema = z.object({
   /** The flagged Decision. */
   decision: decisionRefSchema,
   cause: z.enum(FLAG_CAUSES),
-  /** What changed: for reopened and rejected, the Decision in the flagged one's Basis. */
-  source: z.object({ kind: z.string(), slug: z.string(), name: z.string() }),
+  /**
+   * What changed: for reopened, rejected, and deviation, the Decision in the flagged one's Basis;
+   * for value_changed, the record a Requirement's reason points at (kind is a Requirement reason
+   * kind), with the field that changed when the reason names one.
+   */
+  source: z.object({
+    kind: z.string(),
+    slug: z.string(),
+    name: z.string(),
+    field: z.string().optional(),
+  }),
   raisedAt: z.string(),
   /** Set once the user kept, reopened, or rejected the flagged Decision. */
   clearedAt: z.string().optional(),
@@ -1602,7 +1820,107 @@ export const fulfilmentSchema = z.object({
   color: colorSchema.optional(),
   /** Room color: the finish applied. */
   finish: z.string().optional(),
+  /** Purchase: what was actually bought, in one line. */
+  bought: z.string().optional(),
+  /** Purchase: the Item it added to the Inventory, by slug. */
+  item: z.string().optional(),
+  /** Purchase: the Item it replaced, now Archived, by slug. */
+  replacedItem: z.string().optional(),
+  /** Purchase: the Feature it added, by slug. */
+  feature: z.string().optional(),
+  /** Purchase: the Feature it replaced, now Archived, by slug. */
+  replacedFeature: z.string().optional(),
 });
+
+/**
+ * One line of the Quick Guide, which core assembles and never stores whole: "Measure first" lines
+ * for every must resting on an Estimated (or unrecorded) value, then the musts, then the prefers,
+ * each by position, then the AI's own lines.
+ */
+export const QUICK_GUIDE_LINE_KINDS = ["measure-first", "must", "prefer", "line"] as const;
+
+export const quickGuideLineSchema = z.object({
+  kind: z.enum(QUICK_GUIDE_LINE_KINDS),
+  /**
+   * What the line says: "Measure first: living-room/wall-5 length (~3.70 m)", a Requirement's
+   * text, or one of the AI's lines.
+   */
+  text: z.string(),
+  /** For a must or prefer: its Requirement's position. */
+  requirement: z.number().optional(),
+});
+
+export const quickGuideSchema = z.object({
+  lines: z.array(quickGuideLineSchema),
+  /** The phone page on this computer: "/guide/<decision slug>?home=<home slug>". */
+  path: z.string(),
+});
+
+/** The Full Guide's state; its Markdown only when asked for with includeFullGuide. */
+export const fullGuideSchema = z.object({
+  writtenAt: z.string(),
+  /** When a Requirement first changed after it was written; absent while it is up to date. */
+  requirementsChangedAt: z.string().optional(),
+  outOfDate: z.boolean(),
+  markdown: z.string().optional(),
+});
+
+/** A Purchase's saved Guides: the AI's Quick Guide lines and its Full Guide. */
+export const guidesSchema = z.object({
+  quickLines: z.array(z.string()),
+  /** Absent until a Full Guide is saved. */
+  fullGuide: fullGuideSchema.optional(),
+  /** In LAN mode: the Quick Guide's URL for a phone on the same network, for a QR code. */
+  lanUrl: z.string().optional(),
+});
+
+/** One Listing's result against one Requirement not Archived. */
+export const listingCheckSchema = z.object({
+  /** The Requirement's position. */
+  requirement: z.number(),
+  text: z.string(),
+  strength: z.enum(STRENGTHS),
+  result: z.enum(CHECK_RESULTS),
+  note: z.string().optional(),
+  /** true when the Requirement came after the Listing was checked: counted as unknown. */
+  unchecked: z.boolean().optional(),
+});
+
+/** A real product considered for a Purchase, checked against its Requirements. */
+export const listingSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  url: z.string().optional(),
+  price: z.string().optional(),
+  dimensions: listingDimensionsSchema.optional(),
+  photo: z.string().optional(),
+  recordedAt: z.string(),
+  /** One per Requirement not Archived, by position. */
+  checks: z.array(listingCheckSchema),
+  counts: z.object({ pass: z.number(), fail: z.number(), unknown: z.number() }),
+  /** The positions of the must Requirements it fails. */
+  failedMusts: z.array(z.number()),
+});
+
+/** A difference between what a Purchase asked for and what was bought, recorded on Fulfilment. */
+export const deviationSchema = z.object({
+  /** "<decision slug>/deviation-<n>". */
+  slug: z.string(),
+  /** The Requirement's position, text, and strength. */
+  requirement: z.number(),
+  requirementText: z.string(),
+  strength: z.enum(STRENGTHS),
+  text: z.string(),
+  recordedAt: z.string(),
+});
+
+export type QuickGuideLine = z.infer<typeof quickGuideLineSchema>;
+export type QuickGuide = z.infer<typeof quickGuideSchema>;
+export type FullGuide = z.infer<typeof fullGuideSchema>;
+export type Guides = z.infer<typeof guidesSchema>;
+export type ListingCheck = z.infer<typeof listingCheckSchema>;
+export type Listing = z.infer<typeof listingSchema>;
+export type Deviation = z.infer<typeof deviationSchema>;
 
 /** One Decision in full, for get_decision and the Decision page. Its content narrows by kind. */
 export const decisionDetailSchema = decisionSummarySchema
@@ -1634,6 +1952,14 @@ export const decisionDetailSchema = decisionSummarySchema
     conflicts: z.array(conflictSchema),
     /** Oldest first. */
     stateChanges: z.array(stateChangeSchema),
+    /** Purchase: the Quick Guide as assembled from its Requirements and Guides. */
+    quickGuide: quickGuideSchema.optional(),
+    /** Purchase: its saved Guides; absent until save_guides. */
+    guides: guidesSchema.optional(),
+    /** Purchase: its Listings, in the order they were recorded; empty for other kinds. */
+    listings: z.array(listingSchema),
+    /** Purchase: the Deviations recorded when it was Fulfilled; empty otherwise. */
+    deviations: z.array(deviationSchema),
   })
   .and(decisionKindContentSchema);
 
@@ -1677,3 +2003,46 @@ export type ListDecisionsResult = z.infer<typeof listDecisionsResult>;
 export type FindDecisionsResult = z.infer<typeof findDecisionsResult>;
 export type GetDecisionResult = z.infer<typeof getDecisionResult>;
 export type DecisionReceiptResult = z.infer<typeof decisionReceiptResult>;
+
+// ─── Purchase results (slice 6) ─────────────────────────────────────────────────────────────
+
+/** One Purchase as the Shopping section lists it. */
+export const shoppingEntrySchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  statement: z.string(),
+  state: z.enum(DECISION_STATES),
+  /** Absent for a Home-wide Purchase. */
+  room: namedRefSchema.optional(),
+  /** How many Requirements it has, not Archived. */
+  requirements: z.object({ must: z.number(), prefer: z.number() }),
+  /** Whether its Quick Guide lines or Full Guide are saved. */
+  hasGuides: z.boolean(),
+  fullGuideOutOfDate: z.boolean(),
+  listings: z.number(),
+  /** Its Quick Guide's "Measure first" lines, in full. */
+  measureFirst: z.array(z.string()),
+  openFlags: z.number(),
+});
+
+/**
+ * get_shopping: the Shopping List (Locked Purchases not yet Fulfilled) and Considering (Candidate
+ * and Leaning ones), each Home-wide first and then by Room, in the order they were created.
+ */
+export const getShoppingResult = z.object({
+  shoppingList: z.array(shoppingEntrySchema),
+  considering: z.array(shoppingEntrySchema),
+});
+
+/** export_shopping_list, export_guides, and get_guide_page: a file to serve as it is. */
+export const exportResult = z.object({
+  /** "text/html; charset=utf-8", "text/csv; charset=utf-8", or "text/markdown; charset=utf-8". */
+  mimeType: z.string(),
+  /** A name to save it under, e.g. "fixture-home-shopping-list.csv". */
+  fileName: z.string(),
+  text: z.string(),
+});
+
+export type ShoppingEntry = z.infer<typeof shoppingEntrySchema>;
+export type GetShoppingResult = z.infer<typeof getShoppingResult>;
+export type ExportResult = z.infer<typeof exportResult>;

@@ -24,6 +24,7 @@ describe("migrate", () => {
       { id: 3 },
       { id: 4 },
       { id: 5 },
+      { id: 6 },
     ]);
     db.close();
   });
@@ -32,7 +33,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 6 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 7 });
     db.close();
   });
 
@@ -45,7 +46,14 @@ describe("migrate", () => {
     db.close();
   });
 
-  it("creates the tables of slices 1 to 4", () => {
+  it("records the field a value_changed flag's source changed", () => {
+    const db = migrate(":memory:");
+    const columns = db.prepare("PRAGMA table_info(flags)").all();
+    expect(columns).toContainEqual(expect.objectContaining({ name: "source_field", notnull: 0 }));
+    db.close();
+  });
+
+  it("creates the tables of slices 1 to 6", () => {
     const db = migrate(":memory:");
     const tables = db
       .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name")
@@ -60,12 +68,16 @@ describe("migrate", () => {
       "decision_basis",
       "decision_evidence",
       "decisions",
+      "deviations",
       "doors",
       "features",
       "flags",
+      "guides",
       "homes",
       "items",
       "levels",
+      "listing_checks",
+      "listings",
       "migrations",
       "notes",
       "requirements",

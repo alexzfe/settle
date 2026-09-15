@@ -8,6 +8,7 @@ import type {
   DecisionSummary,
   Flag,
   FlagCause,
+  Requirement,
   Resolution,
 } from "./api";
 
@@ -58,6 +59,46 @@ export const MOVES: Record<DecisionState, readonly Move[]> = {
 
 export function decisionPath(home: string, decision: string): string {
   return `/homes/${home}/decisions/${decision}`;
+}
+
+/**
+ * The page showing the record a Requirement's reason points at: a Decision's page; the Room's page
+ * for a Room or any part of it; the Items list for an Item; the Home page for the Home, a
+ * Constraint, or a Note. A Wall or Surface names its Room before a slash ("living-room/wall-2"),
+ * but a Window, Door, or Feature only starts with it ("living-room-window-2"), so it is found
+ * among the Home's `rooms`, the longest slug that starts it; undefined when none does.
+ */
+export function reasonPath(
+  home: string,
+  reason: Requirement["reason"],
+  rooms: readonly { slug: string }[] = [],
+): string | undefined {
+  const homePath = `/homes/${home}`;
+  const roomPath = (room: string) => `${homePath}/rooms/${room}`;
+  switch (reason.kind) {
+    case "decision":
+      return decisionPath(home, reason.id);
+    case "home":
+    case "constraint":
+    case "note":
+      return homePath;
+    case "item":
+      return `${homePath}/items`;
+    case "room":
+      return roomPath(reason.id);
+    case "wall":
+    case "surface":
+      return roomPath(reason.id.split("/")[0] ?? reason.id);
+    case "window":
+    case "door":
+    case "feature": {
+      const [room] = rooms
+        .map((each) => each.slug)
+        .filter((slug) => reason.id.startsWith(`${slug}-`))
+        .toSorted((a, b) => b.length - a.length);
+      return room === undefined ? undefined : roomPath(room);
+    }
+  }
 }
 
 /** How a cleared flag or resolved Conflict was settled. */

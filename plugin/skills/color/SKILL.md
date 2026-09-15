@@ -193,6 +193,10 @@ When the conversation reaches a question another Skill owns (a paint color belon
 
 When the Skill that owns the question isn't available in this conversation, say so and park it.
 
+### Kept off the Palette
+
+When the user keeps something whose colors aren't in the Palette, on purpose ("this poster stays"), don't argue and don't make it a Color question. Save a Note with `save_note` naming the Item and its colors ("The cobalt and orange poster in the hallway stays, off the Palette, by choice"), say in one sentence what it means for the Palette ("The Palette stays as it is, and nothing new will be matched to the poster's cobalt."), and carry on.
+
 ### Changing a Decision
 
 - A new Decision starts as a Candidate. Move it to Leaning with `set_decision_state` as the user's view firms up.

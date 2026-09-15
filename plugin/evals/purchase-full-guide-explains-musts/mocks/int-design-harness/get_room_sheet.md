@@ -1,0 +1,47 @@
+Room: Living room (living-room)
+Level: Ground (storey 0)
+Functions: living, dining
+Ceiling height: 2.60 m
+Times of use: evening, night
+
+Walls, clockwise:
+- living-room/wall-1: 5.20 m; faces S; outside; sky partly blocked by deciduous trees; "bay wall"
+- living-room/wall-2: 2.10 m
+- living-room/wall-3: 1.50 m; "chimney wall"; Surface: wallpaper, color ~teal leaf print
+- living-room/wall-4: 1.80 m
+- living-room/wall-5: ~3.70 m; faces W; outside
+- living-room/wall-6: 3.90 m
+
+Windows:
+- living-room-window: in living-room/wall-1; bay; 2.40 × 1.50 m (W × H); sill 0.45 m; ~1.40 m from the Wall's start
+- living-room-window-2: in living-room/wall-5; width ~0.90 m
+
+Doors:
+- hallway-living-room-door: in living-room/wall-6, to Hallway (hallway) at hallway/wall-2; clear width 0.76 m
+
+Surfaces:
+- walls: plaster, color Setting Plaster (Farrow & Ball No. 231), LRV 63, matt finish
+- ceiling: plaster, color ~white
+- floor: oak boards (living end), terracotta tiles (dining end)
+- woodwork: color ~white, gloss finish
+
+Features:
+- Radiator (living-room-radiator): on living-room/wall-1, under the bay window; 1.20 × 0.60 × 0.10 m (W × H × D)
+- Fireplace (living-room-fireplace): cast iron, not working; on living-room/wall-3
+- Light point (living-room-light-point): ceiling centre
+
+Lights:
+- Pendant lamp (pendant-lamp), Item: ambient, 2700 K, 800 lm, dim-to-warm
+
+Items:
+- Sofa (sofa): seating; against living-room/wall-6; 2.10 × 0.95 × 0.85 m (W × D × H); ~warm grey; linen; worn
+- Dining chair (dining-chair): seating; ×6; dining end; oak
+- Pendant lamp (pendant-lamp): lighting; on the ceiling point
+- Bookcase (bookcase): storage; against living-room/wall-4; ~0.80 × ~0.30 × ~1.80 m (W × D × H); IKEA Billy
+
+Decisions:
+- Calm evenings (calm-evenings): Room Direction, Locked. A low, warm room for long evenings.
+- Wool rug (wool-rug): Purchase, Leaning; 1 open flag. A large wool rug under the sofa.
+- Living room walls in Jitney (living-room-walls-in-jitney): Room color, Locked. The living room walls in Jitney, matt, for a warmer glow in the evenings.
+
+Gaps: none

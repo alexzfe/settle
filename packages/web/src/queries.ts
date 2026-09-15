@@ -19,6 +19,8 @@ export const queryKeys = {
   /** The Decision lists, each ending in its filter, and the Decision pages, in the slug. */
   decisions: (home: string) => ["decisions", home],
   decision: (home: string, decision: string) => ["decisions", home, decision],
+  /** A Purchase with its Full Guide in full, refreshed whenever its Decision page is. */
+  fullGuide: (home: string, decision: string) => ["decisions", home, decision, "full-guide"],
 } as const;
 
 export function useHomes() {
@@ -94,6 +96,15 @@ export function useDecision(home: string, decision: string) {
   return useQuery({
     queryKey: queryKeys.decision(home, decision),
     queryFn: () => call("get_decision", { home, decision }),
+  });
+}
+
+/** A Purchase with its Full Guide in full, fetched only once `enabled`: one tap away. */
+export function useFullGuide(home: string, decision: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.fullGuide(home, decision),
+    queryFn: () => call("get_decision", { home, decision, includeFullGuide: true }),
+    enabled,
   });
 }
 

@@ -4,6 +4,7 @@ import { migrate } from "./migrate.js";
 import type {
   BlueprintFileType,
   BuildingType,
+  CheckResult,
   Color,
   CompassPoint,
   Condition,
@@ -17,6 +18,7 @@ import type {
   GlassKind,
   ItemCategory,
   Light,
+  ListingDimensions,
   Material,
   Measurement,
   Obstruction,
@@ -291,6 +293,56 @@ export interface RequirementRow {
   archivedAt: string | null;
 }
 
+/** A Purchase's Guides: the AI's Quick Guide lines and its Full Guide. */
+export interface GuideRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  /** <decision slug>/guides */
+  slug: string;
+  quickLines: string[];
+  fullMarkdown: string | null;
+  /** When the Full Guide was last written. */
+  writtenAt: string | null;
+  /** When a Requirement first changed after the Full Guide was written: it is out of date. */
+  requirementsChangedAt: string | null;
+  /** Names the Quick Guide on the LAN listener; random, and never changes. */
+  lanToken: string;
+}
+
+export interface ListingRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  slug: string;
+  name: string;
+  url: string | null;
+  price: string | null;
+  dimensions: ListingDimensions | null;
+  photoPath: string | null;
+  recordedAt: string;
+}
+
+export interface ListingCheckRow {
+  id: number;
+  homeId: number;
+  listingId: number;
+  requirementId: number;
+  result: CheckResult;
+  note: string | null;
+}
+
+export interface DeviationRow {
+  id: number;
+  homeId: number;
+  decisionId: number;
+  /** <decision slug>/deviation-<n> */
+  slug: string;
+  requirementId: number;
+  text: string;
+  recordedAt: string;
+}
+
 export interface FlagRow {
   id: number;
   homeId: number;
@@ -298,8 +350,11 @@ export interface FlagRow {
   /** <decision slug>/flag-<n> */
   slug: string;
   cause: FlagCause;
+  /** "decision", or for value_changed the Requirement reason kind of the changed record. */
   sourceKind: string;
   sourceId: number;
+  /** For value_changed: the field that changed. */
+  sourceField: string | null;
   raisedAt: string;
   clearedAt: string | null;
   resolution: Resolution | null;
@@ -388,6 +443,10 @@ export interface HomeTables {
   flags: FlagRow;
   conflicts: ConflictRow;
   state_changes: StateChangeRow;
+  guides: GuideRow;
+  listings: ListingRow;
+  listing_checks: ListingCheckRow;
+  deviations: DeviationRow;
 }
 
 export type HomeTable = keyof HomeTables;
@@ -449,7 +508,11 @@ const SESSION_COLUMNS =
   "opening_sent AS openingSent, summary";
 
 // Columns that are not plain text or numbers. Every other column maps to its camelCase key as is.
-const MEASUREMENT_KEYS = new Set([
+/**
+ * The field registry of lengths: every row key that holds a length with Provenance, whatever the
+ * record kind. The Provenance rule, receipts, and the Quick Guide's "Measure first" read it.
+ */
+export const MEASUREMENT_KEYS: ReadonlySet<string> = new Set([
   "liftDoorWidth",
   "liftCarDepth",
   "accessWidth",
@@ -481,6 +544,8 @@ const JSON_KEYS = new Set([
   "textLines",
   "content",
   "fulfilment",
+  "quickLines",
+  "dimensions",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 

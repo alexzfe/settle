@@ -21,12 +21,23 @@ Statement: A large wool rug under the sofa.
 Requirements:
 1. must: At least 2.0 × 1.4 m (reason: Wall living-room/wall-2, length)
 2. prefer: Wool, low pile: loops catch the cats' claws (reason: Constraint Two cats (two-cats))
+3. must: No longer than 3.4 m, to keep the walk past the west window clear (reason: Wall living-room/wall-5, length)
+4. prefer: Warm terracotta, the Palette's accent, or close to it (reason: Decision Warm clay (warm-clay))
+
+Quick Guide, besides the Requirements:
+- Measure first: living-room/wall-5 length (~3.70 m)
+- Avoid loop pile and viscose blends: claws catch in loops, and viscose marks
+- Rub the pile hard: more than a little fluff means months of shedding
+- Turn a corner back: a stiff latex backing cracks on the tiles
+
+Full Guide: written 2026-09-14, up to date; includeFullGuide shows it
 
 Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
 Basis:
 - Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
 - Calm evenings (calm-evenings): Room Direction, Locked
 
 Evidence:

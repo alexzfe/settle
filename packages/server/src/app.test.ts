@@ -217,6 +217,7 @@ describe("the MCP endpoint", () => {
       ["save_note", false],
       ["save_decision", false],
       ["set_decision_state", false],
+      ["save_guides", false],
       ["record_fulfilment", false],
       ["flag_conflict", false],
       ["close_session", false],
@@ -258,6 +259,41 @@ describe("the MCP endpoint", () => {
   it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @idh/server tools:json)", async () => {
     const saved = JSON.parse(readFileSync(TOOLS_JSON, "utf8")) as unknown;
     expect(await listTools(app, PORT)).toEqual(saved);
+  });
+});
+
+describe("Purchases", () => {
+  it("saves the Guides of a Purchase over MCP, and refuses save_guides on a closed Session", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const opened = await callTool("my-flat", "open_session", { skill: "purchase" });
+    const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1] ?? "";
+    const tool = (name: string, args: Record<string, unknown>) =>
+      callTool("my-flat", name, { session, ...args });
+    await tool("save_room", { name: "Living room" });
+    await tool("save_decision", {
+      kind: "purchase",
+      room: "living-room",
+      title: "Wool rug",
+      statement: "A wool rug.",
+      requirements: [
+        { text: "Wool", strength: "must", reason: { kind: "room", id: "living-room" } },
+      ],
+    });
+
+    const saved = await tool("save_guides", {
+      decision: "wool-rug",
+      quickLines: ["Avoid loop pile"],
+      fullGuide: "## Material\n\nWool.",
+    });
+    expect(saved.isError).toBeUndefined();
+    expect(saved.content[0]?.text).toContain("Full Guide written");
+    const got = await tool("get_decision", { decision: "wool-rug" });
+    expect(got.content[0]?.text).toContain("Full Guide: written");
+
+    await tool("close_session", { summary: { changed: "A rug.", open: "Nothing", next: "None" } });
+    const refused = await tool("save_guides", { decision: "wool-rug", fullGuide: "# Again" });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]?.text).toContain("is closed");
   });
 });
 

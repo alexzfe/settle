@@ -21,12 +21,14 @@ import type {
   Item,
   Level,
   Light,
+  Listing,
   Material,
   Measurement,
   Note,
   PaletteColor,
   PlannedStay,
   Provenance,
+  QuickGuideLine,
   Requirement,
   RoomDetail,
   Surface,
@@ -537,6 +539,7 @@ export function renderDecision(decision: DecisionDetail): string {
   if (decision.requirements.length > 0) {
     lines.push("", "Requirements:", ...decision.requirements.map(requirementLine));
   }
+  if (decision.kind === "purchase") lines.push(...purchaseLines(decision));
   section(
     lines,
     "Open flags",
@@ -638,6 +641,98 @@ function requirementLine(requirement: Requirement): string {
     `${requirement.position}. ${requirement.strength}: ${requirement.text} ` +
     `(reason: ${noun} ${what}${reason.field ? `, ${reason.field}` : ""})`
   );
+}
+
+/**
+ * A Purchase in get_decision: the Quick Guide's lines besides its Requirements (Measure first,
+ * then the AI's own), the Full Guide as one line or in full, then one line per Listing and per
+ * Deviation.
+ */
+function purchaseLines(decision: DecisionDetail): string[] {
+  const lines: string[] = [];
+  section(
+    lines,
+    "Quick Guide, besides the Requirements",
+    (decision.quickGuide?.lines ?? [])
+      .filter((line) => line.kind === "measure-first" || line.kind === "line")
+      .map((line) => line.text),
+  );
+  const full = decision.guides?.fullGuide;
+  if (!decision.guides) {
+    lines.push("", "Guides: none saved yet");
+  } else if (!full) {
+    lines.push("", "Full Guide: not written yet");
+  } else {
+    const state = full.outOfDate
+      ? `out of date: a Requirement changed on ${day(full.requirementsChangedAt ?? "")}`
+      : "up to date";
+    if (full.markdown === undefined) {
+      lines.push(
+        "",
+        `Full Guide: written ${day(full.writtenAt)}, ${state}; includeFullGuide shows it`,
+      );
+    } else {
+      lines.push("", `Full Guide, written ${day(full.writtenAt)}, ${state}:`, "", full.markdown);
+    }
+  }
+  section(lines, "Listings", decision.listings.map(listingLine));
+  section(
+    lines,
+    "Deviations",
+    decision.deviations.map(
+      (deviation) =>
+        `Requirement ${deviation.requirement}, ${deviation.strength} (${deviation.requirementText}): ` +
+        deviation.text,
+    ),
+  );
+  return lines;
+}
+
+/** One Listing: name, price, its pass, fail, and unknown counts, and any must it fails. */
+function listingLine(listing: Listing): string {
+  const fails = listing.checks.filter(
+    (check) => check.strength === "must" && check.result === "fail",
+  );
+  const { pass, fail, unknown } = listing.counts;
+  return (
+    `${named({ name: listing.name, slug: listing.slug })}` +
+    (listing.price ? `, ${listing.price}` : "") +
+    `: ${pass} pass, ${fail} fail, ${unknown} unknown` +
+    (fails.length > 0
+      ? `; fails must ${fails.map((check) => `${check.requirement} (${check.text})`).join(", ")}`
+      : "")
+  );
+}
+
+/**
+ * The Quick Guide, the glanceable form of a Purchase's Shopping Guide for use in the shop: its
+ * "Measure first" lines at the top, then the musts, then the prefers, then the AI's own lines.
+ */
+export function renderQuickGuide(decision: DecisionDetail): string {
+  const lines = [
+    `Quick Guide: ${titled(decision)}${decision.room ? `, ${decision.room.name}` : ""}`,
+    decision.statement,
+  ];
+  const of = (kind: QuickGuideLine["kind"]) =>
+    (decision.quickGuide?.lines ?? []).filter((line) => line.kind === kind);
+  const measure = of("measure-first");
+  if (measure.length > 0) lines.push("", ...measure.map((line) => line.text));
+  section(
+    lines,
+    "Must",
+    of("must").map((line) => line.text),
+  );
+  section(
+    lines,
+    "Prefer",
+    of("prefer").map((line) => line.text),
+  );
+  section(
+    lines,
+    "In the shop",
+    of("line").map((line) => line.text),
+  );
+  return lines.join("\n");
 }
 
 function evidenceLine(evidence: EvidenceEntry): string {
@@ -806,8 +901,10 @@ const BOOLEANS: Record<string, [string, string]> = {
   unplaced: ["moved out of its Room: now Unplaced", "placed"],
 };
 
-const label = (field: string) =>
+/** A field's name as a receipt shows it: "ceiling height", "narrowest access width". */
+export const fieldLabel = (field: string) =>
   LABELS[field] ?? field.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`);
+const label = fieldLabel;
 
 function fieldText(change: FieldChange): string {
   if (change.field === "name") return `renamed from ${String(change.was)}`;

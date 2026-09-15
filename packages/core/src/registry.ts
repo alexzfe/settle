@@ -42,6 +42,11 @@ export interface OperationContext extends CallContext {
   random(max: number): number;
   homeFolder: { port: number; repoRoot: string };
   /**
+   * In LAN mode: the address of the listener phones on the user's network reach, e.g.
+   * "http://192.168.1.20:4380", which serves only the Quick Guide pages by their tokens.
+   */
+  lanUrl?: string;
+  /**
    * Runs `fn` as one write: in a transaction, with every change it logs appended to the change
    * log from `origin` (a Session slug, or "web"), and each changed record published on the event
    * bus once the transaction commits.

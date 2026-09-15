@@ -35,7 +35,10 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * Direction and flagged because it was reopened (and then Locked again). Slice 5 adds, from a
  * Color Session, a Locked Palette "Warm clay" of four colors (one Estimated, without a code or
  * hex) resting on the Design Direction, and a Locked Room color painting the living-room walls
- * in its Jitney, not yet Fulfilled.
+ * in its Jitney, not yet Fulfilled. Slice 6 adds, from a Purchase Session, two more Requirements
+ * for the Wool rug (a must resting on the Estimated west wall, so its Quick Guide starts with a
+ * Measure first line, and a prefer resting on the Palette, which joins its Basis) and both its
+ * Guides.
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -554,5 +557,63 @@ export async function createFixtureHome(
       next: "Color again once the living room is painted, to record it.",
     },
   });
+
+  const { session: purchase } = await core.run("open_session", agent(), { skill: "purchase" });
+  const withPurchase = agent(purchase);
+  await core.run("save_decision", withPurchase, {
+    session: purchase,
+    decision: "wool-rug",
+    kind: "purchase",
+    title: "Wool rug",
+    statement: "A large wool rug under the sofa.",
+    requirements: [
+      {
+        text: "No longer than 3.4 m, to keep the walk past the west window clear",
+        strength: "must",
+        reason: { kind: "wall", id: "living-room/wall-5", field: "length" },
+      },
+      {
+        text: "Warm terracotta, the Palette's accent, or close to it",
+        strength: "prefer",
+        reason: { kind: "decision", id: "warm-clay" },
+      },
+    ],
+  });
+  await core.run("save_guides", withPurchase, {
+    session: purchase,
+    decision: "wool-rug",
+    quickLines: [
+      "Avoid loop pile and viscose blends: claws catch in loops, and viscose marks",
+      "Rub the pile hard: more than a little fluff means months of shedding",
+      "Turn a corner back: a stiff latex backing cracks on the tiles",
+    ],
+    fullGuide: WOOL_RUG_GUIDE,
+  });
+  await core.run("close_session", withPurchase, {
+    session: purchase,
+    summary: {
+      changed: "Two more Requirements for the wool rug, and both its Guides.",
+      open: "The west wall of the living room needs measuring before buying the rug.",
+      next: "Purchase again with a rug to check against the Requirements.",
+    },
+  });
   return { core, home: home.slug, session };
 }
+
+/** The Wool rug's Full Guide: every must explains why. */
+const WOOL_RUG_GUIDE = `## Size
+
+- **At least 2.0 × 1.4 m** (must). The sofa's front legs should stand on the rug, or it floats
+  and the seating looks smaller; the wall behind it is 2.1 m, as printed on the plan.
+- **No longer than 3.4 m** (must). About 30 cm must stay clear along the west window wall to
+  walk past. That wall was only estimated at 3.7 m, so measure it before buying.
+
+## Material
+
+- **Wool, low pile** (prefer). Two cats live here: claws catch in loops, and wool shrugs off
+  scratching better than linen or viscose.
+
+## Color
+
+- **Warm terracotta** (prefer). The accent of the Warm clay Palette, echoing the dining-end
+  tiles; a rug is the one large surface in the room that can carry it.`;

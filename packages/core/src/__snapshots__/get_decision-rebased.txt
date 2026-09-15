@@ -1,5 +1,6 @@
 # set_decision_state: the Palette Rejected, flagging the Room color resting on it
 Warm clay (warm-clay): Rejected, was Locked
+Flagged for review: Wool rug (wool-rug), which rests on Warm clay (warm-clay), now rejected
 Flagged for review: Living room walls in Jitney (living-room-walls-in-jitney), which rests on Warm clay (warm-clay), now rejected
 
 # set_decision_state: the Room color kept, so it now rests on the Palette in force

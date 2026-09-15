@@ -56,6 +56,25 @@ const TOOLS = {
     "save_note",
     "close_session",
   ],
+  purchase: [
+    "open_session",
+    "get_room_sheet",
+    "find_items",
+    "find_decisions",
+    "get_decision",
+    "search_notes",
+    "save_home",
+    "save_room",
+    "save_decision",
+    "set_decision_state",
+    "save_guides",
+    "record_listing",
+    "record_fulfilment",
+    "flag_conflict",
+    "set_constraints",
+    "save_note",
+    "close_session",
+  ],
 } as const;
 
 type Skill = keyof typeof TOOLS;
@@ -392,6 +411,85 @@ Next, the Kitchen's woodwork, which has nothing recorded yet:
 1. **Colour.** *(Recommended: Pointing, the Palette's warm white, as for the other woodwork.)*
 2. **Finish.** *(Recommended: satin, which wipes clean.)*`;
 
+// ─── Purchase cases ─────────────────────────────────────────────────────────────────────────
+// The Fixture Home with its Design Direction and its Palette "Warm clay" both Locked, as the
+// suite's purchase opening has them. Each case's own find_decisions mock finds no Rejected
+// Purchase.
+
+/**
+ * A Purchase Session's start on one Room: the opening, the Room's Sheet, the Notes on the thing,
+ * then the Room's Rejected Purchases.
+ */
+function purchaseRoomStart(
+  context: HistoryContext,
+  message: string,
+  room: string,
+  query: string,
+): { turns: Turn[]; session: string } {
+  const { turns, session } = opening(context, message, "purchase");
+  const sheet = { session, room };
+  const notes = { session, query };
+  const lookup = { session, room, kind: "purchase", state: "rejected" };
+  return {
+    session,
+    turns: [
+      ...turns,
+      { tool: "get_room_sheet", input: sheet, result: context.answer("get_room_sheet", sheet) },
+      { tool: "search_notes", input: notes, result: context.answer("search_notes", notes) },
+      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+    ],
+  };
+}
+
+const SOFA_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the sofa's materials and colours come from them. There's also a flag on the *Wool rug* and a Conflict on *Keep the original floors*, which can wait.
+
+Here's what the living room gives us. The sofa stands on Wall 6, which is 3.90 m and also holds the door in from the hallway. The one there now is 2.10 m wide, 0.95 m deep, and 0.85 m tall, in a worn warm-grey linen. The way in is tight: the front door is the narrowest point, at 0.76 m, and the living room door is 0.76 m too. And you have two cats, which you've noted scratch fabric furniture.
+
+First round:
+
+1. **Width.** How wide can it be? *(Recommended: no wider than 2.20 m, so it stays clear of the door on Wall 6.)*
+2. **Getting it in.** *(Recommended: it must get through a 0.76 m doorway, with its legs off if need be.)*
+3. **Cover.** *(Recommended: a tightly woven wool, which stands up to claws; no loops or loose weave.)*
+4. **Colour.** *(Recommended: Jitney, the Palette's warm stone for the living room, or close to it; the terracotta can come in with cushions.)*
+5. **Legs.** *(Recommended: oak, one of the Direction's key materials.)*`;
+
+const SOFA_ANSWERS =
+  "1, yes, no wider than 2.20 m. 2, yes, it has to get in. 3, wool, definitely. 4, Jitney or close to it. 5, oak legs. Please save what we've agreed so far.";
+
+const SOFA_SAVED = `Saved as a Candidate: Purchase 'Living room sofa', with 5 Requirements. The Palette joined its Basis, since its colour comes from Warm clay.
+
+**Must**
+1. At most 2.20 m wide: from the living room's Wall 6 (3.90 m), which also holds the door.
+2. Gets through a 0.76 m doorway, legs off if need be: from the narrowest point on the way in, the front door (0.76 m).
+3. A tightly woven wool cover, no loops or loose weave: because of the two cats.
+
+**Prefer**
+4. Cover in Jitney, or close to it: from the Palette, Warm clay.
+5. Oak legs: from the Design Direction's key materials.
+
+That covers size, access, cover, colour, and legs, so we could stop here. Shall I write the Quick Guide for the shop and the Full Guide to read ahead? *(Recommended: yes.)*`;
+
+/** The living room sofa's first round, answered. */
+function sofaHistory(context: HistoryContext): { turns: Turn[]; session: string } {
+  const { turns, session } = purchaseRoomStart(
+    context,
+    "Our sofa is worn out. We need a new one for the living room.",
+    "living-room",
+    "sofa cats",
+  );
+  return { session, turns: [...turns, { assistant: SOFA_ROUND }] };
+}
+
+const ALCOVE_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked.
+
+The alcove by the stairs is the Hallway's Wall 4, next to the understairs cupboard on Wall 3, and it is recorded as 1.20 m wide. The Hallway is windowless and narrow, with encaustic tiles underfoot, so a cabinet there should be slim and light-looking. First round:
+
+1. **What it holds.** Shoes only, or scarves and bags too? *(Recommended: shoes, with a top for keys and post.)*
+2. **Width.** *(Recommended: at most 1.15 m wide, leaving a little room either side.)*
+3. **Depth.** *(Recommended: at most 30 cm deep, so the Hallway stays easy to pass.)*
+4. **Material.** *(Recommended: oak, one of the Direction's key materials.)*
+5. **Finish.** Bare oak, or painted? *(Recommended: bare oak; if painted, Pointing, the Palette's warm white, as for the woodwork.)*`;
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -589,4 +687,81 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
       { assistant: KITCHEN_LOCKED },
     ];
   },
+
+  // Graded turn: the user answers the first round about a sofa and asks to save. Every
+  // Requirement saved has a reason naming a real record, and the reply says where each comes from.
+  "purchase-traces-every-requirement": (context) => sofaHistory(context).turns,
+
+  // Graded turn: the Candidate sofa has five Requirements, three of them musts, and the user asks
+  // for both Guides. Every must in the Full Guide explains why.
+  "purchase-full-guide-explains-musts": (context) => {
+    const { turns, session } = sofaHistory(context);
+    const save = {
+      session,
+      kind: "purchase",
+      room: "living-room",
+      title: "Living room sofa",
+      statement: "A new sofa for the living room, replacing the worn grey one.",
+      requirements: [
+        {
+          text: "At most 2.20 m wide",
+          strength: "must",
+          reason: { kind: "wall", id: "living-room/wall-6", field: "length" },
+        },
+        {
+          text: "Gets through a 0.76 m doorway, legs off if need be",
+          strength: "must",
+          reason: { kind: "home", field: "accessWidth" },
+        },
+        {
+          text: "A tightly woven wool cover, no loops or loose weave",
+          strength: "must",
+          reason: { kind: "constraint", id: "two-cats" },
+        },
+        {
+          text: "Cover in Jitney, or close to it",
+          strength: "prefer",
+          reason: { kind: "decision", id: "warm-clay" },
+        },
+        {
+          text: "Oak legs",
+          strength: "prefer",
+          reason: { kind: "decision", id: "warm-minimalism" },
+        },
+      ],
+    };
+    const of = "Living room sofa (living-room-sofa)";
+    return [
+      ...turns,
+      { user: SOFA_ANSWERS },
+      // The suite's save_decision mock answers with another Purchase, so the create gets its
+      // receipt in core's wording here.
+      {
+        tool: "save_decision",
+        input: save,
+        result: [
+          `${of}: created as a Candidate Purchase for Living room (living-room); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Warm clay (warm-clay), the Palette, automatically`,
+          `Requirement 1 of ${of}: added: must, At most 2.20 m wide (reason: Wall living-room/wall-6, length)`,
+          `Requirement 2 of ${of}: added: must, Gets through a 0.76 m doorway, legs off if need be (reason: Home Fixture Home (fixture-home), accessWidth)`,
+          `Requirement 3 of ${of}: added: must, A tightly woven wool cover, no loops or loose weave (reason: Constraint Two cats (two-cats))`,
+          `Requirement 4 of ${of}: added: prefer, Cover in Jitney, or close to it (reason: Decision Warm clay (warm-clay))`,
+          `Requirement 5 of ${of}: added: prefer, Oak legs (reason: Decision Warm minimalism (warm-minimalism))`,
+        ].join("\n"),
+      },
+      { assistant: SOFA_SAVED },
+    ];
+  },
+
+  // Graded turn: the user answers the first round about a cabinet for the Hallway's alcove, whose
+  // width the case's own Room Sheet gives as Estimated, and asks to save. The reply carries a
+  // Measure-first line and offers to record the measurement.
+  "purchase-measures-first-on-estimate": (context) => [
+    ...purchaseRoomStart(
+      context,
+      "We want a shoe cabinet for the little alcove in the hallway, by the stairs.",
+      "hallway",
+      "shoes hallway",
+    ).turns,
+    { assistant: ALCOVE_ROUND },
+  ],
 };

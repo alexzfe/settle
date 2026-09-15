@@ -24,6 +24,8 @@ const blank = {
   basis: [],
   evidence: [],
   requirements: [],
+  listings: [],
+  deviations: [],
   flags: [],
   conflicts: [],
   openFlags: [],

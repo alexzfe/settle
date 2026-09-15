@@ -36,8 +36,10 @@ import {
 } from "./operations/homes.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
+import { saveGuides } from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
 import { closeSession, openSession } from "./operations/sessions.js";
+import { optional } from "./optional.js";
 import type { CallContext, Operation, OperationContext } from "./registry.js";
 import { openStore, type Store } from "./store.js";
 
@@ -78,6 +80,7 @@ const operations = {
   save_note: saveNote,
   save_decision: saveDecision,
   set_decision_state: setDecisionState,
+  save_guides: saveGuides,
   record_fulfilment: recordFulfilment,
   flag_conflict: flagConflict,
   close_session: closeSession,
@@ -114,6 +117,8 @@ export interface CoreOptions {
   renderPdf?: PdfRenderer;
   clock?: () => Date;
   random?: (max: number) => number;
+  /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
+  lanUrl?: string;
 }
 
 export interface Core {
@@ -158,6 +163,7 @@ export function createCore(options: CoreOptions = {}): Core {
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
     homeFolder: { port: options.port ?? 4380, repoRoot: options.repoRoot ?? REPO_ROOT },
+    ...optional({ lanUrl: options.lanUrl }),
     write<T>(origin: string, fn: Parameters<OperationContext["write"]>[1]): T {
       const events: ChangeEvent[] = [];
       const result = store.transaction(() =>

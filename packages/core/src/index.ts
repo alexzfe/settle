@@ -43,6 +43,7 @@ export {
   renderItems,
   renderNotes,
   renderOpening,
+  renderQuickGuide,
   renderReceipt,
   renderRoomSheet,
   renderViewedPages,
