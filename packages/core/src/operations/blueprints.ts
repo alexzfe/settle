@@ -37,7 +37,8 @@ export const uploadBlueprint = defineOperation({
     "Adds a Blueprint to the Home from an uploaded PDF, PNG, or JPEG, sent as a multipart form. " +
     "Keeps a copy of the file in the data dir's uploads/, renders every page to a PNG 2000 px on " +
     "its long edge in rendered/, and stores each page's size and text layer. Refuses a file that " +
-    "has no pages with no_pages, and any other kind of file, HEIC included, with unsupported_file.",
+    "has no pages, or a page that can't be rendered, with no_pages, and any other kind of file, " +
+    "HEIC included, with unsupported_file. An upload that fails leaves no file behind.",
   input: uploadBlueprintInput,
   readOnly: false,
   surface: "web",
@@ -50,11 +51,18 @@ export const uploadBlueprint = defineOperation({
     const slug = uniqueSlug(label, "blueprint", (taken) =>
       store.slugTaken("blueprints", taken, home.id),
     );
+    // The slug is new, so its rendered/ folder and its upload belong to this upload alone: when a
+    // page fails to render, a write fails, or the transaction does, both are removed again.
+    const renderedDir = join("rendered", home.slug, slug);
+    const filePath = join("uploads", home.slug, `${slug}.${EXTENSIONS[type]}`);
     const pages: Omit<BlueprintPageRow, "id" | "blueprintId">[] = [];
     try {
       for (let page = 1; page <= doc.pageCount; page++) {
-        const image = doc.renderPage(page, { longEdge: PAGE_LONG_EDGE });
-        const pngPath = join("rendered", home.slug, slug, `page-${page}.png`);
+        const { image, textLines } = renderUploadPage(input.fileName, page, () => ({
+          image: doc.renderPage(page, { longEdge: PAGE_LONG_EDGE }),
+          textLines: doc.textLines(page, PAGE_LONG_EDGE),
+        }));
+        const pngPath = join(renderedDir, `page-${page}.png`);
         files.writeBytes(join(context.dataDir(), pngPath), image.png);
         pages.push({
           homeId: home.id,
@@ -63,39 +71,57 @@ export const uploadBlueprint = defineOperation({
           pngPath,
           widthPx: image.width,
           heightPx: image.height,
-          textLines: doc.textLines(page, PAGE_LONG_EDGE),
+          textLines,
         });
       }
+      files.writeBytes(join(context.dataDir(), filePath), input.file);
+
+      return context.write("web", (log) => {
+        const blueprint = store.insert("blueprints", {
+          homeId: home.id,
+          slug,
+          label,
+          fileName: input.fileName,
+          fileType: type,
+          filePath,
+          pageCount: pages.length,
+          uploadedAt: context.now(),
+        });
+        log({
+          home,
+          recordKind: "blueprint",
+          record: blueprint,
+          new: { label, fileName: input.fileName, pageCount: pages.length },
+        });
+        const rows = pages.map((page) =>
+          store.insert("blueprint_pages", { ...page, blueprintId: blueprint.id }),
+        );
+        return { blueprint: toBlueprint(store.levels(home.id), rows, blueprint) };
+      });
+    } catch (error) {
+      files.remove(join(context.dataDir(), renderedDir));
+      files.remove(join(context.dataDir(), filePath));
+      throw error;
     } finally {
       doc.close();
     }
-    const filePath = join("uploads", home.slug, `${slug}.${EXTENSIONS[type]}`);
-    files.writeBytes(join(context.dataDir(), filePath), input.file);
-
-    return context.write("web", (log) => {
-      const blueprint = store.insert("blueprints", {
-        homeId: home.id,
-        slug,
-        label,
-        fileName: input.fileName,
-        fileType: type,
-        filePath,
-        pageCount: pages.length,
-        uploadedAt: context.now(),
-      });
-      log({
-        home,
-        recordKind: "blueprint",
-        record: blueprint,
-        new: { label, fileName: input.fileName, pageCount: pages.length },
-      });
-      const rows = pages.map((page) =>
-        store.insert("blueprint_pages", { ...page, blueprintId: blueprint.id }),
-      );
-      return { blueprint: toBlueprint(store.levels(home.id), rows, blueprint) };
-    });
   },
 });
+
+/** One page of an upload, rendered; a page the renderer fails on refuses the upload with no_pages. */
+function renderUploadPage<T>(fileName: string, page: number, render: () => T): T {
+  try {
+    return render();
+  } catch (error) {
+    if (error instanceof CoreError) throw error;
+    const detail = error instanceof Error ? ` (${error.message})` : "";
+    throw new CoreError(
+      "no_pages",
+      `Page ${page} of ${fileName} could not be rendered${detail}, so the Blueprint was not ` +
+        "added. The file may be damaged: export or download it again, then upload the new copy.",
+    );
+  }
+}
 
 export const listBlueprints = defineOperation({
   name: "list_blueprints",

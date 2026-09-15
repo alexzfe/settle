@@ -233,6 +233,32 @@ describe("Archiving, not deleting", () => {
     expect(opening.opening).not.toContain("no painting");
   });
 
+  it("adding a Constraint logs the user's permission as the change's reason", async () => {
+    const my = await setUp();
+    const reason = 'The user: "yes, add that we have two cats"';
+    await my.setConstraints({ add: ["Two cats"], reason });
+
+    const { changes } = await core.run("get_change_log", web, { home: my.home });
+    expect(changes.find((change) => change.record === "two-cats")).toEqual(
+      expect.objectContaining({ reason }),
+    );
+  });
+
+  it.each([undefined, "", "   "])(
+    "removing a Constraint from a Session is refused with reason_required for the reason %j, and keeps it",
+    async (reason) => {
+      const my = await setUp();
+      await my.setConstraints({ add: ["Two cats"] });
+
+      const error = await refusal(my.setConstraints({ remove: ["two-cats"], reason }));
+
+      expect(error.code).toBe("reason_required");
+      expect(error.message).toContain("quoting the user's words");
+      const { constraints } = await core.run("list_constraints", web, { home: my.home });
+      expect(constraints.map((each) => each.slug)).toEqual(["two-cats"]);
+    },
+  );
+
   it("archiving a Room keeps it and its slug, and a Door to it keeps working", async () => {
     const my = await setUp();
     await my.saveRoom({ name: "Hallway", walls: [{ position: 1 }] });
@@ -416,7 +442,7 @@ describe("Home scoping of every write", () => {
       ),
       refusal(mine.saveItems({ items: [{ name: "Chair", category: "seating", room: "garden" }] })),
       refusal(mine.saveItems({ items: [{ item: "deckchair", quantity: 2 }] })),
-      refusal(mine.setConstraints({ remove: ["two-cats"] })),
+      refusal(mine.setConstraints({ remove: ["two-cats"], reason: "The user: remove it" })),
       refusal(mine.findItems({ room: "garden" })),
     ]);
 

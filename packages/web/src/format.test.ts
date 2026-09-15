@@ -12,8 +12,14 @@ import {
 describe("formatLength", () => {
   it("shows millimetres as metres with two decimals, Estimated ones marked with ~", () => {
     expect(formatLength({ mm: 3620, provenance: "measured" })).toBe("3.62 m");
-    expect(formatLength({ mm: 3505, provenance: "blueprint" })).toBe("3.51 m");
     expect(formatLength({ mm: 1200, provenance: "estimated" })).toBe("~1.20 m");
+  });
+
+  // The same lengths as core's render.test.ts, so the page and the Agent round alike.
+  it("rounds to whole centimetres first, as core's length does", () => {
+    expect(formatLength({ mm: 3505, provenance: "blueprint" })).toBe("3.51 m");
+    expect(formatLength({ mm: 2505, provenance: "measured" })).toBe("2.51 m");
+    expect(formatLength({ mm: 2504, provenance: "estimated" })).toBe("~2.50 m");
   });
 });
 

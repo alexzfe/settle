@@ -10,7 +10,7 @@ import {
   FIXTURE_ROOMS,
   type FixtureHome,
 } from "./fixture/fixture-home.js";
-import { renderQuickGuide } from "./render.js";
+import { length, renderQuickGuide } from "./render.js";
 import { slugify } from "./slug.js";
 
 let fixture: FixtureHome;
@@ -286,7 +286,11 @@ it("renders the receipts of save_home, save_items, set_constraints, and save_not
         { item: "kitchen-table", unplaced: true },
       ],
     }),
-    await run("set_constraints", { add: ["Two cats", "No smoking"], remove: ["two-cats"] }),
+    await run("set_constraints", {
+      add: ["Two cats", "No smoking"],
+      remove: ["two-cats"],
+      reason: 'The user: "the cats moved out with my sister"',
+    }),
     await run("save_note", { text: "The landlord visits every spring" }),
   ];
   await expect(receipts.join("\n\n")).toMatchFileSnapshot(snapshot("receipts-other"));
@@ -408,6 +412,13 @@ describe("Decision receipts", () => {
       decision: "storage-in-the-hallway",
       to: "locked",
       reason: 'The user: "yes, storage it is"',
+    });
+    // The Reopen above flagged it, and a flagged Decision is Fulfilled only once it is kept.
+    await own.core.run("set_decision_state", ownAgent(session), {
+      session,
+      decision: "storage-in-the-hallway",
+      to: "locked",
+      reason: 'The user: "the hallway still holds the coats"',
     });
     receipts.push(
       await run("record_fulfilment", {
@@ -632,6 +643,18 @@ describe("Purchase receipts", () => {
       reason: 'The user: "the Hay rug, lock it"',
     });
     add(
+      "record_fulfilment: refused while the rug is flagged",
+      await refusal("record_fulfilment", { decision: "wool-rug", bought: "Hay Plain rug" }),
+    );
+    add(
+      "set_decision_state: the rug kept, clearing its flags",
+      await run("set_decision_state", {
+        decision: "wool-rug",
+        to: "locked",
+        reason: 'The user: "the wall is fine and so is the room; keep it"',
+      }),
+    );
+    add(
       "record_fulfilment: the rug bought, longer than asked and rust, flagging the rug pad",
       await run("record_fulfilment", {
         decision: "wool-rug",
@@ -800,3 +823,13 @@ function measured(mm: number) {
 function estimated(mm: number) {
   return { mm, provenance: "estimated" as const };
 }
+
+describe("length", () => {
+  // The same lengths as the web's format.test.ts, so the Agent and the page round alike.
+  it("rounds to whole centimetres first, as the web's formatLength does", () => {
+    expect(length(measured(3620))).toBe("3.62 m");
+    expect(length(measured(3505))).toBe("3.51 m");
+    expect(length(measured(2505))).toBe("2.51 m");
+    expect(length(estimated(2504))).toBe("~2.50 m");
+  });
+});

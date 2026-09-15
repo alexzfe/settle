@@ -76,4 +76,4 @@ Home Intake records the Home. When the user asks for design advice, colors, or s
 
 ## Closing
 
-Close when the user is done (see "Closing"). In `open`, list the Rooms whose Gaps remain; in `next`, suggest what to record next time; when the Rooms are recorded and the Home has no Design Direction yet, suggest settling it next in Design Direction, naming the Skill, since it fires only when asked for.
+Close when the user is done (see "Closing"). In `open`, list the Rooms whose Gaps remain; in `next`, suggest what to record next time. When the Rooms are recorded, call `find_decisions` with `kind: "design-direction"` first: if the Home has no Design Direction yet (none, or only Rejected ones), suggest settling it next in Design Direction, naming the Skill, since it fires only when asked for.

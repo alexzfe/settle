@@ -188,6 +188,16 @@ it("keeps an uploaded Blueprint and its rendered pages in the data dir", async (
   expect(page.headers.get("content-type")).toBe("image/png");
 });
 
+it("writes the port it listens on into a Home Folder's .mcp.json when started on port 0", async () => {
+  await api("create_home", { name: "Folder home", country: "GB", city: "London" });
+  const folder = join(root, "folder-home");
+
+  await api("set_up_home_folder", { home: "folder-home", path: folder });
+
+  const mcp = JSON.parse(readFileSync(join(folder, ".mcp.json"), "utf8"));
+  expect(mcp.mcpServers["int-design-harness"].url).toBe(`${server.url}/mcp/homes/folder-home`);
+});
+
 async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {
   return (await nextChanges(reader, 1))[0];
 }

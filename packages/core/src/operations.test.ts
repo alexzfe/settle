@@ -421,6 +421,7 @@ describe("set_up_home_folder", () => {
       writeText: (path, text) => void written.set(path, text),
       readBytes: () => undefined,
       writeBytes: () => {},
+      remove: () => {},
     };
     const other = createCore({ files, port: 4390 });
     try {

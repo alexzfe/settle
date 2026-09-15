@@ -1056,7 +1056,10 @@ export function length(measurement: Measurement): string {
 
 function lengthNumber(measurement: Measurement): string {
   const tilde = measurement.provenance === "estimated" ? "~" : "";
-  return `${tilde}${(measurement.mm / 1000).toFixed(2)}`;
+  // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point. The web's
+  // `metres` (web/src/format.ts) rounds the same way, so the Agent reads what the page shows;
+  // render.test.ts and the web's format.test.ts check the same lengths.
+  return `${tilde}${(Math.round(measurement.mm / 10) / 100).toFixed(2)}`;
 }
 
 /** A length on a Room Sheet; with `sources`, a Blueprint value is followed by where it is printed. */

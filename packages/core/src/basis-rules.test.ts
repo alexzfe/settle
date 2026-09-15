@@ -331,6 +331,8 @@ describe("record_fulfilment against the stored Palette", () => {
     await setState("warm-clay", "leaning");
     await save({ ...palette("Warm clay", [SETTING_PLASTER]), decision: "warm-clay" });
     await setState("warm-clay", "locked");
+    // Fulfilment waits for the flag the Reopen raised to be settled: the user keeps it.
+    await setState("pointing-ceiling", "locked");
 
     const error = await refusal(fulfil("pointing-ceiling"));
 
@@ -352,6 +354,7 @@ describe("record_fulfilment against the stored Palette", () => {
       decision: "warm-clay",
     });
     await setState("warm-clay", "locked");
+    await setState("plaster-walls", "locked");
 
     await fulfil("plaster-walls");
 
@@ -390,6 +393,37 @@ describe("a Purchase using the Palette's colors", () => {
       ["warm-minimalism", true],
       ["warm-clay", true],
     ]);
+  });
+});
+
+describe("a Decision a Requirement's reason names", () => {
+  it("joins the Purchase's Basis as a given entry, with a receipt line, so its Reject flags the Purchase", async () => {
+    await settled();
+    await save(other("Keep the floors"));
+    await setState("keep-the-floors", "locked");
+    const oakTones = {
+      text: "Oak tones",
+      strength: "must" as const,
+      reason: { kind: "decision" as const, id: "keep-the-floors" },
+    };
+
+    const receipt = await save(cushions([oakTones]));
+    const replaced = await save({ ...cushions(), decision: "cushions", basis: [] });
+
+    expect(receipt).toContain(
+      "Cushions (cushions): created as a Candidate Purchase for Living room (living-room); " +
+        "Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; now " +
+        "rests on Keep the floors (keep-the-floors), the reason of Requirement 1",
+    );
+    expect(replaced).toContain(
+      "now rests on Keep the floors (keep-the-floors), the reason of Requirement 1",
+    );
+    expect(await basis("cushions")).toEqual([
+      ["warm-minimalism", true],
+      ["keep-the-floors", false],
+    ]);
+    await setState("keep-the-floors", "rejected");
+    expect(await flagged()).toEqual(["cushions"]);
   });
 });
 

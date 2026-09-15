@@ -64,6 +64,7 @@ const markdown = [
 type Parts = Partial<
   Pick<
     DecisionDetail,
+    | "state"
     | "quickGuide"
     | "guides"
     | "listings"
@@ -454,12 +455,28 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
   expect(href("hay-plain-rug")).toBe("/homes/flat/items");
   expect(href("old-jute-rug")).toBe("/homes/flat/items");
   // The must's first, and marked as the one that flags the Decisions resting on this one.
+  // The reason in brackets after the difference, as the receipt has it.
   expect(listAfter("Deviations")).toEqual([
     "Must: At least 2.0 × 1.4 m. Deviation: 1.9 × 2.9 m, a little narrow " +
-      "Reason: the only wool one in stock " +
+      "(the only wool one in stock) " +
       "(from a must, so every Decision resting on this one is flagged)",
     "Prefer: In the Palette's clay. Deviation: rust, not clay",
   ]);
+});
+
+it("offers no phone page, exports, or QR code for a Rejected Purchase, and says so", async () => {
+  // Core keeps a Rejected Purchase's Guides and LAN address but serves none of them.
+  const lanUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
+  showRug({ state: "rejected", quickGuide, guides: { ...guides, lanUrl } });
+  await screen.findByRole("heading", { name: "Quick Guide" });
+
+  expect(after("Quick Guide")?.nextElementSibling?.textContent).toBe(
+    "Rejected, so it has no Guides to open, print, or take shopping.",
+  );
+  expect(screen.queryByRole("navigation", { name: "The Guides elsewhere" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Phone page" })).toBeNull();
+  expect(screen.queryByRole("img", { name: /^QR code/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: lanUrl })).toBeNull();
 });
 
 it("names the changed record and field of a value_changed flag, and clears it with Keep", async () => {

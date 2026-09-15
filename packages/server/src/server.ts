@@ -65,7 +65,8 @@ export async function startServer(
     const open = createCore({
       database: join(config.dataDir, "harness.sqlite"),
       dataDir: config.dataDir,
-      port: config.port,
+      // The bound port, not config.port: with port 0 only the listener knows which it is.
+      port,
       ...(lanUrl ? { lanUrl } : {}),
     });
     core = open;

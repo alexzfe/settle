@@ -10,12 +10,14 @@ import { mupdfRenderer } from "./blueprints/mupdf.js";
 import {
   type CallContext,
   type Core,
+  type CoreOptions,
   createCore,
   type OperationInput,
   type OperationName,
 } from "./core.js";
 import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
+import { nodeFileStore, type PdfRenderer } from "./files.js";
 import { FIXTURE_FILES } from "./fixture/fixture-home.js";
 import type { Measurement } from "./operations/schemas.js";
 
@@ -57,6 +59,31 @@ afterEach(() => {
   core.close();
   rmSync(dataDir, { recursive: true, force: true });
 });
+
+/** Closes this test's core and builds another on the same data dir, with `options`. */
+function replaceCore(options: CoreOptions): void {
+  core.close();
+  core = createCore({ dataDir, clock: () => new Date("2026-09-14T10:00:00.000Z"), ...options });
+}
+
+/** mupdf, except that rendering page `broken` of any file throws, as a damaged page might. */
+function failingOnPage(broken: number): PdfRenderer {
+  return {
+    ...mupdfRenderer,
+    open(bytes, type) {
+      const doc = mupdfRenderer.open(bytes, type);
+      return {
+        pageCount: doc.pageCount,
+        renderPage(page, options) {
+          if (page === broken) throw new Error("broken page");
+          return doc.renderPage(page, options);
+        },
+        textLines: (page, longEdge) => doc.textLines(page, longEdge),
+        close: () => doc.close(),
+      };
+    },
+  };
+}
 
 type Input<N extends OperationName> = Omit<OperationInput<N>, "session">;
 
@@ -184,6 +211,62 @@ describe("upload_blueprint", () => {
     expect(truncated.message).toContain("no pages");
     expect(await my.blueprints()).toEqual([]);
     expect(existsSync(join(dataDir, "uploads"))).toBe(false);
+  });
+
+  it("refuses with no_pages when a page fails to render, removing what it wrote", async () => {
+    replaceCore({ renderPdf: failingOnPage(2) });
+    const my = await setUp();
+    await my.upload(A3, "plan.pdf", "Plan");
+
+    const error = await refusal(my.upload(THREE_PAGES, "plans.pdf", "Plan"));
+
+    expect(error.code).toBe("no_pages");
+    expect(error.message).toContain("Page 2 of plans.pdf could not be rendered (broken page)");
+    expect((await my.blueprints()).map((blueprint) => blueprint.slug)).toEqual(["plan"]);
+    expect(existsSync(join(dataDir, "rendered", "my-flat", "plan-2"))).toBe(false);
+    expect(existsSync(join(dataDir, "uploads", "my-flat", "plan-2.pdf"))).toBe(false);
+    // The Blueprint already stored keeps its files.
+    expect(existsSync(join(dataDir, "rendered", "my-flat", "plan", "page-1.png"))).toBe(true);
+    expect(existsSync(join(dataDir, "uploads", "my-flat", "plan.pdf"))).toBe(true);
+  });
+
+  it("removes the pages it rendered when keeping the uploaded file fails", async () => {
+    const uploads = join(dataDir, "uploads");
+    replaceCore({
+      files: {
+        ...nodeFileStore,
+        writeBytes(path, bytes) {
+          if (path.startsWith(uploads)) throw new Error("disk full");
+          nodeFileStore.writeBytes(path, bytes);
+        },
+      },
+    });
+    const my = await setUp();
+
+    await expect(my.upload(THREE_PAGES, "plans.pdf", "Plan")).rejects.toThrow("disk full");
+
+    expect(await my.blueprints()).toEqual([]);
+    expect(existsSync(join(dataDir, "rendered", "my-flat", "plan"))).toBe(false);
+  });
+
+  it("removes every file it wrote when its transaction fails", async () => {
+    // The clock is first read inside the upload's transaction, for uploadedAt.
+    let stopped = false;
+    replaceCore({
+      clock: () => {
+        if (stopped) throw new Error("clock stopped");
+        return new Date("2026-09-14T10:00:00.000Z");
+      },
+    });
+    const my = await setUp();
+
+    stopped = true;
+    await expect(my.upload(THREE_PAGES, "plans.pdf", "Plan")).rejects.toThrow("clock stopped");
+    stopped = false;
+
+    expect(await my.blueprints()).toEqual([]);
+    expect(existsSync(join(dataDir, "rendered", "my-flat", "plan"))).toBe(false);
+    expect(existsSync(join(dataDir, "uploads", "my-flat", "plan.pdf"))).toBe(false);
   });
 
   it("refuses HEIC, by its bytes or its name, and anything else, with unsupported_file", async () => {

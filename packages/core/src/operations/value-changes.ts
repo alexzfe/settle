@@ -7,8 +7,9 @@ import type { Writer } from "./writer.js";
 // The value_changed flag (docs/specs/home-model.md#rules-the-home-model-owns): when a value a
 // Requirement's reason points at changes, the platform flags the Purchase Decision. A reason
 // naming a field is flagged by a change to that field only; one naming none by any change to its
-// record. A Decision's record changes, for a reason naming no field, when its title, statement,
-// or content does: its state changes already flag the Decisions resting on it.
+// record. Archiving or restoring the record flags every reason on it, field or none. A Decision's
+// record changes, for a reason naming no field, when its title, statement, or content does: its
+// state changes already flag the Decisions resting on it.
 
 const DECISION_FIELDS: ReadonlySet<string> = new Set(["title", "statement", "content"]);
 
@@ -48,9 +49,10 @@ export function flagValueChanges(writer: Writer, changes: Change[], now: string)
         each.recordKind === requirement.reasonKind &&
         each.record.id === requirement.reasonId &&
         !(each.recordKind === "decision" && each.record.id === decision.id) &&
-        (requirement.reasonField !== null
-          ? each.field === requirement.reasonField
-          : each.recordKind !== "decision" || DECISION_FIELDS.has(each.field)),
+        (each.field === "archivedAt" ||
+          (requirement.reasonField !== null
+            ? each.field === requirement.reasonField
+            : each.recordKind !== "decision" || DECISION_FIELDS.has(each.field))),
     );
     if (!change) continue;
     const own = flags.filter((each) => each.decisionId === decision.id);

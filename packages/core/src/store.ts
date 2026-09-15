@@ -487,6 +487,8 @@ export interface Store {
   list<T extends HomeTable>(table: T, homeId: number): Tables[T][];
   /** Takes one Decision out of another's Basis. The Decisions themselves are never deleted. */
   removeBasis(id: number): void;
+  /** Takes a check off a Listing, when the Requirement it judged has changed since. */
+  removeListingCheck(id: number): void;
 
   insertSession(session: Omit<SessionRow, "id">): SessionRow;
   /** Looks across every Home: Session slugs are unique app-wide. */
@@ -699,6 +701,9 @@ export function openStore(path: string): Store {
       rows<Tables[T]>(`SELECT * FROM ${table} WHERE home_id = ? ORDER BY id`, homeId),
     removeBasis(id) {
       run("DELETE FROM decision_basis WHERE id = ?", id);
+    },
+    removeListingCheck(id) {
+      run("DELETE FROM listing_checks WHERE id = ?", id);
     },
 
     insertSession(session) {

@@ -589,6 +589,34 @@ describe("record_fulfilment", () => {
     expect(decision.fulfilment).toEqual({ roomFunctions: ["office", "storage"] });
   });
 
+  it("leaves a Fulfilled Decision Locked for good: no Reopen or Reject, from the Agent or the web, and no Conflict", async () => {
+    await save(office);
+    await setState("office", "locked");
+    await core.run("record_fulfilment", agent(session), { session, decision: "office" });
+
+    const reopen = await refusal(setState("office", "leaning"));
+    const reject = await refusal(
+      core.run("set_decision_state", web, { home, decision: "office", to: "rejected" }),
+    );
+    const conflict = await refusal(
+      core.run("flag_conflict", agent(session), {
+        session,
+        decision: "office",
+        description: "The user now wants a guest room.",
+      }),
+    );
+
+    expect([reopen.code, reject.code, conflict.code]).toEqual([
+      "illegal_transition",
+      "illegal_transition",
+      "validation",
+    ]);
+    expect(reopen.message).toContain("Office (office) was Fulfilled on");
+    const decision = await detail("office");
+    expect(decision.state).toBe("locked");
+    expect(decision.conflicts).toEqual([]);
+  });
+
   it("refuses a Decision that is not Locked with not_locked", async () => {
     await save(office);
     await setState("office", "leaning");

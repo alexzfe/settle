@@ -147,6 +147,48 @@ describe("Requirements", () => {
     expect(noField.message).toContain("softness");
   });
 
+  it("name a field as receipts show it, a link by its label; an id or a Constraint's field is refused, listing the kind's fields", async () => {
+    await save(rug([prefer("Beside the sofa", { kind: "item", id: "sofa", field: "room" })]));
+    expect((await detail()).requirements.map(({ reason }) => reason.field)).toEqual(["room"]);
+
+    const byId = await refusal(
+      save(rug([must("Beside the sofa", { kind: "item", id: "sofa", field: "roomId" })])),
+    );
+    const onConstraint = await refusal(save(rug([prefer("Wool", { ...cats, field: "text" })])));
+
+    expect([byId.code, onConstraint.code]).toEqual(["validation", "validation"]);
+    expect(byId.message).toContain('"roomId"');
+    expect(byId.message).toMatch(/"room", "wall", .*"width"/);
+    expect(onConstraint.message).toContain("Leave field out");
+  });
+
+  it("are flagged when their record is Archived, even when they name another field", async () => {
+    await save(
+      rug([must("Under the sofa's height", { kind: "item", id: "sofa", field: "height" })]),
+    );
+    const { receipt } = await core.run("save_items", agent(session), {
+      session,
+      items: [{ item: "sofa", archive: true, archiveReason: "sold" }],
+    });
+
+    expect(receipt).toContain("Flagged for review: Wool rug (wool-rug)");
+    expect((await detail()).openFlags.map((flag) => [flag.cause, flag.source.field])).toEqual([
+      ["value_changed", "archivedAt"],
+    ]);
+  });
+
+  it("are flagged when the link they name changes", async () => {
+    await save(rug([prefer("Beside the sofa", { kind: "item", id: "sofa", field: "room" })]));
+    await core.run("save_items", agent(session), {
+      session,
+      items: [{ item: "sofa", room: "hallway" }],
+    });
+
+    expect((await detail()).openFlags.map((flag) => [flag.cause, flag.source.field])).toEqual([
+      ["value_changed", "room"],
+    ]);
+  });
+
   it("keep their position for life: a new one never takes an Archived one's position", async () => {
     await save(rug([must("Wool", cats), prefer("Low pile", cats)]));
     await save(rug([{ position: 2, archive: true }], "wool-rug"));
@@ -167,6 +209,29 @@ describe("Requirements", () => {
 
     await save(rug([{ position: 1, archive: false }], "wool-rug"));
     expect(await lines()).toEqual(["must: Wool", "prefer: Low pile"]);
+  });
+
+  it("are left as they are when given again without a position, so a repeated save adds none", async () => {
+    await save(rug([must("Wool", cats), prefer("Low pile", cats)]));
+    const again = await save(rug([must("Wool", cats), prefer("Low pile", cats)]));
+    const differs = await save(rug([prefer("Wool", cats)]));
+    await core.run("set_decision_state", agent(session), {
+      session,
+      decision: "wool-rug",
+      to: "locked",
+      reason: 'The user: "lock it"',
+    });
+    const locked = await save(rug([must("Wool", cats)]));
+
+    expect(again).toContain("Wool rug (wool-rug): already recorded like this, nothing changed");
+    expect(differs).toContain("Requirement 3 of Wool rug (wool-rug): added: prefer, Wool");
+    expect(locked).toContain("Wool rug (wool-rug): already recorded like this, nothing changed");
+    const { requirements } = await detail();
+    expect(requirements.map((each) => [each.position, each.strength, each.text])).toEqual([
+      [1, "must", "Wool"],
+      [2, "prefer", "Low pile"],
+      [3, "prefer", "Wool"],
+    ]);
   });
 
   it("change in place: a changed Requirement keeps its position", async () => {

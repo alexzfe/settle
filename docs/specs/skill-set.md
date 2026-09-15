@@ -262,10 +262,10 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | **Session** (a write: it records the Session, never the Home, and returns no receipt) | | |
 | `open_session` | Opens a Session, or joins one by id and records the joining Skill. Returns the opening (see Opening above): the Home Overview, open flags and Conflicts, and, for every Skill except Home Intake, the Home-wide Decisions in force. A join returns only what the Session hasn't been sent yet; `resend` returns the whole opening again, for use after compaction | All |
 | **Read** | | |
-| `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `with_sources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
+| `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `withSources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
 | `find_items` | One line per Item, filtered by Room, Unplaced, category, or text. `archived` includes Archived Items | All |
 | `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Covers every state, including Fulfilled and Rejected ones | All |
-| `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, pass/fail/unknown counts, and any *must* it fails. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `include_full_guide` is set | All |
+| `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, pass/fail/unknown counts, and any *must* it fails. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `includeFullGuide` is set | All |
 | `search_notes` | Notes matching a query | All |
 | `view_images` | A Blueprint's pages as images. Photos are scaffolding in the PoC, so it doesn't return them | Home Intake |
 | **Write** (each call carries the Session id and returns a receipt) | | |
@@ -282,7 +282,7 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `flag_conflict` | Raises a Conflict against a Locked Decision | All |
 | `close_session` | The three-part summary | All |
 
-Every write tool that carries a value with Provenance also takes an optional `override_provenance` reason, for the one case where the user has said to replace a stronger value with a weaker one ([home-model.md](home-model.md#rules-the-home-model-owns)).
+Every write tool that carries a value with Provenance also takes an optional `overrideProvenance` reason, for the one case where the user has said to replace a stronger value with a weaker one ([home-model.md](home-model.md#rules-the-home-model-owns)).
 
 **Write receipts.** Every write returns a short receipt, never the record it wrote:
 - one line per change ("Living room: ceiling height 2.60 m (Measured)")

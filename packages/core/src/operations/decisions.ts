@@ -12,6 +12,7 @@ import {
   type Receipt,
   renderDecision,
   renderDecisions,
+  renderFlagged,
   renderRefused,
   DECISION_STATE_LABELS as STATES,
   titled,
@@ -119,10 +120,14 @@ export const saveDecision = defineOperation({
     "Requirements), or other. content holds the kind's own fields; each field says which kinds " +
     "take it. Pass `decision` (its slug) to change one: title and statement are always given, " +
     "content replaces what is recorded, basis replaces the Basis, and evidence entries are " +
-    "added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or " +
-    "revive it first, with the user's yes. Basis: the Decisions it rests on (the Design " +
-    "Direction is in every Basis automatically, and the Palette in force in the Basis of every " +
-    "Decision using its colors); Evidence: the Notes, Sessions, or Decisions that support or " +
+    "added. Without it, one of the same kind, scope, and title that is neither Rejected nor " +
+    "Fulfilled is changed. A Requirement given without a position that matches an active one " +
+    "(text, strength, and reason) is left as it is. A Locked or Rejected Decision takes new " +
+    "Evidence only: to change it, Reopen or revive it first, with the user's yes; a Fulfilled " +
+    "one is never Reopened. Basis: the Decisions it rests on (the Design Direction is in every " +
+    "Basis automatically, the Palette in force in the Basis of every Decision using its colors, " +
+    "and a Decision a Requirement's reason names joins it); Evidence: the Notes, Sessions, or " +
+    "Decisions that support or " +
     "undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open " +
     "Session's id as `session`.",
   input: saveDecisionInput,
@@ -147,7 +152,8 @@ export const setDecisionState = defineOperation({
     "Moves one Decision to another state and returns a receipt, including every Decision the " +
     "move flagged. Only these moves: candidate to leaning, locked, or rejected; leaning to " +
     "candidate, locked, or rejected; locked to leaning (a Reopen) or rejected; rejected to " +
-    "candidate (a revival). Lock only when the user clearly commits. Before a Reopen, rejecting " +
+    "candidate (a revival). A Fulfilled Decision stays Locked for good: it can only be kept. " +
+    "Lock only when the user clearly commits. Before a Reopen, rejecting " +
     "a Locked Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is " +
     "required: why, quoting the user's words when they gave permission. A Reopen or Reject " +
     "flags, but never changes, every Decision resting on this one; each flag stays until the " +
@@ -239,7 +245,8 @@ export const flagConflict = defineOperation({
   name: "flag_conflict",
   description:
     "Raises a Conflict: something new (what the user now says, shows, or wants) contradicts a " +
-    "Locked Decision of this Home. Only a Locked Decision can have a Conflict; for one still " +
+    "Locked Decision of this Home. Only a Locked Decision not yet Fulfilled can have a Conflict; " +
+    "for one still " +
     "open, add the Evidence with save_decision (stance undermines) instead. Raising it changes " +
     "nothing else: the Decision stays Locked, and only the user resolves the Conflict, by " +
     "keeping, Reopening, or Rejecting the Decision (with set_decision_state once they say which, " +
@@ -260,6 +267,13 @@ export const flagConflict = defineOperation({
           `${titled(decision)} is ${STATES[decision.state]}, not Locked: a Conflict is raised only ` +
             "against a Locked Decision. For one still open, add the new Evidence with " +
             "save_decision (stance undermines) instead.",
+        );
+      }
+      if (decision.fulfilledAt !== null) {
+        throw new CoreError(
+          "validation",
+          `${fulfilledOn(decision)}, so there is nothing left to raise a Conflict against. For ` +
+            "something new the user wants now, save a new Decision.",
         );
       }
       const number = model.conflicts.filter((each) => each.decisionId === decision.id).length + 1;
@@ -310,10 +324,12 @@ export const recordFulfilment = defineOperation({
     "`replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought " +
     "(a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a " +
     "must flags every Decision resting on the Purchase for review; one from a prefer flags " +
-    "nothing. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now " +
-    "records the result; find_decisions still lists them. Call it only when the user says it is " +
-    "done (bought, painted, not planned), and tell them what changed. Needs the open Session's " +
-    "id as `session`.",
+    "nothing. It is refused while the Decision has an open flag or Conflict: ask the user, then " +
+    "keep, Reopen, or Reject it with set_decision_state first. Fulfilled Decisions drop out of " +
+    "the Room Sheet and the opening, since the Home now records the result, and are never " +
+    "Reopened or Rejected; find_decisions still lists them. Call it only when the user says it " +
+    "is done (bought, painted, not planned), and tell them what changed. Needs the open " +
+    "Session's id as `session`.",
   input: recordFulfilmentInput,
   readOnly: false,
   surface: "agent",
@@ -359,6 +375,18 @@ export const recordFulfilment = defineOperation({
         throw new CoreError(
           "validation",
           `${subject} was already Fulfilled on ${day(decision.fulfilledAt)}.`,
+        );
+      }
+      const open = [...openFlags(model, decision), ...openConflicts(model, decision)];
+      if (open.length > 0) {
+        throw new CoreError(
+          "validation",
+          `${subject} can't be Fulfilled while it has an open flag or Conflict ` +
+            `(${open.map((each) => each.slug).join(", ")}): the user settles it first.\n` +
+            `${renderFlagged([toSummary(model, decision)])}\nAsk the user whether it still ` +
+            "holds, then keep it with set_decision_state (to locked, quoting them) and Fulfil " +
+            "it; or Reopen or Reject it with set_decision_state, if that is what they say. " +
+            "Nothing was recorded.",
         );
       }
       if (decision.kind === "purchase") {
@@ -687,6 +715,14 @@ function fulfilRoomColor(
   }
 }
 
+/** "Oak bookcase (oak-bookcase) was Fulfilled on 2026-09-14: what was done is recorded in the Home". */
+function fulfilledOn(decision: DecisionRow): string {
+  return (
+    `${titled(decision)} was Fulfilled on ${day(decision.fulfilledAt ?? "")}: what was done is ` +
+    "recorded in the Home"
+  );
+}
+
 function markFulfilled(
   context: OperationContext,
   writer: Writer,
@@ -719,7 +755,8 @@ export const resolveFlag = defineOperation({
   name: "resolve_flag",
   description:
     "Clears a flag by keeping, Reopening, or Rejecting the flagged Decision. Reopen and Reject " +
-    "follow the transitions table and flag the Decisions resting on it in turn.",
+    "follow the transitions table and flag the Decisions resting on it in turn; a Fulfilled " +
+    "Decision can only be kept.",
   input: resolveFlagInput,
   readOnly: false,
   surface: "web",
@@ -748,7 +785,8 @@ export const resolveConflict = defineOperation({
   name: "resolve_conflict",
   description:
     "Resolves a Conflict by keeping, Reopening, or Rejecting its Decision. Reopen and Reject " +
-    "follow the transitions table and flag the Decisions resting on it.",
+    "follow the transitions table and flag the Decisions resting on it; a Fulfilled Decision " +
+    "can only be kept.",
   input: resolveConflictInput,
   readOnly: false,
   surface: "web",
@@ -1316,6 +1354,7 @@ class DecisionWrites {
             (each) =>
               active(each) &&
               each.state !== "rejected" &&
+              each.fulfilledAt === null &&
               each.kind === kind &&
               each.scopeRoomId === (room?.id ?? null) &&
               sameName(each.title, input.title),
@@ -1426,6 +1465,13 @@ class DecisionWrites {
     if (to === from) {
       this.#keep(decision, reason);
       return;
+    }
+    if (decision.fulfilledAt !== null) {
+      throw new CoreError(
+        "illegal_transition",
+        `${fulfilledOn(decision)}, so it stays Locked and can only be kept. For something new, ` +
+          "save a new Decision.",
+      );
     }
     const legal = LEGAL_TRANSITIONS[from];
     if (!legal.includes(to)) {
@@ -1706,6 +1752,21 @@ class DecisionWrites {
           ? undefined
           : rows.find((each) => each.position === input.position);
       const reason = input.reason && resolveReason(this.#model, input.reason);
+      // The same Requirement given again without a position, as a repeated save gives it, is left
+      // as it is rather than added twice.
+      const repeated =
+        input.position === undefined &&
+        reason !== undefined &&
+        rows.some(
+          (each) =>
+            each.archivedAt === null &&
+            each.text === input.text &&
+            each.strength === input.strength &&
+            each.reasonKind === reason.kind &&
+            each.reasonId === reason.id &&
+            each.reasonField === reason.field,
+        );
+      if (repeated) continue;
       if (!row) {
         if (!input.text || !input.strength || !reason) {
           throw new CoreError(
@@ -1807,10 +1868,12 @@ class DecisionWrites {
     // Requirements first, so a Palette they name joins the Basis the receipt shows.
     const requirementLines = this.#applyRequirements(decision, requirements);
     this.#attach(decision);
+    const basisText = this.#basisText(decision);
     const parts = [
       `created as a Candidate ${KINDS[input.kind]}` +
         (room ? ` for ${named(room)}` : ", Home-wide"),
-      this.#basisText(decision),
+      basisText,
+      ...this.#joinReasons(decision),
       this.#addEvidence(decision, evidence),
     ];
     this.#writer.line(titled(decision), parts.filter(Boolean).join("; "));
@@ -1892,6 +1955,7 @@ class DecisionWrites {
     }
     const requirementLines = this.#applyRequirements(decision, requirements);
     heads.push(...this.#attach(decision, contentChanged || requirementsChanged));
+    heads.push(...this.#joinReasons(decision));
     const added = this.#addEvidence(decision, evidence);
     if (added) heads.push(added);
     const nothing = heads.length === 0 && !requirementsChanged;
@@ -1955,6 +2019,56 @@ class DecisionWrites {
       if (text) texts.push(text);
     }
     return texts;
+  }
+
+  /**
+   * Adds to a Decision's Basis, as given entries, the Decisions its active Requirements' reasons
+   * name, so the cascade reaches it when one of them is Reopened, Rejected, or Fulfilled with a
+   * Deviation from a must. A Decision already in its Basis stays as it is, and a Design Direction
+   * is never given (the one in force is automatic). A Rejected or Fulfilled Decision's Basis
+   * stays as it is. Returns a receipt text per Decision added.
+   */
+  #joinReasons(decision: DecisionRow): string[] {
+    if (closed(decision)) return [];
+    const model = this.#model;
+    const joining = new Map<DecisionRow, number[]>();
+    for (const requirement of activeRequirements(model, decision)) {
+      if (requirement.reasonKind !== "decision" || requirement.reasonId === decision.id) continue;
+      const row = decisionById(model, requirement.reasonId);
+      const held = model.basis.some(
+        (link) => link.decisionId === decision.id && link.basisDecisionId === row.id,
+      );
+      if (held || row.kind === "design-direction") continue;
+      joining.set(row, [...(joining.get(row) ?? []), requirement.position]);
+    }
+    if (joining.size === 0) return [];
+    const given = () =>
+      model.basis
+        .filter((link) => link.decisionId === decision.id && !link.automatic)
+        .map((link) => decisionById(model, link.basisDecisionId).slug);
+    const old = given();
+    for (const row of joining.keys()) {
+      model.basis.push(
+        this.#context.store.insert("decision_basis", {
+          homeId: model.home.id,
+          decisionId: decision.id,
+          basisDecisionId: row.id,
+          automatic: false,
+        }),
+      );
+    }
+    this.#writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: "basis",
+      old,
+      new: given(),
+    });
+    return [...joining].map(
+      ([row, positions]) =>
+        `now rests on ${titled(row)}, the reason of Requirement` +
+        `${positions.length === 1 ? "" : "s"} ${positions.join(", ")}`,
+    );
   }
 
   /**
@@ -2155,6 +2269,32 @@ class DecisionWrites {
         });
         Object.assign(row, step.values);
         heads.push(`${step.changed.join(", ")} changed`);
+        // A check judged the Requirement as it was: it counts as unchecked until checked again.
+        const checks = model.listingChecks.filter((each) => each.requirementId === row.id);
+        if (checks.length > 0) {
+          const listingOf = (check: ListingCheckRow) =>
+            model.listings.find((each) => each.id === check.listingId);
+          for (const check of checks) {
+            store.removeListingCheck(check.id);
+            model.listingChecks.splice(model.listingChecks.indexOf(check), 1);
+          }
+          this.#writer.logged({
+            recordKind: "decision",
+            record: decision,
+            field: `${field} checks`,
+            old: checks.map((check) => ({
+              listing: listingOf(check)?.slug,
+              result: check.result,
+              ...(check.note ? { note: check.note } : {}),
+            })),
+            new: null,
+          });
+          const listings = checks.map((check) => {
+            const listing = listingOf(check);
+            return listing ? named(listing) : "?";
+          });
+          heads.push(`unchecked on ${listings.join(", ")} until record_listing checks it again`);
+        }
       }
       if (step.archive !== undefined) {
         const archivedAt = step.archive ? this.#context.now() : null;

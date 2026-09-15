@@ -1,10 +1,11 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { BlueprintFileType, Quarter } from "./operations/schemas.js";
 
 /**
  * The file store seam: core's only way to the disk. The Home Folder writer uses the text half;
- * Blueprint uploads and their rendered pages use the binary half.
+ * Blueprint uploads and their rendered pages use the binary half, and remove what a failed upload
+ * wrote.
  */
 export interface FileStore {
   /** The file's text, or undefined when there is no such file. */
@@ -15,6 +16,8 @@ export interface FileStore {
   readBytes(path: string): Uint8Array | undefined;
   /** Writes the file, creating its folder and any missing parents. */
   writeBytes(path: string, bytes: Uint8Array): void;
+  /** Removes the file, or the folder and everything in it; does nothing when there is neither. */
+  remove(path: string): void;
 }
 
 export const nodeFileStore: FileStore = {
@@ -31,6 +34,9 @@ export const nodeFileStore: FileStore = {
   writeBytes(path, bytes) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);
+  },
+  remove(path) {
+    rmSync(path, { recursive: true, force: true });
   },
 };
 

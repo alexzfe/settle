@@ -305,6 +305,34 @@ describe("record_listing", () => {
     expect(error.message).toContain("4 (prefer: Warm tones)");
   });
 
+  it("counts a changed Requirement as unchecked until checked again, logging the check it clears", async () => {
+    await listing(jute);
+    const receipt = await save(rug([{ position: 1, text: "At least 2.2 m wide" }], "wool-rug"));
+    expect(receipt).toContain(
+      "Requirement 1 of Wool rug (wool-rug): text changed; unchecked on Jute rug (jute-rug) " +
+        "until record_listing checks it again",
+    );
+    const [recorded] = (await detail()).listings;
+    expect(recorded?.checks[0]).toEqual({
+      requirement: 1,
+      text: "At least 2.2 m wide",
+      strength: "must",
+      result: "unknown",
+      unchecked: true,
+    });
+    expect(recorded?.counts).toEqual({ pass: 0, fail: 1, unknown: 2 });
+    const error = await refusal(listing({ listing: "jute-rug", price: "£99" }));
+    expect(error.message).toContain("1 (must: At least 2.2 m wide)");
+    const { changes } = await core.run("get_change_log", web, { home });
+    expect(changes).toContainEqual(
+      expect.objectContaining({
+        record: "wool-rug",
+        field: "requirement 1 checks",
+        old: [{ listing: "jute-rug", result: "pass", note: "2.0 × 3.0 m" }],
+      }),
+    );
+  });
+
   it("is refused on a closed Session, recording nothing", async () => {
     await core.run("close_session", agent(session), {
       session,
@@ -467,6 +495,75 @@ describe("record_fulfilment of a Purchase", () => {
     });
     expect(receipt).not.toContain("Flagged");
     expect((await detail("rug-pad")).openFlags).toEqual([]);
+  });
+
+  it("is refused while the Purchase has an open flag, naming it, and goes through once it is kept", async () => {
+    await saveRoom({
+      room: "living-room",
+      name: "Living room",
+      walls: [{ position: 2, length: measured(2950) }],
+    });
+    const error = await refusal(fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool }));
+    expect(error.code).toBe("validation");
+    expect(error.message).toContain("(wool-rug/flag-1)");
+    expect(error.message).toContain("living-room/wall-2 length changed");
+    expect(error.message).toContain("set_decision_state");
+    expect((await detail()).fulfilledAt).toBeUndefined();
+    const { items } = await core.run("list_items", web, { home });
+    expect(items.map((item) => item.slug)).toEqual(["old-rug"]);
+
+    await setState("wool-rug", "locked");
+    await fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool });
+    expect((await detail()).fulfilledAt).toEqual(expect.any(String));
+  });
+
+  it("is refused while the Purchase has an open Conflict, naming it", async () => {
+    await core.run("flag_conflict", agent(session), {
+      session,
+      decision: "wool-rug",
+      description: "The user now wants a jute rug.",
+    });
+    const error = await refusal(fulfil({ decision: "wool-rug", bought: "A wool rug" }));
+    expect(error.message).toContain("wool-rug/conflict-1");
+    expect(error.message).toContain("The user now wants a jute rug.");
+    expect((await detail()).fulfilledAt).toBeUndefined();
+  });
+
+  it("leaves a Fulfilled Purchase Locked for good, so what its Deviations differ from never changes", async () => {
+    await fulfil({
+      decision: "wool-rug",
+      bought: "A wool rug, 1.9 m wide",
+      deviations: [{ requirement: 1, text: "1.9 m wide, not at least 2.0 m" }],
+      item: wool,
+    });
+    const reopen = await refusal(setState("wool-rug", "leaning"));
+    const reject = await refusal(
+      core.run("set_decision_state", web, { home, decision: "wool-rug", to: "rejected" }),
+    );
+    const edit = await refusal(
+      save(rug([{ position: 1, text: "At least 1.8 m wide" }], "wool-rug")),
+    );
+    expect([reopen.code, reject.code, edit.code]).toEqual([
+      "illegal_transition",
+      "illegal_transition",
+      "illegal_transition",
+    ]);
+    expect(reopen.message).toContain("Wool rug (wool-rug) was Fulfilled on");
+    expect(reopen.message).toContain("save a new Decision");
+    const decision = await detail();
+    expect(decision.state).toBe("locked");
+    expect(decision.deviations[0]).toMatchObject({ requirementText: "At least 2.0 m wide" });
+  });
+
+  it("leaves a Fulfilled Purchase alone when a new one of the same title is saved", async () => {
+    await fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool });
+    const receipt = await save(rug([must("Wool", cats)]));
+    expect(receipt).toContain("Wool rug (wool-rug-2): created as a Candidate Purchase");
+    expect((await detail()).requirements.map((each) => each.text)).toEqual([
+      "At least 2.0 m wide",
+      "Low pile",
+    ]);
+    expect((await detail("wool-rug-2")).requirements.map((each) => each.text)).toEqual(["Wool"]);
   });
 
   it("refuses a Purchase that is not Locked, changing nothing", async () => {

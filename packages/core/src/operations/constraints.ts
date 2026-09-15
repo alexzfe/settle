@@ -20,7 +20,8 @@ export const setConstraints = defineOperation({
     "Constraint is a fact about the user's situation that every Skill must obey as strictly as " +
     'a Locked Decision, though it is not a design choice: "Rented: no painting or drilling", ' +
     '"Two cats", "Grandmother\'s dresser stays". Add or remove one only once the user has ' +
-    "agreed: read the exact wording back first. A softer fact that should not bind every " +
+    "agreed: read the exact wording back first, and pass `reason` quoting their permission; " +
+    "a removal without one is refused. A softer fact that should not bind every " +
     "Decision is a Note (save_note). Removing a Constraint Archives it: it leaves the Home " +
     "Overview but is kept. The Home Overview lists the Constraints in force with their slugs. " +
     "Needs the open Session's id as `session`.",
@@ -34,6 +35,15 @@ export const setConstraints = defineOperation({
     const { store } = context;
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
+    const reason = input.reason?.trim() || undefined;
+    if (input.remove?.length && !reason) {
+      throw new CoreError(
+        "reason_required",
+        "Removing a Constraint from a Session needs a reason: why, in a sentence, quoting the " +
+          'user\'s words when they gave permission (The user: "yes, we own it now"). Call again ' +
+          "with `reason`.",
+      );
+    }
     const receipt = context.write(session.slug, (log) => {
       const writer = new Writer(context, home, log, undefined);
       const constraints = store.list("constraints", home.id);
@@ -49,12 +59,20 @@ export const setConstraints = defineOperation({
         const slug = uniqueSlug(text, "constraint", (taken) =>
           store.slugTaken("constraints", taken, home.id),
         );
-        const created = writer.create(
-          "constraints",
-          "constraint",
-          { homeId: home.id, slug, text, archivedAt: null, archivedReason: null },
-          { text },
-        );
+        // Logged by hand, so the change carries the user's permission as its reason.
+        const created = store.insert("constraints", {
+          homeId: home.id,
+          slug,
+          text,
+          archivedAt: null,
+          archivedReason: null,
+        });
+        writer.logged({
+          recordKind: "constraint",
+          record: created,
+          new: { text },
+          ...(reason ? { reason } : {}),
+        });
         constraints.push(created);
         writer.line(named({ name: text, slug }), "added");
       }
@@ -76,7 +94,7 @@ export const setConstraints = defineOperation({
           constraint,
           true,
           context.now(),
-          input.reason,
+          reason,
         );
         writer.line(
           named({ name: constraint.text, slug }),

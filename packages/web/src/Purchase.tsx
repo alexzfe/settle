@@ -53,7 +53,13 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
       ) : (
         <p>None yet: the Agent writes the Guides in a Purchase Session.</p>
       )}
-      {quickLines.length > 0 && <GuidesElsewhere home={home} decision={decision} />}
+      {/* Core serves no phone page, export, or LAN page for a Rejected Purchase. */}
+      {quickLines.length > 0 &&
+        (decision.state === "rejected" ? (
+          <p>Rejected, so it has no Guides to open, print, or take shopping.</p>
+        ) : (
+          <GuidesElsewhere home={home} decision={decision} />
+        ))}
       <h2>Full Guide</h2>
       {fullGuide ? (
         <FullGuideSection home={home} decision={decision.slug} fullGuide={fullGuide} />
@@ -356,8 +362,9 @@ function PurchaseFulfilment({
 }
 
 /**
- * "Must: under 85 cm tall. Deviation: 92 cm tall"; one from a must is marked, since it flags every
- * Decision resting on this one.
+ * "Must: under 85 cm tall. Deviation: 92 cm tall (the only one in stock)", the reason in brackets
+ * as the receipt has it; one from a must is marked, since it flags every Decision resting on this
+ * one.
  */
 function DeviationLine({ deviation }: { deviation: Deviation }) {
   const must = deviation.strength === "must";
@@ -365,7 +372,7 @@ function DeviationLine({ deviation }: { deviation: Deviation }) {
     <>
       <strong className={must ? styles.warning : undefined}>{sentence(deviation.strength)}</strong>:{" "}
       {deviation.requirementText}. Deviation: {deviation.text}
-      {deviation.reason && <> Reason: {deviation.reason}</>}
+      {deviation.reason && ` (${deviation.reason})`}
       {must && " (from a must, so every Decision resting on this one is flagged)"}
     </>
   );

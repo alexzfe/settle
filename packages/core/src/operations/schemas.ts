@@ -614,7 +614,14 @@ export const setConstraintsInput = z.object({
     .describe(
       "The slugs of Constraints to remove. A removed Constraint is Archived, never deleted.",
     ),
-  reason: text.max(300).optional().describe("Why they are removed, quoting the user's permission."),
+  reason: z
+    .string()
+    .max(300)
+    .optional()
+    .describe(
+      'Why, quoting the user\'s permission, on add and remove (The user: "yes, add it"). ' +
+        "Required to remove.",
+    ),
 });
 
 export const saveNoteInput = z.object({
@@ -1306,8 +1313,9 @@ export const requirementReasonInput = z.object({
     .max(60)
     .optional()
     .describe(
-      'The one field it rests on, when only that field matters, e.g. "length" of a Wall or ' +
-        '"accessWidth" of the home.',
+      "The one field it rests on, when only that field matters, named as receipts show it: " +
+        '"length" of a Wall, "accessWidth" of the home, "room" of an Item. None for a ' +
+        "constraint or note. Archiving the record flags it either way.",
     ),
 });
 
@@ -1338,7 +1346,7 @@ export const saveDecisionInput = z.object({
     .optional()
     .describe(
       "The slug of the Decision to change. Leave out to create one (one of the same kind, " +
-        "scope, and title that is not Rejected is changed instead of duplicated).",
+        "scope, and title that is neither Rejected nor Fulfilled is changed instead of duplicated).",
     ),
   kind: z
     .enum(DECISION_KINDS)

@@ -2033,7 +2033,7 @@
     {
       "name": "set_constraints",
       "title": "Set constraints",
-      "description": "Adds or removes a batch of Constraints and returns a receipt with one line per change. A Constraint is a fact about the user's situation that every Skill must obey as strictly as a Locked Decision, though it is not a design choice: \"Rented: no painting or drilling\", \"Two cats\", \"Grandmother's dresser stays\". Add or remove one only once the user has agreed: read the exact wording back first. A softer fact that should not bind every Decision is a Note (save_note). Removing a Constraint Archives it: it leaves the Home Overview but is kept. The Home Overview lists the Constraints in force with their slugs. Needs the open Session's id as `session`.",
+      "description": "Adds or removes a batch of Constraints and returns a receipt with one line per change. A Constraint is a fact about the user's situation that every Skill must obey as strictly as a Locked Decision, though it is not a design choice: \"Rented: no painting or drilling\", \"Two cats\", \"Grandmother's dresser stays\". Add or remove one only once the user has agreed: read the exact wording back first, and pass `reason` quoting their permission; a removal without one is refused. A softer fact that should not bind every Decision is a Note (save_note). Removing a Constraint Archives it: it leaves the Home Overview but is kept. The Home Overview lists the Constraints in force with their slugs. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2061,9 +2061,8 @@
             }
           },
           "reason": {
-            "description": "Why they are removed, quoting the user's permission.",
+            "description": "Why, quoting the user's permission, on add and remove (The user: \"yes, add it\"). Required to remove.",
             "type": "string",
-            "minLength": 1,
             "maxLength": 300
           }
         },
@@ -2110,7 +2109,7 @@
     {
       "name": "save_decision",
       "title": "Save decision",
-      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors, each with a role; one Locked at a time), room-color (a Surface's color and finish: its color must name a color of the Palette in force, the Locked Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically, and the Palette in force in the Basis of every Decision using its colors); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
+      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors, each with a role; one Locked at a time), room-color (a Surface's color and finish: its color must name a color of the Palette in force, the Locked Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. Without it, one of the same kind, scope, and title that is neither Rejected nor Fulfilled is changed. A Requirement given without a position that matches an active one (text, strength, and reason) is left as it is. A Locked or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes; a Fulfilled one is never Reopened. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically, the Palette in force in the Basis of every Decision using its colors, and a Decision a Requirement's reason names joins it); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2121,7 +2120,7 @@
             "description": "The id of this conversation's open Session, as open_session returned it."
           },
           "decision": {
-            "description": "The slug of the Decision to change. Leave out to create one (one of the same kind, scope, and title that is not Rejected is changed instead of duplicated).",
+            "description": "The slug of the Decision to change. Leave out to create one (one of the same kind, scope, and title that is neither Rejected nor Fulfilled is changed instead of duplicated).",
             "type": "string",
             "minLength": 1
           },
@@ -2397,7 +2396,7 @@
                       "minLength": 1
                     },
                     "field": {
-                      "description": "The one field it rests on, when only that field matters, e.g. \"length\" of a Wall or \"accessWidth\" of the home.",
+                      "description": "The one field it rests on, when only that field matters, named as receipts show it: \"length\" of a Wall, \"accessWidth\" of the home, \"room\" of an Item. None for a constraint or note. Archiving the record flags it either way.",
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 60
@@ -2426,7 +2425,7 @@
     {
       "name": "set_decision_state",
       "title": "Set decision state",
-      "description": "Moves one Decision to another state and returns a receipt, including every Decision the move flagged. Only these moves: candidate to leaning, locked, or rejected; leaning to candidate, locked, or rejected; locked to leaning (a Reopen) or rejected; rejected to candidate (a revival). Lock only when the user clearly commits. Before a Reopen, rejecting a Locked Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is required: why, quoting the user's words when they gave permission. A Reopen or Reject flags, but never changes, every Decision resting on this one; each flag stays until the user keeps, Reopens, or Rejects that Decision, which also clears its own flags and Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting the user. Then say plainly what changed, e.g. \"Locked: Design Direction 'Warm minimalism'\". Needs the open Session's id as `session`.",
+      "description": "Moves one Decision to another state and returns a receipt, including every Decision the move flagged. Only these moves: candidate to leaning, locked, or rejected; leaning to candidate, locked, or rejected; locked to leaning (a Reopen) or rejected; rejected to candidate (a revival). A Fulfilled Decision stays Locked for good: it can only be kept. Lock only when the user clearly commits. Before a Reopen, rejecting a Locked Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is required: why, quoting the user's words when they gave permission. A Reopen or Reject flags, but never changes, every Decision resting on this one; each flag stays until the user keeps, Reopens, or Rejects that Decision, which also clears its own flags and Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting the user. Then say plainly what changed, e.g. \"Locked: Design Direction 'Warm minimalism'\". Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2618,7 +2617,7 @@
     {
       "name": "record_fulfilment",
       "title": "Record fulfilment",
-      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. It takes Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each Requirement it differs from, by position, with the difference; `item` adds the Item bought to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and `replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought (a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a must flags every Decision resting on the Purchase for review; one from a prefer flags nothing. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result; find_decisions still lists them. Call it only when the user says it is done (bought, painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
+      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. It takes Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each Requirement it differs from, by position, with the difference; `item` adds the Item bought to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and `replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought (a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a must flags every Decision resting on the Purchase for review; one from a prefer flags nothing. It is refused while the Decision has an open flag or Conflict: ask the user, then keep, Reopen, or Reject it with set_decision_state first. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result, and are never Reopened or Rejected; find_decisions still lists them. Call it only when the user says it is done (bought, painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -3227,7 +3226,7 @@
     {
       "name": "flag_conflict",
       "title": "Flag conflict",
-      "description": "Raises a Conflict: something new (what the user now says, shows, or wants) contradicts a Locked Decision of this Home. Only a Locked Decision can have a Conflict; for one still open, add the Evidence with save_decision (stance undermines) instead. Raising it changes nothing else: the Decision stays Locked, and only the user resolves the Conflict, by keeping, Reopening, or Rejecting the Decision (with set_decision_state once they say which, or in the app). Describe the contradiction in a sentence or two, then tell the user. Needs the open Session's id as `session`.",
+      "description": "Raises a Conflict: something new (what the user now says, shows, or wants) contradicts a Locked Decision of this Home. Only a Locked Decision not yet Fulfilled can have a Conflict; for one still open, add the Evidence with save_decision (stance undermines) instead. Raising it changes nothing else: the Decision stays Locked, and only the user resolves the Conflict, by keeping, Reopening, or Rejecting the Decision (with set_decision_state once they say which, or in the app). Describe the contradiction in a sentence or two, then tell the user. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

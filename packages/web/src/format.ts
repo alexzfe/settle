@@ -38,7 +38,9 @@ function estimatedMark(provenance: Provenance): string {
 
 /** Millimetres in metres with two decimals: 3600 is "3.60 m". */
 export function metres(mm: number): string {
-  // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point.
+  // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point. Core's
+  // `length` (core/src/render.ts) rounds the same way, so the Agent reads what the page shows;
+  // format.test.ts and core's render.test.ts check the same lengths.
   return `${(Math.round(mm / 10) / 100).toFixed(2)} m`;
 }
 

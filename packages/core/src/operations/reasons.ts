@@ -9,6 +9,54 @@ import type { RequirementReasonKind, requirementReasonInput } from "./schemas.js
 
 type ReasonIn = z.output<typeof requirementReasonInput>;
 
+/**
+ * The fields a reason can name, per kind: the names the writers log a change under, as receipts
+ * show them, so a link is named by its label ("room", "wall", "beyond"), never by an id. A
+ * Decision's state is left out: its state changes already flag the Decisions resting on it. A
+ * Constraint or a Note is never edited, so a reason on one names no field.
+ */
+export const REASON_FIELDS: Record<RequirementReasonKind, readonly string[]> = {
+  decision: ["title", "statement", "content", "room"],
+  constraint: [],
+  note: [],
+  home: [
+    "tenure",
+    "plannedStay",
+    "buildingType",
+    "buildingEra",
+    "lift",
+    "liftDoorWidth",
+    "liftCarDepth",
+    "accessWidth",
+    "accessNote",
+  ],
+  room: ["name", "level", "functions", "outdoor", "ceilingHeight", "timesOfUse", "windowless"],
+  wall: ["length", "facing", "beyond", "label", "obstruction", "deciduous"],
+  window: ["wall", "roofFacing", "kind", "width", "height", "sillHeight", "offset", "glass"],
+  door: ["wall", "otherRoom", "otherWall", "clearWidth", "height", "offset", "glazed", "noDoor"],
+  feature: ["wall", "kind", "description", "positionNote", "width", "height", "depth", "light"],
+  surface: ["materials", "color", "finish"],
+  item: [
+    "room",
+    "wall",
+    "name",
+    "category",
+    "quantity",
+    "positionNote",
+    "width",
+    "depth",
+    "height",
+    "colors",
+    "materials",
+    "condition",
+    "brand",
+    "model",
+    "price",
+    "link",
+    "light",
+  ],
+};
+
 export interface ReasonRecord {
   id: number;
   slug: string;
@@ -60,7 +108,7 @@ export function reasonRecord(
   return reasonRecords(model, kind).find((each) => each.id === id);
 }
 
-/** A reason as given, checked: the record must exist in this Home, and the field on it. */
+/** A reason as given, checked: the record must exist in this Home, and the field be one it logs. */
 export function resolveReason(
   model: DecisionModel,
   reason: ReasonIn,
@@ -84,11 +132,16 @@ export function resolveReason(
       `This Home has no ${reason.kind} "${reason.id}" for a Requirement's reason to point at.`,
     );
   }
-  if (reason.field !== undefined && !(reason.field in record.row)) {
+  const fields = REASON_FIELDS[reason.kind];
+  if (reason.field !== undefined && !fields.includes(reason.field)) {
     throw new CoreError(
       "validation",
-      `The ${reason.kind} ${record.slug} has no field "${reason.field}". Name one it records, ` +
-        'e.g. "length" of a Wall, or leave field out when the whole record matters.',
+      fields.length === 0
+        ? `A ${reason.kind} is never edited, so a reason on one names no field, not ` +
+            `"${reason.field}". Leave field out.`
+        : `The ${reason.kind} ${record.slug} has no field "${reason.field}". Name one of ` +
+            `${fields.map((field) => `"${field}"`).join(", ")}, or leave field out when the ` +
+            "whole record matters.",
     );
   }
   return { kind: reason.kind, id: record.id, field: reason.field ?? null };
