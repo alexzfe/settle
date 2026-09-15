@@ -1437,6 +1437,12 @@ export const deviationInput = z.object({
   text: line.describe(
     'The difference, in plain words: "92 cm tall, not under 85 cm", "rust, not terracotta".',
   ),
+  reason: line
+    .optional()
+    .describe(
+      'Why the user took it anyway, in their words: "only size in stock", "S/ 150 over, but the ' +
+        'last one". Leave out when they gave none.',
+    ),
 });
 
 /** The Item a Purchase bought: a new Item of the Inventory. */
@@ -1911,6 +1917,8 @@ export const deviationSchema = z.object({
   requirementText: z.string(),
   strength: z.enum(STRENGTHS),
   text: z.string(),
+  /** Why it was accepted, when the user said. */
+  reason: z.string().optional(),
   recordedAt: z.string(),
 });
 

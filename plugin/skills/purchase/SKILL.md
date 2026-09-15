@@ -103,10 +103,10 @@ A Locked Purchase is Fulfilled when the thing is bought. Call `record_fulfilment
 
 - **Not Locked yet:** buying it is a clear commitment. Lock it with `set_decision_state`, the user's words as the reason, say so, then record the Fulfilment.
 - **Ask what was actually bought,** in one round: its name, dimensions, colors and materials, price, and link, and whether it replaces an Item (sold, given away, thrown out) or a Feature. Then compare it with every Requirement.
-- **Name each Deviation:** every Requirement the thing doesn't meet, and the difference ("88 cm tall, not under 85 cm"). Before recording, say that a Deviation from a `must` flags every Decision resting on this Purchase.
+- **Name each Deviation:** every Requirement the thing doesn't meet, and the difference ("88 cm tall, not under 85 cm"). Ask in the same round why they took it anyway ("only size in stock", "over budget, but the last one") and keep their words as the Deviation's `reason`; a compromise with its reason reads as a considered one later. Before recording, say that a Deviation from a `must` flags every Decision resting on this Purchase.
 - Call `record_fulfilment` with the Decision and:
   - `bought`: what was bought, in one line ("Hay Plain rug, 200 × 300 cm, rust, £450");
-  - `deviations`: each with the Requirement's `requirement` position and the difference as `text`;
+  - `deviations`: each with the Requirement's `requirement` position, the difference as `text`, and the user's `reason` when they gave one;
   - `item`: the new Item, with its name, category, sizes, colors, materials, brand, price, and link, in the Purchase's Room unless the user says otherwise (`room`, or `unplaced: true` while it's boxed), plus `replacesItem` with the slug of the Item it replaces, which is Archived;
   - or, for a part of the building (a radiator, a light point), `feature` instead of `item`, and `replacesFeature`.
 - Say what changed from the receipt, naming every Decision it flagged: "Fulfilled: Purchase 'Living room rug'. Added the Wool rug to the Living room; the jute rug is Archived."

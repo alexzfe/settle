@@ -449,7 +449,7 @@ function fulfilPurchase(
           " Name the Requirement each Deviation differs from by its position.",
       );
     }
-    return { requirement, text: each.text };
+    return { requirement, text: each.text, reason: each.reason };
   });
   const twice = deviations.find(
     (each, index) =>
@@ -496,7 +496,7 @@ function fulfilPurchase(
   );
   const at = context.now();
   const numbered = model.deviations.filter((each) => each.decisionId === decision.id).length;
-  deviations.forEach(({ requirement, text }, index) => {
+  deviations.forEach(({ requirement, text, reason }, index) => {
     const number = numbered + index + 1;
     model.deviations.push(
       context.store.insert("deviations", {
@@ -505,6 +505,7 @@ function fulfilPurchase(
         slug: `${decision.slug}/deviation-${number}`,
         requirementId: requirement.id,
         text,
+        reason: reason ?? null,
         recordedAt: at,
       }),
     );
@@ -512,11 +513,11 @@ function fulfilPurchase(
       recordKind: "decision",
       record: decision,
       field: `deviation ${number}`,
-      new: { requirement: requirement.position, text },
+      new: { requirement: requirement.position, text, ...(reason ? { reason } : {}) },
     });
     writer.line(
       `Deviation from Requirement ${requirement.position} of ${subject}`,
-      `${requirement.strength}, "${requirement.text}": ${text}`,
+      `${requirement.strength}, "${requirement.text}": ${text}${reason ? ` (${reason})` : ""}`,
     );
   });
 

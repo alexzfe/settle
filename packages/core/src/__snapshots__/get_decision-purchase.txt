@@ -105,7 +105,7 @@ Requirements:
 3. prefer: Closed cupboards at the bottom, out of the cats' reach (reason: Constraint Two cats (two-cats))
 
 Deviations:
-- Requirement 1, must (At most 80 cm wide, to stand where the Billy stands): 85 cm wide, not at most 80 cm
+- Requirement 1, must (At most 80 cm wide, to stand where the Billy stands): 85 cm wide, not at most 80 cm (the only oak one under £700; the alcove has 4 cm to spare)
 - Requirement 3, prefer (Closed cupboards at the bottom, out of the cats' reach): open shelves to the floor, no cupboards
 
 Basis:

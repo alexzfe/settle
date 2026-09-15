@@ -365,6 +365,7 @@ function DeviationLine({ deviation }: { deviation: Deviation }) {
     <>
       <strong className={must ? styles.warning : undefined}>{sentence(deviation.strength)}</strong>:{" "}
       {deviation.requirementText}. Deviation: {deviation.text}
+      {deviation.reason && <> Reason: {deviation.reason}</>}
       {must && " (from a must, so every Decision resting on this one is flagged)"}
     </>
   );

@@ -440,6 +440,7 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
         requirementText: "At least 2.0 × 1.4 m",
         strength: "must",
         text: "1.9 × 2.9 m, a little narrow",
+        reason: "the only wool one in stock",
         recordedAt: fulfilled,
       },
     ],
@@ -455,6 +456,7 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
   // The must's first, and marked as the one that flags the Decisions resting on this one.
   expect(listAfter("Deviations")).toEqual([
     "Must: At least 2.0 × 1.4 m. Deviation: 1.9 × 2.9 m, a little narrow " +
+      "Reason: the only wool one in stock " +
       "(from a must, so every Decision resting on this one is flagged)",
     "Prefer: In the Palette's clay. Deviation: rust, not clay",
   ]);

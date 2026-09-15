@@ -411,7 +411,11 @@ describe("record_fulfilment of a Purchase", () => {
       decision: "wool-rug",
       bought: "A wool rug, 1.9 m wide",
       deviations: [
-        { requirement: 1, text: "1.9 m wide, not at least 2.0 m" },
+        {
+          requirement: 1,
+          text: "1.9 m wide, not at least 2.0 m",
+          reason: "the only wool one in stock",
+        },
         { requirement: 2, text: "a medium pile" },
       ],
       item: wool,
@@ -419,8 +423,13 @@ describe("record_fulfilment of a Purchase", () => {
     expect(receipt).toContain("Fulfilled with 2 Deviations");
     expect(receipt).toContain(
       'Deviation from Requirement 1 of Wool rug (wool-rug): must, "At least 2.0 m wide": ' +
-        "1.9 m wide, not at least 2.0 m",
+        "1.9 m wide, not at least 2.0 m (the only wool one in stock)",
     );
+    const { deviations } = await detail("wool-rug");
+    expect(deviations.map((each) => each.reason)).toEqual([
+      "the only wool one in stock",
+      undefined,
+    ]);
     expect(receipt).toContain(
       "Flagged for review: Rug pad (rug-pad), which rests on Wool rug (wool-rug), Fulfilled " +
         "with a Deviation from a must Requirement",

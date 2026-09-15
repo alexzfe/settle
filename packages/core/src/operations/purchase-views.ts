@@ -186,6 +186,7 @@ export function toDeviations(model: DecisionModel, decision: DecisionRow): Devia
         requirementText: requirement?.text ?? "?",
         strength: requirement?.strength ?? "must",
         text: deviation.text,
+        reason: deviation.reason ?? undefined,
         recordedAt: deviation.recordedAt,
       };
     });

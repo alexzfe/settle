@@ -2656,6 +2656,12 @@
                   "minLength": 1,
                   "maxLength": 200,
                   "description": "The difference, in plain words: \"92 cm tall, not under 85 cm\", \"rust, not terracotta\"."
+                },
+                "reason": {
+                  "description": "Why the user took it anyway, in their words: \"only size in stock\", \"S/ 150 over, but the last one\". Leave out when they gave none.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 }
               },
               "required": ["requirement", "text"]

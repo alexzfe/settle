@@ -658,7 +658,11 @@ export async function createFixtureHome(
     decision: "oak-bookcase",
     bought: "Oak bookcase, 85 cm wide, open shelves to the floor, £620",
     deviations: [
-      { requirement: 1, text: "85 cm wide, not at most 80 cm" },
+      {
+        requirement: 1,
+        text: "85 cm wide, not at most 80 cm",
+        reason: "the only oak one under £700; the alcove has 4 cm to spare",
+      },
       { requirement: 3, text: "open shelves to the floor, no cupboards" },
     ],
     item: {

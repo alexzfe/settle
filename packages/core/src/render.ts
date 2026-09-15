@@ -703,7 +703,8 @@ function purchaseLines(decision: DecisionDetail): string[] {
     decision.deviations.map(
       (deviation) =>
         `Requirement ${deviation.requirement}, ${deviation.strength} (${deviation.requirementText}): ` +
-        deviation.text,
+        deviation.text +
+        (deviation.reason ? ` (${deviation.reason})` : ""),
     ),
   );
   return lines;
@@ -712,7 +713,8 @@ function purchaseLines(decision: DecisionDetail): string[] {
 function deviationLine(deviation: Deviation): string {
   return (
     `Requirement ${deviation.requirement}, ${deviation.strength} (${deviation.requirementText}): ` +
-    deviation.text
+    deviation.text +
+    (deviation.reason ? ` (${deviation.reason})` : "")
   );
 }
 

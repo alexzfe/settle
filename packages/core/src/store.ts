@@ -340,6 +340,8 @@ export interface DeviationRow {
   slug: string;
   requirementId: number;
   text: string;
+  /** Why it was accepted, when the user said. */
+  reason: string | null;
   recordedAt: string;
 }
 
