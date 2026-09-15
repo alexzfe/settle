@@ -55,6 +55,7 @@ Each of these gets its own research and grilling session.
 - Tidy Skill, which proposes merges and archives for the user to approve
 - Room Brief export for painters and contractors
 - To-do list for non-purchase Decisions that need action
+- Measure list: a tiny output, printable or on the phone like the Quick Guide, of everything in the Home that still needs measuring (Estimated or unrecorded lengths the Gaps and Measure-first lines already know about), so the user can walk round with a tape once. User's idea, 2026-09-15
 - Web UI form for recording Fulfilment (in the PoC, only the Agent records it)
 - Undo from the change log (in the PoC, the log is shown read-only)
 - Web UI design session, after the finish line: the look and flow of the whole UI, plus form-based editing of Rooms, Items, Notes, and Constraints
