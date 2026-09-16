@@ -5,7 +5,7 @@ description: "Interviews the user to choose their home's palette of named colors
 
 # Color
 
-Grills the user and Locks the Active Home's Palette, the named colors that every color in the Home is drawn from, then, one Room at a time, its Room colors: the Palette color and finish for a Room's walls, ceiling, floor, or woodwork. A Room color rests on the Palette and on the Room's light, and when the painting is done it changes the Room's Surface.
+Propose and settle the Active Home's Palette, then the Room colors: the Palette color and finish for each Surface the user wants to change. Start from the Home's record and bring a recommendation the user can react to. A Room color rests on the Palette and on the Room's light, and when the painting is done it changes the Room's Surface.
 
 ## Starting
 
@@ -16,7 +16,7 @@ Grills the user and Locks the Active Home's Palette, the named colors that every
    - **Locked:** treat it as settled ground.
 4. **Parked questions.** Call `find_decisions` with `kind: "other"`, `homeWide: true`, and `state: "candidate"`. A color question parked there (by Purchase: "An accent color for the rug") is the work in hand. Once the Palette has the color, ask the user whether that settles it, and Reject the parked Candidate with `set_decision_state`, quoting their words as the reason; the Reject flags the Purchase resting on it, so its Requirement moves to the Palette.
 5. **Pick the work.**
-   - **No Palette Locked:** start with the Palette, even when the user asked about one Room, since a Room color must be a Palette color. Say so, and carry that Room's needs into the Palette questions.
+   - **No Palette Locked:** continue the Leaning Palette shown in the opening. If the opening shows Candidates, call `find_decisions` for Home-wide Palettes and use `get_decision` for the one the user is continuing; if several remain plausible, recommend one and ask which to continue. Carry the requested Room's needs into that Palette. Begin a new Palette only when none exists or the user wants a distinct alternative. Update an existing Palette with its `decision` slug and the whole color list.
    - **The Palette is Locked:** go to the Room the user named, or else ask which Room to start with, recommending one.
    - **The user wants to change a Locked Palette** (a color added, swapped, or dropped): follow "Changing the Palette".
 
@@ -24,14 +24,12 @@ Grills the user and Locks the Active Home's Palette, the named colors that every
 
 Propose no color before you know what it must work with:
 
-- **The Design Direction,** from the opening. Its color temperature sets the undertones (warm: yellow, red, earthy; cool: blue, green, grey; neutral: in between), its contrast the spread from lightest to darkest (low: close in lightness; high: far apart), and its key materials what the colors must sit beside (oak, linen, brass).
-- **The light.** The Overview gives each Room's window facings. A Room Sheet gives each Wall's facing and how much sky it sees, the Windows and glazed Doors, the lights with their color temperature, and the times of use.
-  - Rooms facing away from the sun (north in the northern hemisphere, south in the southern; the Overview gives the latitude) get cool, even light: favour warm undertones and lighter colors, since blue-greys turn cold there.
-  - Rooms facing the sun get warm, strong light, and can take cooler or deeper colors.
-  - East light is bright in the morning and cooler later; west light is the reverse. Trees outside dim the light and tint it green.
-  - A windowless Room, or one used mostly after dark, is seen under its lamps: judge its colors by their color temperature.
+- **The Design Direction** frames the overall warmth, contrast, and materials. Start with the largest finishes that stay, then choose how light or dark the new colors should be, how much of each will show, and how they sit together in the Room's light. Warm and cool describe relationships: a warm Home can include a cooler accent. Describe an undertone only as precisely as the record supports; a material name alone does not identify its color. Explain the relationship in plain words, such as "this white makes the cream units look more yellow".
+- **The light.** Read the window and glazed Door facings, visible sky, obstructions, Room depth, lamps, and times of use. Use location and season to interpret the facings; cloud, shade, and tropical sun paths can change the usual north/south pattern. Explain only what changes the recommendation. For a dim Room, recommend either lighter surfaces to reflect the available light or deeper colors for an enveloping feel, according to its Direction and use. Neither replaces adequate lighting. For evening use, judge under the lamps that will stay: their color temperature is a clue, not proof of how a paint will look. Ask only for missing observations that could change the choice, and keep uncertain predictions provisional.
 - **What stays:** the house came with colors, and the Palette is built around them. Read them before asking: a Room Sheet records the Surfaces as they are (a dark brown floor, warm white walls, terracotta tiles), the Features (fitted units, a fireplace), and the Items with their colors, and the opening shows any Locked Decision that keeps them ("Keep the original floors"). Name them back ("you have oak boards and terracotta tiles in the living room and oak units in the kitchen"), and ask "what's staying?" only about what the Sheets do not record or what might change. Never ask the user to describe a floor, wall, or unit the Sheet already records.
-- **Constraints,** such as a rented Home's "no painting": never propose paint a Constraint forbids, and say which Constraint stops it.
+
+  Distinguish what is there from what is confirmed to stay. Treat the rest as the working background until the user changes that assumption. Carry retained colors into the comparison; add one to the Palette when it will guide new choices, not merely because it exists. Respect anything deliberately kept off the Palette.
+- **Constraints and Tenure.** Obey recorded restrictions on painting or changes. Renting alone gives neither permission nor a ban. If the proposed work depends on permission nothing records, ask without suggesting an answer. When paint is forbidden, propose a Palette that works with the existing Surfaces through movable pieces and textiles, then hand buying to Purchase. Do not create a Room color for work the user cannot carry out.
 
 For the Palette, fetch the Room Sheets of the Rooms that matter most before the first round: the ones the user names, else the main living Room and the Kitchen, asking which if it is not obvious. That is where what stays is recorded. For a Room color, fetch that Room's Sheet when the work turns to it (see "Keeping context focused").
 
@@ -45,25 +43,28 @@ Every color you save is a Color value:
 - `lrv`: only when the maker publishes it and you know the figure. Never ask the user for it.
 - `hex`: always give one, your closest approximation, for the app's swatch. It is for the screen only: never present it as the paint's exact color.
 
+**Test the choice.** Before committing to a paint for a large Surface, recommend a large movable painted sample beside the finishes that stay, in the parts of the Room and at the times it is used. Check it under the lamps that will stay as well as daylight. Explain what to look for: an unwanted color cast, too much contrast, or a result that feels too dark. A screen swatch cannot settle those questions. If the user wants to commit before sampling, honour that under the usual Lock rules and record the untested assumption in the statement; keep the sample check in the next steps. An exact paint code identifies a paint, not proof that it suits the Room.
+
 ## The Palette
 
 One Home-wide Decision, kind `palette`, resting on the Design Direction automatically. Its title is a short name ("Warm Clay"), its statement one sentence, and its content `colors`: the Home's named colors, each a Color value with:
 
-- `role`: `base` (most walls and ceilings), `secondary` (woodwork, a Room or two, large pieces), or `accent` (small doses: a door, a feature wall, textiles). A Palette usually has one or two base colors, one to three secondary, and one or two accents.
-- `note`: where it is meant to go ("walls throughout", "woodwork and doors").
+- `role`: `base` for the dominant background, `secondary` for supporting areas or large pieces, or `accent` for a limited focal color. Usually start with one or two bases, one to three secondaries, and one or two accents; these are guides, not quotas. A Room need not use every role.
+- `note`: where the color is meant to go and how much should show, in plain words. Count the visual weight of retained floors, fitted units, furniture, and patterns too.
 
-Every color in the Home comes from the Palette, including those Purchase later asks of fabrics and finishes.
+Judge colors seen together as one composition, including the functions within an open-plan Room and any visible adjoining Room. Read another Room Sheet only when that relationship affects the choice; ask about an unrecorded sightline only when it matters. Explain what stays light, what is darker, and which color leads. New color choices draw from the Palette; existing colors deliberately kept off it follow "Kept off the Palette".
 
 ### The interview
 
 1. **Look up what was ruled out.** Call `find_decisions` with `kind: "palette"` and `state: "rejected"`. Never propose, recommend, or offer as an option a Palette it lists, or one close to it under another name.
-2. **Rounds.** Each round asks 3–5 numbered questions, each with a recommended answer (see "Round format"). Open the first round with a short list, Room by Room, of what stays as the Room Sheets record it ("Living room: oak boards and terracotta tiles, walls in Setting Plaster, white gloss woodwork"), so the user sees you are working from it, and name any Surface a Sheet lacks as a gap rather than a question about its color. Then the questions: the light in the Rooms that matter most, whether anything listed might change, colors the user loves or can't live with, how bold they want to be. Then narrow to the colors themselves: the base, then the secondaries, then the accents, each recommended by name with a line on why it suits the Direction and the light.
-3. **Write after every round.**
-   - After the first round the user answers, save a Candidate with `save_decision`: the colors agreed so far (a described color is fine), a working title, and a statement. Say so: "Saved as a Candidate: Palette 'Warm Clay'."
+2. **Propose first.** Read the relevant Room Sheets before proposing. Name the recorded finishes, what is confirmed to stay, and any assumption that affects the choice. Offer two or three whole Palettes with colors named by role and intended use; recommend one. Explain how it works with the retained finishes, how light or dark it will feel, which color leads, and any light or sightline that changes the answer. Ask the questions that are ready under "Round format": which proposal is closest, what it gets wrong, and any missing fact that would change it.
+3. **Refine.** Work on the selected Palette, recommending the change you would make and explaining it in plain words. Use "Pushing back" for a specific problem with the Home or the composition; an extra accent or a cool color is not a problem by itself.
+4. **Write after every round.**
+   - After the first round the user answers, save a Candidate with `save_decision`: the colors agreed so far (a described color is fine), a working title, and a statement. Say so: "Saved as a Candidate: Palette 'Warm Clay'." Save a Palette only once the user has accepted at least one color; a round that answers only background questions is not permission to invent agreed colors.
    - After each later round, update the same Decision with `save_decision`, passing its slug as `decision` and the whole list of colors, since the list replaces the recorded one.
-   - When the user's view firms up (they favour it, but haven't committed), move it to Leaning with `set_decision_state`, the reason saying what the user said.
-4. **Offer to stop.** Once the Palette has a base, a secondary, and an accent, and the user's answers agree with each other, every round offers to Lock it and move on to the Rooms.
-5. **Lock only on clear commitment,** and only once the Design Direction is Locked. "Yes, those are our colors" or "lock it in" is a commitment; liking it best or "probably" is Leaning at most. Lock with `set_decision_state`, the reason quoting the user, and say it: "Locked: Palette 'Warm Clay'."
+   - Follow "Changing a Decision" as the user's view firms up; accepting a proposal is not an instruction to Lock it.
+5. **Offer to stop.** Once the Palette has a clear dominant background, supporting colors where needed, and a place and purpose for each color, explain its lightness, contrast, and balance against what stays. If no unresolved question would change the scheme, offer to Lock it and move on. An accent is optional; clear commitment and a Locked Design Direction are still required.
+6. **Lock.** Follow "Changing a Decision" and "Saying what changed". A Palette can be Locked only when the Design Direction is Locked.
 
 ### Changing the Palette
 
@@ -77,26 +78,26 @@ A Room color is a Decision of kind `room-color`, with `room` set to the Room's s
 
 - `surface`: `walls`, `ceiling`, `floor`, or `woodwork`. Add `wall` with a Wall's position when the color is for that Wall alone, such as a feature wall.
 - `color`: the name of one of the Palette's colors, exactly as the Palette lists it, without the maker and code in brackets or the `~` that marks an Estimated color ("Setting Plaster", "warm terracotta").
-- `finish`: recommend one for the Room's use: matt or eggshell for walls, flat matt for ceilings, eggshell or satin for woodwork, and a wipeable finish in kitchens, bathrooms, and hallways.
+- `finish`: recommend the sheen and the performance the Surface needs. Start with matt for a quiet wall or ceiling and eggshell or satin for woodwork, then account for cleaning, glare, the Surface's material and condition, moisture, and outdoor exposure. A sheen name alone does not establish washability or suitability. Floors and outdoor Surfaces need a coating intended for that material and use; leave the product unsettled until its maker's specification is checked. Explain any finish change that will be visible across adjoining Surfaces.
 
 Its title names the Room, the Surface, and the color ("Living room walls in Jitney"), and its statement says the whole choice ("The living room walls in Jitney, matt."). The Palette and the Design Direction enter its Basis automatically; add the Room's Room Direction to `basis` when it has one.
 
-- **Rounds and states,** as for the Palette: 3–5 questions a round, each recommending a Palette color and a finish with a line on why it suits the Room's light and use; a Candidate after the first answered round; Leaning as the view firms up; Lock only on clear commitment, and only once the Design Direction and the Palette are both Locked. Say each change: "Saved as a Candidate: Room color 'Living room walls in Jitney'."
+- **Rounds and states.** Follow "Round format". Open with your recommended Palette colors and finishes for the Surfaces the user wants to change, walls first where relevant, and show how they work with the retained Surfaces. Use the Room Direction when there is one; otherwise explain the provisional recommendation from its use and ask only if a missing preference changes it. Save accepted choices as Candidates, follow "Changing a Decision", and Lock only when the user clearly commits and both the Design Direction and Palette are Locked.
 - **Say what it replaces.** The Room Sheet shows each Surface's color now, so say what would change: "from Setting Plaster to Jitney".
 
 ### Only Palette colors
 
-The Palette is the only source of color. Never propose, recommend, or save a color the Palette lacks, not even as an aside ("a soft sage would work too"). When the user wants a color the Palette lacks, or a Room needs one (no Palette color works in a dark north-facing Room), that is a Palette change first: name the missing color and why, and ask to add it to the Palette (see "Changing the Palette"). Save the Room color only once the Palette has that color. If the server refuses a Room color, its message lists the Palette's colors: use one of them.
+For a Room color, recommend and save colors already in the Palette. When a missing color would help, or the user requests one, say whether it suits the Home and why. Use an existing Palette color if it does the job. Otherwise name the proposed addition explicitly as a Palette change, not an available Room choice. For a Locked Palette, follow "Changing the Palette" and wait for permission to Reopen; for a Candidate or Leaning Palette, update it after the user accepts the addition. Save the Room color only after the Palette contains its exact name. If a write is refused, check the returned names and the intended choice; correct a naming error, or return to the Palette-change branch rather than substituting a different color silently.
 
 ### Fulfilling a Room color
 
 A Locked Room color is carried out by painting. Call `record_fulfilment` with the Decision only when the user says the painting is done ("we painted it at the weekend").
 
 - **Plans are not done.** "We'll paint next week" or "we've bought the paint" changes nothing yet: record nothing, and say what will change once it's done: "When it's painted, tell me and I'll record it: the Living room's walls will change from Setting Plaster to Jitney, matt."
-- **When it's done,** ask whether it went as decided (the same paint and the same finish). Call `record_fulfilment` with the Decision, adding `finish` only when the finish actually applied differs from the one decided, and say what changed from the receipt: "Fulfilled: the Living room's walls are now Jitney, matt."
+- **When it is done,** establish the paint and finish actually used, asking only for what the user has not already said. If the color matches the Decision, call `record_fulfilment`, passing `finish` when it differs, and report the receipt. If the color differs or is not yet identified, save the user's account as a Note and leave the Decision unfulfilled. Explain that the current Fulfilment tool would record the planned Palette color. Hand recording the actual Surface to Home Intake; resolve the outstanding Locked Decision through "Changing a Decision". Do not silently change a shared Palette color or report the planned paint as applied.
 - **A refused Fulfilment.** When the Surface's recorded color is identified more exactly than the Palette color (a code from the tin against a described color), the server refuses. Follow "Refused writes": state both colors and their Provenance, and repeat the call with `overrideProvenance` only when the user says yes.
 
-A Room's Surfaces change only through this.
+Fulfilling the agreed Room color updates its Surface. Recording a different actual Surface follows the hand-off above; it does not by itself fulfil the old Decision.
 
 ## Hand-offs
 

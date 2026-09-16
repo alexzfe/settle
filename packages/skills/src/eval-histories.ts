@@ -322,9 +322,9 @@ const NO_DIRECTION_YET = `Working on Fixture Home, in London. It has no Design D
 // to, one recommended. No colors: the Palette chooses them.
 const DIRECTION_PROPOSALS = `What I'm working from: a 1930s semi you rent for one to three years, two cats, a living room facing south and west that you use in the evening, and six oak dining chairs and a linen sofa. Three directions that would suit it:
 
-- **A. Warm minimalism.** Calm, warm, low contrast; oak, linen, wool, limewashed plaster. It builds on the oak chairs and the linen sofa, and everything moves with you when the lease ends. *My pick.*
-- **B. Rustic Mediterranean.** Relaxed, warm, medium contrast; terracotta, rough plaster, rush, olive wood. More texture and pattern, and it glows in evening lamplight.
-- **C. The 1930s, kept.** Cosy, neutral, medium contrast; walnut, brass, ribbed glass, tightly woven wool. It plays up the house's own era: the one you may not have thought of.`;
+- **A. Warm minimalism.** Calm, warm, low contrast; oak, linen, wool, limewashed plaster. Little on show, soft shapes, almost no pattern. It builds on the oak chairs and the linen sofa, and most of it moves with you when the lease ends; the plaster would be a change to the walls, which we'd talk about first. The trade-off: it needs tidying to look right. *My pick.*
+- **B. Rustic Mediterranean.** Relaxed, warm, medium contrast; terracotta, rough plaster, rush, olive wood. Things out where you use them, rounded shapes, pattern in the textiles. It glows in evening lamplight, and mess reads as lived-in rather than untidy. The trade-off: it can get busy, and rough finishes are harder to put back at the end of a lease.
+- **C. The 1930s, kept.** Cosy, neutral, medium contrast; walnut, brass, ribbed glass, tightly woven wool. Crisper lines, a few good pieces on display, pattern kept to one or two things. It plays up the house's own era: the one you may not have thought of. The trade-off: the pieces that suit it are harder to find secondhand.`;
 
 const FIRST_ROUND = `${NO_DIRECTION_YET}
 
@@ -340,8 +340,8 @@ const MOOD_ROUND = `Saved as a Candidate: Design Direction 'Calm and natural'.
 You're between A and B: Copenhagen's calm and Provence's earth. My pick is to let the calm lead and take the earth as materials, so the rooms feel warm in the evening without getting busy. This round settles the three lines that decide it:
 
 1. **Mood.** Which leads: the calm, pared-back feel or the relaxed, earthy one? *(Recommended: calm and pared back, with earthy warmth from the plaster and terracotta.)*
-2. **Temperature.** Warm, neutral, or cool overall? *(Recommended: warm. Your living room faces south and west and you sit in it in the evening, so warm suits the light you actually live in.)*
-3. **Contrast.** Low, medium, or high? *(Recommended: low, with soft steps between light and dark; high contrast would fight the calm you asked for.)*`;
+2. **Temperature.** Warm, neutral, or cool overall? *(Recommended: warm, since you said never cold, and the evening lamplight you sit in reads warm anyway. Cool would still work if you wanted the calm to feel crisper; it would just lean more on daylight.)*
+3. **Contrast.** Low, medium, or high? *(Recommended: low, with soft steps between light and dark, which is the quietest reading of the calm you asked for. Medium would give the rooms more structure if low starts to feel flat.)*`;
 
 const CHARACTER_ROUND = `${NO_DIRECTION_YET} Industrial loft was ruled out earlier, so it isn't among these.
 
@@ -358,9 +358,9 @@ const LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction, *
 - **Contrast:** low
 - **Key materials:** oak, linen, wool, rough plaster, terracotta
 - **Style references:** Japandi; a Copenhagen hotel's pale wood and linen; a Provence farmhouse's terracotta and plaster
-- **Principles:** fewer, better things; tough, washable fabrics the cats can't ruin; the oak dining chairs stay
+- **Principles:** fewer, better things; washable covers and tight weaves, which the cats are less likely to snag; the oak dining chairs stay
 
-Every line is filled in and they agree with each other, so it could be Locked now. Once it is, the Palette and each Room's direction rest on it, and changing it later means reopening it.
+Every line is filled in, they agree with each other, and the practical things you told me are covered: washable covers the cats can't snag, and pieces that move with you at the end of the lease. Nothing is left open that would change it, so it could be Locked now. Once it is, the Palette and each Room's direction rest on it, and changing it later means reopening it.
 
 Shall I Lock it as it stands? *(Recommended: yes.)*`;
 
@@ -398,12 +398,15 @@ function colorRoomStart(
 
 const BEDROOM_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the Main bedroom's colours come from Warm clay's four: Pointing, Setting Plaster, Jitney, and warm terracotta.
 
-The Main bedroom faces west over the balcony and you use it at night, so its daylight is warmest late in the day and it's mostly seen under lamps. None of its Surfaces is recorded yet. First round:
+The Main bedroom faces west over the balcony and you use it at night, so it is mostly seen under lamps, with the warmest daylight late in the day. None of its Surfaces is recorded yet. Here is the scheme I would give it:
 
-1. **Feel.** Restful and enveloping, or light and airy? *(Recommended: restful, since it's a night-time room.)*
-2. **What stays.** What colours are the bed and the bedding? *(Recommended: tell me roughly; the walls should sit with them.)*
-3. **Ceiling.** The same as the walls, or lighter? *(Recommended: Pointing, the Palette's warm white, in flat matt.)*
-4. **Woodwork.** Pointing, as elsewhere, or the wall colour for a softer look? *(Recommended: Pointing, in eggshell.)*`;
+- **Walls: Jitney,** the deepest of the four. It holds its warmth under lamplight, which is the light you are actually in there, and it makes the room feel settled rather than bright. Setting Plaster is the swap if you want it lighter.
+- **Ceiling: Pointing,** the warm white, in flat matt, so the step up from the walls stays soft.
+- **Woodwork: Pointing** too, in eggshell, as in the rest of the house.
+
+1. **The walls.** Jitney, or Setting Plaster for something lighter? *(Recommended: Jitney.)*
+2. **The bed and bedding.** What colours are they, so I can check the walls sit beside them? *(If you skip it, I will work from the oak bed that is recorded and assume pale bedding.)*
+3. **Anything in here staying off the Palette?** *(Recommended: nothing.)*`;
 
 const DIRECTION_LEANING = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked, and the Palette rests on it: its warm temperature, its low contrast, and its oak, linen, plaster, and terracotta are what the colours have to suit.
 
@@ -411,19 +414,22 @@ I'd recommend settling the direction first in Design Direction, which can take o
 
 Settle the direction in Design Direction now, or start on colours anyway? *(Recommended: the direction first.)*`;
 
-const WHICH_ROOMS = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked: warm, low contrast, oak, linen, limewash, and brass. No Palette yet, so that comes first, and every Room's colours will be drawn from it.
+const PALETTE_ROUND = `Colours it is. From the Room Sheets: the living room has oak boards, terracotta tiles at the dining end, walls in Setting Plaster and white gloss woodwork; the kitchen has oak units and a white metro splashback. The living room faces south and west and you use it in the evening; the kitchen faces east, bright in the morning and cooler later.
 
-Before I propose anything I'll read what the house came with, since the Palette is built around it. Which Rooms matter most? *(Recommended: the living room and the kitchen; I'll read their Room Sheets and name back what stays.)*`;
+Two Palettes that suit the direction and what is already there:
 
-const PALETTE_ROUND = `Colours it is. First round, one question per colour, each drawn from the Direction and the house's light:
+- **A. Warm clay.** Base: Setting Plaster, the warm plaster pink the living room walls already wear. Secondary: Pointing, a warm white for ceilings and woodwork. Accent: a warm terracotta, which the floor tiles already echo. The quieter of the two, and it leaves the living room walls alone.
+- **B. Bone and oak.** Base: a soft bone white, lighter than Pointing. Secondary: a mid oatmeal for the chimney breast and the hallway. Accent: the same warm terracotta. It lifts the kitchen's morning light, at the cost of repainting the living room.
 
-1. **Base, for most walls.** A warm plaster pink that glows in the south-facing living room and stays soft under lamps in the windowless hallway. *(Recommended: Setting Plaster (Farrow & Ball No. 231), which the living room walls already have.)*
-2. **Ceilings and woodwork.** A warm white rather than a brilliant one, so the contrast stays low. *(Recommended: Pointing (Farrow & Ball No. 2003).)*
-3. **Accent.** An earthy terracotta for the front door and one feature wall, echoing the tiles at the dining end. *(Recommended: a warm terracotta; we can pin down the exact paint later.)*`;
+*My pick is A:* it keeps the walls you have, and the terracotta has something to answer to.
+
+1. **Which is closer?** *(Recommended: A.)*
+2. **The accent.** The front door and the dining-end wall, or textiles only? *(Recommended: the door and that wall.)*
+3. **Anything you can't live with?** *(If you skip it, I will take A's three colours as they stand.)*`;
 
 const KITCHEN_LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction and your Palette, **Warm clay**, are both Locked.
 
-The Kitchen's walls are Leaning towards **Setting Plaster in eggshell** (*Kitchen walls in Setting Plaster*): the Palette's warm plaster pink stays soft in the Kitchen's east-facing morning light and sits well with the oak units and the white metro splashback, and eggshell wipes clean near the cooker. It would replace today's cream.
+The Kitchen's walls are Leaning towards **Setting Plaster in eggshell** (*Kitchen walls in Setting Plaster*): the Palette's warm plaster pink stays soft in the Kitchen's east-facing morning light and sits well with the oak units and the white metro splashback, and eggshell takes wiping better than matt near the cooker, though the tin's own cleaning advice is what settles that. It would replace today's cream.
 
 It's ready to Lock. Shall I Lock it? *(Recommended: yes.)*`;
 
@@ -432,7 +438,7 @@ const KITCHEN_LOCKED = `Locked: Room color 'Kitchen walls in Setting Plaster', i
 Next, the Kitchen's woodwork, which has nothing recorded yet:
 
 1. **Colour.** *(Recommended: Pointing, the Palette's warm white, as for the other woodwork.)*
-2. **Finish.** *(Recommended: satin, which wipes clean.)*`;
+2. **Finish.** *(Recommended: satin, which takes wiping better than matt on woodwork; check the tin for what it will stand.)*`;
 
 // ─── Purchase cases ─────────────────────────────────────────────────────────────────────────
 // The Fixture Home with its Design Direction and its Palette "Warm clay" both Locked, as the
@@ -518,7 +524,7 @@ const BEDROOM_RUG_ROUND = `Working on Fixture Home, in London. Your Design Direc
 The Main bedroom has the double bed against Wall 2 (1.60 × 2.10 m), a west window onto the balcony, and you use it at night. None of its floor is recorded yet, and you have two cats, which scratch fabric. First round:
 
 1. **Where it goes.** Under the bed, or beside it? *(Recommended: under the lower two-thirds of the bed, showing about 50 cm either side.)*
-2. **Size.** *(Recommended: about 1.6 × 2.3 m, which does that for a 1.60 m bed.)*
+2. **Size.** *(Recommended: about 2.6 × 2.3 m: the bed is 1.60 m wide, so 50 cm either side needs 2.60 m across it. The Room's own width isn't recorded yet, so tell me if that won't fit.)*
 3. **Pile.** *(Recommended: a flat, tightly woven wool: claws don't catch in it.)*
 4. **Colour.** *(Recommended: warm terracotta, the Palette's accent, which warms a room used at night.)*`;
 
@@ -556,8 +562,8 @@ export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
 The Hallway has lengths for six of its eight Walls, its three Doors, and the understairs cupboard. First round:
 
 1. **Walls 7 and 8.** How long is each, and is that measured or roughly? *(Recommended: rough is fine for now.)*
-2. **Ceiling height.** *(Recommended: about 2.5 m, like the Kitchen.)*
-3. **Surfaces.** The walls, ceiling, and woodwork: material, color, and finish for each. *(Recommended: painted plaster walls and ceiling, white gloss woodwork.)*`,
+2. **Ceiling height.** *(Recommended: about 2.5 m, the same as the Kitchen. That's a guess from the Kitchen, not a measurement: I'd save it as Estimated, and your tape replaces it whenever you get to it.)*
+3. **Surfaces.** The walls, ceiling, and woodwork: material, color, and finish for each. *(Recommended: painted plaster walls and ceiling, white gloss woodwork, if the Hallway matches the rest of the Ground floor; tell me where it differs.)*`,
       },
     ];
   },
@@ -591,7 +597,10 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
           "a small Copenhagen hotel: pale wood and linen",
           "a Provence farmhouse: terracotta floors, rough plaster walls",
         ],
-        principles: ["tough, washable fabrics the cats can't ruin", "the oak dining chairs stay"],
+        principles: [
+          "washable covers and tight weaves, which the cats are less likely to snag",
+          "the oak dining chairs stay",
+        ],
       },
     };
     return [
@@ -650,23 +659,6 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   // Graded turn: the user asks which color the Main bedroom's walls should be, and to save it.
   // The case's own opening has the Palette "Warm clay" Locked; the Room color names one of its
   // colors, and no other color is offered.
-  // Graded turn: the Design Direction is Locked and there is no Palette. Color has asked which
-  // Rooms matter most; the user names three. The reply reads their Room Sheets and names back
-  // what the house came with instead of asking. The case's own opening has no Palette.
-  "color-starts-from-what-stays": (context) => {
-    const { turns, session } = opening(
-      context,
-      "Let's start on the colours for the house. We'd like to paint before winter.",
-      "color",
-    );
-    const lookup = { session, kind: "palette", state: "rejected" };
-    return [
-      ...turns,
-      { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
-      { assistant: WHICH_ROOMS },
-    ];
-  },
-
   "color-rests-on-palette": (context) => [
     ...colorRoomStart(context, "Let's do the colours for the main bedroom.", "main-bedroom").turns,
     { assistant: BEDROOM_ROUND },

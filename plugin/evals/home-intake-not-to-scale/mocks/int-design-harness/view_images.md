@@ -1,0 +1,4 @@
+Blueprint: Agent plan (agent-plan), 1 page. One image per page follows, in this order:
+- Page 1: shows Ground (ground); has a text layer
+
+[This eval's stand-in server can't return images, so instead of page 1's image, here is what it shows, in words.] Printed on it: "GROUND FLOOR" as its title; "DO NOT SCALE — FIGURED DIMENSIONS ONLY" in the title block; the Room labels LIVING / DINING, KITCHEN and HALL; and "3.40 m x 2.80 m" under KITCHEN. There is no scale bar and no ratio anywhere on the page, and nothing at all is printed inside HALL. Drawn, not printed: the walls; a window in the right wall of KITCHEN; windows in the bottom and left walls of LIVING / DINING; doors between KITCHEN and HALL, between HALL and LIVING / DINING, and the front door in the top wall of HALL; and a north arrow. The drawing is visibly stretched: the kitchen wall the plan calls 3.40 m is drawn a good deal longer than the wall opposite it, which the same string gives as 3.40 m too.

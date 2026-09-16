@@ -1,0 +1,1 @@
+- Lived-in warmth (lived-in-warmth): Design Direction, Candidate; Home-wide. Warm, unfussy rooms that take daily life and two cats in their stride.

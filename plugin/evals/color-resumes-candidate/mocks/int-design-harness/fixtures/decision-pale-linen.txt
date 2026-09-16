@@ -1,0 +1,16 @@
+Decision: Pale linen (pale-linen)
+Kind: Palette
+Scope: the whole Home
+State: Candidate
+Statement: Chalky off-whites with a soft green on the woodwork.
+
+Content:
+- Colors:
+  - base: ~chalky off-white; walls throughout
+  - secondary: ~soft sage; woodwork and doors
+
+Basis:
+- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+
+Evidence:
+- supports: Session color-jkmn, 2026-09-14, color: Offered as the lighter of the two, and not ruled out.

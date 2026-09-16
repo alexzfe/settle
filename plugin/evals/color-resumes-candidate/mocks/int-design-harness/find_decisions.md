@@ -1,0 +1,2 @@
+- Warm clay (warm-clay): Palette, Candidate; Home-wide. Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
+- Pale linen (pale-linen): Palette, Candidate; Home-wide. Chalky off-whites with a soft green on the woodwork.

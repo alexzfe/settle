@@ -71,7 +71,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
 - **Requirements:** each one is plain text ("under 85 cm tall"), marked *must* or *prefer*, with a reason linking to any Decision, Constraint, Note, or recorded part of the Home. The PoC has no structured numeric fields; the AI does the Listing and Deviation checks.
 - **Checks:**
   - **Measure first.** A *must* Requirement that rests on an Estimated value puts a "Measure first: alcove width (~1.2 m)" line at the top of the Quick Guide. Purchase offers to record the real measurement on the spot.
-  - **Access.** For anything large (a sofa, bed, wardrobe, or big table), Purchase adds a *must* delivery Requirement based on the narrowest point on the way in: the lift, the narrowest access point, or a Door's clear width. Its reason points at that record. If that point is unknown, it becomes a "measure first" line instead.
+  - **Access.** For anything large (a sofa, bed, wardrobe, or big table), Purchase adds a *must* delivery Requirement for the whole route in, not one number: the lift's door and car, the narrowest access point, or a Door's clear width. Its reason points at that record. If that point is unknown, it becomes a "measure first" line instead.
 - **Guides.** Different products need different emphasis, so the structure is mostly per product.
   - **Quick Guide** (one phone screen). The platform builds it from the Requirements plus a few lines the AI writes (things to avoid, in-store tests), so it can't go stale when a Requirement changes. The only fixed parts are "Measure first" at the top when needed, and *musts* before *prefers*. Which Requirements appear, their order, and any extra lines suit the product: a cupboard leads with sizes and material, a cushion with color, fill, and firmness.
   - **Full Guide** (read ahead of time). Markdown the AI writes, under headings it picks for the product. The one rule is that every *must* explains why. It is marked out of date when the Requirements change after it was written.
@@ -155,7 +155,7 @@ the chair"). Not for property.
 - **App not running.** A Skill's first step checks that the platform's tools are present. If they are missing, the Skill tells the user to start the app and then reconnect with `/mcp`, and does nothing else until the tools are back. Starting the app automatically is deferred to the Hosting and Docker topic.
 - **Round format.**
   - The Agent brings a view (the user's note of 2026-09-15: "follow the user's idea just a little bit less; be willing to give pushback and ideas"). When work starts from nothing, the Skill opens with a proposal to react to: two or three Design Directions, or two or three Palettes.
-  - A round asks every question that is ready now, numbered, at most five, each with a recommended answer the Agent commits to and its reason from the Home. Facts come from the read tools, never from the user. The user can accept them all, or answer some and skip the rest.
+  - A round asks every question that is ready now, numbered, at most five, each with a recommended answer the Agent commits to and its reason from the Home, in plain words. Recorded facts come from the read tools, never from the user; a fact nothing records is asked. For a measurement or a color, the Agent may recommend a value it can justify, saying it is a guess, and saves it as Estimated only with the user's yes; a fact that carries no Provenance is never guessed. The user can accept them all, or answer some and skip the rest.
   - Pushing back: once, plainly, with a reason from the Home and what the Agent would do instead; then the user decides and it is not raised again in that Session. Accepting recommendations or picking a proposal is never a commitment to Lock.
   - Writes happen after every round, so quitting mid-Session loses nothing.
   - Depth varies by Skill: Design Direction brings ideas first and then digs into the chosen one, while a lamp Purchase takes one or two rounds.
@@ -343,7 +343,7 @@ The AI's picture of a Room is the Room Sheet it fetched plus the receipts since.
 4. **Blueprint confirmation:** yes, in the stages you listed, with one reply per Level for each stage. Home Intake always asks where north is.
 5. **PDF Blueprints:** the server converts PDF pages to PNG before handing them to any Agent. HEIC conversion is deferred (see Blueprints and Photos).
 6. **Inspiration images:** not stored in the PoC. They are shown to the Agent in a Design Direction Session and summarised into the style references, and the Session is the Evidence.
-7. **Access checks:** yes. Large purchases get a *must* delivery Requirement based on the narrowest point on the way in, or a "measure first" line if that point is unknown.
+7. **Access checks:** yes. Large purchases get a *must* delivery Requirement for the route in, or a "measure first" line when a point on it is unknown.
 8. **Flags from Home changes:** the platform flags the Purchase Decision. The flag appears at Session open and in the web UI, and Purchase handles it when the user next works on that Decision.
 9. **Refused writes:** the Skill states both values and their Provenance in one line, and overrides only if the user says yes.
 10. **Undecided Rooms:** the Design Direction Skill decides a Room's use together with its Room Direction.
