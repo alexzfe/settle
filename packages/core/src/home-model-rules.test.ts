@@ -556,6 +556,20 @@ describe("Gaps", () => {
     expect((await my.room("living-room")).gaps).toContain("facing of living-room/wall-1");
   });
 
+  it("clear a stale windowless flag once a daylight opening is recorded", async () => {
+    const my = await setUp();
+    await my.saveRoom({ name: "Box room", windowless: true });
+    expect((await my.room("box-room")).windowless).toBe(true);
+    const { receipt } = await my.saveRoom({
+      room: "box-room",
+      name: "Box room",
+      walls: [{ position: 1, facing: "e", beyond: "outside" }],
+      doors: [{ wall: 1, sideB: "outside", glazed: true }],
+    });
+    expect((await my.room("box-room")).windowless).toBe(false);
+    expect(receipt).toContain("no longer windowless");
+  });
+
   it("count a skylight as daylight, and never ask a Wall for its facing", async () => {
     const my = await setUp();
     await my.saveRoom({

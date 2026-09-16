@@ -170,6 +170,7 @@ function roomLine(room: RoomDetail): string {
     windows.length > 0 ? `windows ${windows.join(", ")}` : undefined,
     glazedDoors.length > 0 ? `daylight ${glazedDoors.join(", ")} (glazed door)` : undefined,
     openings.length === 0 && room.windowless ? "windowless" : undefined,
+    openings.length > 0 && room.windowless ? "recorded windowless, out of date" : undefined,
     room.timesOfUse.length > 0 ? `used ${room.timesOfUse.join(", ")}` : undefined,
     room.items.length > 0 ? count(room.items.length, "Item") : undefined,
     room.gaps.length > 0 ? `Gaps: ${room.gaps.join(", ")}` : undefined,
@@ -202,7 +203,11 @@ function facingList(openings: DaylightOpening[], kind: DaylightOpening["kind"]):
 function daylightText(room: RoomDetail): string | undefined {
   const openings = daylightOpenings(room);
   if (openings.length === 0) return room.windowless ? "Daylight: none recorded" : undefined;
-  return `Daylight: ${openings.map(openingText).join("; ")}`;
+  // A Room recorded windowless that has a daylight opening contradicts itself. Say so rather than
+  // let the flag hide behind this line: an Agent reading only the Room Sheet cannot see the field,
+  // and would report the Room as correct while the record still says windowless.
+  const stale = room.windowless ? " (still recorded as windowless, which is out of date)" : "";
+  return `Daylight: ${openings.map(openingText).join("; ")}${stale}`;
 }
 
 function openingText(opening: DaylightOpening): string {

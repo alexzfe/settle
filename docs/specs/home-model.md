@@ -69,7 +69,7 @@ Every Home has at least one Level. Gardens and patios sit on the ground Level.
 | outdoor | A balcony of any size you can step onto, a terrace, patio, or garden. A railing-only (Juliet) balcony is not a Room: it is a glazed Door to outside | yes / no, default no | User | Opt |
 | ceiling height | Full ceiling height | mm | Provenance | Gap |
 | times of use | When the Room is mostly used; drives daylight versus lamplight advice | any of morning / daytime / evening / night | User | Gap |
-| windowless | Marks a Room confirmed to have no Windows **and** no glazed Door leading outside or onto an outdoor Room, so the missing daylight opening isn't reported as a Gap. A Room whose only glazing is a balcony door is not windowless | yes / no | User | Opt |
+| windowless | Marks a Room confirmed to have no Windows **and** no glazed Door leading outside or onto an outdoor Room, so the missing daylight opening isn't reported as a Gap. A Room whose only glazing is a balcony door is not windowless, and recording a daylight opening clears the flag | yes / no | User | Opt |
 | Surfaces | Walls, ceiling, floor, and woodwork (see [Surface](#surface)) | | | Gap |
 | Walls | Ordered list (see [Wall](#wall)) | | | Gap |
 
@@ -222,6 +222,7 @@ No scale is stored, because values are never measured off the drawing: a value s
 - **Change log.** Every change to a Home record is logged with what changed, when, and whether it came from the web UI or from which Session. The log exists for undo and audit, and it is never loaded into the AI's context. The Home itself holds only current state. Earlier states survive in Fulfilled Decisions, Deviations, and dated Photos.
 - **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item, and optionally one field of it ("living-room/wall-2, length"). When a field is named, only a change to that field flags the Purchase Decision, and so does Archiving or restoring the record; when none is named, any change to the record does. A field must be one the record's receipts name (`length` of a Wall, `room` of an Item), and the server lists them when it refuses one. The platform detects the change and raises the flag.
 - **Archiving, not deleting.** Anything a Requirement's reason can point at (a Room, Wall, Window, Door, Feature, or Item, as well as a Constraint) is Archived rather than deleted, so every reference keeps working. Removing a Room or a Constraint Archives it. Archived records leave the Home's current state.
+- **windowless is cleared by a daylight opening.** Recording a Window, or a glazed Door leading outside or onto an outdoor Room, makes the flag false by definition, so `save_room` clears it and says so in the receipt. Where a row written before this rule still carries a stale flag, the Room Sheet and the Overview render the contradiction rather than hiding it behind the Daylight line: a flag nobody can see is one nobody can correct.
 - **Gaps.** A Room's Gaps are worked out against the "enough for advice" list:
   - Wall lengths
   - ceiling height

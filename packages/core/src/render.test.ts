@@ -10,7 +10,7 @@ import {
   FIXTURE_ROOMS,
   type FixtureHome,
 } from "./fixture/fixture-home.js";
-import { length, renderQuickGuide } from "./render.js";
+import { length, renderQuickGuide, renderRoomSheet } from "./render.js";
 import { slugify } from "./slug.js";
 
 let fixture: FixtureHome;
@@ -148,6 +148,15 @@ it("renders every Room's Room Sheet", async () => {
     const { sheet } = await fixture.core.run("get_room_sheet", agent(session), { session, room });
     await expect(sheet).toMatchFileSnapshot(snapshot(`room-sheet-${room}`));
   }
+});
+
+it("says so when a Room recorded windowless has a daylight opening, rather than hiding it", async () => {
+  // Only legacy rows can contradict themselves: save_room now clears the flag. The stale value
+  // must still be visible, or an Agent reading the Sheet reports the Room as already correct.
+  const web = { caller: { kind: "web" }, home: fixture.home } as const;
+  const { room } = await fixture.core.run("get_room", web, { home: fixture.home, room: "kitchen" });
+  const sheet = renderRoomSheet({ ...room, windowless: true });
+  expect(sheet).toContain("(still recorded as windowless, which is out of date)");
 });
 
 it("renders a Room Sheet with the Blueprint, page, and printed text of its Blueprint values", async () => {

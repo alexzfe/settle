@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { daylightOpenings } from "../daylight.js";
 import { CoreError } from "../errors.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, featureName, named, renderRoomSheet } from "../render.js";
@@ -92,6 +93,14 @@ export const saveRoom = defineOperation({
 
       const after = loadHome(store, home);
       const room = roomById(after, parts.room.id);
+      // windowless means no Windows and no glazed Door leading out, so a recorded daylight opening
+      // makes it false by definition. Clear it rather than keep a record that contradicts itself:
+      // the Room Sheet renders the opening, and a stale flag would be invisible behind it.
+      if (room.windowless && daylightOpenings(roomDetail(after, room)).length > 0) {
+        writer.patch("rooms", "room", room, named(room), { windowless: false });
+        room.windowless = false;
+        writer.line(named(room), "no longer windowless: it has a recorded daylight opening");
+      }
       if (writer.lines.length === 0 && writer.refused.length === 0) {
         const level = after.levels.find((each) => each.id === room.levelId);
         writer.line(named(room), `already recorded on ${level?.name ?? "?"}, nothing changed`);
