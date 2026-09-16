@@ -1,6 +1,7 @@
 // The text the AI reads. Rules from docs/specs/home-model.md#context-tiers: leave out empty
 // fields, mark Estimated values with ~, and name records by their names with their readable slugs
 // in brackets, never database ids.
+import { type DaylightOpening, daylightOpenings } from "./daylight.js";
 import type {
   Blueprint,
   Color,
@@ -153,19 +154,22 @@ export function renderHomeOverview({
 }
 
 /**
- * One Room of the Overview: name, Level, functions, size, ceiling height, window facings, times
- * of use, Item count, and Gaps.
+ * One Room of the Overview: name, Level, functions, size, ceiling height, where its daylight
+ * comes from, times of use, Item count, and Gaps.
  */
 function roomLine(room: RoomDetail): string {
-  const facings = windowFacings(room);
+  const openings = daylightOpenings(room);
+  const windows = facingList(openings, "window");
+  const glazedDoors = facingList(openings, "glazed door");
   const parts = [
     room.level.name,
     room.outdoor ? "outdoor" : undefined,
     room.functions.join(", "),
     roomSize(room.walls),
     room.ceilingHeight && `ceiling ${length(room.ceilingHeight)}`,
-    facings.length > 0 ? `windows ${facings.join(", ")}` : undefined,
-    room.windowless && room.windows.length === 0 ? "windowless" : undefined,
+    windows.length > 0 ? `windows ${windows.join(", ")}` : undefined,
+    glazedDoors.length > 0 ? `daylight ${glazedDoors.join(", ")} (glazed door)` : undefined,
+    openings.length === 0 && room.windowless ? "windowless" : undefined,
     room.timesOfUse.length > 0 ? `used ${room.timesOfUse.join(", ")}` : undefined,
     room.items.length > 0 ? count(room.items.length, "Item") : undefined,
     room.gaps.length > 0 ? `Gaps: ${room.gaps.join(", ")}` : undefined,
@@ -184,15 +188,31 @@ function roomSize(walls: Wall[]): string | undefined {
   return `walls ${walls.map(bare).join(", ")} m`;
 }
 
-/** The compass directions the Room's Windows face, in Wall order; "roof" for a skylight. */
-function windowFacings(room: RoomDetail): string[] {
-  const facings = room.windows.map((window) => {
-    if (window.wall === "roof")
-      return window.roofFacing ? `roof ${compass(window.roofFacing)}` : "roof";
-    const facing = room.walls.find((wall) => wall.slug === window.wall)?.facing;
-    return facing && compass(facing);
+/** The compass directions one kind of daylight opening faces, in order; "roof" for a skylight. */
+function facingList(openings: DaylightOpening[], kind: DaylightOpening["kind"]): string[] {
+  const facings = openings.flatMap((opening) => {
+    if (opening.kind !== kind) return [];
+    if (opening.roof) return [opening.facing ? `roof ${compass(opening.facing)}` : "roof"];
+    return opening.facing ? [compass(opening.facing)] : [];
   });
-  return [...new Set(facings.filter((facing) => facing !== undefined))];
+  return [...new Set(facings)];
+}
+
+/** Where the Room's daylight comes from, for the Room Sheet: one entry per opening. */
+function daylightText(room: RoomDetail): string | undefined {
+  const openings = daylightOpenings(room);
+  if (openings.length === 0) return room.windowless ? "Daylight: none recorded" : undefined;
+  return `Daylight: ${openings.map(openingText).join("; ")}`;
+}
+
+function openingText(opening: DaylightOpening): string {
+  const where = opening.roof ? "in the roof" : opening.wall && `in ${opening.wall}`;
+  return join(", ", [
+    join(" ", [opening.kind, where]),
+    opening.facing && `faces ${compass(opening.facing)}`,
+    opening.obstruction && OBSTRUCTIONS[opening.obstruction],
+    opening.deciduous ? "by deciduous trees" : undefined,
+  ]);
 }
 
 // ─── The Room Sheet ─────────────────────────────────────────────────────────────────────────
@@ -215,7 +235,8 @@ export function renderRoomSheet(
   if (room.functions.length > 0) lines.push(`Functions: ${room.functions.join(", ")}`);
   if (room.ceilingHeight) lines.push(`Ceiling height: ${measure(room.ceilingHeight, sources)}`);
   if (room.timesOfUse.length > 0) lines.push(`Times of use: ${room.timesOfUse.join(", ")}`);
-  if (room.windowless) lines.push("Windowless: yes");
+  const daylight = daylightText(room);
+  if (daylight) lines.push(daylight);
 
   section(
     lines,

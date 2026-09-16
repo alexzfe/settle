@@ -215,7 +215,8 @@ it("renders the Room Sheet from get_room as structured sections", async () => {
     "LevelGround (Level 0)" +
       "Functionsliving, office" +
       "Ceiling height2.60 m Measured" +
-      "Times of useevening, night",
+      "Times of useevening, night" +
+      "DaylightWindow facing S, Skylight facing N, Glazed door facing S",
   );
 
   // Walls in clockwise order, each with its Windows and Doors in order along it.

@@ -69,7 +69,7 @@ Every Home has at least one Level. Gardens and patios sit on the ground Level.
 | outdoor | A balcony of any size you can step onto, a terrace, patio, or garden. A railing-only (Juliet) balcony is not a Room: it is a glazed Door to outside | yes / no, default no | User | Opt |
 | ceiling height | Full ceiling height | mm | Provenance | Gap |
 | times of use | When the Room is mostly used; drives daylight versus lamplight advice | any of morning / daytime / evening / night | User | Gap |
-| windowless | Marks a Room confirmed to have no Windows, so the missing Windows aren't reported as a Gap | yes / no | User | Opt |
+| windowless | Marks a Room confirmed to have no Windows **and** no glazed Door leading outside or onto an outdoor Room, so the missing daylight opening isn't reported as a Gap. A Room whose only glazing is a balcony door is not windowless | yes / no | User | Opt |
 | Surfaces | Walls, ceiling, floor, and woodwork (see [Surface](#surface)) | | | Gap |
 | Walls | Ordered list (see [Wall](#wall)) | | | Gap |
 
@@ -81,7 +81,7 @@ Every Home has at least one Level. Gardens and patios sit on the ground Level.
 |---|---|---|---|---|
 | position | Order in the clockwise list around the Room (viewed from above). Stable, so wall *i* becomes the edge between corners *i* and *i+1* in the 2D Floor Plan | integer | Platform | Req |
 | length | Wall lengths *are* the Room's floor dimensions; there is no separate length × width. Every angle is assumed square until the 2D Floor Plan | mm | Provenance | Gap |
-| facing | Compass direction the Wall faces outward. Exterior Walls only. No Provenance, because a guess is precise enough; north on a Blueprint is always confirmed with the user | 8-point compass | User | Gap if it has Windows |
+| facing | Compass direction the Wall faces outward. Exterior Walls only. No Provenance, because a guess is precise enough; north on a Blueprint is always confirmed with the user | 8-point compass | User | Gap if it has a daylight opening |
 | beyond | What is on the other side. A Wall with an outdoor Room beyond it (a balcony) counts as exterior, so facing and obstruction apply | a Room / outside / unknown (default) | User | Opt |
 | label | e.g. "window wall", "chimney wall" | text | User | Opt |
 | obstruction | How much sky outside is blocked. Exterior Walls only. One answer per side of the building | open / partly / heavily, plus a deciduous-trees flag | User | Opt |
@@ -225,7 +225,7 @@ No scale is stored, because values are never measured off the drawing: a value s
 - **Gaps.** A Room's Gaps are worked out against the "enough for advice" list:
   - Wall lengths
   - ceiling height
-  - Windows, with the facing of the Walls they are in, or the Room marked windowless
+  - a daylight opening (a Window, or a glazed Door leading outside or onto an outdoor Room), with the facing of the Wall it is in, or the Room marked windowless
   - times of use
   - the four Surfaces
 

@@ -486,7 +486,10 @@ export const saveRoomInput = z.object({
   windowless: z
     .boolean()
     .optional()
-    .describe("true once the user confirms the Room has no Windows."),
+    .describe(
+      "true once the user confirms the Room has no Windows and no glazed Door leading " +
+        "outside or onto a balcony. A Room lit only by a balcony door is not windowless.",
+    ),
   surfaces: z
     .object({
       walls: surfaceInput.optional(),

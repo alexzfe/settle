@@ -79,7 +79,7 @@ function RoomSheet({ room, decisions }: { room: RoomDetail; decisions: DecisionS
           {room.ceilingHeight && <Length value={room.ceilingHeight} />}
         </Fact>
         <Fact term="Times of use">{room.timesOfUse.join(", ")}</Fact>
-        <Fact term="Windowless">{room.windowless && "Yes"}</Fact>
+        <Fact term="Daylight">{daylightText(room)}</Fact>
       </dl>
 
       <h2>Walls</h2>
@@ -171,6 +171,30 @@ function RoomDecisions({ decisions }: { decisions: DecisionSummary[] }) {
       ))}
     </ul>
   );
+}
+
+/**
+ * Where the Room's daylight comes from: its Windows, and any glazed Door leading outside or onto
+ * an outdoor Room, each with the direction its Wall faces. Mirrors core's daylightOpenings, since
+ * the web takes only types from @idh/core.
+ */
+function daylightText(room: RoomDetail): string | undefined {
+  const wallFacing = (slug: string | undefined) =>
+    room.walls.find((wall) => wall.slug === slug)?.facing;
+  const faces = (direction: string | undefined) =>
+    direction ? ` facing ${compass(direction)}` : "";
+  const parts = [
+    ...room.windows.map((window) =>
+      window.wall === "roof"
+        ? `Skylight${faces(window.roofFacing)}`
+        : `Window${faces(wallFacing(window.wall))}`,
+    ),
+    ...room.doors
+      .filter((door) => door.glazed && (door.to === "outside" || door.to === "outdoor-room"))
+      .map((door) => `Glazed door${faces(wallFacing(door.wall))}`),
+  ];
+  if (parts.length > 0) return parts.join(", ");
+  return room.windowless ? "None recorded" : undefined;
 }
 
 function wallTitle(wall: Wall): string {

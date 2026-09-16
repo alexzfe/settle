@@ -534,6 +534,51 @@ describe("Gaps", () => {
     expect((await my.room("box-room")).gaps).not.toContain("Windows or windowless");
   });
 
+  it("count a glazed Door to outside as daylight, so the Windows Gap does not fire", async () => {
+    const my = await setUp();
+    await my.saveRoom({
+      name: "Living room",
+      walls: [{ position: 1, length: measured(3000), facing: "w", beyond: "outside" }],
+      doors: [{ wall: 1, sideB: "outside", glazed: true }],
+    });
+    const { gaps } = await my.room("living-room");
+    expect(gaps).not.toContain("Windows or windowless");
+    expect(gaps).not.toContain("facing of living-room/wall-1");
+  });
+
+  it("ask for the facing of a Wall whose only daylight opening is a glazed Door", async () => {
+    const my = await setUp();
+    await my.saveRoom({
+      name: "Living room",
+      walls: [{ position: 1, length: measured(3000), beyond: "outside" }],
+      doors: [{ wall: 1, sideB: "outside", glazed: true }],
+    });
+    expect((await my.room("living-room")).gaps).toContain("facing of living-room/wall-1");
+  });
+
+  it("count a skylight as daylight, and never ask a Wall for its facing", async () => {
+    const my = await setUp();
+    await my.saveRoom({
+      name: "Attic",
+      walls: [{ position: 1, length: measured(3000) }],
+      windows: [{ wall: "roof", roofFacing: "n" }],
+    });
+    const { gaps } = await my.room("attic");
+    expect(gaps).not.toContain("Windows or windowless");
+    expect(gaps.some((gap) => gap.startsWith("facing of"))).toBe(false);
+  });
+
+  it("do not count a glazed Door between two indoor Rooms as daylight", async () => {
+    const my = await setUp();
+    await my.saveRoom({ name: "Study" });
+    await my.saveRoom({
+      name: "Living room",
+      walls: [{ position: 1, length: measured(3000) }],
+      doors: [{ wall: 1, otherRoom: "study", glazed: true }],
+    });
+    expect((await my.room("living-room")).gaps).toContain("Windows or windowless");
+  });
+
   it("check an outdoor Room only for its floor Surface and times of use", async () => {
     const my = await setUp();
     await my.saveRoom({ name: "Balcony", outdoor: true });

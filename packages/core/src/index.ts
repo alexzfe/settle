@@ -9,6 +9,7 @@ export {
   type OperationName,
   type OperationOutput,
 } from "./core.js";
+export { type DaylightOpening, daylightOpenings } from "./daylight.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export type { ChangeEvent, ChangeListener, RecordKind } from "./events.js";
 export type {

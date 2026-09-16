@@ -3,6 +3,7 @@ Level: Ground (storey 0)
 Functions: living, dining
 Ceiling height: 2.60 m
 Times of use: evening, night
+Daylight: window in living-room/wall-1, faces S, sky partly blocked, by deciduous trees; window in living-room/wall-5, faces W
 
 Walls, clockwise:
 - living-room/wall-1: 5.20 m; faces S; outside; sky partly blocked by deciduous trees; "bay wall"

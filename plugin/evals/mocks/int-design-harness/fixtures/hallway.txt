@@ -1,7 +1,7 @@
 Room: Hallway (hallway)
 Level: Ground (storey 0)
 Functions: hallway
-Windowless: yes
+Daylight: glazed door in hallway/wall-1, faces N
 
 Walls, clockwise:
 - hallway/wall-1: 1.10 m; faces N; outside

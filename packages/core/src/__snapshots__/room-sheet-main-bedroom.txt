@@ -2,6 +2,7 @@ Room: Main bedroom (main-bedroom)
 Level: First (storey 1)
 Functions: bedroom
 Times of use: night
+Daylight: window in main-bedroom/wall-1, faces W; glazed door in main-bedroom/wall-1, faces W
 
 Walls, clockwise:
 - main-bedroom/wall-1: ~3.60 m; faces W; beyond Balcony (balcony), outdoor

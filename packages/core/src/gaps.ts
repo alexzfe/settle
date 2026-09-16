@@ -1,9 +1,11 @@
+import { daylightOpenings } from "./daylight.js";
 import { type RoomDetail, SURFACE_PARTS } from "./operations/schemas.js";
 
 /**
  * A Room's Gaps: what the "enough for advice" list (docs/specs/home-model.md#rules-the-home-model-
  * owns) needs and the Room lacks, in the list's order: Wall lengths, ceiling height, Windows with
- * the facing of their Walls (or the Room marked windowless), times of use, and the four Surfaces.
+ * a daylight opening (a Window, or a glazed Door leading outside) with the facing of its Wall, or
+ * the Room marked windowless, times of use, and the four Surfaces.
  * An outdoor Room is checked only for its floor Surface and times of use.
  */
 export function roomGaps(room: Omit<RoomDetail, "gaps">): string[] {
@@ -21,13 +23,17 @@ export function roomGaps(room: Omit<RoomDetail, "gaps">): string[] {
 
   if (!room.ceilingHeight) gaps.push("ceiling height");
 
-  if (room.windows.length === 0) {
+  const openings = daylightOpenings(room);
+  if (openings.length === 0) {
     if (!room.windowless) gaps.push("Windows or windowless");
   } else {
-    const facing = new Map(room.walls.map((wall) => [wall.slug, wall.facing]));
-    const unfaced = [...new Set(room.windows.map((window) => window.wall))].filter(
-      (wall) => wall !== "roof" && !facing.get(wall),
-    );
+    const unfaced = [
+      ...new Set(
+        openings.flatMap((opening) =>
+          opening.wall !== undefined && opening.facing === undefined ? [opening.wall] : [],
+        ),
+      ),
+    ];
     if (unfaced.length > 0) gaps.push(`facing of ${unfaced.join(", ")}`);
   }
 

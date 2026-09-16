@@ -629,7 +629,7 @@
             }
           },
           "windowless": {
-            "description": "true once the user confirms the Room has no Windows.",
+            "description": "true once the user confirms the Room has no Windows and no glazed Door leading outside or onto a balcony. A Room lit only by a balcony door is not windowless.",
             "type": "boolean"
           },
           "surfaces": {

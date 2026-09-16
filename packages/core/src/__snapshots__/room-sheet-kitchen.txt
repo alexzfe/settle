@@ -3,6 +3,7 @@ Level: Ground (storey 0)
 Functions: kitchen
 Ceiling height: 2.50 m
 Times of use: morning, evening
+Daylight: window in kitchen/wall-1, faces E, open sky
 
 Walls, clockwise:
 - kitchen/wall-1: 3.40 m; faces E; outside; open sky
