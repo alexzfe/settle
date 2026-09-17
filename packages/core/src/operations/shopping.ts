@@ -163,11 +163,7 @@ export const getGuidePage = defineOperation({
     return {
       mimeType: HTML,
       fileName: `${decision.slug}-quick-guide.html`,
-      text: renderGuidePage(
-        model.home,
-        toDetail(model, decision, { includeFullGuide: true }),
-        context.now(),
-      ),
+      text: renderGuidePage(model.home, toDetail(model, decision, { includeFullGuide: true })),
     };
   },
 });

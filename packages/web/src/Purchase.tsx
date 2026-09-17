@@ -1,9 +1,9 @@
-// A Purchase Decision's own parts on its page: first its Quick Guide as core assembles it, in three
-// blocks (Measure first, Must, Prefer and In the shop), and how to take it shopping; then the Full
-// Guide one tap away, marked when a Requirement changed after it was written; its Requirements,
-// musts first, each with a chip linking to the record it comes from; the Listings checked against
-// the Requirements, side by side; and, once Fulfilled, what was bought and how it differs from
-// what was asked.
+// A Purchase Decision's own parts on its page: first its Quick Guide as core assembles it, in the
+// phone page's order (the looking-for line, Measure first, Must, Avoid, then Prefer, In the shop,
+// and Ask the seller), and how to take it shopping; then the Full Guide one tap away, marked when
+// a Requirement changed after it was written; its Requirements under Must and Prefer, each with a
+// chip linking to the record it comes from; the Listings checked against the Requirements, side by
+// side; and, once Fulfilled, what was bought and how it differs from what was asked.
 
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -62,7 +62,10 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
     <>
       <Section title="Quick Guide" id="quick-guide">
         {quickLines.length > 0 ? (
-          <QuickGuideBlocks lines={quickLines} />
+          <QuickGuideBlocks
+            lookingFor={decision.quickGuide?.lookingFor ?? decision.statement}
+            lines={quickLines}
+          />
         ) : (
           <p className={styles.muted}>
             None yet: the Agent writes the Guides in a Purchase Session.
@@ -112,21 +115,29 @@ function Requirements({
   requirements: Requirement[];
 }) {
   if (requirements.length === 0) return <p className={styles.muted}>None yet.</p>;
-  return (
-    <ul className={page.requirements}>
-      {requirements.toSorted(byStrength).map((requirement) => (
-        <li key={requirement.position}>
-          <RequirementLine
-            requirement={requirement}
-            path={reasonPath(home, requirement.reason, rooms)}
-          />
-        </li>
-      ))}
-    </ul>
-  );
+  // Under a heading per strength, so no row repeats it; positions are kept, never renumbered.
+  return (["must", "prefer"] as const).map((strength) => {
+    const shown = requirements.filter((requirement) => requirement.strength === strength);
+    if (shown.length === 0) return null;
+    return (
+      <div key={strength} className={page.requirementGroup}>
+        <h3 className={page.guideTitle}>{sentence(strength)}</h3>
+        <ul className={`${page.requirements} ${page[`requirements-${strength}`]}`}>
+          {shown.map((requirement) => (
+            <li key={requirement.position}>
+              <RequirementLine
+                requirement={requirement}
+                path={reasonPath(home, requirement.reason, rooms)}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  });
 }
 
-/** "Must · under 85 cm tall · [Front door, clear width]", the reason chip linking to its record. */
+/** "under 85 cm tall · [Front door, clear width]", the reason chip linking to its record. */
 function RequirementLine({
   requirement,
   path,
@@ -143,9 +154,6 @@ function RequirementLine({
   );
   return (
     <>
-      <span className={`${page.strength} ${page[requirement.strength]}`}>
-        {sentence(requirement.strength)}
-      </span>
       <span className={page.requirementText}>{requirement.text}</span>
       {path ? (
         <Link className={page.reason} to={path} title="Where it comes from">
@@ -179,21 +187,57 @@ export function BoldNumbers({ text }: { text: string }) {
 
 const MEASURE_FIRST = /^Measure first:\s*/i;
 
+/** The heading over each kind of Quick Guide line, as the phone page and the exports have it. */
+const QUICK_GUIDE_HEADINGS: Record<QuickGuideLine["kind"], string> = {
+  "measure-first": "Measure first",
+  must: "Must",
+  prefer: "Prefer",
+  avoid: "Avoid",
+  test: "In the shop",
+  ask: "Ask the seller",
+};
+
 /**
- * The Quick Guide in three blocks, in core's order: Measure first (an important Callout), the
- * musts with their numbers bold, then the prefers and the AI's own lines for the shop.
+ * The Quick Guide in core's order, all of it shown: the looking-for line (the statement until a
+ * Session writes one), Measure first as an important Callout, the musts and the avoids, then the
+ * prefers, the tests for the shop, and what to ask the seller, quieter. Numbers bold throughout.
  */
-function QuickGuideBlocks({ lines }: { lines: QuickGuideLine[] }) {
+function QuickGuideBlocks({
+  lookingFor,
+  lines,
+}: {
+  lookingFor: string | undefined;
+  lines: QuickGuideLine[];
+}) {
   const of = (kind: QuickGuideLine["kind"]) => lines.filter((line) => line.kind === kind);
   const key = (line: QuickGuideLine) => `${line.kind}:${line.requirement ?? line.text}`;
   const measure = of("measure-first");
-  const musts = of("must");
-  const prefers = of("prefer");
-  const shop = of("line");
+  const group = (kinds: QuickGuideLine["kind"][]) =>
+    kinds.map((kind) => ({ kind, lines: of(kind) })).filter((each) => each.lines.length > 0);
+  const firm = group(["must", "avoid"]);
+  const soft = group(["prefer", "test", "ask"]);
+  const blocks = (groups: typeof firm) =>
+    groups.map(({ kind, lines: shown }) => (
+      <div key={kind} className={page.guideGroup}>
+        <h3 className={page.guideTitle}>{QUICK_GUIDE_HEADINGS[kind]}</h3>
+        <ul className={`${page.guideList} ${page[`guide-${kind}`] ?? ""}`}>
+          {shown.map((line) => (
+            <li key={key(line)}>
+              <BoldNumbers text={line.text} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    ));
   return (
     <div className={page.quickGuide}>
+      {lookingFor && (
+        <p className={page.lookingFor}>
+          <BoldNumbers text={lookingFor} />
+        </p>
+      )}
       {measure.length > 0 && (
-        <Callout tone="important" title="Measure first">
+        <Callout tone="important" title={QUICK_GUIDE_HEADINGS["measure-first"]}>
           <ul className={page.guideList}>
             {measure.map((line) => (
               <li key={key(line)}>
@@ -203,41 +247,9 @@ function QuickGuideBlocks({ lines }: { lines: QuickGuideLine[] }) {
           </ul>
         </Callout>
       )}
-      {musts.length > 0 && (
-        <div className={page.guideBlock}>
-          <h3 className={page.guideTitle}>Must</h3>
-          <ul className={page.guideList}>
-            {musts.map((line) => (
-              <li key={key(line)}>
-                <BoldNumbers text={line.text} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {(prefers.length > 0 || shop.length > 0) && (
-        <div className={`${page.guideBlock} ${page.guideSoft}`}>
-          {prefers.length > 0 && (
-            <>
-              <h3 className={page.guideTitle}>Prefer</h3>
-              <ul className={page.guideList}>
-                {prefers.map((line) => (
-                  <li key={key(line)}>{line.text}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          {shop.length > 0 && (
-            <>
-              <h3 className={page.guideTitle}>In the shop</h3>
-              <ul className={page.guideList}>
-                {shop.map((line) => (
-                  <li key={key(line)}>{line.text}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
+      {firm.length > 0 && <div className={page.guideBlock}>{blocks(firm)}</div>}
+      {soft.length > 0 && (
+        <div className={`${page.guideBlock} ${page.guideSoft}`}>{blocks(soft)}</div>
       )}
     </div>
   );
@@ -245,7 +257,7 @@ function QuickGuideBlocks({ lines }: { lines: QuickGuideLine[] }) {
 
 /**
  * How to take the Quick Guide shopping, in steps: open it on a phone (in LAN mode, by the QR code
- * of its address on the user's network), save a copy, and know the copy will not update.
+ * of its address on the user's network), print it or download it, and know the phone page is live.
  */
 function TakeItShopping({ home, decision }: { home: string; decision: DecisionDetail }) {
   const lanUrl = decision.guides?.lanUrl;
@@ -284,7 +296,7 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
           </li>
           {decision.guides && (
             <li>
-              <span className={page.stepTitle}>Save a copy</span>
+              <span className={page.stepTitle}>Print it or download it</span>
               <span className={page.stepNote}>
                 <a
                   href={guidesExportUrl(home, "html", decision.slug)}
@@ -301,10 +313,10 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
             </li>
           )}
           <li>
-            <span className={page.stepTitle}>It won't update</span>
+            <span className={page.stepTitle}>It stays current</span>
             <span className={page.stepNote}>
-              A saved copy keeps the Guides as they are now. If a Requirement changes, save it
-              again.
+              The phone page is live: it changes when the Agent changes a Requirement. A screenshot
+              won't.
             </span>
           </li>
         </ol>

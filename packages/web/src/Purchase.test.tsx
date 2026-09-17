@@ -27,8 +27,12 @@ const written = "2026-09-12T09:00:00Z";
 const changed = "2026-09-13T18:00:00Z";
 const fulfilled = "2026-09-14T15:00:00Z";
 
-/** The rug's Quick Guide as core assembles it: Measure first, the musts, the prefers, the AI's. */
+/**
+ * The rug's Quick Guide as core assembles it: its looking-for line, Measure first, the musts, the
+ * prefers, then the AI's avoids, tests, and asks.
+ */
 const quickGuide: QuickGuide = {
+  lookingFor: "Wool · low pile · warm clay · at least 2.0 × 1.4 m",
   lines: [
     { kind: "measure-first", text: "Measure first: living-room/wall-2 length (~3.60 m)" },
     { kind: "must", text: "At least 2.0 × 1.4 m", requirement: 2 },
@@ -36,16 +40,19 @@ const quickGuide: QuickGuide = {
     { kind: "prefer", text: "Wool, low pile", requirement: 1 },
     { kind: "prefer", text: "In the Palette's clay", requirement: 4 },
     { kind: "prefer", text: "No wider than the sofa", requirement: 5 },
-    { kind: "line", text: "Avoid viscose: it sheds" },
-    { kind: "line", text: "In the shop: drag a key across it; loops that snag catch claws" },
+    { kind: "avoid", text: "Viscose — sheds" },
+    { kind: "test", text: "Drag a key across it: loops that snag catch claws" },
+    { kind: "ask", text: "Backing latex or felt?" },
   ],
   path: "/guide/wool-rug?home=flat",
 };
 
 const guides: Guides = {
+  lookingFor: "Wool · low pile · warm clay · at least 2.0 × 1.4 m",
   quickLines: [
-    "Avoid viscose: it sheds",
-    "In the shop: drag a key across it; loops that snag catch claws",
+    { kind: "avoid", text: "Viscose — sheds" },
+    { kind: "test", text: "Drag a key across it: loops that snag catch claws" },
+    { kind: "ask", text: "Backing latex or felt?" },
   ],
   fullGuide: { writtenAt: written, outOfDate: false },
 };
@@ -205,9 +212,9 @@ function listAfter(heading: string): string[] {
   );
 }
 
-/** The items of the list under a Quick Guide block's title. */
-function block(title: string): (string | null)[] {
-  const heading = within(sectionOf("Quick Guide")).getByText(title);
+/** The items of the list under a title in a section: a Quick Guide section's, or a strength's. */
+function block(title: string, section = "Quick Guide"): (string | null)[] {
+  const heading = within(sectionOf(section)).getByRole("heading", { name: title, level: 3 });
   const list = heading.nextElementSibling;
   return [...(list?.querySelectorAll("li") ?? [])].map((li) => li.textContent);
 }
@@ -216,15 +223,34 @@ function href(name: string): string | null {
   return screen.getByRole("link", { name }).getAttribute("href");
 }
 
-it("lists the musts before the prefers, each reason linking to the record it points at", async () => {
+/** Each Requirement under a strength's heading, its text and reason chip joined by " | ". */
+function requirementsUnder(strength: string): string[] {
+  const heading = within(sectionOf("Requirements")).getByRole("heading", {
+    name: strength,
+    level: 3,
+  });
+  return [...(heading.nextElementSibling?.querySelectorAll(":scope > li") ?? [])].map((li) =>
+    [...li.children].map((child) => child.textContent).join(" | "),
+  );
+}
+
+it("groups the Requirements under Must and Prefer, each reason linking to its record", async () => {
   showRug({ quickGuide, guides });
   await screen.findByRole("heading", { name: "Requirements" });
-  expect(listAfter("Requirements")).toEqual([
-    "Must | At least 2.0 × 1.4 m | Wall 2, length",
-    "Must | Rolls to fit through the hallway door | Door to the Hallway, clear width",
-    "Prefer | Wool, low pile | Two cats",
-    "Prefer | In the Palette's clay | Warm clay",
-    "Prefer | No wider than the sofa | Grey sofa",
+  // The heading says the strength, so no row repeats it; each group keeps position order.
+  expect(
+    within(sectionOf("Requirements"))
+      .getAllByRole("heading", { level: 3 })
+      .map((heading) => heading.textContent),
+  ).toEqual(["Must", "Prefer"]);
+  expect(requirementsUnder("Must")).toEqual([
+    "At least 2.0 × 1.4 m | Wall 2, length",
+    "Rolls to fit through the hallway door | Door to the Hallway, clear width",
+  ]);
+  expect(requirementsUnder("Prefer")).toEqual([
+    "Wool, low pile | Two cats",
+    "In the Palette's clay | Warm clay",
+    "No wider than the sofa | Grey sofa",
   ]);
   // A Door is found in its Room once the Home's Rooms arrive.
   await screen.findByRole("link", { name: "Door to the Hallway, clear width" });
@@ -235,9 +261,18 @@ it("lists the musts before the prefers, each reason linking to the record it poi
   expect(href("Grey sofa")).toBe("/homes/flat/items");
 });
 
-it("shows the Quick Guide in three blocks and the Full Guide on a tap", async () => {
+it("shows the Quick Guide in the phone page's order and the Full Guide on a tap", async () => {
   const fetch = showRug({ quickGuide, guides });
   await screen.findByRole("heading", { name: "Quick Guide" });
+  // The looking-for line leads, then the sections in the phone page's order, all shown.
+  const guide = within(sectionOf("Quick Guide")).getByText("Measure first").closest("aside")
+    ?.parentElement as HTMLElement;
+  expect(guide.firstElementChild?.textContent).toBe(
+    "Wool · low pile · warm clay · at least 2.0 × 1.4 m",
+  );
+  expect(
+    [...guide.querySelectorAll("aside > p:first-child, h3")].map((title) => title.textContent),
+  ).toEqual(["Measure first", "Must", "Avoid", "Prefer", "In the shop", "Ask the seller"]);
   // Measure first, set off as important, before anything else.
   const measure = within(sectionOf("Quick Guide")).getByText("Measure first").closest("aside");
   expect([...(measure?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
@@ -248,16 +283,19 @@ it("shows the Quick Guide in three blocks and the Full Guide on a tap", async ()
   );
   expect(block("Must")).toEqual(["At least 2.0 × 1.4 m", "Rolls to fit through the hallway door"]);
   // The numbers of a must stand out.
-  expect(within(sectionOf("Quick Guide")).getByText("2.0 × 1.4 m").tagName).toBe("STRONG");
+  expect(
+    within(sectionOf("Quick Guide"))
+      .getAllByText("2.0 × 1.4 m")
+      .map((number) => number.tagName),
+  ).toEqual(["STRONG", "STRONG"]);
   expect(block("Prefer")).toEqual([
     "Wool, low pile",
     "In the Palette's clay",
     "No wider than the sofa",
   ]);
-  expect(block("In the shop")).toEqual([
-    "Avoid viscose: it sheds",
-    "In the shop: drag a key across it; loops that snag catch claws",
-  ]);
+  expect(block("Avoid")).toEqual(["Viscose — sheds"]);
+  expect(block("In the shop")).toEqual(["Drag a key across it: loops that snag catch claws"]);
+  expect(block("Ask the seller")).toEqual(["Backing latex or felt?"]);
   expect(sectionOf("Full Guide").querySelector("p")?.textContent).toBe(
     `Written ${formatDate(written)}.`,
   );
@@ -284,6 +322,28 @@ it("shows the Quick Guide in three blocks and the Full Guide on a tap", async ()
 
   fireEvent.click(screen.getByRole("button", { name: "Hide the Full Guide" }));
   await waitFor(() => expect(screen.queryByRole("heading", { name: "Size" })).toBeNull());
+});
+
+it("leads the Quick Guide with the statement until a Session writes a looking-for line", async () => {
+  const { lookingFor: _, ...unwritten } = quickGuide;
+  showRug({ quickGuide: unwritten, guides: { ...guides, lookingFor: undefined } });
+  await screen.findByRole("heading", { name: "Quick Guide" });
+  expect(
+    within(sectionOf("Quick Guide")).getByText("A large wool rug under the sofa.").tagName,
+  ).toBe("P");
+});
+
+it("says the phone page is live when taking it shopping", async () => {
+  showRug({ quickGuide, guides });
+  await screen.findByRole("heading", { name: "Take it shopping" });
+  const steps = screen.getByRole("navigation", { name: "The Guides elsewhere" });
+  expect(
+    [...steps.querySelectorAll("ol > li > span:first-child")].map((s) => s.textContent),
+  ).toEqual(["Open it on your phone", "Print it or download it", "It stays current"]);
+  expect(steps.textContent).toContain(
+    "The phone page is live: it changes when the Agent changes a Requirement.",
+  );
+  expect(steps.textContent).not.toMatch(/won't update/);
 });
 
 it("marks the Full Guide out of date when a Requirement changed after it was written", async () => {

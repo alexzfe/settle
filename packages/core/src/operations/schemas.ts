@@ -1545,18 +1545,42 @@ export type FulfilmentFeatureInput = z.input<typeof fulfilmentFeatureInput>;
 export const CHECK_RESULTS = ["pass", "fail", "unknown"] as const;
 export type CheckResult = (typeof CHECK_RESULTS)[number];
 
+/** The kinds of the AI's own Quick Guide lines, in the order the Quick Guide shows them. */
+export const QUICK_LINE_KINDS = ["avoid", "test", "ask"] as const;
+export type QuickLineKind = (typeof QUICK_LINE_KINDS)[number];
+
+/** One of the AI's own Quick Guide lines. */
+export const quickLineInput = z.object({
+  kind: z
+    .enum(QUICK_LINE_KINDS)
+    .describe(
+      "avoid (what to steer clear of), test (what to try in the shop), or ask (the seller).",
+    ),
+  text: line.describe("One short fragment, numbers first."),
+});
+
 export const saveGuidesInput = z.object({
   session: sessionInput,
   decision: decisionSlugInput.describe("The slug of the Purchase the Guides are for."),
+  lookingFor: text
+    .max(120)
+    .optional()
+    .describe(
+      "The Quick Guide's looking-for line, replacing any saved: what the user is hunting for, " +
+        'in fragments, about 80 characters ("Semi-sheer · warm cream · made-to-measure · ' +
+        '2–2.5× fullness"). It heads the phone page, above everything else.',
+    ),
   quickLines: z
-    .array(line)
+    .array(quickLineInput)
     .max(8)
     .optional()
     .describe(
-      "The Quick Guide's own lines, replacing any saved: what to avoid and what to test in the " +
-        'shop, one short line each ("Avoid loop pile: claws catch in it", "Press the pile: it ' +
-        'should spring back"). Not the Requirements and not "Measure first": the app puts those ' +
-        "in itself, from the Requirements, so they never go stale.",
+      "The Quick Guide's own lines, replacing any saved: at most 8 in all, one pool, each a " +
+        'short fragment with its kind. avoid: what to steer clear of, first ("Flat shiny ' +
+        'polyester — want visible slub"); test: what to try in the shop ("Press the pile: ' +
+        'springs back"); ask: what to ask the seller ("Lead time for made-to-measure?"). Not the ' +
+        'Requirements and not "Measure first": the app puts those in itself, from the ' +
+        "Requirements, so they never go stale.",
     ),
   fullGuide: z
     .string()
@@ -1850,11 +1874,24 @@ export const fulfilmentSchema = z.object({
 });
 
 /**
- * One line of the Quick Guide, which core assembles and never stores whole: "Measure first" lines
- * for every must resting on an Estimated (or unrecorded) value, then the musts, then the prefers,
- * each by position, then the AI's own lines.
+ * The kinds of Quick Guide line, in the one order every surface shows them: Measure first, then
+ * what a candidate passes or fails on (the musts and the avoids), then the tiebreakers and the
+ * checks made with it in hand (the prefers, the tests, and the asks).
  */
-export const QUICK_GUIDE_LINE_KINDS = ["measure-first", "must", "prefer", "line"] as const;
+export const QUICK_GUIDE_LINE_KINDS = [
+  "measure-first",
+  "must",
+  "avoid",
+  "prefer",
+  "test",
+  "ask",
+] as const satisfies readonly ("measure-first" | "must" | "prefer" | QuickLineKind)[];
+
+/**
+ * One line of the Quick Guide, which core assembles and never stores whole: "Measure first" lines
+ * for every must resting on an Estimated (or unrecorded) value, the musts and prefers by position,
+ * and the AI's own lines, in the order of QUICK_GUIDE_LINE_KINDS.
+ */
 
 export const quickGuideLineSchema = z.object({
   kind: z.enum(QUICK_GUIDE_LINE_KINDS),
@@ -1868,6 +1905,9 @@ export const quickGuideLineSchema = z.object({
 });
 
 export const quickGuideSchema = z.object({
+  /** The AI's looking-for line, heading the Quick Guide; absent until save_guides writes one. */
+  lookingFor: z.string().optional(),
+  /** Measure first, then must, prefer, avoid, test, and ask; musts and prefers by position. */
   lines: z.array(quickGuideLineSchema),
   /** The phone page on this computer: "/guide/<decision slug>?home=<home slug>". */
   path: z.string(),
@@ -1882,9 +1922,18 @@ export const fullGuideSchema = z.object({
   markdown: z.string().optional(),
 });
 
-/** A Purchase's saved Guides: the AI's Quick Guide lines and its Full Guide. */
+/** One of the AI's own Quick Guide lines, as saved. */
+export const quickLineSchema = z.object({
+  kind: z.enum(QUICK_LINE_KINDS),
+  text: z.string(),
+});
+
+/** A Purchase's saved Guides: the AI's looking-for line, Quick Guide lines, and Full Guide. */
 export const guidesSchema = z.object({
-  quickLines: z.array(z.string()),
+  /** Absent until save_guides writes one. */
+  lookingFor: z.string().optional(),
+  /** As saved, in the order given. */
+  quickLines: z.array(quickLineSchema),
   /** Absent until a Full Guide is saved. */
   fullGuide: fullGuideSchema.optional(),
   /** In LAN mode: the Quick Guide's URL for a phone on the same network, for a QR code. */
@@ -1934,6 +1983,7 @@ export const deviationSchema = z.object({
 });
 
 export type QuickGuideLine = z.infer<typeof quickGuideLineSchema>;
+export type QuickLine = z.infer<typeof quickLineSchema>;
 export type QuickGuide = z.infer<typeof quickGuideSchema>;
 export type FullGuide = z.infer<typeof fullGuideSchema>;
 export type Guides = z.infer<typeof guidesSchema>;

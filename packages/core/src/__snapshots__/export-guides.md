@@ -8,23 +8,34 @@ A large wool rug under the sofa.
 
 ### Quick Guide
 
-- **Measure first:** living-room/wall-5 length (~3.70 m)
+**Looking for:** Wool · cut pile · warm terracotta · 2.0–3.4 m long
 
-**Must**
+#### Measure first
+
+- Living room · Wall 5 · length. Recorded **~370 cm** (estimate). Measured: ____ cm
+
+#### Must
 
 - At least 2.0 × 1.4 m
 - No longer than 3.4 m, to keep the walk past the west window clear
 
-**Prefer**
+#### Avoid
+
+- Loop pile, viscose blends — claws catch, viscose marks
+
+#### Prefer
 
 - Wool, low pile: loops catch the cats' claws
 - Warm terracotta, the Palette's accent, or close to it
 
-**In the shop**
+#### In the shop
 
-- Avoid loop pile and viscose blends: claws catch in loops, and viscose marks
-- Rub the pile hard: more than a little fluff means months of shedding
-- Turn a corner back: a stiff latex backing cracks on the tiles
+- Rub the pile hard: more than a little fluff means shedding
+- Turn a corner back: stiff latex cracks on tiles
+
+#### Ask the seller
+
+- Backing latex or felt?
 
 ### Full Guide
 

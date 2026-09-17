@@ -112,7 +112,7 @@ it("renders get_decision: a Room Direction, a flagged Purchase, and a Decision w
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("get_decision"));
 });
 
-it("renders the Quick Guide of a Purchase: Measure first, the musts, the prefers, then the AI's lines", async () => {
+it("renders the Quick Guide of a Purchase in full: the looking-for line, Measure first, the musts, the avoids, the prefers, the tests, then the asks", async () => {
   const session = await openSession();
   const { decision } = await fixture.core.run("get_decision", agent(session), {
     session,

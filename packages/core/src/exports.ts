@@ -5,7 +5,8 @@ import type {
   Listing,
   QuickGuideLine,
 } from "./operations/schemas.js";
-import { fieldLabel, DECISION_STATE_LABELS as STATES } from "./render.js";
+import { QUICK_GUIDE_LINE_KINDS } from "./operations/schemas.js";
+import { fieldLabel, QUICK_GUIDE_HEADINGS, DECISION_STATE_LABELS as STATES } from "./render.js";
 
 // The files the web serves as they are, rendered from stored data only (docs/poc-design.md#web-ui):
 // the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and
@@ -90,16 +91,23 @@ export function renderShoppingListPage(
       `<p class="meta">${stateHtml(purchase)} · ${escapeHtml(place(purchase))}</p>`,
       ...flagsHtml(purchase),
       `<p>${escapeHtml(purchase.statement)}</p>`,
-      ...measureFirstHtml(3, purchase),
-      ...checksHtml(3, "Must", requirementTexts(purchase, "must"), { numbers: true }),
-      ...checksHtml(3, "Prefer", requirementTexts(purchase, "prefer")),
+      ...quickSections(purchase)
+        .filter(({ kind }) => ON_THE_LIST.has(kind))
+        .flatMap((section) => sectionHtml(3, purchase, section)),
       ...listHtml(3, "Listings", purchase.listings.map(listingText)),
       "</section>",
     );
   }
-  body.push(footerHtml(generatedAt));
+  body.push(FOOTER_HTML);
   return htmlPage(`Shopping List: ${home.name}`, PRINT_STYLE, body);
 }
+
+/** The Quick Guide sections the Shopping List carries: the rest are for the shop. */
+const ON_THE_LIST: ReadonlySet<QuickGuideLine["kind"]> = new Set([
+  "measure-first",
+  "must",
+  "prefer",
+]);
 
 /** One Listing: name, price, its pass, fail, and unknown counts, and any must it fails. */
 function listingText(listing: Listing): string {
@@ -119,8 +127,8 @@ function listingText(listing: Listing): string {
 // ─── The Shopping Guides ────────────────────────────────────────────────────────────────────
 
 /**
- * The Shopping Guides as Markdown: per Purchase its Quick Guide, then its Full Guide with its
- * headings moved under the Purchase's own.
+ * The Shopping Guides as Markdown: per Purchase its Quick Guide, every section expanded under a
+ * heading of its own, then its Full Guide with its headings moved under the Purchase's own.
  */
 export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail[]): string {
   const out = [`# Shopping Guides: ${home.name}`];
@@ -130,14 +138,15 @@ export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail
     const bought = boughtText(purchase);
     if (bought) out.push("", bought);
     out.push("", "### Quick Guide");
-    const measure = linesOf(purchase, "measure-first");
-    if (measure.length > 0) out.push("", ...measure.map((line) => `- **Measure first:** ${line}`));
-    for (const [label, lines] of quickSections(purchase)) {
-      out.push("", `**${label}**`, "", ...lines.map((line) => `- ${line}`));
+    const lookingFor = purchase.quickGuide?.lookingFor;
+    if (lookingFor) out.push("", `**Looking for:** ${lookingFor}`);
+    const sections = quickSections(purchase);
+    for (const { kind, heading, lines } of sections) {
+      const text = (line: string) =>
+        kind === "measure-first" ? measureText(purchase, line, MARKDOWN_MEASURE) : line;
+      out.push("", `#### ${heading}`, "", ...lines.map((line) => `- ${text(line)}`));
     }
-    if (measure.length === 0 && quickSections(purchase).length === 0) {
-      out.push("", "_Nothing to check yet: it has no Requirements._");
-    }
+    if (sections.length === 0) out.push("", "_Nothing to check yet: it has no Requirements._");
     out.push("", "### Full Guide", "");
     const full = purchase.guides?.fullGuide;
     if (full?.markdown === undefined) out.push("_No Full Guide written yet._");
@@ -148,8 +157,8 @@ export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail
 
 /**
  * The Shopping Guides as a printable page, each Purchase on a page of its own under a header
- * naming the Home, its Room, and the day: its Quick Guide kept to one page when it fits, the
- * blanks to bring back to the Agent, then its Full Guide.
+ * naming the Home, its Room, and the day: its Quick Guide with every section expanded, kept to one
+ * page when it fits, the blanks to bring back to the Agent, then its Full Guide.
  */
 export function renderGuidesPage(
   home: ExportHome,
@@ -175,7 +184,12 @@ export function renderGuidesPage(
     );
     const bought = boughtText(purchase);
     if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
-    body.push('<section class="quick">', "<h3>Quick Guide</h3>", ...quickGuideHtml(4, purchase));
+    body.push('<section class="quick">', "<h3>Quick Guide</h3>");
+    const lookingFor = purchase.quickGuide?.lookingFor;
+    if (lookingFor) body.push(`<p class="looking-for">${escapeHtml(lookingFor)}</p>`);
+    const sections = quickSections(purchase);
+    if (sections.length === 0) body.push(NOTHING_TO_CHECK);
+    for (const section of sections) body.push(...sectionHtml(4, purchase, section));
     body.push("</section>");
     if (!bought) body.push(bringBackHtml(3));
     const full = purchase.guides?.fullGuide;
@@ -189,7 +203,7 @@ export function renderGuidesPage(
     }
     body.push("</section>", "</article>");
   }
-  body.push(footerHtml(generatedAt));
+  body.push(FOOTER_HTML);
   return htmlPage(`Shopping Guides: ${home.name}`, PRINT_STYLE, body);
 }
 
@@ -205,39 +219,54 @@ function fullGuideState(full: FullGuide): string {
 
 // ─── The phone page ─────────────────────────────────────────────────────────────────────────
 
+/** The sections the phone page folds behind a tap: consulted once the musts are passed. */
+const FOLDED: ReadonlySet<QuickGuideLine["kind"]> = new Set(["prefer", "test", "ask"]);
+
 /**
- * The Quick Guide on a phone in the shop, in three blocks big enough to read while holding a
- * sample: Measure first, the musts, then the prefers and the AI's own lines. The Full Guide is
- * folded away under one tap, and the page ends with the day it was made and the blanks to bring
- * back to the Agent. No JavaScript.
+ * The Quick Guide on a phone, big enough to read while holding a sample: the looking-for line,
+ * then Measure first, the musts, and the avoids, always open, then Prefer, In the shop, Ask the
+ * seller, and the Full Guide, each folded under one tap with its count. The tick boxes and the
+ * blanks to bring back to the Agent are printed only: with no JavaScript, nothing here can be
+ * ticked on screen.
  */
-export function renderGuidePage(
-  home: ExportHome,
-  purchase: DecisionDetail,
-  generatedAt: string,
-): string {
+export function renderGuidePage(home: ExportHome, purchase: DecisionDetail): string {
   const body = [
     "<main>",
     "<header>",
     `<p class="home">${escapeHtml(home.name)} · ${escapeHtml(place(purchase))}</p>`,
     `<h1>${escapeHtml(purchase.title)}</h1>`,
-    `<p>${escapeHtml(purchase.statement)}</p>`,
+    `<p class="looking-for">${escapeHtml(purchase.quickGuide?.lookingFor ?? purchase.statement)}</p>`,
     "</header>",
   ];
   const bought = boughtText(purchase);
   if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
-  body.push(...quickGuideHtml(2, purchase));
+  const sections = quickSections(purchase);
+  if (sections.length === 0) body.push(NOTHING_TO_CHECK);
+  for (const section of sections.filter(({ kind }) => !FOLDED.has(kind))) {
+    body.push(...sectionHtml(2, purchase, section));
+  }
+  const folds = sections.filter(({ kind }) => FOLDED.has(kind));
   const full = purchase.guides?.fullGuide;
+  if (folds.length > 0 || full?.markdown !== undefined) body.push('<div class="folds">');
+  for (const section of folds) {
+    body.push(
+      `<details class="${section.kind}">`,
+      `<summary>${escapeHtml(section.heading)} (${section.lines.length})</summary>`,
+      ...linesHtml(purchase, section),
+      "</details>",
+    );
+  }
   if (full?.markdown !== undefined) {
-    body.push("<details>", "<summary>Full Guide</summary>");
+    body.push('<details class="full">', "<summary>Full Guide</summary>");
     if (full.outOfDate) {
       body.push('<p class="stale">Out of date: a Requirement changed after it was written.</p>');
     }
     body.push(markdownToHtml(full.markdown, 3), "</details>");
   }
+  if (folds.length > 0 || full?.markdown !== undefined) body.push("</div>");
   body.push("<footer>");
   if (!bought) body.push(bringBackHtml(2));
-  body.push(footerHtml(generatedAt), "</footer>", "</main>");
+  body.push(FOOTER_HTML, "</footer>", "</main>");
   return htmlPage(`${purchase.title}: Quick Guide`, PHONE_STYLE, body);
 }
 
@@ -252,48 +281,57 @@ function linesOf(purchase: DecisionDetail, kind: QuickGuideLine["kind"]): string
     );
 }
 
-/** The Quick Guide's sections after Measure first, those with lines only. */
-function quickSections(purchase: DecisionDetail): [string, string[]][] {
-  const sections: [string, string[]][] = [
-    ["Must", linesOf(purchase, "must")],
-    ["Prefer", linesOf(purchase, "prefer")],
-    ["In the shop", linesOf(purchase, "line")],
-  ];
-  return sections.filter(([, lines]) => lines.length > 0);
+interface QuickSection {
+  kind: QuickGuideLine["kind"];
+  heading: string;
+  lines: string[];
 }
 
 /**
- * The Quick Guide as three blocks: Measure first, Must, then Prefer and In the shop together.
- * Must and Prefer lines get a box to tick, and a must's numbers are bold.
+ * The Quick Guide's sections, those with lines only, in core's own order: Measure first, then what
+ * a candidate passes or fails on (the musts and the avoids), then the tiebreakers and the checks
+ * made with it in hand. Taken from QUICK_GUIDE_LINE_KINDS so the exports and the text form cannot
+ * drift apart.
  */
-function quickGuideHtml(level: number, purchase: DecisionDetail): string[] {
-  const measure = linesOf(purchase, "measure-first");
-  const must = linesOf(purchase, "must");
-  const prefer = linesOf(purchase, "prefer");
-  const shop = linesOf(purchase, "line");
-  if (measure.length + must.length + prefer.length + shop.length === 0) {
-    return ["<p>Nothing to check yet: this Purchase has no Requirements.</p>"];
-  }
-  const out: string[] = [];
-  if (measure.length > 0) {
-    out.push(...measureFirstHtml(level, purchase));
-  }
-  if (must.length > 0) {
-    out.push(
-      '<section class="block must">',
-      ...checksHtml(level, "Must", must, { numbers: true }),
-      "</section>",
-    );
-  }
-  if (prefer.length + shop.length > 0) {
-    out.push(
-      '<section class="block prefer">',
-      ...checksHtml(level, "Prefer", prefer),
-      ...listHtml(level, "In the shop", shop),
-      "</section>",
-    );
-  }
-  return out;
+function quickSections(purchase: DecisionDetail): QuickSection[] {
+  return QUICK_GUIDE_LINE_KINDS.map((kind) => ({
+    kind,
+    heading: QUICK_GUIDE_HEADINGS[kind],
+    lines: linesOf(purchase, kind),
+  })).filter(({ lines }) => lines.length > 0);
+}
+
+const NOTHING_TO_CHECK = "<p>Nothing to check yet: this Purchase has no Requirements.</p>";
+
+/** One Quick Guide section under its heading. */
+function sectionHtml(level: number, purchase: DecisionDetail, section: QuickSection): string[] {
+  const name = section.kind === "measure-first" ? "measure" : section.kind;
+  return [
+    `<section class="block ${name}">`,
+    `<h${level}>${escapeHtml(section.heading)}</h${level}>`,
+    ...linesHtml(purchase, section),
+    "</section>",
+  ];
+}
+
+/**
+ * A section's lines as a list: Measure first ones as instructions with a blank, musts and prefers
+ * with a box to tick where the page is printed, and a must's numbers bold.
+ */
+function linesHtml(purchase: DecisionDetail, { kind, lines }: QuickSection): string[] {
+  const list =
+    kind === "measure-first"
+      ? "measure-lines"
+      : kind === "must" || kind === "prefer"
+        ? "checks"
+        : "lines";
+  const text = (line: string) =>
+    kind === "measure-first"
+      ? measureText(purchase, line, HTML_MEASURE)
+      : kind === "must"
+        ? escapeHtml(line).replace(NUMBER, (figure) => `<strong class="num">${figure}</strong>`)
+        : escapeHtml(line);
+  return [`<ul class="${list}">`, ...lines.map((line) => `<li>${text(line)}</li>`), "</ul>"];
 }
 
 function requirementTexts(purchase: DecisionDetail, strength: "must" | "prefer"): string[] {
@@ -304,7 +342,12 @@ function requirementTexts(purchase: DecisionDetail, strength: "must" | "prefer")
 
 function hasGuides(purchase: DecisionDetail): boolean {
   const { guides } = purchase;
-  return guides !== undefined && (guides.quickLines.length > 0 || guides.fullGuide !== undefined);
+  return (
+    guides !== undefined &&
+    (guides.lookingFor !== undefined ||
+      guides.quickLines.length > 0 ||
+      guides.fullGuide !== undefined)
+  );
 }
 
 function place(purchase: DecisionDetail): string {
@@ -381,22 +424,41 @@ function flagsHtml(purchase: DecisionDetail): string[] {
   ];
 }
 
+/** How a Measure first instruction marks its recorded figure and its blank. */
+interface MeasureFormat {
+  text: (text: string) => string;
+  figure: (figure: string) => string;
+  blank: string;
+}
+
+const HTML_MEASURE: MeasureFormat = {
+  text: escapeHtml,
+  figure: (figure) => `<span class="num">${figure}</span>`,
+  blank: '<span class="blank"></span>',
+};
+
+const MARKDOWN_MEASURE: MeasureFormat = {
+  text: (text) => text,
+  figure: (figure) => `**${figure}**`,
+  blank: "____",
+};
+
 /**
  * A Measure first line as an instruction with a blank for the measurement:
  * "living-room/wall-5 length (~3.70 m)" becomes
  * "Living room · Wall 5 · length. Recorded ~370 cm (estimate). Measured: ____ cm".
  */
-function measureInstruction(purchase: DecisionDetail, line: string): string {
-  const blank = 'Measured: <span class="blank"></span> cm';
+function measureText(purchase: DecisionDetail, line: string, format: MeasureFormat): string {
+  const blank = `Measured: ${format.blank} cm`;
   const parsed = /^(.*?) \((?:(~?)(\d+(?:\.\d+)?) m|(not recorded))\)$/.exec(line);
-  if (!parsed?.[1]) return `${escapeHtml(line)}. ${blank}`;
+  if (!parsed?.[1]) return `${format.text(line)}. ${blank}`;
   const [, what, tilde, metres] = parsed;
   const recorded =
     metres === undefined
       ? "Not recorded yet."
-      : `Recorded <span class="num">${tilde}${Math.round(Number(metres) * 100)} cm</span>` +
+      : `Recorded ${format.figure(`${tilde}${Math.round(Number(metres) * 100)} cm`)}` +
         `${tilde ? " (estimate)" : ""}.`;
-  return `${escapeHtml(measurePlace(purchase, what))}. ${recorded} ${blank}`;
+  return `${format.text(measurePlace(purchase, what))}. ${recorded} ${blank}`;
 }
 
 /** "living-room/wall-5 length" as "Living room · Wall 5 · length"; a Home's field alone, capitalised. */
@@ -415,42 +477,9 @@ function measurePlace(purchase: DecisionDetail, what: string): string {
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-function measureFirstHtml(level: number, purchase: DecisionDetail): string[] {
-  const lines = linesOf(purchase, "measure-first");
-  if (lines.length === 0) return [];
-  return [
-    '<section class="block measure">',
-    `<h${level}>Measure first</h${level}>`,
-    '<ul class="measure-lines">',
-    ...lines.map((line) => `<li>${measureInstruction(purchase, line)}</li>`),
-    "</ul>",
-    "</section>",
-  ];
-}
-
 /** Numbers with their units, as a must's bold figures: "2.0 × 1.4 m", "£450", "85 cm". */
 const NUMBER =
   /(?:[£€$]\s?)?\d+(?:[.,]\d+)?(?:\s?[×x]\s?\d+(?:[.,]\d+)?)*(?:\s?(?:mm|cm|m²|m|kg|kW|W|K|lm|%)(?!\w))?/g;
-
-/** A list whose lines each get a box to tick; with `numbers`, their figures are bold. */
-function checksHtml(
-  level: number,
-  title: string,
-  items: string[],
-  { numbers = false } = {},
-): string[] {
-  if (items.length === 0) return [];
-  const text = (item: string) =>
-    numbers
-      ? escapeHtml(item).replace(NUMBER, (figure) => `<strong class="num">${figure}</strong>`)
-      : escapeHtml(item);
-  return [
-    `<h${level}>${escapeHtml(title)}</h${level}>`,
-    '<ul class="checks">',
-    ...items.map((item) => `<li>${text(item)}</li>`),
-    "</ul>",
-  ];
-}
 
 function listHtml(level: number, title: string, items: string[]): string[] {
   if (items.length === 0) return [];
@@ -477,12 +506,10 @@ function bringBackHtml(level: number): string {
   ].join("\n");
 }
 
-function footerHtml(generatedAt: string): string {
-  return (
-    `<p class="generated">Copy generated ${longDay(generatedAt)}. ` +
-    "It won't update; ask the Agent for a fresh one.</p>"
-  );
-}
+/** The last line of every page: each is assembled from the Requirements when it is asked for. */
+const FOOTER_HTML =
+  '<p class="live">This page is live: it changes when the Agent changes a Requirement. ' +
+  "A screenshot won't.</p>";
 
 export function escapeHtml(text: string): string {
   return text
@@ -533,7 +560,7 @@ h4 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transfor
 h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 p { margin: 0.25rem 0 0.5rem; }
 a { color: var(--accent); text-underline-offset: 0.18em; }
-.running, .meta, .generated { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.running, .meta, .live { color: var(--muted); font-size: 0.85rem; margin: 0; }
 .purchase { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
   margin-top: 1.5rem; padding: 1rem 1.25rem; break-inside: avoid; }
 .purchase > .running { margin-bottom: 0.5rem; }
@@ -546,7 +573,7 @@ a { color: var(--accent); text-underline-offset: 0.18em; }
   border-radius: 2px; margin-right: 0.5em; vertical-align: -0.02em; }
 ul { margin: 0.25rem 0; padding-left: 1.3rem; }
 li { margin: 0.2rem 0; break-inside: avoid; }
-ul.checks, ul.flags, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks, ul.flags, ul.measure-lines, ul.lines { list-style: none; padding-left: 0; }
 ul.checks li { position: relative; padding-left: 1.6em; }
 ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.85em;
   height: 0.85em; border: 1.5px solid var(--ink); border-radius: 2px; }
@@ -567,7 +594,8 @@ ul.measure-lines li { padding-bottom: 0.6rem; }
 .fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
 .fill > span:first-child { white-space: nowrap; color: var(--muted); }
 .full { margin-top: 1rem; }
-header + .generated, .generated:last-child { margin-top: 1.5rem; }
+.looking-for { font-weight: 600; }
+header + .live, .live:last-child { margin-top: 1.5rem; }
 @media print {
   @page { margin: 16mm 14mm; }
   body { background: none; margin: 0; max-width: none; padding: 0; font-size: 10.5pt; }
@@ -593,45 +621,45 @@ const PHONE_STYLE = `
     --accent: #aab894; --mark: #3a2f1a; --mark-ink: #e3b95c; }
 }
 body { margin: 0; background: var(--paper); color: var(--ink);
-  font: 1.125rem/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1.125rem/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 main { max-width: 38rem; margin: 0 auto; padding: 1rem 1.1rem 3rem; }
 h1, h3, h4, h5, h6 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
   line-height: 1.2; }
-h1 { font-size: 2rem; margin: 0.25rem 0 0.5rem; letter-spacing: -0.01em; }
-h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--muted); margin: 0 0 0.4rem; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0.35rem; letter-spacing: -0.01em; }
+h2 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 0.35rem; }
 h3, h4, h5, h6 { font-size: 1.3rem; margin: 1.2rem 0 0.3rem; }
 p { margin: 0.4rem 0; }
 a { color: var(--accent); text-underline-offset: 0.18em; }
 .home { color: var(--muted); font-size: 0.95rem; margin: 0; }
+.looking-for { margin: 0; }
 ul { margin: 0; padding-left: 1.3rem; }
 li { margin: 0.5rem 0; }
-.block { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
-  padding: 0.9rem 1rem 0.6rem; margin-top: 1rem; }
-.block h2 + ul + h2 { margin-top: 1.1rem; }
-.block.measure { background: var(--mark); border: none; border-left: 5px solid var(--mark-ink); }
+ul.checks, ul.measure-lines, ul.lines { list-style: none; padding-left: 0; }
+ul.checks li, ul.lines li { margin: 0.3rem 0; }
+.block { margin-top: 1.4rem; }
+.block.measure { background: var(--mark); border-left: 5px solid var(--mark-ink); border-radius: 6px;
+  padding: 0.7rem 1rem 0.6rem; }
 .block.measure h2 { color: var(--mark-ink); }
-.num { font-weight: 700; }
-ul.checks, ul.measure-lines { list-style: none; padding-left: 0; }
-ul.checks li { position: relative; padding-left: 1.7em; }
-ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
-  height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
 ul.measure-lines li + li { margin-top: 0.9rem; }
-.block.must li { font-size: 1.25rem; }
+.block.must li { font-size: 1.2rem; font-weight: 500; }
+.num { font-weight: 700; }
 .blank { display: inline-block; min-width: 4em; border-bottom: 1.5px solid currentColor;
   height: 1em; vertical-align: baseline; }
 .done { font-weight: 600; color: var(--accent); }
 .stale { font-weight: 600; color: var(--mark-ink); }
-details { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 0.6rem; }
-summary { font-family: "Newsreader", Georgia, serif; font-size: 1.3rem; padding: 0.5rem 0; }
-footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
-.bring-back { border: 1px dashed var(--muted); border-radius: 6px; padding: 0.9rem 1rem 1rem; }
-.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
-.fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
-.blank.wide { min-width: 0; flex: 1; }
-.generated { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
+.folds { margin-top: 1.6rem; border-top: 1px solid var(--hairline); }
+details { border-bottom: 1px solid var(--hairline); }
+summary { font-family: "Newsreader", Georgia, serif; font-size: 1.25rem; padding: 0.6rem 0;
+  cursor: pointer; }
+details[open] > summary { margin-bottom: 0.2rem; }
+details > ul { margin-bottom: 0.8rem; }
+details.prefer > ul { color: var(--muted); }
+footer { margin-top: 1.6rem; }
+.bring-back { display: none; }
+.live { color: var(--muted); font-size: 0.9rem; margin: 0; }
 @media print {
   :root { color-scheme: light; --ink: #2a2724; --muted: #555; --paper: #fff; --card: #fff;
     --hairline: #999; --mark: #f3e6c4; --mark-ink: #333; }
@@ -640,6 +668,17 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
   h2 { break-after: avoid; }
   .block, .bring-back, li { break-inside: avoid; }
   .block.measure { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  ul.checks li { position: relative; padding-left: 1.7em; }
+  ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
+    height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
+  details::details-content { content-visibility: visible; display: block; }
+  summary { list-style: none; }
+  details.prefer > ul { color: var(--ink); }
+  .bring-back { display: block; border: 1px dashed var(--muted); border-radius: 6px;
+    padding: 0.9rem 1rem 1rem; margin-bottom: 1rem; }
+  .fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+  .fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
+  .blank.wide { min-width: 0; flex: 1; }
 }
 `;
 

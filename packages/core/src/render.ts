@@ -38,6 +38,7 @@ import type {
   Wall,
   Window,
 } from "./operations/schemas.js";
+import { QUICK_GUIDE_LINE_KINDS } from "./operations/schemas.js";
 
 export interface NamedRecord {
   name: string;
@@ -674,9 +675,9 @@ function requirementLine(requirement: Requirement): string {
 }
 
 /**
- * A Purchase in get_decision: the Quick Guide's lines besides its Requirements (Measure first,
- * then the AI's own), the Full Guide as one line or in full, then one line per Listing and per
- * Deviation.
+ * A Purchase in get_decision: the Quick Guide besides its Requirements (the looking-for line,
+ * Measure first, then the AI's own avoids, tests, and asks, in the Quick Guide's order), the Full Guide as one line or in full, then one
+ * line per Listing and per Deviation.
  */
 function purchaseLines(decision: DecisionDetail): string[] {
   const lines: string[] = [];
@@ -686,13 +687,16 @@ function purchaseLines(decision: DecisionDetail): string[] {
     section(lines, "Deviations", decision.deviations.map(deviationLine));
     return lines;
   }
-  section(
-    lines,
-    "Quick Guide, besides the Requirements",
-    (decision.quickGuide?.lines ?? [])
-      .filter((line) => line.kind === "measure-first" || line.kind === "line")
-      .map((line) => line.text),
-  );
+  section(lines, "Quick Guide, besides the Requirements", [
+    ...(decision.quickGuide?.lookingFor ? [`Looking for: ${decision.quickGuide.lookingFor}`] : []),
+    ...(decision.quickGuide?.lines ?? []).flatMap((line) =>
+      line.kind === "must" || line.kind === "prefer"
+        ? []
+        : line.kind === "measure-first"
+          ? [line.text]
+          : [`${line.kind}: ${line.text}`],
+    ),
+  ]);
   const full = decision.guides?.fullGuide;
   if (!decision.guides) {
     lines.push("", "Guides: none saved yet");
@@ -761,35 +765,32 @@ export function listingLine(listing: Listing): string {
 }
 
 /**
- * The Quick Guide, the glanceable form of a Purchase's Shopping Guide for use in the shop: its
- * "Measure first" lines at the top, then the musts, then the prefers, then the AI's own lines.
+ * The Quick Guide, the glanceable form of a Purchase's Shopping Guide for use in the shop, all of
+ * it expanded: the looking-for line (the statement until one is written), then Measure first, the
+ * musts, the avoids, the prefers, the tests, and the asks, each under its heading.
  */
 export function renderQuickGuide(decision: DecisionDetail): string {
   const lines = [
     `Quick Guide: ${titled(decision)}${decision.room ? `, ${decision.room.name}` : ""}`,
-    decision.statement,
+    decision.quickGuide?.lookingFor ?? decision.statement,
   ];
   const of = (kind: QuickGuideLine["kind"]) =>
-    (decision.quickGuide?.lines ?? []).filter((line) => line.kind === kind);
-  const measure = of("measure-first");
-  if (measure.length > 0) lines.push("", ...measure.map((line) => line.text));
-  section(
-    lines,
-    "Must",
-    of("must").map((line) => line.text),
-  );
-  section(
-    lines,
-    "Prefer",
-    of("prefer").map((line) => line.text),
-  );
-  section(
-    lines,
-    "In the shop",
-    of("line").map((line) => line.text),
-  );
+    (decision.quickGuide?.lines ?? [])
+      .filter((line) => line.kind === kind)
+      .map((line) => line.text.replace(/^Measure first: /, ""));
+  for (const kind of QUICK_GUIDE_LINE_KINDS) section(lines, QUICK_GUIDE_HEADINGS[kind], of(kind));
   return lines.join("\n");
 }
+
+/** The heading over each kind of Quick Guide line, wherever the Quick Guide is shown in full. */
+export const QUICK_GUIDE_HEADINGS: Record<QuickGuideLine["kind"], string> = {
+  "measure-first": "Measure first",
+  must: "Must",
+  avoid: "Avoid",
+  prefer: "Prefer",
+  test: "In the shop",
+  ask: "Ask the seller",
+};
 
 function evidenceLine(evidence: EvidenceEntry): string {
   const source =

@@ -21,7 +21,7 @@ h4 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transfor
 h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 p { margin: 0.25rem 0 0.5rem; }
 a { color: var(--accent); text-underline-offset: 0.18em; }
-.running, .meta, .generated { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.running, .meta, .live { color: var(--muted); font-size: 0.85rem; margin: 0; }
 .purchase { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
   margin-top: 1.5rem; padding: 1rem 1.25rem; break-inside: avoid; }
 .purchase > .running { margin-bottom: 0.5rem; }
@@ -34,7 +34,7 @@ a { color: var(--accent); text-underline-offset: 0.18em; }
   border-radius: 2px; margin-right: 0.5em; vertical-align: -0.02em; }
 ul { margin: 0.25rem 0; padding-left: 1.3rem; }
 li { margin: 0.2rem 0; break-inside: avoid; }
-ul.checks, ul.flags, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks, ul.flags, ul.measure-lines, ul.lines { list-style: none; padding-left: 0; }
 ul.checks li { position: relative; padding-left: 1.6em; }
 ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.85em;
   height: 0.85em; border: 1.5px solid var(--ink); border-radius: 2px; }
@@ -55,7 +55,8 @@ ul.measure-lines li { padding-bottom: 0.6rem; }
 .fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
 .fill > span:first-child { white-space: nowrap; color: var(--muted); }
 .full { margin-top: 1rem; }
-header + .generated, .generated:last-child { margin-top: 1.5rem; }
+.looking-for { font-weight: 600; }
+header + .live, .live:last-child { margin-top: 1.5rem; }
 @media print {
   @page { margin: 16mm 14mm; }
   body { background: none; margin: 0; max-width: none; padding: 0; font-size: 10.5pt; }
@@ -88,6 +89,7 @@ header + .generated, .generated:last-child { margin-top: 1.5rem; }
 <p>A large wool rug under the sofa.</p>
 <section class="quick">
 <h3>Quick Guide</h3>
+<p class="looking-for">Wool · cut pile · warm terracotta · 2.0–3.4 m long</p>
 <section class="block measure">
 <h4>Measure first</h4>
 <ul class="measure-lines">
@@ -101,17 +103,30 @@ header + .generated, .generated:last-child { margin-top: 1.5rem; }
 <li>No longer than <strong class="num">3.4 m</strong>, to keep the walk past the west window clear</li>
 </ul>
 </section>
+<section class="block avoid">
+<h4>Avoid</h4>
+<ul class="lines">
+<li>Loop pile, viscose blends — claws catch, viscose marks</li>
+</ul>
+</section>
 <section class="block prefer">
 <h4>Prefer</h4>
 <ul class="checks">
 <li>Wool, low pile: loops catch the cats' claws</li>
 <li>Warm terracotta, the Palette's accent, or close to it</li>
 </ul>
+</section>
+<section class="block test">
 <h4>In the shop</h4>
-<ul>
-<li>Avoid loop pile and viscose blends: claws catch in loops, and viscose marks</li>
-<li>Rub the pile hard: more than a little fluff means months of shedding</li>
-<li>Turn a corner back: a stiff latex backing cracks on the tiles</li>
+<ul class="lines">
+<li>Rub the pile hard: more than a little fluff means shedding</li>
+<li>Turn a corner back: stiff latex cracks on tiles</li>
+</ul>
+</section>
+<section class="block ask">
+<h4>Ask the seller</h4>
+<ul class="lines">
+<li>Backing latex or felt?</li>
 </ul>
 </section>
 </section>
@@ -140,6 +155,6 @@ header + .generated, .generated:last-child { margin-top: 1.5rem; }
 </ul>
 </section>
 </article>
-<p class="generated">Copy generated 14 Sep 2026. It won't update; ask the Agent for a fresh one.</p>
+<p class="live">This page is live: it changes when the Agent changes a Requirement. A screenshot won't.</p>
 </body>
 </html>

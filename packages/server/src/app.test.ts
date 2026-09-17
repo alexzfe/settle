@@ -289,7 +289,7 @@ describe("Purchases", () => {
 
     const saved = await tool("save_guides", {
       decision: "wool-rug",
-      quickLines: ["Avoid loop pile"],
+      quickLines: [{ kind: "avoid", text: "Loop pile" }],
       fullGuide: "## Material\n\nWool.",
     });
     expect(saved.isError).toBeUndefined();

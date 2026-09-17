@@ -16,6 +16,8 @@ import {
 import {
   type CheckResult,
   type ListingDimensions,
+  QUICK_LINE_KINDS,
+  type QuickLine,
   type ReceiptResult,
   recordListingInput,
   saveGuidesInput,
@@ -29,14 +31,20 @@ import { Writer } from "./writer.js";
 export const saveGuides = defineOperation({
   name: "save_guides",
   description:
-    "Saves the Shopping Guides of one Purchase Decision and returns a receipt. quickLines are " +
-    "the Quick Guide's own lines, for the shop: what to avoid and what to test there, one short " +
-    "line each. fullGuide is the Full Guide, Markdown to read ahead of time, under headings that " +
-    "suit the product; every must Requirement explains why. Each replaces what is saved; leave " +
-    "one out to keep it. The app assembles the Quick Guide itself, for the phone: a Measure " +
-    "first line at the top for every must resting on an Estimated or unrecorded value, then the " +
-    "musts, then the prefers, then your lines. So never repeat the Requirements or Measure first " +
-    "in quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is " +
+    "Saves the Shopping Guides of one Purchase Decision and returns a receipt. The Quick Guide " +
+    "is a companion to the Full Guide, glanced at in a shop, in front of one candidate, or with " +
+    "a seller: fragments, not sentences, numbers first, the whole of it one phone screen. " +
+    "lookingFor is its top line, what the user is hunting for in about 80 characters " +
+    '("Semi-sheer · warm cream · made-to-measure · 2–2.5× fullness"). quickLines are your own ' +
+    "lines, at most 8 in all, each with a kind: avoid (write these first; a guide with none is " +
+    "suspect), test (what to try in the shop), ask (what to ask the seller). A why only when it " +
+    "changes a judgment in the shop, in five words or fewer. fullGuide is the Full Guide, " +
+    "Markdown to read ahead of time, under headings that suit the product; every must " +
+    "Requirement explains why. Each replaces what is saved; leave one out to keep it. The app " +
+    "assembles the Quick Guide itself: the looking-for line, a Measure first line for every " +
+    "must resting on an Estimated or unrecorded value, the musts, your avoids, the prefers, " +
+    "then your tests and asks. So never repeat a Requirement or a Measure first line in " +
+    "quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is " +
     "marked out of date when a Requirement changes after it was written: save it again then. A " +
     "Rejected Purchase has no Guides. Needs the open Session's id as `session`.",
   input: saveGuidesInput,
@@ -45,10 +53,15 @@ export const saveGuides = defineOperation({
   handler(context, input): ReceiptResult {
     const home = requireHome(context);
     const session = requireSession(context, home, { open: true });
-    if (input.quickLines === undefined && input.fullGuide === undefined) {
+    if (
+      input.lookingFor === undefined &&
+      input.quickLines === undefined &&
+      input.fullGuide === undefined
+    ) {
       throw new CoreError(
         "validation",
-        "Give quickLines, fullGuide, or both: the Guides to save for this Purchase.",
+        "Give lookingFor, quickLines, fullGuide, or any of them: the Guides to save for this " +
+          "Purchase.",
       );
     }
     const receipt = context.write(session.slug, (log) => {
@@ -342,7 +355,11 @@ function storeGuides(
   model: DecisionModel,
   writer: Writer,
   decision: DecisionRow,
-  input: { quickLines?: string[] | undefined; fullGuide?: string | undefined },
+  input: {
+    lookingFor?: string | undefined;
+    quickLines?: QuickLine[] | undefined;
+    fullGuide?: string | undefined;
+  },
 ): string[] {
   const { store } = context;
   const at = context.now();
@@ -353,6 +370,7 @@ function storeGuides(
       homeId: model.home.id,
       decisionId: decision.id,
       slug: `${decision.slug}/guides`,
+      lookingFor: null,
       quickLines: [],
       fullMarkdown: null,
       writtenAt: null,
@@ -361,7 +379,19 @@ function storeGuides(
     });
     model.guides.push(guide);
   }
-  const { quickLines, fullGuide } = input;
+  const { lookingFor, quickLines, fullGuide } = input;
+  if (lookingFor !== undefined && lookingFor !== guide.lookingFor) {
+    store.update("guides", guide.id, { lookingFor });
+    writer.logged({
+      recordKind: "decision",
+      record: decision,
+      field: "looking for",
+      old: guide.lookingFor,
+      new: lookingFor,
+    });
+    guide.lookingFor = lookingFor;
+    heads.push("Looking-for line saved");
+  }
   if (quickLines !== undefined && !equal(guide.quickLines, quickLines)) {
     store.update("guides", guide.id, { quickLines });
     writer.logged({
@@ -388,18 +418,30 @@ function storeGuides(
   return heads;
 }
 
-/** "its Quick Guide has 1 Measure first line (…), 2 musts, 2 prefers, and 3 lines of yours". */
+/**
+ * "its Quick Guide has no looking-for line, 1 Measure first line (…), 2 musts, 2 prefers, and 3
+ * lines of yours (1 avoid, 2 tests)".
+ */
 function quickGuideSummary(model: DecisionModel, decision: DecisionRow): string {
   const requirements = activeRequirements(model, decision);
+  const guide = guideOf(model, decision);
   const measure = measureFirst(model, decision).map((line) => line.replace(/^Measure first: /, ""));
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const own = guide?.quickLines ?? [];
+  const kinds = QUICK_LINE_KINDS.map((kind) => ({
+    kind,
+    n: own.filter((each) => each.kind === kind).length,
+  }))
+    .filter(({ n }) => n > 0)
+    .map(({ kind, n }) => count(n, kind));
   const parts = [
+    guide?.lookingFor ? "a looking-for line" : "no looking-for line",
     measure.length > 0
       ? `${count(measure.length, "Measure first line")} (${measure.join("; ")})`
       : "no Measure first line",
     count(requirements.filter((each) => each.strength === "must").length, "must"),
     count(requirements.filter((each) => each.strength === "prefer").length, "prefer"),
-    `${count(guideOf(model, decision)?.quickLines.length ?? 0, "line")} of yours`,
+    `${count(own.length, "line")} of yours${kinds.length > 0 ? ` (${kinds.join(", ")})` : ""}`,
   ];
   return `its Quick Guide has ${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
 }

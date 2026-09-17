@@ -1,2 +1,2 @@
-Wool rug (wool-rug): Quick Guide lines saved (3); Full Guide rewritten, up to date
-Wool rug (wool-rug): its Quick Guide has 1 Measure first line (living-room/wall-5 length (~3.70 m)), 2 musts, 2 prefers, and 3 lines of yours
+Wool rug (wool-rug): Looking-for line saved; Quick Guide lines saved (4); Full Guide rewritten, up to date
+Wool rug (wool-rug): its Quick Guide has a looking-for line, 1 Measure first line (living-room/wall-5 length (~3.70 m)), 2 musts, 2 prefers, and 4 lines of yours (1 avoid, 2 tests, 1 ask)

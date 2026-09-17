@@ -9,14 +9,15 @@ import {
 } from "../store.js";
 import type { DecisionModel } from "./decisions.js";
 import { reasonRecord, recordName } from "./reasons.js";
-import type {
-  CheckResult,
-  Deviation,
-  Guides,
-  Listing,
-  ListingCheck,
-  QuickGuide,
-  QuickGuideLine,
+import {
+  type CheckResult,
+  type Deviation,
+  type Guides,
+  type Listing,
+  type ListingCheck,
+  QUICK_GUIDE_LINE_KINDS,
+  type QuickGuide,
+  type QuickGuideLine,
 } from "./schemas.js";
 
 // A Purchase's Quick Guide, Guides, Listings, and Deviations, as results carry them. The Quick
@@ -74,32 +75,40 @@ export function guidePath(model: DecisionModel, decision: DecisionRow): string {
 }
 
 /**
- * The Quick Guide: "Measure first" lines at the top, then the musts, then the prefers, each by
- * position, then the AI's own lines.
+ * The Quick Guide: the looking-for line, then its lines in the order of QUICK_GUIDE_LINE_KINDS
+ * (Measure first, must, avoid, prefer, test, ask): the musts and prefers each by position, the AI's
+ * own lines each in the order saved. Grouped here, as it is read: Requirement positions are
+ * identifiers and never re-sorted.
  */
 export function toQuickGuide(model: DecisionModel, decision: DecisionRow): QuickGuide {
   const requirements = activeRequirements(model, decision);
-  const byStrength = (strength: "must" | "prefer"): QuickGuideLine[] =>
-    requirements
-      .filter((each) => each.strength === strength)
-      .map((each) => ({ kind: strength, text: each.text, requirement: each.position }));
+  const guide = guideOf(model, decision);
+  const linesOf = (kind: QuickGuideLine["kind"]): QuickGuideLine[] =>
+    kind === "measure-first"
+      ? measureFirst(model, decision).map((text) => ({ kind, text }))
+      : kind === "must" || kind === "prefer"
+        ? requirements
+            .filter((each) => each.strength === kind)
+            .map((each) => ({ kind, text: each.text, requirement: each.position }))
+        : (guide?.quickLines ?? [])
+            .filter((each) => each.kind === kind)
+            .map((each) => ({ kind, text: each.text }));
   return {
-    lines: [
-      ...measureFirst(model, decision).map((text) => ({ kind: "measure-first" as const, text })),
-      ...byStrength("must"),
-      ...byStrength("prefer"),
-      ...(guideOf(model, decision)?.quickLines ?? []).map((text) => ({
-        kind: "line" as const,
-        text,
-      })),
-    ],
+    ...optional({ lookingFor: guide?.lookingFor }),
+    lines: QUICK_GUIDE_LINE_KINDS.flatMap(linesOf),
     path: guidePath(model, decision),
   };
 }
 
-/** Whether a Purchase has Guides: Quick Guide lines of the AI's or a Full Guide saved. */
+/**
+ * Whether a Purchase has Guides: a looking-for line, Quick Guide lines of the AI's, or a Full
+ * Guide saved.
+ */
 export function hasGuides(guide: GuideRow | undefined): boolean {
-  return guide !== undefined && (guide.quickLines.length > 0 || guide.fullMarkdown !== null);
+  return (
+    guide !== undefined &&
+    (guide.lookingFor !== null || guide.quickLines.length > 0 || guide.fullMarkdown !== null)
+  );
 }
 
 /** Whether a Purchase's Full Guide is out of date: a Requirement changed after it was written. */
@@ -117,6 +126,7 @@ export function toGuides(
   return {
     quickLines: guide.quickLines,
     ...optional({
+      lookingFor: guide.lookingFor,
       fullGuide: written
         ? {
             writtenAt: guide.writtenAt as string,

@@ -37,7 +37,7 @@ Run on the user's own real home:
 - The user can view everything; create a Home; upload Blueprints onto a Home and Photos onto a Room or an Item; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
 - Everything is ideally done through the Agent. Form-based editing of Rooms, Items, Notes, and Constraints exists for completeness and is expected to be used very little, so it is built in the web UI design session, after the PoC finish line (decided in the build-plan grilling of 2026-09-14). Until then the browser is a viewer plus the actions above, and the PoC's plain UI is judged on the AI and the Home record, not on its look.
 - A Shopping section shows two groups, the Shopping List and Considering. Each entry opens its Quick Guide, with the Full Guide one tap away. Every non-Rejected Purchase Decision has Guides. The AI writes them during Sessions, personalised to that Purchase Decision.
-- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, where it serves only the Quick Guide pages by an unguessable per-Purchase token (never the web app, the API, or the MCP endpoint), and the Decision page shows that URL as a QR code. No auth on those pages, since it is the user's own network.
+- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, where it serves only the Quick Guide pages by an unguessable per-Purchase token (never the web app, the API, or the MCP endpoint), and the Decision page shows that URL as a QR code. No auth on those pages, since it is the user's own network. LAN mode is the PoC's stopgap: the app is ultimately meant to run on a server on the user's Tailscale network, where their own devices reach it from anywhere, so the Quick Guide needs neither a QR scan nor a screenshot taken before leaving the house. The page stays live wherever it is read.
 
 ## Deferred topics
 
@@ -49,7 +49,7 @@ Each of these gets its own research and grilling session.
 - Photos as a working feature: the AI viewing them and proposing Items from them (scaffolding only in the PoC)
 - Budget module
 - 2D Floor Plan editor, then maybe 3D
-- Hosting and Docker, which also gets the Guides onto the user's phone
+- Hosting and Docker: the app run as a server on the user's Tailscale network, reachable from their own devices anywhere, which replaces LAN mode as the way the Guides get onto the phone. User's goal, 2026-09-17
 - In-browser chat, built as another client of the core operations (ADR 0001)
 - Codex and other Agents
 - Tidy Skill, which proposes merges and archives for the user to approve

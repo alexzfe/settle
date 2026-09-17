@@ -35,6 +35,7 @@ export {
   type OpeningBlock,
   type OpeningView,
   type OverviewView,
+  QUICK_GUIDE_HEADINGS,
   type Receipt,
   renderDecision,
   renderDecisions,

@@ -160,7 +160,11 @@ describe("LAN mode on real listeners", () => {
         { text: "Wool", strength: "must", reason: { kind: "room", id: "living-room" } },
       ],
     });
-    await tool("save_guides", { session, decision: "wool-rug", quickLines: ["Avoid loop pile"] });
+    await tool("save_guides", {
+      session,
+      decision: "wool-rug",
+      quickLines: [{ kind: "avoid", text: "Loop pile" }],
+    });
 
     expect(await api("get_home", { home: "lan-home" })).toMatchObject({ lanUrl });
     const { decision } = (await api("get_decision", {
@@ -171,7 +175,7 @@ describe("LAN mode on real listeners", () => {
     expect(guideUrl.startsWith(`${lanUrl}/guide/`)).toBe(true);
     const guide = await fetch(guideUrl);
     expect(guide.status).toBe(200);
-    expect(await guide.text()).toContain("Avoid loop pile");
+    expect(await guide.text()).toContain("Loop pile");
 
     for (const [method, path] of [
       ["GET", "/"],

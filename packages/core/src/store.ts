@@ -23,6 +23,7 @@ import type {
   Measurement,
   Obstruction,
   PlannedStay,
+  QuickLine,
   RequirementReasonKind,
   Resolution,
   RoomFunction,
@@ -293,14 +294,17 @@ export interface RequirementRow {
   archivedAt: string | null;
 }
 
-/** A Purchase's Guides: the AI's Quick Guide lines and its Full Guide. */
+/** A Purchase's Guides: the AI's looking-for line, Quick Guide lines, and Full Guide. */
 export interface GuideRow {
   id: number;
   homeId: number;
   decisionId: number;
   /** <decision slug>/guides */
   slug: string;
-  quickLines: string[];
+  /** What the user is hunting for, one short line heading the Quick Guide. */
+  lookingFor: string | null;
+  /** The AI's own lines, each an avoid, test, or ask, in the order saved. */
+  quickLines: QuickLine[];
   fullMarkdown: string | null;
   /** When the Full Guide was last written. */
   writtenAt: string | null;

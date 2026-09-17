@@ -584,10 +584,12 @@ export async function createFixtureHome(
   await core.run("save_guides", withPurchase, {
     session: purchase,
     decision: "wool-rug",
+    lookingFor: "Wool · cut pile · warm terracotta · 2.0–3.4 m long",
     quickLines: [
-      "Avoid loop pile and viscose blends: claws catch in loops, and viscose marks",
-      "Rub the pile hard: more than a little fluff means months of shedding",
-      "Turn a corner back: a stiff latex backing cracks on the tiles",
+      { kind: "avoid", text: "Loop pile, viscose blends — claws catch, viscose marks" },
+      { kind: "test", text: "Rub the pile hard: more than a little fluff means shedding" },
+      { kind: "test", text: "Turn a corner back: stiff latex cracks on tiles" },
+      { kind: "ask", text: "Backing latex or felt?" },
     ],
     fullGuide: WOOL_RUG_GUIDE,
   });

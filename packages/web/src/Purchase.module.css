@@ -1,4 +1,4 @@
-/* A Purchase's parts: the Quick Guide in blocks, taking it shopping, the Full Guide, the
+/* A Purchase's parts: the Quick Guide in sections, taking it shopping, the Full Guide, the
    Requirements, and the Listings compared. */
 
 /* Quick Guide. */
@@ -35,16 +35,38 @@
   text-transform: uppercase;
 }
 
-.guideTitle:not(:first-child) {
-  margin-top: var(--space-3);
+.guideGroup + .guideGroup {
+  margin-top: var(--space-4);
 }
 
+/* The looking-for line: the most-read line, so it leads, plain and a size up. */
+.lookingFor {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* No bullet glyph: short stacked lines already read as a list. */
 .guideList {
   display: grid;
   gap: var(--space-1);
   margin: 0;
-  padding-inline-start: var(--space-5);
+  padding: 0;
+  list-style: none;
   font-variant-numeric: tabular-nums;
+}
+
+/* Musts heavier than everything else; the quieter sections carry lightness, not hue. */
+.guide-must {
+  font-weight: 500;
+}
+
+.guideSoft .guideList {
+  color: var(--color-ink-muted);
+}
+
+.guideSoft .guideList strong {
+  color: var(--color-ink);
 }
 
 /* Take it shopping. */
@@ -167,7 +189,11 @@
   padding-left: var(--space-8);
 }
 
-/* Requirements. */
+/* Requirements, under Must and Prefer. */
+.requirementGroup + .requirementGroup {
+  margin-top: var(--space-5);
+}
+
 .requirements {
   display: flex;
   flex-direction: column;
@@ -209,6 +235,10 @@
 
 .requirementText {
   flex: 1 1 14rem;
+}
+
+.requirements-must .requirementText {
+  font-weight: 500;
 }
 
 .reason {

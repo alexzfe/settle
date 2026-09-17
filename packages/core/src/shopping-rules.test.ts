@@ -71,7 +71,12 @@ beforeEach(async () => {
   });
   await call("save_guides", {
     decision: "wool-rug",
-    quickLines: ["Rub the pile hard: fluff means shedding"],
+    lookingFor: "Wool · low pile · terracotta · at least 2.0 × 1.4 m",
+    quickLines: [
+      { kind: "ask", text: "Backing latex or felt?" },
+      { kind: "test", text: "Rub the pile hard: fluff means shedding" },
+      { kind: "avoid", text: "Viscose blends — they mark" },
+    ],
     fullGuide: FULL_GUIDE,
   });
   await call("record_listing", {
@@ -96,7 +101,10 @@ beforeEach(async () => {
       { text: "Dimmable", strength: "prefer", reason: { kind: "room", id: "living-room" } },
     ],
   });
-  await call("save_guides", { decision: "floor-lamp", quickLines: ["Try the dimmer"] });
+  await call("save_guides", {
+    decision: "floor-lamp",
+    quickLines: [{ kind: "test", text: "Try the dimmer" }],
+  });
   await call("set_decision_state", { decision: "floor-lamp", to: "leaning", reason: "The user" });
   await call("save_decision", {
     kind: "purchase",
@@ -258,7 +266,7 @@ describe("export_shopping_list", () => {
     }
   });
 
-  it("shows each entry's open Flags on the printable page, and the day the copy was made", async () => {
+  it("shows each entry's open Flags on the printable page, and that the page is live", async () => {
     await call("save_room", {
       room: "living-room",
       name: "Living room",
@@ -268,7 +276,12 @@ describe("export_shopping_list", () => {
     expect(page).toMatch(
       /⚑ Flagged \d+ \w{3} \d{4}: [^<]*length changed\. Review it before buying\./,
     );
-    expect(page).toMatch(/Copy generated \d+ \w{3} \d{4}\. It won't update/);
+    expect(page).toContain(
+      "This page is live: it changes when the Agent changes a Requirement. A screenshot won't.",
+    );
+    // Only what decides the buy: the lines for the shop stay in the Guides.
+    expect(page).not.toContain("Viscose blends");
+    expect(page).not.toContain("Rub the pile hard");
   });
 
   it("says so when nothing is on the Shopping List", async () => {
@@ -283,7 +296,7 @@ describe("export_shopping_list", () => {
 });
 
 describe("export_guides", () => {
-  it("writes every Purchase with Guides as Markdown: the Shopping List's first, the Quick Guide in order, then the Full Guide under demoted headings", async () => {
+  it("writes every Purchase with Guides as Markdown: the Shopping List's first, the Quick Guide expanded in order under headings, then the Full Guide under demoted headings", async () => {
     const result = await core.run("export_guides", web, { home, format: "markdown" });
     expect(result.mimeType).toBe("text/markdown; charset=utf-8");
     expect(result.fileName).toBe("my-flat-shopping-guides.md");
@@ -291,11 +304,21 @@ describe("export_guides", () => {
     expect(text.startsWith("# Shopping Guides: My flat\n")).toBe(true);
     const order = [
       "## Wool rug",
-      "- **Measure first:** living-room/wall-2 length (~3.00 m)",
+      "### Quick Guide",
+      "**Looking for:** Wool · low pile · terracotta · at least 2.0 × 1.4 m",
+      "#### Measure first",
+      "- Living room · Wall 2 · length. Recorded **~300 cm** (estimate). Measured: ____ cm",
+      "#### Must",
       "- At least 2.0 × 1.4 m",
       '- Wool, "low" pile, no loops',
+      "#### Avoid",
+      "- Viscose blends — they mark",
+      "#### Prefer",
       "- Terracotta",
+      "#### In the shop",
       "- Rub the pile hard: fluff means shedding",
+      "#### Ask the seller",
+      "- Backing latex or felt?",
       "### Full Guide",
       "#### Size",
       "#### Material",
@@ -364,8 +387,12 @@ describe("export_guides", () => {
   });
 });
 
+const MUSTS = "sheer cream long light washable pleated lined corded quiet soft plain wide".split(
+  " ",
+);
+
 describe("the phone page of a Quick Guide", () => {
-  it("is a phone-readable page with no JavaScript: Measure first, the musts, the prefers, the AI's lines, then the Full Guide one tap away", async () => {
+  it("is a phone-readable page with no JavaScript: the looking-for line, Measure first, the musts and avoids open, then Prefer, In the shop, Ask the seller, and the Full Guide each folded with a count", async () => {
     const result = await core.run("get_guide_page", web, { home, decision: "wool-rug" });
     expect(result.mimeType).toBe("text/html; charset=utf-8");
     const page = result.text;
@@ -373,16 +400,24 @@ describe("the phone page of a Quick Guide", () => {
     expect(page).toContain("<title>Wool rug: Quick Guide</title>");
     expect(page).not.toContain("<script");
     expect(page).not.toMatch(/ on[a-z]+=/);
+    // The looking-for line stands where the statement was.
+    expect(page).not.toContain("A large wool rug");
     const order = [
-      "Measure first",
+      "<h1>Wool rug</h1>",
+      "Wool · low pile · terracotta · at least",
+      "<h2>Measure first</h2>",
       "Living room · Wall 2 · length. Recorded",
-      "Must",
+      "<h2>Must</h2>",
       'At least <strong class="num">2.0 × 1.4 m</strong>',
-      "Prefer",
+      "Wool, &quot;low&quot; pile, no loops",
+      "<h2>Avoid</h2>",
+      "Viscose blends — they mark",
+      "<summary>Prefer (1)</summary>",
       "Terracotta",
-      "In the shop",
+      "<summary>In the shop (1)</summary>",
       "Rub the pile hard",
-      "<details>",
+      "<summary>Ask the seller (1)</summary>",
+      "Backing latex or felt?",
       "<summary>Full Guide</summary>",
       "<h3>Size</h3>",
     ].map((part) => page.indexOf(part));
@@ -390,15 +425,60 @@ describe("the phone page of a Quick Guide", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it("ends with the day the copy was made and the blanks to bring back to the Agent, until it is bought", async () => {
+  it("keeps every must open however many there are, and drops a section with nothing in it", async () => {
+    await call("save_decision", {
+      kind: "purchase",
+      room: "living-room",
+      title: "Curtain",
+      statement: "A sheer curtain for the balcony door.",
+      requirements: MUSTS.map((word) => ({
+        text: `Must be ${word}`,
+        strength: "must",
+        reason: { kind: "room", id: "living-room" },
+      })),
+    });
+    const page = (await core.run("get_guide_page", web, { home, decision: "curtain" })).text;
+    expect(page).not.toContain("<details");
+    for (const word of MUSTS) expect(page).toContain(`<li>Must be ${word}</li>`);
+    for (const empty of ["Avoid", "Prefer", "In the shop", "Ask the seller", "Measure first"]) {
+      expect(page).not.toContain(empty);
+    }
+    const lamp = (await core.run("get_guide_page", web, { home, decision: "floor-lamp" })).text;
+    expect(lamp).toContain("<summary>Prefer (1)</summary>");
+    expect(lamp).toContain("<summary>In the shop (1)</summary>");
+    for (const empty of ["<h2>Must</h2>", "<h2>Avoid</h2>", "Ask the seller", "Full Guide"]) {
+      expect(lamp).not.toContain(empty);
+    }
+  });
+
+  it("prints the tick boxes and the blanks to bring back to the Agent, and keeps both off the screen, until it is bought", async () => {
     const open = (await core.run("get_guide_page", web, { home, decision: "wool-rug" })).text;
-    expect(open).toMatch(/Copy generated \d+ \w{3} \d{4}\. It won't update; ask the Agent/);
     for (const blank of ["Bring back to the Agent", "Found or bought", "Link or model"]) {
       expect(open).toContain(blank);
     }
+    const style = open.slice(open.indexOf("<style>"), open.indexOf("</style>"));
+    const [screen, print] = style.split("@media print {");
+    expect(screen).toContain(".bring-back { display: none; }");
+    expect(screen).not.toContain("::before");
+    expect(print).toContain("ul.checks li::before");
+    expect(print).toContain(".bring-back { display: block;");
     const bought = (await core.run("get_guide_page", web, { home, decision: "table-lamp" })).text;
     expect(bought).toContain("✓ Bought");
     expect(bought).not.toContain("Bring back to the Agent");
+  });
+
+  it("ends by saying the page is live, as every export does, and never that it goes stale", async () => {
+    const live =
+      "This page is live: it changes when the Agent changes a Requirement. A screenshot won't.";
+    const pages = [
+      (await core.run("get_guide_page", web, { home, decision: "wool-rug" })).text,
+      (await core.run("export_guides", web, { home, format: "html" })).text,
+      (await core.run("export_shopping_list", web, { home, format: "html" })).text,
+    ];
+    for (const page of pages) {
+      expect(page).toContain(live);
+      expect(page).not.toMatch(/won't update|copy generated/i);
+    }
   });
 
   it("is the same page by its LAN token alone", async () => {

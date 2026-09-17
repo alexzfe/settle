@@ -1,8 +1,11 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { migrate } from "./migrate.js";
+
+const MIGRATIONS = join(import.meta.dirname, "..", "migrations");
 
 describe("migrate", () => {
   const dirs: string[] = [];
@@ -27,6 +30,7 @@ describe("migrate", () => {
       { id: 6 },
       { id: 7 },
       { id: 8 },
+      { id: 9 },
     ]);
     db.close();
   });
@@ -35,7 +39,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 9 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 10 });
     db.close();
   });
 
@@ -52,6 +56,47 @@ describe("migrate", () => {
     const db = migrate(":memory:");
     const columns = db.prepare("PRAGMA table_info(flags)").all();
     expect(columns).toContainEqual(expect.objectContaining({ name: "source_field", notnull: 0 }));
+    db.close();
+  });
+
+  it("gives the Quick Guide's own lines a kind, avoid when they begin Avoid and test otherwise, and leaves the looking-for line empty", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    // Guides rows alone, for Purchases this test never needs.
+    early.exec("PRAGMA foreign_keys = OFF");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0009")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    const insert = early.prepare(
+      "INSERT INTO guides (home_id, decision_id, slug, quick_lines, lan_token) VALUES (1, ?, ?, ?, ?)",
+    );
+    insert.run(
+      1,
+      "rug/guides",
+      JSON.stringify(["Avoid loop pile", "Rub the pile", "Ask about it"]),
+      "a",
+    );
+    insert.run(2, "lamp/guides", "[]", "b");
+    early.close();
+
+    const db = migrate(path);
+    const rows = db.prepare("SELECT quick_lines, looking_for FROM guides ORDER BY id").all();
+    expect(rows.map((row) => [JSON.parse(String(row.quick_lines)), row.looking_for])).toEqual([
+      [
+        [
+          { kind: "avoid", text: "Avoid loop pile" },
+          { kind: "test", text: "Rub the pile" },
+          { kind: "test", text: "Ask about it" },
+        ],
+        null,
+      ],
+      [[], null],
+    ]);
     db.close();
   });
 

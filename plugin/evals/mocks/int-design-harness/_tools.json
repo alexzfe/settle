@@ -2464,7 +2464,7 @@
     {
       "name": "save_guides",
       "title": "Save guides",
-      "description": "Saves the Shopping Guides of one Purchase Decision and returns a receipt. quickLines are the Quick Guide's own lines, for the shop: what to avoid and what to test there, one short line each. fullGuide is the Full Guide, Markdown to read ahead of time, under headings that suit the product; every must Requirement explains why. Each replaces what is saved; leave one out to keep it. The app assembles the Quick Guide itself, for the phone: a Measure first line at the top for every must resting on an Estimated or unrecorded value, then the musts, then the prefers, then your lines. So never repeat the Requirements or Measure first in quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is marked out of date when a Requirement changes after it was written: save it again then. A Rejected Purchase has no Guides. Needs the open Session's id as `session`.",
+      "description": "Saves the Shopping Guides of one Purchase Decision and returns a receipt. The Quick Guide is a companion to the Full Guide, glanced at in a shop, in front of one candidate, or with a seller: fragments, not sentences, numbers first, the whole of it one phone screen. lookingFor is its top line, what the user is hunting for in about 80 characters (\"Semi-sheer · warm cream · made-to-measure · 2–2.5× fullness\"). quickLines are your own lines, at most 8 in all, each with a kind: avoid (write these first; a guide with none is suspect), test (what to try in the shop), ask (what to ask the seller). A why only when it changes a judgment in the shop, in five words or fewer. fullGuide is the Full Guide, Markdown to read ahead of time, under headings that suit the product; every must Requirement explains why. Each replaces what is saved; leave one out to keep it. The app assembles the Quick Guide itself: the looking-for line, a Measure first line for every must resting on an Estimated or unrecorded value, the musts, your avoids, the prefers, then your tests and asks. So never repeat a Requirement or a Measure first line in quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is marked out of date when a Requirement changes after it was written: save it again then. A Rejected Purchase has no Guides. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2479,14 +2479,32 @@
             "minLength": 1,
             "description": "The slug of the Purchase the Guides are for."
           },
+          "lookingFor": {
+            "description": "The Quick Guide's looking-for line, replacing any saved: what the user is hunting for, in fragments, about 80 characters (\"Semi-sheer · warm cream · made-to-measure · 2–2.5× fullness\"). It heads the phone page, above everything else.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
           "quickLines": {
-            "description": "The Quick Guide's own lines, replacing any saved: what to avoid and what to test in the shop, one short line each (\"Avoid loop pile: claws catch in it\", \"Press the pile: it should spring back\"). Not the Requirements and not \"Measure first\": the app puts those in itself, from the Requirements, so they never go stale.",
+            "description": "The Quick Guide's own lines, replacing any saved: at most 8 in all, one pool, each a short fragment with its kind. avoid: what to steer clear of, first (\"Flat shiny polyester — want visible slub\"); test: what to try in the shop (\"Press the pile: springs back\"); ask: what to ask the seller (\"Lead time for made-to-measure?\"). Not the Requirements and not \"Measure first\": the app puts those in itself, from the Requirements, so they never go stale.",
             "maxItems": 8,
             "type": "array",
             "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 200
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["avoid", "test", "ask"],
+                  "description": "avoid (what to steer clear of), test (what to try in the shop), or ask (the seller)."
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "One short fragment, numbers first."
+                }
+              },
+              "required": ["kind", "text"]
             }
           },
           "fullGuide": {

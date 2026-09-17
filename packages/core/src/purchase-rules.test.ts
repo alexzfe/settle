@@ -1,6 +1,7 @@
 // The server-enforced Purchase rules of slice 6, written before their implementation: stable
 // Requirement identity and Archiving, reasons of every kind, the Quick Guide's assembly (Measure
-// first from Estimated values only, musts before prefers, then the AI's lines), save_guides and
+// first from Estimated values only, then must, avoid, prefer, test, and ask, under the looking-for
+// line), save_guides and
 // its refusals, and the Full Guide going out of date (docs/specs/skill-set.md#purchase).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
@@ -106,6 +107,7 @@ const prefer = (text: string, reason: Requirements[number]["reason"]): Requireme
   reason,
 });
 const cats = { kind: "constraint" as const, id: "two-cats" };
+const avoid = (text: string) => ({ kind: "avoid" as const, text });
 
 describe("Requirements", () => {
   it("rest on a reason of any kind, naming a field only when the record has it", async () => {
@@ -289,7 +291,7 @@ describe("the Quick Guide", () => {
     ]);
   });
 
-  it("lists the musts before the prefers, each by position, then the AI's own lines", async () => {
+  it("lists the musts, the avoids, the prefers, the tests, then the asks: musts and prefers by position, the AI's lines as saved", async () => {
     await save(
       rug([
         prefer("Warm tones", cats),
@@ -300,40 +302,67 @@ describe("the Quick Guide", () => {
     );
     await saveGuides({
       decision: "wool-rug",
-      quickLines: ["Avoid loop pile", "Rub the pile: it should not shed"],
+      quickLines: [
+        { kind: "ask", text: "Backing latex or felt?" },
+        { kind: "test", text: "Rub the pile: should not shed" },
+        { kind: "avoid", text: "Loop pile" },
+        { kind: "test", text: "Turn a corner back" },
+        { kind: "avoid", text: "Viscose blends" },
+      ],
     });
     expect(await lines()).toEqual([
       "must: Wool",
       "must: At least 2 m long",
+      "avoid: Loop pile",
+      "avoid: Viscose blends",
       "prefer: Warm tones",
       "prefer: Low pile",
-      "line: Avoid loop pile",
-      "line: Rub the pile: it should not shed",
+      "test: Rub the pile: should not shed",
+      "test: Turn a corner back",
+      "ask: Backing latex or felt?",
     ]);
-    expect((await detail()).quickGuide?.path).toBe("/guide/wool-rug?home=my-flat");
+    const { quickGuide, requirements } = await detail();
+    expect(quickGuide?.path).toBe("/guide/wool-rug?home=my-flat");
+    // Grouped as it is read: the positions Listing checks and Deviations cite stay as saved.
+    expect(
+      quickGuide?.lines.filter((line) => line.requirement).map((line) => line.requirement),
+    ).toEqual([2, 4, 1, 3]);
+    expect(requirements.map((each) => each.position)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("carries the looking-for line once one is saved, and none before", async () => {
+    await save(rug([must("Wool", cats)]));
+    expect((await detail()).quickGuide?.lookingFor).toBeUndefined();
+    await saveGuides({ decision: "wool-rug", lookingFor: "Wool · cut pile · 2–3 m long" });
+    expect((await detail()).quickGuide?.lookingFor).toBe("Wool · cut pile · 2–3 m long");
   });
 
   it("follows a changed Requirement at once, since it is assembled and never stored", async () => {
     await save(rug([must("Wool", cats)]));
-    await saveGuides({ decision: "wool-rug", quickLines: ["Avoid loop pile"] });
+    await saveGuides({ decision: "wool-rug", quickLines: [avoid("Loop pile")] });
     await save(rug([{ position: 1, text: "Wool or a wool blend" }], "wool-rug"));
-    expect(await lines()).toEqual(["must: Wool or a wool blend", "line: Avoid loop pile"]);
+    expect(await lines()).toEqual(["must: Wool or a wool blend", "avoid: Loop pile"]);
   });
 });
 
 describe("save_guides", () => {
-  it("saves the Quick Guide's own lines and the Full Guide, which get_decision gives as one line unless includeFullGuide", async () => {
+  it("saves the looking-for line, the Quick Guide's own lines, and the Full Guide, which get_decision gives as one line unless includeFullGuide", async () => {
     await save(rug([must("Wool", cats)]));
     const receipt = await saveGuides({
       decision: "wool-rug",
-      quickLines: ["Avoid loop pile"],
+      lookingFor: "Wool · cut pile",
+      quickLines: [avoid("Loop pile")],
       fullGuide: "## Material\n\nWool, because two cats live here.",
     });
+    expect(receipt).toContain("Looking-for line saved");
     expect(receipt).toContain("Quick Guide lines saved (1)");
     expect(receipt).toContain("Full Guide written");
+    expect(receipt).toContain("a looking-for line");
+    expect(receipt).toContain("1 line of yours (1 avoid)");
 
     const { guides } = await detail();
-    expect(guides?.quickLines).toEqual(["Avoid loop pile"]);
+    expect(guides?.lookingFor).toBe("Wool · cut pile");
+    expect(guides?.quickLines).toEqual([avoid("Loop pile")]);
     expect(guides?.fullGuide).toEqual({ writtenAt: expect.any(String), outOfDate: false });
     const full = (await detail("wool-rug", true)).guides?.fullGuide;
     expect(full?.markdown).toBe("## Material\n\nWool, because two cats live here.");
@@ -341,11 +370,29 @@ describe("save_guides", () => {
 
   it("replaces only what it is given", async () => {
     await save(rug([must("Wool", cats)]));
-    await saveGuides({ decision: "wool-rug", quickLines: ["Avoid loop pile"], fullGuide: "# Rug" });
-    await saveGuides({ decision: "wool-rug", quickLines: ["Avoid viscose"] });
+    await saveGuides({
+      decision: "wool-rug",
+      lookingFor: "Wool",
+      quickLines: [avoid("Loop pile")],
+      fullGuide: "# Rug",
+    });
+    await saveGuides({ decision: "wool-rug", quickLines: [avoid("Viscose")] });
     const { guides } = await detail("wool-rug", true);
-    expect(guides?.quickLines).toEqual(["Avoid viscose"]);
+    expect(guides?.quickLines).toEqual([avoid("Viscose")]);
+    expect(guides?.lookingFor).toBe("Wool");
     expect(guides?.fullGuide?.markdown).toBe("# Rug");
+  });
+
+  it("takes at most 8 lines of its own in all, whatever their kinds", async () => {
+    await save(rug([must("Wool", cats)]));
+    const some = (n: number, kind: "avoid" | "test" | "ask") =>
+      Array.from({ length: n }, (_, i) => ({ kind, text: `${kind} ${i + 1}` }));
+    await saveGuides({ decision: "wool-rug", quickLines: [...some(6, "test"), ...some(2, "ask")] });
+    const error = await refusal(
+      saveGuides({ decision: "wool-rug", quickLines: [...some(3, "avoid"), ...some(6, "test")] }),
+    );
+    expect(error.code).toBe("validation");
+    expect((await detail()).guides?.quickLines).toHaveLength(8);
   });
 
   it("is refused on a closed Session, saving nothing", async () => {
@@ -354,7 +401,7 @@ describe("save_guides", () => {
       session,
       summary: { changed: "A rug.", open: "Nothing", next: "Nothing" },
     });
-    const error = await refusal(saveGuides({ decision: "wool-rug", quickLines: ["Avoid loops"] }));
+    const error = await refusal(saveGuides({ decision: "wool-rug", quickLines: [avoid("Loops")] }));
     expect(error.code).toBe("session_closed");
     expect((await detail()).guides).toBeUndefined();
   });
@@ -373,7 +420,7 @@ describe("save_guides", () => {
     expect([other.code, rejected.code]).toEqual(["validation", "illegal_transition"]);
   });
 
-  it("needs quickLines or a Full Guide", async () => {
+  it("needs a looking-for line, quickLines, or a Full Guide", async () => {
     await save(rug([must("Wool", cats)]));
     const error = await refusal(saveGuides({ decision: "wool-rug" }));
     expect(error.code).toBe("validation");
@@ -427,7 +474,7 @@ describe("the Full Guide", () => {
 
   it("is not marked by a Requirement change before any Full Guide was written", async () => {
     await save({ ...rug([must("Oak", cats)]), title: "Oak bench", statement: "A bench." });
-    await saveGuides({ decision: "oak-bench", quickLines: ["Check the joints"] });
+    await saveGuides({ decision: "oak-bench", quickLines: [{ kind: "test", text: "The joints" }] });
     await save({
       ...rug([{ position: 1, text: "Oak or ash" }]),
       decision: "oak-bench",
@@ -435,6 +482,6 @@ describe("the Full Guide", () => {
       statement: "A bench.",
     });
     const { guides } = await detail("oak-bench");
-    expect(guides).toEqual({ quickLines: ["Check the joints"] });
+    expect(guides).toEqual({ quickLines: [{ kind: "test", text: "The joints" }] });
   });
 });

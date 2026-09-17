@@ -13,45 +13,45 @@
     --accent: #aab894; --mark: #3a2f1a; --mark-ink: #e3b95c; }
 }
 body { margin: 0; background: var(--paper); color: var(--ink);
-  font: 1.125rem/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1.125rem/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 main { max-width: 38rem; margin: 0 auto; padding: 1rem 1.1rem 3rem; }
 h1, h3, h4, h5, h6 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
   line-height: 1.2; }
-h1 { font-size: 2rem; margin: 0.25rem 0 0.5rem; letter-spacing: -0.01em; }
-h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--muted); margin: 0 0 0.4rem; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0.35rem; letter-spacing: -0.01em; }
+h2 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 0.35rem; }
 h3, h4, h5, h6 { font-size: 1.3rem; margin: 1.2rem 0 0.3rem; }
 p { margin: 0.4rem 0; }
 a { color: var(--accent); text-underline-offset: 0.18em; }
 .home { color: var(--muted); font-size: 0.95rem; margin: 0; }
+.looking-for { margin: 0; }
 ul { margin: 0; padding-left: 1.3rem; }
 li { margin: 0.5rem 0; }
-.block { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
-  padding: 0.9rem 1rem 0.6rem; margin-top: 1rem; }
-.block h2 + ul + h2 { margin-top: 1.1rem; }
-.block.measure { background: var(--mark); border: none; border-left: 5px solid var(--mark-ink); }
+ul.checks, ul.measure-lines, ul.lines { list-style: none; padding-left: 0; }
+ul.checks li, ul.lines li { margin: 0.3rem 0; }
+.block { margin-top: 1.4rem; }
+.block.measure { background: var(--mark); border-left: 5px solid var(--mark-ink); border-radius: 6px;
+  padding: 0.7rem 1rem 0.6rem; }
 .block.measure h2 { color: var(--mark-ink); }
-.num { font-weight: 700; }
-ul.checks, ul.measure-lines { list-style: none; padding-left: 0; }
-ul.checks li { position: relative; padding-left: 1.7em; }
-ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
-  height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
 ul.measure-lines li + li { margin-top: 0.9rem; }
-.block.must li { font-size: 1.25rem; }
+.block.must li { font-size: 1.2rem; font-weight: 500; }
+.num { font-weight: 700; }
 .blank { display: inline-block; min-width: 4em; border-bottom: 1.5px solid currentColor;
   height: 1em; vertical-align: baseline; }
 .done { font-weight: 600; color: var(--accent); }
 .stale { font-weight: 600; color: var(--mark-ink); }
-details { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 0.6rem; }
-summary { font-family: "Newsreader", Georgia, serif; font-size: 1.3rem; padding: 0.5rem 0; }
-footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
-.bring-back { border: 1px dashed var(--muted); border-radius: 6px; padding: 0.9rem 1rem 1rem; }
-.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
-.fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
-.blank.wide { min-width: 0; flex: 1; }
-.generated { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
+.folds { margin-top: 1.6rem; border-top: 1px solid var(--hairline); }
+details { border-bottom: 1px solid var(--hairline); }
+summary { font-family: "Newsreader", Georgia, serif; font-size: 1.25rem; padding: 0.6rem 0;
+  cursor: pointer; }
+details[open] > summary { margin-bottom: 0.2rem; }
+details > ul { margin-bottom: 0.8rem; }
+details.prefer > ul { color: var(--muted); }
+footer { margin-top: 1.6rem; }
+.bring-back { display: none; }
+.live { color: var(--muted); font-size: 0.9rem; margin: 0; }
 @media print {
   :root { color-scheme: light; --ink: #2a2724; --muted: #555; --paper: #fff; --card: #fff;
     --hairline: #999; --mark: #f3e6c4; --mark-ink: #333; }
@@ -60,6 +60,17 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
   h2 { break-after: avoid; }
   .block, .bring-back, li { break-inside: avoid; }
   .block.measure { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  ul.checks li { position: relative; padding-left: 1.7em; }
+  ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
+    height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
+  details::details-content { content-visibility: visible; display: block; }
+  summary { list-style: none; }
+  details.prefer > ul { color: var(--ink); }
+  .bring-back { display: block; border: 1px dashed var(--muted); border-radius: 6px;
+    padding: 0.9rem 1rem 1rem; margin-bottom: 1rem; }
+  .fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+  .fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
+  .blank.wide { min-width: 0; flex: 1; }
 }
 </style>
 </head>
@@ -68,7 +79,7 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
 <header>
 <p class="home">Fixture Home · Living room</p>
 <h1>Wool rug</h1>
-<p>A large wool rug under the sofa.</p>
+<p class="looking-for">Wool · cut pile · warm terracotta · 2.0–3.4 m long</p>
 </header>
 <section class="block measure">
 <h2>Measure first</h2>
@@ -83,20 +94,34 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
 <li>No longer than <strong class="num">3.4 m</strong>, to keep the walk past the west window clear</li>
 </ul>
 </section>
-<section class="block prefer">
-<h2>Prefer</h2>
+<section class="block avoid">
+<h2>Avoid</h2>
+<ul class="lines">
+<li>Loop pile, viscose blends — claws catch, viscose marks</li>
+</ul>
+</section>
+<div class="folds">
+<details class="prefer">
+<summary>Prefer (2)</summary>
 <ul class="checks">
 <li>Wool, low pile: loops catch the cats' claws</li>
 <li>Warm terracotta, the Palette's accent, or close to it</li>
 </ul>
-<h2>In the shop</h2>
-<ul>
-<li>Avoid loop pile and viscose blends: claws catch in loops, and viscose marks</li>
-<li>Rub the pile hard: more than a little fluff means months of shedding</li>
-<li>Turn a corner back: a stiff latex backing cracks on the tiles</li>
+</details>
+<details class="test">
+<summary>In the shop (2)</summary>
+<ul class="lines">
+<li>Rub the pile hard: more than a little fluff means shedding</li>
+<li>Turn a corner back: stiff latex cracks on tiles</li>
 </ul>
-</section>
-<details>
+</details>
+<details class="ask">
+<summary>Ask the seller (1)</summary>
+<ul class="lines">
+<li>Backing latex or felt?</li>
+</ul>
+</details>
+<details class="full">
 <summary>Full Guide</summary>
 <h3>Size</h3>
 <ul>
@@ -112,6 +137,7 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
 <li><strong>Warm terracotta</strong> (prefer). The accent of the Warm clay Palette, echoing the dining-end tiles; a rug is the one large surface in the room that can carry it.</li>
 </ul>
 </details>
+</div>
 <footer>
 <section class="bring-back">
 <h2>Bring back to the Agent</h2>
@@ -120,7 +146,7 @@ footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1
 <p class="fill"><span>Dimensions</span> <span class="blank wide"></span></p>
 <p class="fill"><span>What differs from the Requirements</span> <span class="blank wide"></span></p>
 </section>
-<p class="generated">Copy generated 14 Sep 2026. It won't update; ask the Agent for a fresh one.</p>
+<p class="live">This page is live: it changes when the Agent changes a Requirement. A screenshot won't.</p>
 </footer>
 </main>
 </body>

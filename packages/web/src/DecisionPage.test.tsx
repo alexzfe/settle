@@ -382,10 +382,15 @@ it("renders each kind's content", async () => {
   cleanup();
 
   await show("sofa", "Requirements");
-  expect(listAfter("Requirements")).toEqual([
-    "Mustunder 85 cm tallCalm and low",
-    "Mustfits through the doorFront door, clear width",
-    "Preferlinen or wool coverThe cat scratches fabric.",
+  // Under a heading per strength, so no row repeats it.
+  expect(
+    [...sectionOf("Requirements").querySelectorAll("h3, li")].map((each) => each.textContent),
+  ).toEqual([
+    "Must",
+    "under 85 cm tallCalm and low",
+    "fits through the doorFront door, clear width",
+    "Prefer",
+    "linen or wool coverThe cat scratches fabric.",
   ]);
   cleanup();
 
