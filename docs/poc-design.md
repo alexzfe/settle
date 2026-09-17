@@ -13,6 +13,8 @@ Run on the user's own real home:
 5. The user takes the Quick Guide shopping.
 6. The user Fulfils with something slightly different, and the Deviation flags a dependent Decision.
 
+**Met.** The user confirmed on 2026-09-17 that all six items hold on their real Home, including the phone scan on the real network and the acceptance read-through of the real Overview. Tagged `slice-6`.
+
 ## Architecture
 
 - Local-first and single-user, with all data scoped per Home so hosting later isn't a rewrite. Docker is the expected next packaging step.
@@ -30,11 +32,11 @@ Run on the user's own real home:
 - The AI gets what the current work needs, in full, and nothing it would have to ignore ([home-model.md](specs/home-model.md#context-tiers)). At Session start every Skill gets the Home Overview (the Home's facts, Constraints, and one line per Room with its Gaps) and open flags and Conflicts. Every Skill except Home Intake also gets the Home-wide Decisions in force, with the Design Direction and Palette in full. A Skill fetches a Room Sheet, with that Room's Items and open Decisions, only when the Session needs that Room. Everything else, history included, is looked up only when a question needs it.
 - The AI has no tool to see or switch Homes. Each Home has a Home Folder that the web UI sets up. Every Session started in that folder belongs to its Home, whatever the web UI is showing.
 - Skills name the Active Home at Session start. Every Skill except Home Intake warns while the Design Direction is not yet Locked.
-- Home Intake gathers Items by interview, and the user confirms them before they are saved. Photos are scaffolding in the PoC: the platform stores them and the web UI uploads them, but the AI doesn't use them ([skill-set.md](specs/skill-set.md#blueprints-and-photos)).
+- Home Intake gathers Items by interview, and the user confirms them before they are saved. Photos were designed as scaffolding in the PoC — stored by the platform, uploaded by the web UI, unused by the AI — but **none of it was built**: there is no `photos` table, no operation, and no upload, and inspiration images are explicitly not stored either (`design-direction/SKILL.md`). The only image bytes the app holds are Blueprints. Corrected 2026-09-17, in the Listing board grilling ([handoff/listing-board.md](handoff/listing-board.md)); see also [skill-set.md](specs/skill-set.md#blueprints-and-photos).
 
 ## Web UI
 
-- The user can view everything; create a Home; upload Blueprints onto a Home and Photos onto a Room or an Item; Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
+- The user can view everything; create a Home; upload Blueprints onto a Home (uploading Photos onto a Room or an Item was designed but never built); Lock, Reopen, or Reject Decisions; resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
 - Everything is ideally done through the Agent. Form-based editing of Rooms, Items, Notes, and Constraints exists for completeness and is expected to be used very little, so it is built in the web UI design session, after the PoC finish line (decided in the build-plan grilling of 2026-09-14). Until then the browser is a viewer plus the actions above, and the PoC's plain UI is judged on the AI and the Home record, not on its look.
 - A Shopping section shows two groups, the Shopping List and Considering. Each entry opens its Quick Guide, with the Full Guide one tap away. Every non-Rejected Purchase Decision has Guides. The AI writes them during Sessions, personalised to that Purchase Decision.
 - Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, where it serves only the Quick Guide pages by an unguessable per-Purchase token (never the web app, the API, or the MCP endpoint), and the Decision page shows that URL as a QR code. No auth on those pages, since it is the user's own network. LAN mode is the PoC's stopgap: the app is ultimately meant to run on a server on the user's Tailscale network, where their own devices reach it from anywhere, so the Quick Guide needs neither a QR scan nor a screenshot taken before leaving the house. The page stays live wherever it is read.
@@ -46,7 +48,8 @@ Each of these gets its own research and grilling session.
 - Home model detail: done. Spec: [specs/home-model.md](specs/home-model.md). Brief: [handoff/home-model.md](handoff/home-model.md)
 - Skill set: done. Spec: [specs/skill-set.md](specs/skill-set.md). Brief: [handoff/skill-set.md](handoff/skill-set.md)
 - Agent context: done. What the Agent is given and when, so that it stays focused. Outcome in [specs/home-model.md](specs/home-model.md#context-tiers) and [specs/skill-set.md](specs/skill-set.md). Brief: [handoff/agent-context.md](handoff/agent-context.md)
-- Photos as a working feature: the AI viewing them and proposing Items from them (scaffolding only in the PoC)
+- Photos as a working feature: the AI viewing them and proposing Items from them. Nothing was built in the PoC, not even the storage the design called scaffolding, so this starts from zero
+- Inspiration images: where they live, and where the pictures come from, given that the Agent cannot generate images and the platform makes no model calls. Not Photos. The web UI already reserves a slot for them (`DecisionPage.tsx`). User's idea, 2026-09-17
 - Budget module
 - 2D Floor Plan editor, then maybe 3D
 - Hosting and Docker: the app run as a server on the user's Tailscale network, reachable from their own devices anywhere, which replaces LAN mode as the way the Guides get onto the phone. User's goal, 2026-09-17

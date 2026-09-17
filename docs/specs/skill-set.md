@@ -244,11 +244,11 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 
 ## Blueprints and Photos
 
-- The user uploads files in the web UI: Blueprints onto the Home, Photos onto a Room or an Item.
+- The user uploads Blueprints onto the Home in the web UI. Uploading Photos onto a Room or an Item was designed but never built (corrected 2026-09-17, in the Listing board grilling).
 - A Skill fetches Blueprint pages with `view_images`, at most six pages per call (enforced by the tool), usually one Level's pages at a time. Claude Code caps a tool result at 25K tokens, and six 2000 px pages fit under it ([spike 4](../research/spikes/4-images-in-results.md)). The tool's text block, which names the pages returned, comes before the images.
 - The server converts PDF pages to PNG, because both Agents accept only PNG, JPEG, GIF, and WebP. This also covers Codex's inability to read PDFs. HEIC to JPEG conversion is deferred until a HEIC file actually arrives (decided in the build-plan grilling of 2026-09-14): Photos are scaffolding in the PoC, and Blueprints are normally PDFs or screenshots.
 - A tool result that carries images has no `structuredContent`, because Codex drops the images when it's present.
-- **Photos are scaffolding in the PoC.** The platform stores them, and the web UI uploads and shows them, but the AI neither sees nor uses them:
+- **Photos were designed as scaffolding in the PoC, and never built at all.** There is no `photos` table, no operation and no upload, so the platform stores none and the web UI neither uploads nor shows them. The AI-facing half of the design does hold, and is what the sub-points below describe — the AI neither sees nor uses them:
   - No Skill step depends on them.
   - The Room Sheet doesn't mention them.
   - `view_images` returns Blueprint pages only.
