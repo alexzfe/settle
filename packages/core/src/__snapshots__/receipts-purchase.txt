@@ -5,7 +5,7 @@ A Listing needs a check for every Requirement. Give one for 4 (prefer: Warm terr
 Listing for Wool rug (wool-rug): added: Tufted wool rug (tufted-wool-rug), £310: 3 pass, 1 fail, 0 unknown
 
 # record_listing: the jute rug marked down
-Listing for Wool rug (wool-rug): changed: Jute loop rug (jute-loop-rug), £95: 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
+Listing for Wool rug (wool-rug): changed: Jute loop rug (jute-loop-rug), £95, rated 5/5 (Exactly the terracotta wanted, and a third of the price): 2 pass, 2 fail, 0 unknown; fails must 1 (At least 2.0 × 1.4 m)
 
 # save_room: the west wall measured, flagging the rug resting on it
 living-room/wall-5: length 3.62 m (Measured), was ~3.70 m (Estimated)

@@ -3,6 +3,7 @@
 // the web UI, and the Skills read. Field names are the camelCase of docs/specs/home-model.md's
 // field tables.
 import { z } from "zod";
+import { PHOTO_TYPES } from "../images.js";
 import { homeInput, sessionInput } from "./scope.js";
 
 // ─── Fixed lists (docs/specs/home-model.md#fixed-lists) ─────────────────────────────────────
@@ -1597,6 +1598,24 @@ export const saveGuidesInput = z.object({
 
 export type SaveGuidesInput = z.input<typeof saveGuidesInput>;
 
+/**
+ * Why a Listing is Held: kept for reference but not buyable now. A small fixed list plus "other"
+ * with a note, so holds stay countable and the note shows what the list is missing when it is
+ * revised from real use.
+ */
+export const HOLD_REASONS = ["out-of-stock", "discontinued", "too-expensive-now", "other"] as const;
+export type HoldReason = (typeof HOLD_REASONS)[number];
+
+/** A hold as it is set: its date is stamped by the platform, never given. */
+export const holdInput = z.object({
+  reason: z
+    .enum(HOLD_REASONS)
+    .describe("out-of-stock, discontinued, too-expensive-now, or other (say which in note)."),
+  note: line.optional().describe('A few words: "back in March", "seller has stopped replying".'),
+});
+
+export type HoldInput = z.input<typeof holdInput>;
+
 export const listingCheckInput = z.object({
   requirement: requirementPosition,
   result: z
@@ -1629,7 +1648,45 @@ export const recordListingInput = z.object({
   dimensions: listingDimensionsSchema
     .optional()
     .describe("Its size as the listing states it, replacing any recorded."),
-  photo: text.max(500).optional().describe("A link to the product's photo."),
+  photoUrl: z
+    .url()
+    .max(500)
+    .optional()
+    .describe(
+      "A link straight to the product's picture, not to the page. The app fetches it and keeps " +
+        "the bytes, so the picture survives the shop changing the URL; when it can't, it keeps " +
+        "the link and says so, and the Listing is recorded either way.",
+    ),
+  rating: z
+    .number()
+    .int()
+    .min(1)
+    .max(5)
+    .optional()
+    .describe(
+      "Your judgement of how good this product is, 1 to 5 whole stars, with ratingNote. Place " +
+        "it on the same scale as the other Listings' ratings that get_decision shows you: a " +
+        "rating means nothing outside the set. The Requirements are the heaviest input but not " +
+        "the only one — quality, value, and taste are real and are not written down. Never " +
+        "lower it for a failed must: that is carried by the checks, and a 5-star product that " +
+        "fails a must is the strongest sign the Requirement itself deserves a second look. " +
+        "Re-rate another Listing only when you genuinely reconsidered it, and say so.",
+    ),
+  ratingNote: line
+    .optional()
+    .describe(
+      'The one line that makes the stars arguable, in the shop-first voice: "Slub visible, but ' +
+        '40% over budget". Needed whenever rating is given, and it must tell a 4 meaning ' +
+        '"lovely but pricey" from a 4 meaning "fine, nothing special".',
+    ),
+  held: holdInput
+    .nullable()
+    .optional()
+    .describe(
+      "Holds the Listing — good, but not buyable now — or null to release it. The user normally " +
+        "sets this in the app, so you usually only read it; get_decision shows any hold with " +
+        "its date. A Held Listing keeps its Rating and its checks.",
+    ),
   checks: z
     .array(listingCheckInput)
     .optional()
@@ -1643,6 +1700,45 @@ export const recordListingInput = z.object({
 export type ListingCheckInput = z.input<typeof listingCheckInput>;
 export type ListingDimensions = z.infer<typeof listingDimensionsSchema>;
 export type RecordListingInput = z.input<typeof recordListingInput>;
+
+const listingSlugInput = slugInput.describe("The Listing's slug, unique within the Home.");
+
+/** drop_listing: the board's delete. Hard, and no reason is asked for. */
+export const dropListingInput = z.object({ home: homeInput, listing: listingSlugInput });
+
+/** hold_listing: holds a Listing, or releases it with null. */
+export const holdListingInput = z.object({
+  home: homeInput,
+  listing: listingSlugInput,
+  held: holdInput.nullable().describe("The hold, or null to release one."),
+});
+
+/**
+ * set_listing_photo: the paste box. Either the bytes the user pasted or an image URL the platform
+ * then fetches, never both and never neither.
+ */
+export const setListingPhotoInput = z
+  .object({
+    home: homeInput,
+    listing: listingSlugInput,
+    file: bytes.optional().describe("The pasted image's bytes: a JPEG, PNG, or WebP."),
+    url: z.url().max(500).optional().describe("An image URL for the app to fetch instead."),
+  })
+  .refine((input) => (input.file === undefined) !== (input.url === undefined), {
+    message: "Give the pasted file or an image url, not both and not neither",
+  });
+
+/** get_listing_photo: the stored bytes. `v` is the view's photoVersion, for the browser cache. */
+export const getListingPhotoInput = z.object({
+  home: homeInput,
+  listing: listingSlugInput,
+  v: z.string().optional().describe("Ignored by the server; it is there for the browser cache."),
+});
+
+export type DropListingInput = z.input<typeof dropListingInput>;
+export type HoldListingInput = z.input<typeof holdListingInput>;
+export type SetListingPhotoInput = z.input<typeof setListingPhotoInput>;
+export type GetListingPhotoInput = z.input<typeof getListingPhotoInput>;
 
 /** get_shopping: the Home's Shopping List and Considering. */
 export const getShoppingInput = z.object({ home: homeInput });
@@ -1952,6 +2048,15 @@ export const listingCheckSchema = z.object({
   unchecked: z.boolean().optional(),
 });
 
+/** A Listing kept for reference but not buyable now. */
+export const heldSchema = z.object({
+  reason: z.enum(HOLD_REASONS),
+  /** What the user said, when they said anything; for `other`, what the reason actually is. */
+  note: z.string().optional(),
+  /** When it was held, as an ISO timestamp: stock is the most perishable fact on the board. */
+  at: z.string(),
+});
+
 /** A real product considered for a Purchase, checked against its Requirements. */
 export const listingSchema = z.object({
   slug: z.string(),
@@ -1959,7 +2064,22 @@ export const listingSchema = z.object({
   url: z.string().optional(),
   price: z.string().optional(),
   dimensions: listingDimensionsSchema.optional(),
-  photo: z.string().optional(),
+  /**
+   * The Agent's judgement of how good the product is, 1 to 5 whole stars. Never computed,
+   * capped, or changed by the platform, and never lowered by a failed must: the stars say how
+   * good, the checks say whether it qualifies.
+   */
+  rating: z.number().int().min(1).max(5).optional(),
+  /** The one-line reason for the Rating. Always present when `rating` is. */
+  ratingNote: z.string().optional(),
+  /** Where the picture came from. */
+  photoUrl: z.string().optional(),
+  /**
+   * Present only when the platform holds the bytes, which get_listing_photo serves. It changes
+   * whenever the stored bytes change, so the web can pass it as `v` to defeat the browser cache.
+   */
+  photoVersion: z.string().optional(),
+  held: heldSchema.optional(),
   recordedAt: z.string(),
   /** One per Requirement not Archived, by position. */
   checks: z.array(listingCheckSchema),
@@ -1987,6 +2107,7 @@ export type QuickLine = z.infer<typeof quickLineSchema>;
 export type QuickGuide = z.infer<typeof quickGuideSchema>;
 export type FullGuide = z.infer<typeof fullGuideSchema>;
 export type Guides = z.infer<typeof guidesSchema>;
+export type Held = z.infer<typeof heldSchema>;
 export type ListingCheck = z.infer<typeof listingCheckSchema>;
 export type Listing = z.infer<typeof listingSchema>;
 export type Deviation = z.infer<typeof deviationSchema>;
@@ -2089,10 +2210,31 @@ export const shoppingEntrySchema = z.object({
   hasGuides: z.boolean(),
   fullGuideOutOfDate: z.boolean(),
   listings: z.number(),
+  /**
+   * The highest Rating among its Listings that fail no must and are not Held: the line that says
+   * a Purchase is nearly decided. Absent when none of them qualifies.
+   */
+  bestRating: z.number().int().min(1).max(5).optional(),
   /** Its Quick Guide's "Measure first" lines, in full. */
   measureFirst: z.array(z.string()),
   openFlags: z.number(),
 });
+
+/** drop_listing: the Purchase it was dropped from, and the slug that is now gone. */
+export const dropListingResult = z.object({ decision: z.string(), listing: z.string() });
+
+/** hold_listing and set_listing_photo: the Listing as it now stands, for the board to redraw. */
+export const listingResult = z.object({ decision: z.string(), listing: listingSchema });
+
+/** get_listing_photo: the stored bytes, with the type sniffed when they were stored. */
+export const getListingPhotoResult = z.object({
+  mimeType: z.enum(PHOTO_TYPES),
+  data: bytes,
+});
+
+export type DropListingResult = z.infer<typeof dropListingResult>;
+export type ListingResult = z.infer<typeof listingResult>;
+export type GetListingPhotoResult = z.infer<typeof getListingPhotoResult>;
 
 /**
  * get_shopping: the Shopping List (Locked Purchases not yet Fulfilled) and Considering (Candidate

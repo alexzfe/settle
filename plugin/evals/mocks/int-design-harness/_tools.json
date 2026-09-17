@@ -2527,7 +2527,7 @@
     {
       "name": "record_listing",
       "title": "Record listing",
-      "description": "Records a Listing for one Purchase Decision (a real product the user brings: its name, link, price, size, and photo) checked against every Requirement, and returns a receipt with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from it, with a few words on what decided it. A new Listing needs a check for every Requirement not Archived. Pass `listing` (its slug) to change one: the fields given replace what is recorded, and the checks given replace those of their Requirements; it must then have a check for every Requirement, those added since included. Tell the user plainly which musts it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase takes none. Needs the open Session's id as `session`.",
+      "description": "Records a Listing for one Purchase Decision (a real product the user brings: its name, link, price, size, and picture) checked against every Requirement, and returns a receipt with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from it, with a few words on what decided it. A new Listing needs a check for every Requirement not Archived. Pass `listing` (its slug) to change one: the fields given replace what is recorded, and the checks given replace those of their Requirements; it must then have a check for every Requirement, those added since included. A rating on its own needs no checks resent. Also give it a Rating: 1 to 5 whole stars for how good the product is, with ratingNote, the one line that makes the stars arguable. A Rating is your judgement, not a formula: place it on the same scale as the other Listings' ratings that get_decision shows you, weigh the Requirements heaviest but not alone (quality, value, and taste count too), and never lower it for a failed must — the checks carry that, and a 5-star product under a failed must is the strongest sign the Requirement itself deserves a second look. A rating without its ratingNote is refused. photoUrl links straight to the picture: the app fetches and keeps the bytes, and when it can't it keeps the link and says so on the receipt. Tell the user plainly which musts it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase takes none. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2588,11 +2588,48 @@
               }
             }
           },
-          "photo": {
-            "description": "A link to the product's photo.",
+          "photoUrl": {
+            "description": "A link straight to the product's picture, not to the page. The app fetches it and keeps the bytes, so the picture survives the shop changing the URL; when it can't, it keeps the link and says so, and the Listing is recorded either way.",
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
+          },
+          "rating": {
+            "description": "Your judgement of how good this product is, 1 to 5 whole stars, with ratingNote. Place it on the same scale as the other Listings' ratings that get_decision shows you: a rating means nothing outside the set. The Requirements are the heaviest input but not the only one — quality, value, and taste are real and are not written down. Never lower it for a failed must: that is carried by the checks, and a 5-star product that fails a must is the strongest sign the Requirement itself deserves a second look. Re-rate another Listing only when you genuinely reconsidered it, and say so.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "ratingNote": {
+            "description": "The one line that makes the stars arguable, in the shop-first voice: \"Slub visible, but 40% over budget\". Needed whenever rating is given, and it must tell a 4 meaning \"lovely but pricey\" from a 4 meaning \"fine, nothing special\".",
             "type": "string",
             "minLength": 1,
-            "maxLength": 500
+            "maxLength": 200
+          },
+          "held": {
+            "description": "Holds the Listing — good, but not buyable now — or null to release it. The user normally sets this in the app, so you usually only read it; get_decision shows any hold with its date. A Held Listing keeps its Rating and its checks.",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": ["out-of-stock", "discontinued", "too-expensive-now", "other"],
+                    "description": "out-of-stock, discontinued, too-expensive-now, or other (say which in note)."
+                  },
+                  "note": {
+                    "description": "A few words: \"back in March\", \"seller has stopped replying\".",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": ["reason"]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "checks": {
             "description": "Its result against each Requirement, by position. Adding a Listing needs one for every Requirement; changing one replaces the checks given and keeps the others, and it must then have one for every Requirement too.",

@@ -156,8 +156,16 @@ One attribute a Purchase Decision asks for (e.g. "under 85 cm tall"), marked *mu
 _Avoid_: Spec, criterion, filter
 
 **Listing**:
-A specific real-world product (name, link, price, dimensions, photo) being considered for a Purchase Decision and checked against its Requirements.
-_Avoid_: Product, offer, match
+A specific real-world product the user brings (name, link, price, dimensions) being considered for a Purchase Decision and checked against its Requirements. It carries a Rating, a picture the platform stores as its own copy, kept apart from the link the picture came from, and it may be Held.
+_Avoid_: Product, offer, match, option
+
+**Rating**:
+The Agent's judgement of how good a Listing is, one to five stars with a one-line reason. Says nothing about whether the Listing meets the Purchase Decision's Requirements; that is what its checks are for, so a failed *must* never lowers it.
+_Avoid_: Score, fit, ranking
+
+**Held**:
+Said of a Listing kept for reference but not buyable now — out of stock, discontinued, or simply too dear this month. Carries a reason and the date it was held. A Held Listing keeps its Rating. Never a Flag, which is a mark the platform raises on a Decision.
+_Avoid_: Flagged, blocked, unavailable, paused
 
 **Shopping List**:
 Every Locked Purchase Decision that is not yet Fulfilled. Downloadable.

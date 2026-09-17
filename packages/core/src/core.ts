@@ -7,6 +7,7 @@ import { mupdfRenderer } from "./blueprints/mupdf.js";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
 import { type FileStore, nodeFileStore, type PdfRenderer } from "./files.js";
+import { type ImageFetcher, nodeImageFetcher } from "./images.js";
 import {
   getBlueprintPage,
   listBlueprints,
@@ -36,7 +37,14 @@ import {
 } from "./operations/homes.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
-import { recordListing, saveGuides } from "./operations/purchases.js";
+import {
+  dropListing,
+  getListingPhoto,
+  holdListing,
+  recordListing,
+  saveGuides,
+  setListingPhoto,
+} from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
 import { closeSession, openSession } from "./operations/sessions.js";
 import {
@@ -74,8 +82,12 @@ const operations = {
   export_shopping_list: exportShoppingList,
   export_guides: exportGuides,
   get_guide_page: getGuidePage,
+  get_listing_photo: getListingPhoto,
   resolve_flag: resolveFlag,
   resolve_conflict: resolveConflict,
+  drop_listing: dropListing,
+  hold_listing: holdListing,
+  set_listing_photo: setListingPhoto,
   open_session: openSession,
   get_room_sheet: getRoomSheet,
   find_items: findItems,
@@ -126,6 +138,8 @@ export interface CoreOptions {
   files?: FileStore;
   /** Internal seam: renders Blueprint files; mupdf unless a test gives another. */
   renderPdf?: PdfRenderer;
+  /** Internal seam: fetches a Listing's photo over HTTP; a test always gives its own. */
+  fetchImage?: ImageFetcher;
   clock?: () => Date;
   random?: (max: number) => number;
   /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
@@ -164,6 +178,7 @@ export function createCore(options: CoreOptions = {}): Core {
     store,
     files: options.files ?? nodeFileStore,
     renderPdf: options.renderPdf ?? mupdfRenderer,
+    fetchImage: options.fetchImage ?? nodeImageFetcher,
     dataDir(): string {
       if (dataDir === undefined) {
         temporaryDataDir = mkdtempSync(join(tmpdir(), "idh-data-"));

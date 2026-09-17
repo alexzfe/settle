@@ -1,5 +1,6 @@
 import type { SQLInputValue, StatementSync } from "node:sqlite";
 import type { TextLine } from "./files.js";
+import type { PhotoType } from "./images.js";
 import { migrate } from "./migrate.js";
 import type {
   BlueprintFileType,
@@ -16,6 +17,7 @@ import type {
   FlagCause,
   Fulfilment,
   GlassKind,
+  HoldReason,
   ItemCategory,
   Light,
   ListingDimensions,
@@ -320,10 +322,26 @@ export interface ListingRow {
   decisionId: number;
   slug: string;
   name: string;
+  /** The product page. */
   url: string | null;
   price: string | null;
   dimensions: ListingDimensions | null;
+  /** Where the picture came from. */
+  photoUrl: string | null;
+  /** The stored copy, under the data dir; null when the platform holds no bytes. */
   photoPath: string | null;
+  /** The stored bytes' media type, sniffed from the bytes themselves. */
+  photoType: PhotoType | null;
+  /** Changes whenever the stored bytes change, so the web can defeat the browser cache. */
+  photoVersion: string | null;
+  /** The Agent's judgement, 1 to 5 whole stars. Never computed or capped by the platform. */
+  rating: number | null;
+  /** The one-line reason for the Rating; always set when `rating` is. */
+  ratingNote: string | null;
+  /** Set together: a Listing kept for reference but not buyable now. */
+  heldReason: HoldReason | null;
+  heldNote: string | null;
+  heldAt: string | null;
   recordedAt: string;
 }
 
@@ -493,6 +511,10 @@ export interface Store {
   removeBasis(id: number): void;
   /** Takes a check off a Listing, when the Requirement it judged has changed since. */
   removeListingCheck(id: number): void;
+  /** Takes every check off a Listing, for a drop: nothing else points at a Listing. */
+  removeListingChecks(listingId: number): void;
+  /** Drops a Listing outright. Its checks go first, or the foreign key refuses it. */
+  removeListing(id: number): void;
 
   insertSession(session: Omit<SessionRow, "id">): SessionRow;
   /** Looks across every Home: Session slugs are unique app-wide. */
@@ -708,6 +730,12 @@ export function openStore(path: string): Store {
     },
     removeListingCheck(id) {
       run("DELETE FROM listing_checks WHERE id = ?", id);
+    },
+    removeListingChecks(listingId) {
+      run("DELETE FROM listing_checks WHERE listing_id = ?", listingId);
+    },
+    removeListing(id) {
+      run("DELETE FROM listings WHERE id = ?", id);
     },
 
     insertSession(session) {

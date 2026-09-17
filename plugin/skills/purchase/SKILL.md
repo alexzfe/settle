@@ -117,10 +117,35 @@ Write both Guides with `save_guides` once the user agrees the Requirements, whet
 When the user brings a specific product (a link, a pasted description, a label's details), check it against every Requirement of the Purchase, from what the Listing states:
 
 - `pass` when the Listing shows the Requirement is met, `fail` when it shows it isn't, and `unknown` when it doesn't say. Never pass a guess: a depth the Listing leaves out is `unknown`, and a color judged from a photo is `unknown` with a note.
-- Record it with `record_listing`: its `name`, `url`, `price` with the currency, `dimensions` as stated (whole millimetres), and `checks`, one for every Requirement by its position, each with its `result` and a short `note`. To re-check a Listing already recorded, pass its slug as `listing`.
+- Record it with `record_listing`: its `name`, `url`, `price` with the currency, `dimensions` as stated (whole millimetres), `photoUrl` and your `rating` with its `ratingNote` (below), and `checks`, one for every Requirement by its position, each with its `result` and a short `note`. To re-check a Listing already recorded, pass its slug as `listing`.
 - Say the verdict plainly, from the receipt: any failed `must` rules it out ("It fails a must: 2.30 m wide, and the limit is 2.10 m"); each `unknown` becomes what to ask the seller or check in the shop; then the `prefer`s.
 - **Ready to buy.** Recommend a Listing as meeting the `must`s only when each is verified. With an unknown `must`, say it is a possible choice pending that check, and name who can resolve it. A failed `must` remains a failure under the current Requirements even if the user accepts the compromise; changing a Locked Purchase follows "Asking first". For price, use the user's currency and distinguish the item price from delivery and assembly. Ask whether a stated purchase limit is firm or preferred, save the answer as a Note when needed, and trace a price Requirement to it. Report unknown extra costs rather than assuming they are included.
+- **Record the ones that fail too,** with their checks and their Rating, so the same sofa isn't weighed again in three weeks and the record shows what was turned down and why. Clearing a Listing away is the user's, from the Purchase's page.
 - A Listing never changes the Decision's state by itself. The user saying "that's the one we'll buy" is a commitment: Lock as in "The interview".
+
+### The picture
+
+Send `photoUrl`: a link to the product's own picture, full size. Which link you send matters more than whether you find one — a search results page hands out thumbnails (Amazon's are 160 × 134 and look like a working link), so open the product page and take the picture from there.
+
+- **When the user gives you an image URL, send theirs,** exactly as they wrote it, in place of any you worked out yourself. An Amazon product page carries no `og:image`, so their link is often the only good one.
+- The app fetches the picture and keeps its own copy. When the receipt says it couldn't, the Listing is recorded all the same with the link kept: say so in a line, and tell the user they can paste a picture onto the Purchase's page in the app. Leave the fetching to the app: never download or encode a picture yourself.
+
+### The Rating
+
+Rate every Listing you record: `rating`, 1 to 5 whole stars, with `ratingNote`. It is your judgement of **how good this product is**, taking the Requirements as the heaviest input but not the only one — quality, value and taste are real and are not written down as Requirements.
+
+- **A failed `must` leaves the Rating where it is.** Whether the product qualifies is already carried by the fail marker and your verdict, so say the two plainly and separately: "5 stars, and it fails a must: 2.30 m wide against a 2.10 m limit." Keep them apart because a Rating pulled down by the fail makes "fails one must, otherwise superb" read exactly like "fails three, mediocre" — and it buries the signal worth having, that a 5-star product under a failed must is the strongest sign the *Requirement* deserves a second look.
+- **Anchor to the set.** Before you rate, read the other Listings' Ratings in `get_decision` and put the new one on that same scale: a 4 has to mean the same thing across the Purchase. Rate the one in front of you and leave the rest as they are, unless you have genuinely reconsidered one — then change that one and say so ("I've moved the jute rug to 3: beside these two, its pile is thin").
+- **The reason line comes with it,** in `ratingNote`: one fragment in the shop-first voice the Requirements use ("Slub visible, but 40% over budget"). It is what tells a 4 meaning "lovely but pricey" from a 4 meaning "fine, nothing special". A Rating sent without one is refused and nothing is recorded.
+- Say the stars and the reason in the reply too, beside the verdict, so the user can argue with them.
+
+### Held
+
+A Held Listing is a good one that can't be bought now: out of stock, discontinued, or too dear this month. It keeps its Rating and stays the bar the others are measured against. Holds are set by the user on the Purchase's page, so `get_decision` is where you learn of one — it prints the reason and the date it was held.
+
+- **Name the hold, and how old it is, whenever you put a Held Listing forward:** "the Nordic Story is still your best at 5 stars, but you held it three weeks ago as out of stock — worth asking the shop again?" Recommend it only with that said.
+- Set `held` yourself only when the user tells you in the conversation that the thing can't be had: the reason they gave (`out-of-stock`, `discontinued`, `too-expensive-now`, or `other` with a `note` saying which), or `null` when they say it's back. Stock is theirs to report: take their word for it rather than guessing, and check no shop to find out.
+- Held is its own thing, not a Flag: a Flag is the mark this Skill's "Flags" section describes, raised on a Decision whose ground has moved.
 
 ## Fulfilment
 

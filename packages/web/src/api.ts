@@ -14,6 +14,7 @@ import type {
   GetShoppingResult,
   ListDecisionsInput,
   ListDecisionsResult,
+  ListingResult,
   OperationInput,
   OperationOutput,
   ResolveConflictInput,
@@ -42,6 +43,8 @@ export type {
   FlagCause,
   FullGuide,
   Guides,
+  Held,
+  HoldReason,
   Home,
   Item,
   Level,
@@ -92,6 +95,9 @@ export interface Operations {
   resolve_flag: { input: ResolveFlagInput; output: DecisionReceiptResult };
   resolve_conflict: { input: ResolveConflictInput; output: DecisionReceiptResult };
   get_shopping: { input: GetShoppingInput; output: GetShoppingResult };
+  // The board's own writes: the first Listings have ever had from the web.
+  drop_listing: Shapes<"drop_listing">;
+  hold_listing: Shapes<"hold_listing">;
 }
 
 export type OperationName = keyof Operations;
@@ -99,6 +105,8 @@ export type OperationName = keyof Operations;
 /** The operations the web UI calls with a multipart form, and what they answer. */
 export interface Uploads {
   upload_blueprint: UploadBlueprintResult;
+  /** The board's paste box: the bytes the user pasted, or an image URL for the app to fetch. */
+  set_listing_photo: ListingResult;
 }
 
 export type UploadName = keyof Uploads;
@@ -131,6 +139,17 @@ export function call<Op extends OperationName>(
 /** Posts `form` as multipart form data; the browser sets the Content-Type and its boundary. */
 export function upload<Op extends UploadName>(operation: Op, form: FormData): Promise<Uploads[Op]> {
   return send(`/api/${operation}`, { method: "POST", body: form });
+}
+
+/**
+ * Where the server serves a Listing's stored picture. `v` is the Listing's photoVersion: the
+ * server ignores it, but it changes whenever the stored bytes do, so a replaced picture arrives
+ * at a new address and the browser cannot serve the old one back.
+ */
+export function listingPhotoUrl(home: string, listing: string, v?: string): string {
+  const query = new URLSearchParams({ home, listing });
+  if (v) query.set("v", v);
+  return `/api/get_listing_photo?${query}`;
 }
 
 /** Where the server serves one page of a Blueprint, rendered as a PNG. */

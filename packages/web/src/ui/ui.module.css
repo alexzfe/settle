@@ -278,3 +278,37 @@
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
 }
+
+/* A Rating's stars. Solid when the Listing qualifies, hollow when it fails a must: the shape
+   carries it, and the colour is only a second voice saying the same thing. */
+.stars {
+  display: inline-flex;
+  gap: 0.05rem;
+  vertical-align: -0.15em;
+}
+
+.stars svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-linejoin: round;
+}
+
+/* Earned: the star's own gold. */
+.starOn {
+  fill: var(--color-attention);
+  stroke: none;
+}
+
+/* Not earned: a hairline outline, so all five positions stay readable. */
+.starOff {
+  fill: none;
+  stroke: var(--color-stone);
+  stroke-width: 1.5;
+}
+
+/* A must-failer: the same count, hollow and heavier. The Rating itself is untouched. */
+.starsOutlined .starOn {
+  fill: none;
+  stroke: var(--color-error);
+  stroke-width: 2.75;
+}

@@ -1,6 +1,12 @@
 import type { Core } from "@idh/core";
 import { Hono, type MiddlewareHandler } from "hono";
-import { handleApi, handleBlueprintPage, handleUpload } from "./api.js";
+import {
+  handleApi,
+  handleBlueprintPage,
+  handleListingPhoto,
+  handleListingPhotoUpload,
+  handleUpload,
+} from "./api.js";
 import { streamChanges } from "./events.js";
 import { handleMcpRequest, mcpTools } from "./mcp.js";
 import { handleExport, handleGuidePage } from "./pages.js";
@@ -22,6 +28,9 @@ export function createApp({ core, port, webDist }: AppOptions): Hono {
   // Blueprints: a multipart upload in, and each rendered page out as a PNG.
   app.post("/api/upload_blueprint", (c) => handleUpload(core, c));
   app.get("/api/get_blueprint_page", (c) => handleBlueprintPage(core, c));
+  // A Listing's picture: pasted or fetched in through a multipart form, served back as its bytes.
+  app.post("/api/set_listing_photo", (c) => handleListingPhotoUpload(core, c));
+  app.get("/api/get_listing_photo", (c) => handleListingPhoto(core, c));
   // The exports as files, for a link to open; POST gives the same as JSON.
   app.get("/api/export_shopping_list", (c) => handleExport(core, c, "export_shopping_list"));
   app.get("/api/export_guides", (c) => handleExport(core, c, "export_guides"));

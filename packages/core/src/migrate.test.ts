@@ -31,6 +31,7 @@ describe("migrate", () => {
       { id: 7 },
       { id: 8 },
       { id: 9 },
+      { id: 10 },
     ]);
     db.close();
   });
@@ -39,7 +40,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 10 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 11 });
     db.close();
   });
 
@@ -97,6 +98,82 @@ describe("migrate", () => {
       ],
       [[], null],
     ]);
+    db.close();
+  });
+
+  it("moves every photo_path into photo_url, because the column has only ever held a URL", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    // Listings rows alone, for Purchases this test never needs.
+    early.exec("PRAGMA foreign_keys = OFF");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0010")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    const insert = early.prepare(
+      `INSERT INTO listings (home_id, decision_id, slug, name, photo_path, recorded_at)
+       VALUES (1, 1, ?, ?, ?, '2026-09-14T10:00:00.000Z')`,
+    );
+    insert.run("hay-plain-rug", "Hay Plain rug", "https://shop.example/hay.jpg");
+    insert.run("jute-loop-rug", "Jute loop rug", null);
+    early.close();
+
+    const db = migrate(path);
+    const rows = db
+      .prepare("SELECT slug, photo_path, photo_url, photo_type, rating FROM listings ORDER BY id")
+      .all();
+    expect(rows).toEqual([
+      {
+        slug: "hay-plain-rug",
+        photo_path: null,
+        photo_url: "https://shop.example/hay.jpg",
+        photo_type: null,
+        rating: null,
+      },
+      {
+        slug: "jute-loop-rug",
+        photo_path: null,
+        photo_url: null,
+        photo_type: null,
+        rating: null,
+      },
+    ]);
+    db.close();
+  });
+
+  it("gives a Listing its Rating, its stored picture, and its hold, and refuses stars off the scale", () => {
+    const db = migrate(":memory:");
+    const columns = (db.prepare("PRAGMA table_info(listings)").all() as { name: string }[]).map(
+      (column) => column.name,
+    );
+    expect(columns).toEqual(
+      expect.arrayContaining([
+        "photo_url",
+        "photo_path",
+        "photo_type",
+        "photo_version",
+        "rating",
+        "rating_note",
+        "held_reason",
+        "held_note",
+        "held_at",
+      ]),
+    );
+    const listing = (rating: number | null, heldReason: string | null) =>
+      db
+        .prepare(
+          `INSERT INTO listings (home_id, decision_id, slug, name, rating, held_reason, recorded_at)
+           VALUES (1, 1, 'rug', 'Rug', ?, ?, '')`,
+        )
+        .run(rating, heldReason);
+    db.exec("PRAGMA foreign_keys = OFF");
+    expect(() => listing(6, null)).toThrow(/CHECK/);
+    expect(() => listing(0, null)).toThrow(/CHECK/);
+    expect(() => listing(null, "paused")).toThrow(/CHECK/);
     db.close();
   });
 

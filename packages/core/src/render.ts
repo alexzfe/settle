@@ -19,6 +19,7 @@ import type {
   Flag,
   FlagCause,
   Fulfilment,
+  HoldReason,
   Home,
   Item,
   Level,
@@ -748,18 +749,40 @@ function deviationLine(deviation: Deviation): string {
   );
 }
 
-/** One Listing: name, price, its pass, fail, and unknown counts, and any must it fails. */
+/** Why a Listing is Held, as it is written in a line the Agent or the user reads. */
+export const HOLD_REASON_LABELS: Record<HoldReason, string> = {
+  "out-of-stock": "out of stock",
+  discontinued: "discontinued",
+  "too-expensive-now": "too expensive now",
+  other: "another reason",
+};
+
+/**
+ * One Listing: name, price, its Rating with the reason for it, its pass, fail, and unknown
+ * counts, any must it fails, and any hold with its reason and the day it was set. Holds are set
+ * in the app, so this line is the only way the Agent ever learns of one.
+ *
+ * The Rating is printed exactly as it was given, beside the failed musts and never reduced by
+ * them: the stars say how good the product is, the musts say whether it qualifies, and a 5-star
+ * product under "fails must 3" is the strongest sign the Requirement wants a second look.
+ */
 export function listingLine(listing: Listing): string {
   const fails = listing.checks.filter(
     (check) => check.strength === "must" && check.result === "fail",
   );
   const { pass, fail, unknown } = listing.counts;
+  const { rating, ratingNote, held } = listing;
   return (
     `${named({ name: listing.name, slug: listing.slug })}` +
     (listing.price ? `, ${listing.price}` : "") +
+    (rating ? `, rated ${rating}/5${ratingNote ? ` (${ratingNote})` : ""}` : "") +
     `: ${pass} pass, ${fail} fail, ${unknown} unknown` +
     (fails.length > 0
       ? `; fails must ${fails.map((check) => `${check.requirement} (${check.text})`).join(", ")}`
+      : "") +
+    (held
+      ? `; Held ${day(held.at)}: ${HOLD_REASON_LABELS[held.reason]}` +
+        (held.note ? ` (${held.note})` : "")
       : "")
   );
 }

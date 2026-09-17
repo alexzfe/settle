@@ -277,6 +277,14 @@ a.reason:hover {
   min-width: 11rem;
 }
 
+/* A Listing's column: wide enough for its picture, its stars, and the board's own controls, and
+   topped so that the pictures line up across the board and read as one row. */
+.matrix thead th:not(.corner) {
+  min-width: 15rem;
+  max-width: 21rem;
+  vertical-align: top;
+}
+
 .matrix thead th {
   color: var(--color-ink);
   font-size: var(--text-sm);
@@ -311,6 +319,181 @@ a.reason:hover {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+}
+
+/* The picture, above everything: a fixed box whatever shape the shop's photo is, so the heads
+   line up and the names sit at the same height across the board. */
+.picture {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-ground);
+  object-fit: contain;
+}
+
+/* The empty slot: a dashed box that says what to do with it and opens the paste box. */
+.photoEmpty {
+  padding: var(--space-3);
+  border: 1px dashed var(--color-hairline);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  text-align: center;
+  white-space: normal;
+}
+
+.photoEmpty:hover {
+  border-color: var(--color-accent);
+  background: var(--color-ground);
+  color: var(--color-accent);
+}
+
+.pictureButton {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* The paste box: pasted, dropped, or chosen bytes, or an address to fetch. */
+.pasteBox {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-ground);
+}
+
+/* Where a paste or a drop lands. A button, so it takes focus and the paste follows it. */
+.pasteTarget {
+  display: block;
+  width: 100%;
+  padding: var(--space-4) var(--space-3);
+  border: 1px dashed var(--color-hairline);
+  background: var(--color-card);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  text-align: center;
+  white-space: normal;
+}
+
+.pasteTarget:hover {
+  border-color: var(--color-accent);
+  background: var(--color-card);
+  color: var(--color-accent);
+}
+
+.pasteOver,
+.pasteTarget.pasteOver:hover {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* The file chooser the target opens: off-screen, but still reachable by keyboard. */
+.chooser {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pasteUrl {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.pasteBox form,
+.pasteBox > div {
+  margin: 0;
+}
+
+/* The Rating: the stars, then the Agent's reason for them on its own tint. */
+.rating {
+  margin-block: var(--space-1);
+}
+
+.rating > div {
+  margin-block: var(--space-1) 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.ratingNote {
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+/* Held: good, not now. Neither a fail nor a flag, so it reads as neither. */
+.held {
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-ground);
+  font-size: var(--text-xs);
+}
+
+/* The board's own writes, quiet until they are wanted. */
+.listingControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.listingControls button {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.holdForm,
+.dropConfirm {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-ground);
+  font-size: var(--text-xs);
+}
+
+.holdForm label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.holdForm > div,
+.dropConfirm > div {
+  margin: 0;
+}
+
+/* Permanent, and it takes the picture with it: said plainly, once, before it happens. */
+.dropWarning {
+  color: var(--color-error);
 }
 
 .listingName {

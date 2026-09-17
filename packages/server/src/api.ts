@@ -19,6 +19,10 @@ const OWN_ROUTES: Record<string, string> = {
     "POST /api/upload_blueprint, as multipart/form-data with the fields home, file, and label",
   get_blueprint_page: "GET /api/get_blueprint_page?home=<slug>&blueprint=<slug>&page=<number>",
   get_guide_page: "GET /guide/<decision slug>?home=<home slug>, as a page",
+  set_listing_photo:
+    "POST /api/set_listing_photo, as multipart/form-data with the fields home, listing, and " +
+    "either file or url",
+  get_listing_photo: "GET /api/get_listing_photo?home=<slug>&listing=<slug>&v=<photoVersion>",
 };
 
 const web = { caller: { kind: "web" } } as const;
@@ -93,6 +97,61 @@ export async function handleUpload(core: Core, c: Context): Promise<Response> {
   return answer(c, async () =>
     c.json(await core.run("upload_blueprint", web, input as OperationInput<"upload_blueprint">)),
   );
+}
+
+/**
+ * POST /api/set_listing_photo: the board's paste box, as multipart/form-data with the fields
+ * `home`, `listing`, and either `file` (the pasted JPEG, PNG, or WebP) or `url` (an image URL for
+ * the platform to fetch). Answers { decision, listing } as JSON. Unlike the fetch record_listing
+ * makes, a failure here is reported, since the user is waiting on it.
+ */
+export async function handleListingPhotoUpload(core: Core, c: Context): Promise<Response> {
+  if (!c.req.header("content-type")?.startsWith("multipart/form-data")) {
+    return c.json(
+      { error: { code: "validation", message: `Send it by ${OWN_ROUTES.set_listing_photo}.` } },
+      415,
+    );
+  }
+  let form: FormData;
+  try {
+    form = await c.req.formData();
+  } catch {
+    return c.json({ error: { code: "validation", message: "The form could not be read." } }, 400);
+  }
+  const file = form.get("file");
+  const home = form.get("home");
+  const listing = form.get("listing");
+  const url = form.get("url");
+  const input = {
+    home: typeof home === "string" ? home : undefined,
+    listing: typeof listing === "string" ? listing : undefined,
+    ...(file instanceof File ? { file: new Uint8Array(await file.arrayBuffer()) } : {}),
+    ...(typeof url === "string" && url.trim() !== "" ? { url } : {}),
+  };
+  return answer(c, async () =>
+    c.json(await core.run("set_listing_photo", web, input as OperationInput<"set_listing_photo">)),
+  );
+}
+
+/**
+ * GET /api/get_listing_photo?home=<slug>&listing=<slug>&v=<photoVersion>: the stored picture with
+ * the type sniffed from its own bytes. `v` is ignored here; it exists so the browser cache can
+ * hold the bytes for a year and still notice a replacement. A refusal answers JSON, as elsewhere.
+ */
+export async function handleListingPhoto(core: Core, c: Context): Promise<Response> {
+  const { home, listing, v } = c.req.query();
+  return answer(c, async () => {
+    const { data, mimeType } = await core.run("get_listing_photo", web, {
+      home,
+      listing,
+      v,
+    } as OperationInput<"get_listing_photo">);
+    return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      "content-type": mimeType,
+      // The bytes at one version never change; a new version is a new URL.
+      "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
+    });
+  });
 }
 
 /**

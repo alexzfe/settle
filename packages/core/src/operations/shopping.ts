@@ -15,10 +15,12 @@ import { active } from "./lookup.js";
 import { roomById } from "./model.js";
 import {
   activeRequirements,
+  bestRating,
   guideOf,
   hasGuides,
   measureFirst,
   outOfDate,
+  toListings,
 } from "./purchase-views.js";
 import { requirePurchase } from "./purchases.js";
 import {
@@ -226,6 +228,7 @@ function toEntry(model: DecisionModel, row: DecisionRow): ShoppingEntry {
     hasGuides: hasGuides(guide),
     fullGuideOutOfDate: outOfDate(guide),
     listings: model.listings.filter((each) => each.decisionId === row.id).length,
+    ...optional({ bestRating: bestRating(toListings(model, row)) }),
     measureFirst: measureFirst(model, row),
     openFlags: openFlags(model, row).length,
   };

@@ -1,7 +1,7 @@
 // The Shopping section as a calm checklist: the Shopping List (Locked Purchases not yet Fulfilled)
 // and Considering (Candidate and Leaning ones), each row with its Purchase Decision, Room, what to
-// measure first, any flag, its Listings, and a link to its Quick Guide; and the exports the server
-// renders from stored data.
+// measure first, any flag, its Listings with the best Rating among the ones it could actually buy,
+// and a link to its Quick Guide; and the exports the server renders from stored data.
 
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
@@ -93,6 +93,19 @@ function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+/**
+ * "3 Listings, best is 4 stars": the line that says a Purchase is nearly decided. The best Rating
+ * counts only Listings that fail no must and are not Held, so when none of them qualifies this
+ * says the count alone rather than headline a Rating the user cannot act on.
+ */
+function listingsLine(entry: ShoppingEntry): string {
+  if (entry.listings === 0) return "No Listings yet";
+  const listings = counted(entry.listings, "Listing");
+  return entry.bestRating === undefined
+    ? listings
+    : `${listings}, best is ${counted(entry.bestRating, "star")}`;
+}
+
 const MEASURE_FIRST = /^Measure first:\s*/i;
 
 /**
@@ -156,9 +169,7 @@ function Entry({ home, entry }: { home: string; entry: ShoppingEntry }) {
           <FlagMark>{entry.openFlags === 1 ? "Flagged" : `${entry.openFlags} flags`}</FlagMark>
         )}
       </span>
-      <span className={page.listings}>
-        {entry.listings === 0 ? "No Listings yet" : counted(entry.listings, "Listing")}
-      </span>
+      <span className={page.listings}>{listingsLine(entry)}</span>
       <span className={page.guide}>
         {entry.hasGuides && (
           <Link to={`${decisionPath(home, entry.slug)}#quick-guide`}>Quick Guide</Link>

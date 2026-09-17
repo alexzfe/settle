@@ -13,6 +13,7 @@ import {
   type CheckResult,
   type Deviation,
   type Guides,
+  type Held,
   type Listing,
   type ListingCheck,
   QUICK_GUIDE_LINE_KINDS,
@@ -148,7 +149,8 @@ export function toListings(model: DecisionModel, decision: DecisionRow): Listing
     .map((listing) => toListing(model, listing, requirements));
 }
 
-function toListing(
+/** One Listing, checked against `requirements`: the Purchase's, not Archived, by position. */
+export function toListing(
   model: DecisionModel,
   listing: ListingRow,
   requirements: RequirementRow[],
@@ -173,7 +175,12 @@ function toListing(
       url: listing.url,
       price: listing.price,
       dimensions: listing.dimensions,
-      photo: listing.photoPath,
+      rating: listing.rating,
+      ratingNote: listing.ratingNote,
+      photoUrl: listing.photoUrl,
+      // Only when the platform holds the bytes: it is what get_listing_photo serves.
+      photoVersion: listing.photoPath === null ? null : listing.photoVersion,
+      held: held(listing),
     }),
     recordedAt: listing.recordedAt,
     checks,
@@ -182,6 +189,29 @@ function toListing(
       .filter((each) => each.strength === "must" && each.result === "fail")
       .map((each) => each.requirement),
   };
+}
+
+/** A Listing's hold, when it has one. Its three columns are always set and cleared together. */
+function held(listing: ListingRow): Held | undefined {
+  if (listing.heldReason === null || listing.heldAt === null) return undefined;
+  return {
+    reason: listing.heldReason,
+    ...optional({ note: listing.heldNote }),
+    at: listing.heldAt,
+  };
+}
+
+/**
+ * The best Rating among `listings` that a user could actually buy today: must-failers and Held
+ * ones are left out, so the Shopping page never headlines something unbuyable with no fail
+ * marker beside it to say so. Undefined when none of them qualifies.
+ */
+export function bestRating(listings: Listing[]): number | undefined {
+  const ratings = listings
+    .filter((each) => each.failedMusts.length === 0 && each.held === undefined)
+    .map((each) => each.rating)
+    .filter((rating): rating is number => rating !== undefined);
+  return ratings.length > 0 ? Math.max(...ratings) : undefined;
 }
 
 /** The Deviations recorded when a Purchase was Fulfilled. */

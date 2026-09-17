@@ -1,1 +1,1 @@
-Listing for Wool rug (wool-rug): added: Tufted wool rug (tufted-wool-rug), £310: 3 pass, 1 fail, 0 unknown
+Listing for Wool rug (wool-rug): added: {{input.name}}, {{input.price}}, rated {{input.rating}}/5 ({{input.ratingNote}}): 3 pass, 1 fail, 0 unknown

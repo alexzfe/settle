@@ -38,7 +38,10 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * in its Jitney, not yet Fulfilled. Slice 6 adds, from a Purchase Session, two more Requirements
  * for the Wool rug (a must resting on the Estimated west wall, so its Quick Guide starts with a
  * Measure first line, and a prefer resting on the Palette, which joins its Basis), both its
- * Guides, and two Listings, one passing every must and one failing one; and an "Oak bookcase"
+ * Guides, and three Listings, each with the Agent's Rating: one passing every must, one failing
+ * two musts and rated higher than it (the standing proof that a Rating is never capped by a
+ * failed must), and one Held, out of stock, which keeps its Rating but is left out of the
+ * Purchase's best rating; and an "Oak bookcase"
  * Purchase, Fulfilled with a Deviation from a must and one from a prefer, whose new Item replaced
  * the Billy bookcase and whose Deviation flagged the Candidate "Books by color" resting on it.
  */
@@ -600,6 +603,8 @@ export async function createFixtureHome(
     url: "https://example.com/hay-plain-rug",
     price: "£450",
     dimensions: { width: 2000, depth: 3000 },
+    rating: 4,
+    ratingNote: "Right size, real wool, but £120 over the others",
     checks: [
       { requirement: 1, result: "pass", note: "2.0 × 3.0 m" },
       { requirement: 2, result: "pass", note: "cut pile wool" },
@@ -607,15 +612,37 @@ export async function createFixtureHome(
       { requirement: 4, result: "unknown", note: "rust in the photos; see it in daylight" },
     ],
   });
+  // Rated above the Hay rug although it fails two musts: the standing proof that the stars say
+  // how good a product is and the checks say whether it qualifies, and that neither touches the
+  // other. A platform that capped this at 1 star would hide that Requirement 1 is worth reopening.
   await listing({
     name: "Jute loop rug",
     url: "https://example.com/jute-loop-rug",
     price: "£120",
     dimensions: { width: 1200, depth: 1700 },
+    rating: 5,
+    ratingNote: "Exactly the terracotta wanted, and a third of the price",
     checks: [
       { requirement: 1, result: "fail", note: "1.2 × 1.7 m" },
       { requirement: 2, result: "fail", note: "loop pile, jute blend" },
       { requirement: 3, result: "pass", note: "1.7 m long" },
+      { requirement: 4, result: "pass", note: "terracotta" },
+    ],
+  });
+  // Held: good, just not buyable now, so it keeps its Rating and its place but is left out of the
+  // Shopping page's best rating, which is 4 — the Hay rug's — rather than this one's 5.
+  await listing({
+    name: "Nordic Story wool rug",
+    url: "https://example.com/nordic-story-wool-rug",
+    price: "£310",
+    dimensions: { width: 2000, depth: 3000 },
+    rating: 5,
+    ratingNote: "The terracotta and the size, £140 under the Hay",
+    held: { reason: "out-of-stock", note: "back in March, the shop says" },
+    checks: [
+      { requirement: 1, result: "pass", note: "2.0 × 3.0 m" },
+      { requirement: 2, result: "pass", note: "cut pile wool" },
+      { requirement: 3, result: "pass", note: "3.0 m long" },
       { requirement: 4, result: "pass", note: "terracotta" },
     ],
   });
@@ -683,8 +710,8 @@ export async function createFixtureHome(
     session: purchase,
     summary: {
       changed:
-        "Two more Requirements for the wool rug, both its Guides, and two rugs checked; the oak " +
-        "bookcase bought, wider than asked, in place of the Billy.",
+        "Two more Requirements for the wool rug, both its Guides, and three rugs checked and " +
+        "rated; the oak bookcase bought, wider than asked, in place of the Billy.",
       open: "The west wall of the living room needs measuring before buying the rug.",
       next: "Purchase again with a rug to check against the Requirements.",
     },

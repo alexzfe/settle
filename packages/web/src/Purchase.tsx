@@ -5,23 +5,22 @@
 // chip linking to the record it comes from; the Listings checked against the Requirements, side by
 // side; and, once Fulfilled, what was bought and how it differs from what was asked.
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import styles from "./App.module.css";
 import type {
   DecisionDetail,
   Deviation,
   FullGuide,
-  Listing,
-  ListingCheck,
   QuickGuideLine,
   Requirement,
   Room,
 } from "./api";
 import { guidesExportUrl } from "./api";
 import { reasonPath, recordPath } from "./decisions";
-import { formatDate, metres, sentence, words } from "./format";
-import { headings, InlineMarkdown, isSafeLink, Markdown } from "./Markdown";
+import { formatDate, sentence, words } from "./format";
+import { ListingComparison } from "./Listings";
+import { headings, InlineMarkdown, Markdown } from "./Markdown";
 import page from "./Purchase.module.css";
 import { QrCode } from "./QrCode";
 import { useFullGuide, useHome } from "./queries";
@@ -29,7 +28,7 @@ import { AgentWritten } from "./ui/AgentWritten";
 import { Callout } from "./ui/Callout";
 import { Card } from "./ui/Card";
 import { Section } from "./ui/Section";
-import { Fact, Parts } from "./Values";
+import { Fact } from "./Values";
 
 const STRENGTH_ORDER: Record<Requirement["strength"], number> = { must: 0, prefer: 1 };
 
@@ -37,18 +36,6 @@ const STRENGTH_ORDER: Record<Requirement["strength"], number> = { must: 0, prefe
 function byStrength(a: Pick<Requirement, "strength">, b: Pick<Requirement, "strength">): number {
   return STRENGTH_ORDER[a.strength] - STRENGTH_ORDER[b.strength];
 }
-
-const RESULT_LABEL: Record<ListingCheck["result"], string> = {
-  pass: "Pass",
-  fail: "Fail",
-  unknown: "Unknown",
-};
-
-const RESULT_SYMBOL: Record<ListingCheck["result"], string> = {
-  pass: "✓",
-  fail: "✕",
-  unknown: "?",
-};
 
 /** A Full Guide with at least this many headings (more than 3) gets a table of contents. */
 const CONTENTS_FROM = 4;
@@ -58,6 +45,8 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
   const rooms = useHome(home).data?.rooms;
   const quickLines = decision.quickGuide?.lines ?? [];
   const fullGuide = decision.guides?.fullGuide;
+  // Musts first, both in the Requirements list and down the side of the board.
+  const requirements = decision.requirements.toSorted(byStrength);
   return (
     <>
       <Section title="Quick Guide" id="quick-guide">
@@ -97,7 +86,7 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
             None yet: the Agent checks a product you bring it against the Requirements.
           </p>
         ) : (
-          <ListingComparison requirements={decision.requirements} listings={decision.listings} />
+          <ListingComparison home={home} requirements={requirements} listings={decision.listings} />
         )}
       </Section>
       {decision.fulfilledAt && <PurchaseFulfilment home={home} rooms={rooms} decision={decision} />}
@@ -390,240 +379,6 @@ function FullGuideSection({
           <p>The server sent no Full Guide.</p>
         ))}
     </>
-  );
-}
-
-/** A link to a page elsewhere, opened in a new tab; plain text without a web address. */
-function WebLink({ href, children }: { href: string | undefined; children: ReactNode }) {
-  if (!href || !isSafeLink(href)) return children;
-  return (
-    <a href={href} target="_blank" rel="noreferrer">
-      {children}
-    </a>
-  );
-}
-
-/** A Listing's size as it states it, "W 2.00 m × D 3.00 m"; undefined when it states none. */
-function listingSize(dimensions: Listing["dimensions"]): string | undefined {
-  const stated = (
-    [
-      ["W", dimensions?.width],
-      ["D", dimensions?.depth],
-      ["H", dimensions?.height],
-    ] as const
-  ).flatMap(([label, mm]) => (mm === undefined ? [] : [`${label} ${metres(mm)}`]));
-  return stated.length === 0 ? undefined : stated.join(" × ");
-}
-
-/** The check a Listing has for a Requirement, by position; unknown when it has none. */
-function checkFor(listing: Listing, requirement: Requirement): ListingCheck {
-  return (
-    listing.checks.find((check) => check.requirement === requirement.position) ?? {
-      requirement: requirement.position,
-      text: requirement.text,
-      strength: requirement.strength,
-      result: "unknown",
-    }
-  );
-}
-
-/**
- * What leads a Listing: the musts it fails, else the musts not checked, else that it meets every
- * must. Undefined when there are no musts. No overall score: the user weighs the rest.
- */
-export function listingVerdict(
-  listing: Listing,
-  requirements: readonly Requirement[],
-): { tone: "fail" | "unknown" | "pass"; text: string } | undefined {
-  const musts = requirements.filter((requirement) => requirement.strength === "must");
-  if (musts.length === 0) return undefined;
-  const checks = musts.map((must) => checkFor(listing, must));
-  const failed = checks.filter(
-    (check) => check.result === "fail" || listing.failedMusts.includes(check.requirement),
-  );
-  if (failed.length > 0) {
-    const noun = failed.length === 1 ? "a must" : `${failed.length} musts`;
-    return { tone: "fail", text: `Fails ${noun}: ${failed.map((c) => c.text).join("; ")}` };
-  }
-  const unknown = checks.filter((check) => check.result === "unknown" || check.unchecked);
-  if (unknown.length > 0) {
-    return { tone: "unknown", text: `Must not checked: ${unknown.map((c) => c.text).join("; ")}` };
-  }
-  return { tone: "pass", text: "Meets every must" };
-}
-
-/** Whether the screen is at least `width` wide; wide when the browser cannot say. */
-function useWide(width: string): boolean {
-  const query = `(min-width: ${width})`;
-  const media = () =>
-    typeof window.matchMedia === "function" ? window.matchMedia(query) : undefined;
-  const [wide, setWide] = useState(() => media()?.matches ?? true);
-  useEffect(() => {
-    const list = typeof window.matchMedia === "function" ? window.matchMedia(query) : undefined;
-    if (!list) return undefined;
-    const update = () => setWide(list.matches);
-    update();
-    list.addEventListener("change", update);
-    return () => list.removeEventListener("change", update);
-  }, [query]);
-  return wide;
-}
-
-/**
- * The Listings side by side: a matrix with the Listings across the top and the Requirements down
- * the side, musts first, a failed must marked strongly; on a phone, one card per Listing.
- */
-function ListingComparison({
-  requirements,
-  listings,
-}: {
-  requirements: Requirement[];
-  listings: Listing[];
-}) {
-  const wide = useWide("48rem");
-  const rows = requirements.toSorted(byStrength);
-  if (!wide) {
-    return (
-      <ul className={page.listingCards}>
-        {listings.map((listing) => (
-          <li key={listing.slug}>
-            <ListingCard listing={listing} requirements={rows} />
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return (
-    <div className={`${styles.scroll} ${page.matrixWrap}`}>
-      <table className={page.matrix}>
-        <thead>
-          <tr>
-            <th scope="col" className={page.corner}>
-              Requirement
-            </th>
-            {listings.map((listing) => (
-              <th
-                key={listing.slug}
-                scope="col"
-                className={listing.failedMusts.length > 0 ? page.failedListing : undefined}
-              >
-                <ListingHead listing={listing} requirements={rows} />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((requirement) => (
-            <tr key={requirement.position}>
-              <th scope="row" className={page.rowHead}>
-                <span className={`${page.strength} ${page[requirement.strength]}`}>
-                  {sentence(requirement.strength)}
-                </span>{" "}
-                {requirement.text}
-              </th>
-              {listings.map((listing) => (
-                <CheckCell
-                  key={listing.slug}
-                  check={checkFor(listing, requirement)}
-                  failedMust={listing.failedMusts.includes(requirement.position)}
-                />
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** A Listing's name (linked to its page), price, size, photo, when it was recorded, and verdict. */
-function ListingHead({
-  listing,
-  requirements,
-}: {
-  listing: Listing;
-  requirements: readonly Requirement[];
-}) {
-  const verdict = listingVerdict(listing, requirements);
-  return (
-    <div className={page.listingHead}>
-      <span className={page.listingName}>
-        <WebLink href={listing.url}>{listing.name}</WebLink>
-      </span>
-      <span className={listing.price ? page.price : `${page.price} ${page.noPrice}`}>
-        {listing.price ?? "Price not recorded"}
-      </span>
-      <span className={page.listingMeta}>
-        <Parts>
-          {listingSize(listing.dimensions)}
-          {listing.photo && isSafeLink(listing.photo) && (
-            <WebLink href={listing.photo}>photo</WebLink>
-          )}
-          {`recorded ${formatDate(listing.recordedAt)}`}
-        </Parts>
-      </span>
-      {verdict && (
-        <span className={`${page.verdict} ${page[`verdict-${verdict.tone}`]}`}>
-          {verdict.tone === "fail" ? <strong>{verdict.text}</strong> : verdict.text}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function resultOf(check: ListingCheck): { label: string; result: ListingCheck["result"] } {
-  return check.unchecked
-    ? { label: "Unknown: added after it was checked", result: "unknown" }
-    : { label: RESULT_LABEL[check.result], result: check.result };
-}
-
-function CheckCell({ check, failedMust }: { check: ListingCheck; failedMust: boolean }) {
-  const { label, result } = resultOf(check);
-  return (
-    <td className={`${page.cell} ${page[result]} ${failedMust ? page.failedMust : ""}`}>
-      <span className={page.result}>
-        <span aria-hidden>{RESULT_SYMBOL[result]}</span>{" "}
-        {failedMust ? <strong>{label}</strong> : label}
-      </span>
-      {check.note && <span className={page.note}>{check.note}</span>}
-    </td>
-  );
-}
-
-/** A Listing on a phone: led by its verdict, then each Requirement's result, musts first. */
-function ListingCard({
-  listing,
-  requirements,
-}: {
-  listing: Listing;
-  requirements: readonly Requirement[];
-}) {
-  return (
-    <Card className={listing.failedMusts.length > 0 ? page.failedCard : undefined}>
-      <ListingHead listing={listing} requirements={requirements} />
-      <ul className={page.cardChecks}>
-        {requirements.map((requirement) => {
-          const check = checkFor(listing, requirement);
-          const failedMust = listing.failedMusts.includes(requirement.position);
-          const { label, result } = resultOf(check);
-          return (
-            <li
-              key={requirement.position}
-              className={`${page[result]} ${failedMust ? page.failedMust : ""}`}
-            >
-              <span className={page.result}>
-                <span aria-hidden>{RESULT_SYMBOL[result]}</span>{" "}
-                {failedMust ? <strong>{label}</strong> : label}
-              </span>
-              <span>
-                {sentence(requirement.strength)}: {requirement.text}
-                {check.note && <span className={page.note}> · {check.note}</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
   );
 }
 

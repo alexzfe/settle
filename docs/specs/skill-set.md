@@ -63,6 +63,9 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
   - writing its Requirements with reasons
   - writing the Quick Guide and Full Guide
   - checking any Listing the user brings, recording pass, fail, or unknown for each Requirement
+  - giving each Listing a Rating, one to five stars with a one-line reason, anchored against the Ratings the Purchase's other Listings already carry. The Rating says how good the Listing is and is **never lowered, capped, or gated by a failed *must***: the checks say whether it is allowed, and a highly rated Listing that fails a *must* is the cue that the Requirement deserves a second look ([handoff/listing-board.md](../handoff/listing-board.md))
+  - passing the Listing's picture as a link, the user's own link when they give one; the platform fetches and stores the bytes, best-effort ([ADR 0005](../adr/0005-core-fetches-listing-images.md))
+  - never recommending a Held Listing without naming the hold, which it learns of only from `get_decision`
   - recording Fulfilment and any Deviations
 - **Boundaries:**
   - It applies the Palette but never extends it. The color of a fabric or finish is a Purchase Requirement whose reason is the Palette.
@@ -267,7 +270,7 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `withSources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
 | `find_items` | One line per Item, filtered by Room, Unplaced, category, or text. `archived` includes Archived Items | All |
 | `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Covers every state, including Fulfilled and Rejected ones | All |
-| `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, pass/fail/unknown counts, and any *must* it fails. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `includeFullGuide` is set | All |
+| `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, Rating with its reason, pass/fail/unknown counts, any *must* it fails, and any hold with its date and reason. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `includeFullGuide` is set | All |
 | `search_notes` | Notes matching a query | All |
 | `view_images` | A Blueprint's pages as images. Photos are scaffolding in the PoC, so it doesn't return them | Home Intake |
 | **Write** (each call carries the Session id and returns a receipt) | | |
@@ -279,7 +282,7 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `save_decision` | Creates or edits a Decision: content (including Design Direction and Palette content), scope, kind, Basis, Evidence, and Requirements for a Purchase. New Decisions start as Candidate | Design Direction, Color, Purchase |
 | `set_decision_state` | Lean, Lock, Reject, Reopen, or revive (to Candidate), with a reason, within the legal transitions. The server cascades flags | Design Direction, Color, Purchase |
 | `save_guides` | The Quick Guide's AI-written lines and the Full Guide | Purchase |
-| `record_listing` | A Listing, with pass, fail, or unknown for each Requirement | Purchase |
+| `record_listing` | A Listing, with pass, fail, or unknown for each Requirement, its Rating and the reason for it (a Rating without a reason is refused), a link to its picture, which the platform fetches and stores without ever failing the call, and rarely a hold | Purchase |
 | `record_fulfilment` | What was actually done, any Deviations, and the resulting Home changes: a new Item, an Archived Item, a changed Surface, a Room's changed functions, or a replaced (Archived) Feature | Purchase; Color (for painting); Design Direction (Room use) |
 | `flag_conflict` | Raises a Conflict against a Locked Decision | All |
 | `close_session` | The three-part summary | All |

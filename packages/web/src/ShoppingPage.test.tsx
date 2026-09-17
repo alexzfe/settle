@@ -30,6 +30,7 @@ const rug = entry("wool-rug", "Wool rug", {
   hasGuides: true,
   fullGuideOutOfDate: true,
   listings: 2,
+  bestRating: 4,
   measureFirst: [
     "Measure first: living-room/wall-2 length (~3.60 m)",
     "Measure first: the Home's narrowest access width (not recorded)",
@@ -115,7 +116,7 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
         "living-room/wall-2 length (~3.60 m)" +
         "the Home's narrowest access width (not recorded)",
       "⚑ Flagged",
-      "2 Listings",
+      "2 Listings, best is 4 stars",
       "Quick Guide",
     ],
     [
@@ -166,6 +167,9 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
   expect(within(wool).getByRole("link", { name: "Quick Guide" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/wool-rug#quick-guide",
   );
+  // The sofa has a Listing but no Rating the user could act on — every one of them fails a must
+  // or is Held — so its line says the count alone rather than headline one it cannot buy.
+  expect(within(entryOf("Low sofa")).getByText("1 Listing")).toBeDefined();
   expect(screen.getByRole("link", { name: "Desk chair" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/desk-chair",
   );

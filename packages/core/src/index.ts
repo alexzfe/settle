@@ -31,6 +31,7 @@ export {
   DECISION_STATE_LABELS,
   decisionLine,
   type FlaggedDecision,
+  HOLD_REASON_LABELS,
   type HomeDecisionsView,
   type OpeningBlock,
   type OpeningView,

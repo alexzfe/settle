@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { RecordKind } from "./events.js";
 import type { FileStore, PdfRenderer } from "./files.js";
+import type { ImageFetcher } from "./images.js";
 import type { HomeRow, Store } from "./store.js";
 
 /**
@@ -34,6 +35,12 @@ export interface OperationContext extends CallContext {
   files: FileStore;
   /** Renders Blueprint files to page images and text lines. */
   renderPdf: PdfRenderer;
+  /**
+   * Fetches a Listing's product photo from the shop, validated (ADR 0005). A port like the two
+   * above, so no test ever reaches the network; store.transaction is synchronous, so callers
+   * fetch before the write, never inside it.
+   */
+  fetchImage: ImageFetcher;
   /** The folder holding uploads/ and rendered/, which the stored Blueprint paths are relative to. */
   dataDir(): string;
   /** Now, as an ISO timestamp. */
