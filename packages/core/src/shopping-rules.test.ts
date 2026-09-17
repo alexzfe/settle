@@ -244,8 +244,10 @@ describe("export_shopping_list", () => {
     expect(page).toMatch(/^<!doctype html>/);
     expect(page).toContain("<title>Shopping List: My flat</title>");
     expect(page).toContain("@media print");
+    expect(page).toContain(
+      'Living room · Wall 2 · length. Recorded <span class="num">~300 cm</span> (estimate). Measured:',
+    );
     expect(page).toContain("A large wool rug, &lt;b&gt;under&lt;/b&gt; the sofa.");
-    expect(page).toContain("living-room/wall-2 length (~3.00 m)");
     expect(page).toContain("Wool, &quot;low&quot; pile, no loops");
     expect(page).toContain("Hay Plain rug, £450: 1 pass, 1 fail, 1 unknown");
     expect(page).not.toContain("<b>under");
@@ -254,6 +256,19 @@ describe("export_shopping_list", () => {
     for (const title of ["Floor lamp", "Door mat", "Velvet sofa", "Table lamp", "Books by"]) {
       expect(page).not.toContain(title);
     }
+  });
+
+  it("shows each entry's open Flags on the printable page, and the day the copy was made", async () => {
+    await call("save_room", {
+      room: "living-room",
+      name: "Living room",
+      walls: [{ position: 2, length: estimated(3200) }],
+    });
+    const { text: page } = await core.run("export_shopping_list", web, { home, format: "html" });
+    expect(page).toMatch(
+      /⚑ Flagged \d+ \w{3} \d{4}: [^<]*length changed\. Review it before buying\./,
+    );
+    expect(page).toMatch(/Copy generated \d+ \w{3} \d{4}\. It won't update/);
   });
 
   it("says so when nothing is on the Shopping List", async () => {
@@ -360,9 +375,9 @@ describe("the phone page of a Quick Guide", () => {
     expect(page).not.toMatch(/ on[a-z]+=/);
     const order = [
       "Measure first",
-      "living-room/wall-2 length (~3.00 m)",
+      "Living room · Wall 2 · length. Recorded",
       "Must",
-      "At least 2.0 × 1.4 m",
+      'At least <strong class="num">2.0 × 1.4 m</strong>',
       "Prefer",
       "Terracotta",
       "In the shop",
@@ -373,6 +388,17 @@ describe("the phone page of a Quick Guide", () => {
     ].map((part) => page.indexOf(part));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("ends with the day the copy was made and the blanks to bring back to the Agent, until it is bought", async () => {
+    const open = (await core.run("get_guide_page", web, { home, decision: "wool-rug" })).text;
+    expect(open).toMatch(/Copy generated \d+ \w{3} \d{4}\. It won't update; ask the Agent/);
+    for (const blank of ["Bring back to the Agent", "Found or bought", "Link or model"]) {
+      expect(open).toContain(blank);
+    }
+    const bought = (await core.run("get_guide_page", web, { home, decision: "table-lamp" })).text;
+    expect(bought).toContain("✓ Bought");
+    expect(bought).not.toContain("Bring back to the Agent");
   });
 
   it("is the same page by its LAN token alone", async () => {

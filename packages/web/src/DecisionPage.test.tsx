@@ -2,6 +2,7 @@ import type { PaletteColor } from "@idh/core";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BasisEntry, DecisionDetail, DecisionState, DecisionSummary, Flag, Home } from "./api";
+import { materialTexture } from "./DecisionPage";
 import { formatDate } from "./format";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
@@ -114,12 +115,27 @@ function moves(): (string | null)[] {
   return [...stateForm().querySelectorAll("button")].map((button) => button.textContent);
 }
 
-function after(heading: string): string | null | undefined {
-  return screen.getByRole("heading", { name: heading }).nextElementSibling?.textContent;
+/** The section a heading titles. */
+function sectionOf(heading: string): HTMLElement {
+  return screen.getByRole("heading", { name: heading }).closest("section") as HTMLElement;
+}
+
+/** The text of a section after its header. */
+function after(heading: string): string {
+  return [...sectionOf(heading).children]
+    .slice(1)
+    .map((child) => child.textContent)
+    .join("");
 }
 
 function listElement(heading: string): HTMLElement {
-  return screen.getByRole("heading", { name: heading }).nextElementSibling as HTMLElement;
+  return sectionOf(heading).querySelector("ul") as HTMLElement;
+}
+
+/** The page's header: kind and scope, then the state with any Fulfilment and flag. */
+function header(): { scope: string | null | undefined; state: string | null | undefined } {
+  const [scope, marks] = document.querySelectorAll("article header p");
+  return { scope: scope?.textContent, state: marks?.firstElementChild?.textContent };
 }
 
 /** The text of each item of the list after `heading`, leaving out any actions form in it. */
@@ -139,33 +155,36 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   expect(inputsTo(fetch, "get_decision")).toEqual([
     { home: "flat", decision: "living-room-direction" },
   ]);
-  expect(document.querySelector("dl")?.textContent).toBe(
-    "KindRoom Direction" + "ScopeLiving room" + "StateLocked",
-  );
+  expect(header()).toEqual({ scope: "Room Direction · Living room", state: "●Locked" });
+  expect(screen.getByRole("link", { name: "Needs review" }).getAttribute("href")).toBe("#flags");
   expect(screen.getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/living-room",
   );
-  expect(screen.getByText("A calm, low living room for evenings.")).toBeDefined();
-  expect(after("Direction")).toBe(
-    "Low seating, warm lamps, and nothing on the walls above eye level.",
+  // The statement is the Agent's, and says so.
+  const statement = screen.getByText("A calm, low living room for evenings.");
+  expect(statement.parentElement?.previousElementSibling?.textContent).toBe(
+    "Written by the Agent · Design Direction Session · 14 Sep",
   );
-  expect(listAfter("Basis")).toEqual([
-    "Warm minimalism, Design Direction, Leaning, in every Basis",
-  ]);
+  expect(after("Direction")).toBe(
+    "Low seating, warm lamps, and nothing on the walls above eye level." + "ContrastLow",
+  );
+  expect(listAfter("Basis")).toEqual(["◐Warm minimalismDesign Direction, Leaning, in every Basis"]);
   expect(
     within(listElement("Basis"))
       .getByRole("link", { name: "Warm minimalism" })
       .getAttribute("href"),
   ).toBe("/homes/flat/decisions/design-direction");
   expect(listAfter("Evidence")).toEqual([
-    "Supports: Note We mostly sit here in the evening.",
-    "Undermines: Decision Earthy palette (its accent is loud)",
+    "Supports · Note We mostly sit here in the evening.",
+    "Undermines · Decision Earthy palette its accent is loud",
   ]);
+  // The user's words are quoted.
+  expect(screen.getByText("its accent is loud").tagName).toBe("Q");
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/palette",
   );
   expect(listAfter("Flags")).toEqual([
-    `Warm minimalism was reopened, raised ${formatDate(raised)}: open`,
+    `⚑ Warm minimalism was reopened, raised ${formatDate(raised)}: open`,
   ]);
   // The open flag's source links to it, and it offers the actions that clear it.
   const flags = listElement("Flags");
@@ -178,6 +197,23 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
     "Reject",
   ]);
   expect(after("Conflicts")).toBe("None.");
+  // A way back to the Agent, naming the Skill and the Decision.
+  expect(
+    screen.getByRole("button", { name: "Talk this Decision through" }).getAttribute("title"),
+  ).toBe(
+    `claude "Using the Design Direction Skill: let's talk through the Decision \\"Calm and low\\" (slug: living-room-direction)"`,
+  );
+});
+
+it("says what each state change does beside its button", async () => {
+  stubDecision(() => calm("locked"));
+  renderRoutes("/homes/flat/decisions/living-room-direction");
+  await screen.findByRole("heading", { name: "Change its state" });
+  const reopen = within(stateForm()).getByRole("button", { name: "Reopen" });
+  const described = document.getElementById(reopen.getAttribute("aria-describedby") ?? "");
+  expect(described?.textContent).toBe(
+    "Back to Leaning. Every Decision resting on it is flagged for review.",
+  );
 });
 
 it.each<[DecisionState, string[]]>([
@@ -208,7 +244,7 @@ it("posts the state change with the reason, then shows the new state and its mov
   });
   fireEvent.click(within(stateForm()).getByRole("button", { name: "Reopen" }));
   await waitFor(() => expect(moves()).toEqual(["Move to Candidate", "Lock", "Reject"]));
-  expect(screen.getByText("State").nextElementSibling?.textContent).toBe("Leaning");
+  expect(header().state).toBe("◐Leaning");
 
   // Without a reason, none is sent.
   fireEvent.click(within(stateForm()).getByRole("button", { name: "Lock" }));
@@ -236,7 +272,7 @@ it("shows a refusal inline and leaves the state as it was", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Lock" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe(message);
-  expect(screen.getByText("State").nextElementSibling?.textContent).toBe("Leaning");
+  expect(header().state).toBe("◐Leaning");
   expect(moves()).toEqual(["Move to Candidate", "Lock", "Reject"]);
 });
 
@@ -318,34 +354,44 @@ it("renders each kind's content", async () => {
   }
 
   await show("design-direction", "Direction");
-  expect(after("Direction")).toBe(
-    "Moodcalm" +
-      "Color temperatureWarm" +
-      "ContrastMedium" +
-      "Key materialsoak, linen" +
-      "Style referencesJapandi" +
-      "Guiding principlesFewer, better things.Nothing purely decorative.",
-  );
+  // A moodboard: the mood as a pull quote, then a tile for each part.
+  expect(screen.getByText("calm").closest("figure")?.textContent).toBe("calmMood");
+  const tiles = [...sectionOf("Direction").querySelectorAll("h3")].map((title) => [
+    title.textContent,
+    [...(title.nextElementSibling?.querySelectorAll("li") ?? [])].map((li) => li.textContent),
+  ]);
+  expect(tiles).toEqual([
+    ["Key materials", ["oak", "linen"]],
+    ["Color temperature", []],
+    ["Contrast", []],
+    ["Guiding principles", ["Fewer, better things.", "Nothing purely decorative."]],
+    ["Style references", ["Japandi"]],
+  ]);
+  expect(screen.getByRole("img", { name: "Warm, on a scale from warm to cool" })).toBeDefined();
+  expect(screen.getByRole("img", { name: "Medium contrast" })).toBeDefined();
+  expect(screen.getByText("Fewer, better things.").parentElement?.tagName).toBe("OL");
+  expect(screen.getByRole("link", { name: "Japandi" }).getAttribute("target")).toBe("_blank");
   cleanup();
 
   await show("palette", "Colors");
-  expect(listAfter("Colors")).toEqual([
-    "~Setting Plaster Estimated, base",
-    "~Olive Estimated, accent, cushions",
-  ]);
+  expect(
+    [...screen.getByRole("list", { name: "Where each color goes" }).children].map(
+      (li) => li.textContent,
+    ),
+  ).toEqual(["Setting PlasterBase", "OliveAccent · cushions"]);
   cleanup();
 
   await show("sofa", "Requirements");
   expect(listAfter("Requirements")).toEqual([
-    "Must: under 85 cm tall (Calm and low)",
-    "Must: fits through the door (Front door, clear width)",
-    "Prefer: linen or wool cover (The cat scratches fabric.)",
+    "Mustunder 85 cm tallCalm and low",
+    "Mustfits through the doorFront door, clear width",
+    "Preferlinen or wool coverThe cat scratches fabric.",
   ]);
   cleanup();
 
   await show("living-room-walls", "Color");
   expect(after("Color")).toBe(
-    "SurfaceWalls" + "WallWall 2" + "ColorSetting Plaster (no Palette in its Basis)" + "Finishmatt",
+    "Setting Plaster (no Palette in its Basis)" + "SurfaceWalls" + "WallWall 2" + "Finishmatt",
   );
 });
 
@@ -439,11 +485,19 @@ it("lists a Palette's colors with swatches, roles, and notes, and a placeholder 
   stubDecision(() => earthy);
   renderRoutes("/homes/flat/decisions/earthy-palette");
   await screen.findByRole("heading", { name: "Colors" });
-  expect(listAfter("Colors")).toEqual([
-    "Setting Plaster (Farrow & Ball 231), LRV 62 Measured, base, walls throughout",
-    "~Olive Estimated, accent, cushions",
+  // Large chips, then where each color goes with its LRV.
+  // (Provenance is left out of the text: the Values track decides how it reads.)
+  const chips = [...sectionOf("Colors").querySelectorAll("figure li")];
+  expect(chips.map((chip) => chip.textContent)).toEqual([
+    expect.stringMatching(/^Setting PlasterFarrow & Ball 231baseLRV 62/),
+    expect.stringMatching(/^No screen color recordedOliveaccent/),
   ]);
-  const list = screen.getByRole("heading", { name: "Colors" }).nextElementSibling as HTMLElement;
+  const list = screen.getByRole("list", { name: "Where each color goes" });
+  expect([...list.children].map((li) => li.textContent)).toEqual([
+    "Setting PlasterBase · walls throughoutLRV 62 · light",
+    "OliveAccent · cushions",
+  ]);
+  expect(within(list).getByRole("img", { name: "LRV 62 of 100: light" })).toBeDefined();
   const [plaster, olive] = [...list.querySelectorAll("li")];
   const swatch = within(plaster as HTMLElement).getByTitle("Approximately #e3c9b6");
   expect(swatch.style.backgroundColor).toBe("rgb(227, 201, 182)");
@@ -455,11 +509,13 @@ it("shows a Room color's Surface, Wall, and finish, with its color from the Pale
   const fetch = stubDecision(() => windowWall());
   renderRoutes("/homes/flat/decisions/window-wall-color");
   await screen.findByText(/Farrow & Ball 231/);
-  expect(after("Color")).toBe(
-    "SurfaceWalls" +
-      "WallWall 1" +
-      "ColorSetting Plaster (Farrow & Ball 231), LRV 62 Measured, base" +
-      "Finisheggshell",
+  // The color as a large chip, with its LRV on a bar.
+  expect(sectionOf("Color").querySelector("figure li")?.textContent).toMatch(
+    /^Setting PlasterFarrow & Ball 231baseLRV 62/,
+  );
+  expect(screen.getByRole("img", { name: "LRV 62 of 100: light" })).toBeDefined();
+  expect(sectionOf("Color").querySelector("dl")?.textContent).toBe(
+    "SurfaceWalls" + "WallWall 1" + "Finisheggshell",
   );
   expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
   // The color comes with the Room color, so the Palette is not fetched for it.
@@ -468,8 +524,8 @@ it("shows a Room color's Surface, Wall, and finish, with its color from the Pale
   ]);
   // The Palette is marked automatic, as the Design Direction is.
   expect(listAfter("Basis")).toEqual([
-    "Warm minimalism, Design Direction, Leaning, in every Basis",
-    "Earthy palette, Palette, Locked, in every Basis using its colors",
+    "◐Warm minimalismDesign Direction, Leaning, in every Basis",
+    "●Earthy palettePalette, Locked, in every Basis using its colors",
   ]);
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/earthy-palette",
@@ -481,9 +537,9 @@ it("keeps the placeholder for a Room color the Palette in its Basis does not hav
   renderRoutes("/homes/flat/decisions/window-wall-color");
   await screen.findByText(/not a color of/);
   expect(after("Color")).toBe(
-    "SurfaceWalls" +
+    "Inchyra Blue (not a color of Earthy palette)" +
+      "SurfaceWalls" +
       "WallWall 1" +
-      "ColorInchyra Blue (not a color of Earthy palette)" +
       "Finisheggshell",
   );
   expect(screen.getByTitle("No screen color recorded")).toBeDefined();
@@ -508,8 +564,22 @@ it("shows the color and finish a Fulfilled Room color left on its Surface", asyn
   }));
   renderRoutes("/homes/flat/decisions/window-wall-color");
   const painted = await screen.findByText(/^Fulfilled as:/);
-  expect(painted.textContent).toBe(
-    "Fulfilled as: Setting Plaster (Farrow & Ball 231) Measured, satin",
+  expect(painted.textContent).toMatch(
+    /^Fulfilled as: Setting Plaster \(Farrow & Ball 231\).*, satin$/,
   );
   expect(within(painted).getByTitle("Approximately #e3c9b6")).toBeDefined();
+});
+
+it("picks a small texture for each key material by its words", () => {
+  expect(
+    [
+      "White oak",
+      "Stonewashed linen",
+      "Terracotta tiles",
+      "Aged brass",
+      "Travertine",
+      "Rattan",
+      "Glass",
+    ].map(materialTexture),
+  ).toEqual(["oak", "linen", "terracotta", "brass", "stone", "oak", "neutral"]);
 });

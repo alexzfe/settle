@@ -6,43 +6,104 @@
 <meta name="robots" content="noindex">
 <title>Shopping Guides: Fixture Home</title>
 <style>
-body { font: 11pt/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
+:root { color-scheme: light; --paper: #f6f3ee; --card: #fbfaf7; --ink: #2a2724; --muted: #6b655d;
+  --hairline: #e3ded6; --accent: #5e6b4e; --mark: #f3e6c4; --mark-ink: #8a6414; }
+body { font: 10.5pt/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums; background: var(--paper); color: var(--ink);
   max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
-h1 { font-size: 1.6rem; margin: 0; }
-h2 { font-size: 1.25rem; margin: 0 0 0.2rem; }
-h3, h4 { margin: 1rem 0 0.3rem; }
-.home, .meta { color: #555; margin: 0.2rem 0 0; }
-.purchase { border-top: 1px solid #ccc; margin-top: 1.5rem; padding-top: 1rem; break-inside: avoid; }
-.box { display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid #333;
-  margin-right: 0.5em; vertical-align: -0.05em; }
-.measure { background: #fff4d6; border-left: 4px solid #d99a00; padding: 0.3rem 0.6rem; }
-ul { margin: 0.2rem 0; padding-left: 1.3rem; }
+h1, h2, h3 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
+  line-height: 1.2; letter-spacing: -0.01em; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0; }
+h2 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+h3 { font-size: 1.2rem; margin: 1.25rem 0 0.5rem; }
+h4 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin: 1rem 0 0.25rem; }
+h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+p { margin: 0.25rem 0 0.5rem; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+.running, .meta, .generated { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.purchase { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
+  margin-top: 1.5rem; padding: 1rem 1.25rem; break-inside: avoid; }
+.purchase > .running { margin-bottom: 0.5rem; }
+.considering { border-style: dashed; border-color: var(--muted); }
+.state { font-weight: 600; color: var(--ink); }
+.state.leaning, .tag { color: var(--mark-ink); }
+.state.locked { color: var(--accent); }
+.tag { font-weight: 600; }
+.box { display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid var(--ink);
+  border-radius: 2px; margin-right: 0.5em; vertical-align: -0.02em; }
+ul { margin: 0.25rem 0; padding-left: 1.3rem; }
+li { margin: 0.2rem 0; break-inside: avoid; }
+ul.checks, ul.flags, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks li { position: relative; padding-left: 1.6em; }
+ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.85em;
+  height: 0.85em; border: 1.5px solid var(--ink); border-radius: 2px; }
+ul.flags li { background: var(--mark); color: var(--mark-ink); border-left: 3px solid var(--mark-ink);
+  border-radius: 4px; padding: 0.2rem 0.6rem; font-weight: 600; }
+.block { margin-top: 0.75rem; }
+.block.measure { background: var(--mark); border-left: 4px solid var(--mark-ink);
+  border-radius: 6px; padding: 0.25rem 0.9rem 0.5rem; }
+.block.measure h4, .block.measure h3 { color: var(--mark-ink); }
+ul.measure-lines li { padding-bottom: 0.6rem; }
+.blank { display: inline-block; min-width: 5em; border-bottom: 1px solid var(--ink);
+  vertical-align: baseline; height: 1em; }
+.blank.wide { min-width: 0; flex: 1; }
+.num { font-variant-numeric: tabular-nums; }
+.done { font-weight: 600; color: var(--accent); }
+.bring-back { border: 1px solid var(--hairline); border-radius: 6px; margin-top: 1rem;
+  padding: 0.25rem 1rem 0.75rem; break-inside: avoid; }
+.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+.fill > span:first-child { white-space: nowrap; color: var(--muted); }
+.full { margin-top: 1rem; }
+header + .generated, .generated:last-child { margin-top: 1.5rem; }
 @media print {
-  body { margin: 0; max-width: none; }
+  @page { margin: 16mm 14mm; }
+  body { background: none; margin: 0; max-width: none; padding: 0; font-size: 10.5pt; }
   a { color: inherit; }
-  .guide { break-inside: auto; }
-  .guide + .guide { break-before: page; border-top: none; }
+  .purchase { background: none; border: none; border-top: 1px solid #999; border-radius: 0;
+    padding: 0.75rem 0 0; }
+  .considering { border-top: 2px dashed #555; }
+  .block.measure, ul.flags li { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .block.measure { border-left-color: #333; }
+  ul.flags li { border-left-color: #333; }
+  .guide { break-inside: auto; border-top: none; padding-top: 0; }
+  .guide + .guide { break-before: page; }
+  .quick { break-inside: avoid; }
+  .full { break-before: auto; }
 }
 </style>
 </head>
 <body>
 <header>
+<p class="running">Fixture Home · 14 Sep 2026</p>
 <h1>Shopping Guides</h1>
-<p class="home">Fixture Home</p>
 </header>
 <article class="purchase guide">
+<p class="running">Fixture Home · Living room · 14 Sep 2026</p>
 <h2>Wool rug</h2>
-<p class="meta">Living room, Locked</p>
-<p>A large wool rug under the sofa.</p>
-<h3>Quick Guide</h3>
-<p class="measure"><strong>Measure first:</strong> living-room/wall-5 length (~3.70 m)</p>
-<h4>Must</h4>
-<ul>
-<li>At least 2.0 × 1.4 m</li>
-<li>No longer than 3.4 m, to keep the walk past the west window clear</li>
+<p class="meta"><span class="state locked">● Locked</span></p>
+<ul class="flags">
+<li>⚑ Flagged 14 Sep 2026: Calm evenings was reopened. Review it before buying.</li>
 </ul>
+<p>A large wool rug under the sofa.</p>
+<section class="quick">
+<h3>Quick Guide</h3>
+<section class="block measure">
+<h4>Measure first</h4>
+<ul class="measure-lines">
+<li>Living room · Wall 5 · length. Recorded <span class="num">~370 cm</span> (estimate). Measured: <span class="blank"></span> cm</li>
+</ul>
+</section>
+<section class="block must">
+<h4>Must</h4>
+<ul class="checks">
+<li>At least <strong class="num">2.0 × 1.4 m</strong></li>
+<li>No longer than <strong class="num">3.4 m</strong>, to keep the walk past the west window clear</li>
+</ul>
+</section>
+<section class="block prefer">
 <h4>Prefer</h4>
-<ul>
+<ul class="checks">
 <li>Wool, low pile: loops catch the cats' claws</li>
 <li>Warm terracotta, the Palette's accent, or close to it</li>
 </ul>
@@ -52,6 +113,16 @@ ul { margin: 0.2rem 0; padding-left: 1.3rem; }
 <li>Rub the pile hard: more than a little fluff means months of shedding</li>
 <li>Turn a corner back: a stiff latex backing cracks on the tiles</li>
 </ul>
+</section>
+</section>
+<section class="bring-back">
+<h3>Bring back to the Agent</h3>
+<p class="fill"><span>Found or bought</span> <span class="blank wide"></span></p>
+<p class="fill"><span>Link or model</span> <span class="blank wide"></span></p>
+<p class="fill"><span>Dimensions</span> <span class="blank wide"></span></p>
+<p class="fill"><span>What differs from the Requirements</span> <span class="blank wide"></span></p>
+</section>
+<section class="full">
 <h3>Full Guide</h3>
 <p class="meta">Written 2026-09-14.</p>
 <h4>Size</h4>
@@ -67,6 +138,8 @@ ul { margin: 0.2rem 0; padding-left: 1.3rem; }
 <ul>
 <li><strong>Warm terracotta</strong> (prefer). The accent of the Warm clay Palette, echoing the dining-end tiles; a rug is the one large surface in the room that can carry it.</li>
 </ul>
+</section>
 </article>
+<p class="generated">Copy generated 14 Sep 2026. It won't update; ask the Agent for a fresh one.</p>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Recorded values as the pages show them: lengths in metres with a Provenance tag, and lines of
+// Recorded values as the pages show them: lengths in metres with a quiet Provenance tag, and lines of
 // parts that leave out whatever is not recorded. Colors are shown by Swatch.tsx.
 
 import type { BlueprintSource, Light, Provenance } from "@idh/core";
@@ -6,10 +6,16 @@ import { Children, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import { formatDate, formatLength, type Measure, provenanceText } from "./format";
+import values from "./Values.module.css";
+
+/** What the "estimate" tag's tooltip says. */
+export const ESTIMATE_NOTE =
+  "Estimated by eye: from a Photo, scaled off a drawing, or guessed. Measure it to be sure.";
 
 /**
- * A value's Provenance. A value printed on a Blueprint links to the page it is printed on, with
- * the text as printed: "Blueprint p.2: 12'6"".
+ * A value's Provenance, kept quiet: a Measured value reads plain (nothing is shown), an Estimated
+ * one gets a small "estimate" tag with a tooltip, and a value printed on a Blueprint a chip that
+ * links to the page it is printed on, with the text as printed: "Blueprint p.2: 12'6"".
  */
 export function ProvenanceTag({
   provenance,
@@ -19,24 +25,39 @@ export function ProvenanceTag({
   source?: BlueprintSource | undefined;
 }) {
   const { home = "" } = useParams();
-  if (provenance === "blueprint" && source) {
+  if (provenance === "measured") return null;
+  if (provenance === "estimated") {
+    return (
+      <span className={`${values.tag} ${values.estimate}`} title={ESTIMATE_NOTE}>
+        estimate
+      </span>
+    );
+  }
+  if (source) {
     return (
       <Link
-        className={styles.tag}
+        className={`${values.tag} ${values.blueprint}`}
         to={`/homes/${home}/blueprints/${source.blueprint}/${source.page}`}
+        title="Open the Blueprint page it is printed on"
       >
         {provenanceText(provenance, source)}
       </Link>
     );
   }
-  return <span className={styles.tag}>{provenanceText(provenance)}</span>;
+  return <span className={`${values.tag} ${values.blueprint}`}>{provenanceText(provenance)}</span>;
 }
 
-/** A length with its Provenance: "~3.60 m" tagged Estimated. */
+/** A length with its Provenance: "~3.60 m estimate", or "3.60 m" when Measured. */
 export function Length({ value }: { value: Measure }) {
   return (
-    <span>
-      {formatLength(value)} <ProvenanceTag provenance={value.provenance} source={value.source} />
+    <span className={values.length}>
+      {formatLength(value)}
+      {value.provenance !== "measured" && (
+        <>
+          {" "}
+          <ProvenanceTag provenance={value.provenance} source={value.source} />
+        </>
+      )}
     </span>
   );
 }
@@ -57,8 +78,14 @@ export function dimensions(parts: [label: string, value: Measure | undefined][])
   if (shared) {
     const text = present.map(([label, value]) => `${label} ${formatLength(value)}`).join(" × ");
     return (
-      <span>
-        {text} <ProvenanceTag provenance={first[1].provenance} />
+      <span className={values.length}>
+        {text}
+        {first[1].provenance !== "measured" && (
+          <>
+            {" "}
+            <ProvenanceTag provenance={first[1].provenance} />
+          </>
+        )}
       </span>
     );
   }

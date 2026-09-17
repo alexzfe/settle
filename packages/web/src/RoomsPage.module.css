@@ -1,0 +1,19 @@
+/* The Rooms page. Values come from tokens.css; the tiles are styled in RoomTiles.module.css. */
+
+.header {
+  margin-bottom: var(--space-6);
+}
+
+.header h1 {
+  margin-bottom: var(--space-1);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}

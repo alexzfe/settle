@@ -1,10 +1,11 @@
-// The Home page's Blueprints: the list of them, page by page, and the form that uploads one.
+// The About page's Blueprints: the list of them, page by page, and the form that uploads one.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import styles from "./App.module.css";
 import { type Blueprint, upload } from "./api";
+import blueprintStyles from "./Blueprints.module.css";
 import { levelTitle } from "./format";
 import { queryKeys, useBlueprints } from "./queries";
 
@@ -26,17 +27,24 @@ export function BlueprintList({ home }: { home: string }) {
   const blueprints = useBlueprints(home);
   if (blueprints.isPending) return <p>Loading…</p>;
   if (blueprints.isError) return <p className={styles.error}>{blueprints.error.message}</p>;
-  if (blueprints.data.blueprints.length === 0) return <p>No Blueprints yet.</p>;
+  if (blueprints.data.blueprints.length === 0) {
+    return <p className={styles.muted}>No Blueprints yet.</p>;
+  }
   return (
-    <ul>
+    <ul className={blueprintStyles.blueprints}>
       {blueprints.data.blueprints.map((blueprint) => (
-        <li key={blueprint.slug}>
-          <strong>{blueprint.label}</strong>, {pageCount(blueprint.pageCount)}
-          <ul>
+        <li key={blueprint.slug} className={blueprintStyles.blueprint}>
+          <p className={blueprintStyles.label}>
+            <strong>{blueprint.label}</strong>
+            <span className={blueprintStyles.count}>, {pageCount(blueprint.pageCount)}</span>
+          </p>
+          <ul className={blueprintStyles.pages}>
             {blueprint.pages.map((page) => (
               <li key={page.page}>
                 <Link to={pagePath(home, blueprint.slug, page.page)}>Page {page.page}</Link>
-                {page.level && `: ${levelTitle(page.level)}`}
+                {page.level && (
+                  <span className={blueprintStyles.level}>: {levelTitle(page.level)}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -87,7 +95,7 @@ export function BlueprintUploadForm({ home }: { home: string }) {
 
   return (
     <>
-      <form className={styles.form} onSubmit={onSubmit}>
+      <form className={`${styles.form} ${blueprintStyles.upload}`} onSubmit={onSubmit}>
         <label>
           Blueprint file (PDF, PNG, or JPEG){" "}
           <input type="file" name="file" accept={BLUEPRINT_TYPES} onChange={onChoose} />
@@ -111,7 +119,7 @@ export function BlueprintUploadForm({ home }: { home: string }) {
 
 function Uploaded({ blueprint }: { blueprint: Blueprint }) {
   return (
-    <p role="status">
+    <p role="status" className={blueprintStyles.uploaded}>
       Uploaded {blueprint.label}, {pageCount(blueprint.pageCount)}. Ask the Agent in this Home's
       Home Folder to read it.
     </p>

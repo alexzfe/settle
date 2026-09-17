@@ -1,0 +1,25 @@
+/* The create-Home form: the name across, country and city side by side. */
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+}
+
+@media (min-width: 30rem) {
+  .form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.form input {
+  width: 100%;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.form button {
+  justify-self: start;
+}

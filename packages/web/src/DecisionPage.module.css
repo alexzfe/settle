@@ -1,0 +1,471 @@
+/* A Decision's page: header, then the record beside a panel of what can be done with it. */
+
+.header {
+  margin-block: var(--space-6) var(--space-4);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+}
+
+.title {
+  margin-block: var(--space-1) var(--space-2);
+  font-size: clamp(var(--text-xl), 5vw, 2.75rem);
+}
+
+.marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  margin: 0;
+}
+
+.marks a {
+  color: inherit;
+}
+
+/* Main column and side panel; on phones the panel follows the record. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    align-items: start;
+  }
+
+  .side {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+.main > :first-child {
+  margin-top: 0;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sideTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.askText {
+  margin: 0 0 var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.statement {
+  max-width: var(--width-reading);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+
+.direction {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+}
+
+/* Basis and Evidence chips. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  font-size: var(--text-sm);
+}
+
+a.chip {
+  text-decoration: none;
+}
+
+a.chip:hover {
+  border-color: var(--color-accent);
+}
+
+.dot {
+  font-size: var(--text-sm);
+}
+
+.state-candidate .dot {
+  color: var(--color-stone);
+}
+
+.state-leaning .dot {
+  color: var(--color-attention);
+}
+
+.state-locked .dot {
+  color: var(--color-accent);
+}
+
+.state-rejected {
+  opacity: 0.7;
+}
+
+.state-rejected a {
+  text-decoration: line-through;
+}
+
+.chipMeta {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stance {
+  display: inline-block;
+  min-width: 9rem;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.undermines {
+  color: var(--color-error);
+}
+
+/* The user's own words. */
+.quote {
+  font-family: var(--font-serif);
+  font-size: 1.05em;
+  font-style: italic;
+}
+
+/* Flags and Conflicts. */
+.marksList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marksList > li {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+}
+
+.open {
+  background: var(--color-attention-bg);
+}
+
+.settled {
+  color: var(--color-ink-muted);
+}
+
+.markLine {
+  margin: 0;
+}
+
+/* Room use's functions and key materials as pills. */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pill {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  font-size: var(--text-sm);
+}
+
+.pills:not(:has(.texture)) .pill {
+  padding-left: var(--space-3);
+}
+
+/* Small CSS textures for key materials. They depict the material, so they stay in both themes. */
+.texture {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--color-edge);
+  border-radius: 50%;
+}
+
+.texture-oak {
+  background:
+    repeating-linear-gradient(100deg, rgb(120 80 40 / 0.25) 0 1px, transparent 1px 4px),
+    linear-gradient(135deg, #c79a64, #a8763f);
+}
+
+.texture-linen {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.35) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgb(120 110 90 / 0.18) 0 1px, transparent 1px 3px), #ddd3c0;
+}
+
+.texture-terracotta {
+  background:
+    radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.18), transparent 60%),
+    linear-gradient(135deg, #c46e4a, #9e4f32);
+}
+
+.texture-brass {
+  background: linear-gradient(135deg, #8a6a2a 0%, #e3c47a 45%, #b08d3f 60%, #7a5a1e 100%);
+}
+
+.texture-stone {
+  background:
+    radial-gradient(circle at 70% 20%, rgb(255 255 255 / 0.5) 0 8%, transparent 9%),
+    radial-gradient(circle at 25% 65%, rgb(90 85 80 / 0.25) 0 6%, transparent 7%),
+    linear-gradient(160deg, #cfcac2, #a9a39a);
+}
+
+.texture-neutral {
+  background: linear-gradient(135deg, #e6e0d6, #cfc6b8);
+}
+
+/* The Design Direction as a moodboard. */
+.moodboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-3);
+}
+
+.mood {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.mood p {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(var(--text-xl), 4vw, 2.5rem);
+  font-style: italic;
+  line-height: 1.2;
+}
+
+.mood p::before {
+  content: "“";
+}
+
+.mood p::after {
+  content: "”";
+}
+
+.mood figcaption {
+  margin-top: var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tile {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.tileTitle {
+  margin: 0 0 var(--space-3);
+  color: var(--color-ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.temperature {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.temperatureBar {
+  position: relative;
+  display: block;
+  height: 0.6rem;
+  border-radius: var(--radius-pill);
+  /* Warm to cool light, the same in both themes. */
+  background: linear-gradient(to right, #d98a4a, #efe1c6 50%, #8fb0c9);
+}
+
+.temperatureMarker {
+  position: absolute;
+  top: -0.3rem;
+  width: 0.35rem;
+  height: calc(100% + 0.6rem);
+  margin-left: -0.175rem;
+  border-radius: 2px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 2px var(--color-card);
+}
+
+.scaleEnds {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.contrast {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.contrastPair {
+  display: inline-flex;
+}
+
+.contrastPair span {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-edge);
+}
+
+.contrastPair span:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.contrastPair span:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* The contrast pairs depict light and dark finishes, so they stay the same in both themes. */
+.contrast-low span:first-child {
+  background: #e9e2d6;
+}
+
+.contrast-low span:last-child {
+  background: #d6ccbc;
+}
+
+.contrast-medium span:first-child {
+  background: #ece6dc;
+}
+
+.contrast-medium span:last-child {
+  background: #9a8f7f;
+}
+
+.contrast-high span:first-child {
+  background: #f6f3ee;
+}
+
+.contrast-high span:last-child {
+  background: #2a2724;
+}
+
+.principles {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-8);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+}
+
+.principles li::marker {
+  color: var(--color-ink-muted);
+}
+
+.references {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A place kept for inspiration photos. */
+.photos:empty {
+  display: none;
+}
+
+/* A Palette's colors: where each goes, with its LRV. */
+.applications {
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.applications li {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 2fr) auto;
+  gap: var(--space-1) var(--space-4);
+  align-items: center;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.applicationName {
+  font-weight: 500;
+}
+
+.applicationNote {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 40rem) {
+  .applications li {
+    grid-template-columns: 1fr;
+  }
+}
+
+.roomColor {
+  max-width: 28rem;
+}

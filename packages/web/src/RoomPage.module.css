@@ -1,0 +1,440 @@
+/* The Room page: a wall-colored banner, drawn Walls, a daylight compass, and swatches. */
+
+/* Header: a wide banner in the Room's own wall color. */
+.banner {
+  margin-top: var(--space-6);
+  padding: var(--space-10) var(--space-8) var(--space-6);
+  border: 1px solid var(--color-edge);
+  border-radius: var(--radius);
+}
+
+/* Text on the walls color is dark or light by the fill, whatever the theme. */
+.onLight {
+  color: var(--color-on-light-fill);
+}
+
+.onDark {
+  color: var(--color-on-dark-fill);
+}
+
+/* No walls color recorded: a warm neutral that follows the theme. */
+.neutral {
+  background: var(--color-banner-neutral);
+  color: var(--color-ink);
+}
+
+.roomName {
+  margin: 0;
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-weight: 400;
+  color: inherit;
+}
+
+.caption {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.bannerColor {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
+.roomFacts {
+  margin-top: var(--space-4);
+}
+
+.note {
+  margin-top: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.subsection h3 {
+  margin-top: var(--space-5);
+  font-size: var(--text-md);
+}
+
+/* Walls strip: one drawing per Wall, scrolling sideways when there are many. */
+.strip {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  overflow-x: auto;
+  list-style: none;
+}
+
+.wallCard {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.wallButton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-weight: 400;
+  text-align: left;
+}
+
+.wallButton:hover {
+  border: 0;
+  background: none;
+}
+
+.wallHead {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wallName {
+  font-family: var(--font-serif);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
+.wallButton[aria-expanded="true"] .wallName {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 0.25em;
+}
+
+.facing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding-inline: 0.2rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.elevation {
+  display: block;
+  overflow: visible;
+}
+
+.wallShape {
+  fill: var(--color-ground);
+  stroke: var(--color-ink-muted);
+  stroke-width: 1.25;
+}
+
+.wallButton:hover .wallShape {
+  stroke: var(--color-accent);
+}
+
+.window,
+.glazed-door {
+  fill: var(--color-glass);
+  stroke: var(--color-ink-muted);
+  stroke-width: 1;
+}
+
+.door {
+  fill: var(--color-card);
+  stroke: var(--color-ink-muted);
+  stroke-width: 1;
+}
+
+.doorway {
+  fill: var(--color-ground);
+  stroke: var(--color-ink-muted);
+  stroke-dasharray: 3 2;
+  stroke-width: 1;
+}
+
+.wallLength {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.estimated {
+  color: var(--color-ink-muted);
+}
+
+.beyond {
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.unplaced {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  list-style: none;
+}
+
+.wallDetail {
+  margin-top: var(--space-3);
+}
+
+.wallDetail h3 {
+  margin-top: 0;
+}
+
+/* Daylight and Gaps side by side on a wide screen. */
+.pair {
+  display: grid;
+  gap: var(--space-4);
+  margin-block: var(--space-8);
+}
+
+@media (min-width: 48rem) {
+  .pair {
+    grid-template-columns: 3fr 2fr;
+    align-items: start;
+  }
+}
+
+.cardTitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.daylight {
+  display: grid;
+  gap: 0 var(--space-5);
+}
+
+.skylights {
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.compass {
+  display: block;
+  margin: 0 auto var(--space-2);
+}
+
+.compassRing {
+  fill: var(--color-ground);
+  stroke: var(--color-hairline);
+  stroke-width: 1.5;
+}
+
+.compassTick {
+  stroke: var(--color-stone);
+  stroke-width: 1;
+}
+
+.compassMain,
+.compassMinor {
+  fill: var(--color-ink-muted);
+  font-family: var(--font-sans);
+}
+
+.compassMain {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.compassMinor {
+  font-size: 8px;
+}
+
+.compassRay {
+  stroke: var(--color-attention);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.mark {
+  fill: var(--color-attention-bg);
+  stroke: var(--color-attention);
+  stroke-width: 1.5;
+}
+
+.markBlocked {
+  fill: var(--color-card);
+  stroke: var(--color-stone);
+  stroke-width: 1.5;
+}
+
+.markCount {
+  fill: var(--color-attention);
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.daylightList {
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.symbol {
+  color: var(--color-attention);
+}
+
+.unfaced {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.meaning {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+/* Gaps as a checklist. */
+.checklist {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.checklist li {
+  padding-block: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.checklist li::before {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: var(--space-2);
+  border: 1.5px solid var(--color-attention);
+  border-radius: 3px;
+  content: "";
+  vertical-align: -0.1em;
+}
+
+.noGaps {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-size: var(--text-sm);
+}
+
+/* Surfaces as swatches. */
+.surfaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surface {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.surfaceFill {
+  display: block;
+  height: 5.5rem;
+  border-bottom: 1px solid var(--color-hairline);
+  box-shadow: inset 0 0 0 1px var(--color-edge);
+}
+
+.surfacePlaceholder {
+  margin: var(--space-2);
+  height: calc(5.5rem - 2 * var(--space-2));
+  border: 1px dashed var(--color-stone);
+  border-radius: var(--radius-sm);
+}
+
+.surfaceText {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+.surfaceName {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.surfaceLine {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* Compact lists: Features, Lights, openings, Decisions. */
+.compact {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compact li {
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.compact li:last-child {
+  border-bottom: 0;
+}
+
+.decisions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.decisions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.decisions li:last-child {
+  border-bottom: 0;
+}
+
+/* Previous and next Room. */
+.roomNav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-10);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-hairline);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+}
+
+.roomNav a {
+  text-decoration: none;
+}

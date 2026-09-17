@@ -1,0 +1,398 @@
+/* A Purchase's parts: the Quick Guide in blocks, taking it shopping, the Full Guide, the
+   Requirements, and the Listings compared. */
+
+/* Quick Guide. */
+.quickGuide {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--width-reading);
+}
+
+.quickGuide > aside {
+  margin: 0;
+}
+
+.guideBlock {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.guideSoft {
+  background: transparent;
+  box-shadow: none;
+}
+
+.guideTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--color-ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guideTitle:not(:first-child) {
+  margin-top: var(--space-3);
+}
+
+.guideList {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Take it shopping. */
+.shopping {
+  max-width: var(--width-reading);
+  margin-top: var(--space-4);
+}
+
+.shoppingTitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-8);
+  counter-increment: step;
+}
+
+.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.stepTitle {
+  font-weight: 500;
+}
+
+.stepNote {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.qr {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.qr svg {
+  display: block;
+  width: 10rem;
+  height: auto;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  /* White in both themes: scanners need dark modules on a light ground. */
+  background: #fff;
+}
+
+/* Full Guide. */
+.written {
+  margin-top: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.outOfDate {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-attention-bg);
+  color: var(--color-ink);
+}
+
+.fullGuide {
+  max-width: var(--width-reading);
+}
+
+.contents {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.contentsTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.contents ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.depth-2 {
+  padding-left: var(--space-4);
+}
+
+.depth-3 {
+  padding-left: var(--space-8);
+}
+
+/* Requirements. */
+.requirements {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.requirements > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.strength {
+  display: inline-block;
+  min-width: 3.75rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.must {
+  background: var(--color-ink);
+  color: var(--color-card);
+}
+
+.prefer {
+  border: 1px solid var(--color-hairline);
+  color: var(--color-ink-muted);
+}
+
+.requirementText {
+  flex: 1 1 14rem;
+}
+
+.reason {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-card);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.reason {
+  color: var(--color-accent);
+}
+
+a.reason:hover {
+  border-color: var(--color-accent);
+}
+
+/* The Listings matrix. */
+.matrixWrap {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+}
+
+.matrix {
+  width: 100%;
+  font-size: var(--text-sm);
+}
+
+.matrix th,
+.matrix td {
+  min-width: 11rem;
+}
+
+.matrix thead th {
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: bottom;
+}
+
+.matrix thead th.corner {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rowHead {
+  min-width: 14rem;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.failedListing {
+  box-shadow: inset 0 3px 0 var(--color-error);
+}
+
+.listingHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.listingName {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.noPrice {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.listingMeta {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.verdict {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.verdict-fail {
+  color: var(--color-error);
+}
+
+.verdict-unknown {
+  color: var(--color-attention);
+}
+
+.verdict-pass {
+  color: var(--color-accent);
+}
+
+.cell {
+  vertical-align: top;
+}
+
+.result {
+  white-space: nowrap;
+}
+
+.pass .result {
+  color: var(--color-accent);
+}
+
+.fail .result {
+  color: var(--color-ink);
+}
+
+.unknown .result {
+  color: var(--color-ink-muted);
+}
+
+.note {
+  display: block;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.failedMust {
+  background: var(--color-error-bg);
+  box-shadow: inset 3px 0 0 var(--color-error);
+}
+
+.failedMust .result {
+  color: var(--color-error);
+}
+
+/* On a phone: a card per Listing. */
+.listingCards {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.failedCard {
+  border-top: 3px solid var(--color-error);
+}
+
+.cardChecks {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.cardChecks li {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.cardChecks li .note {
+  display: inline;
+}
+
+.deviations {
+  padding-inline-start: var(--space-5);
+}
+
+.cardChecks .result {
+  white-space: normal;
+}

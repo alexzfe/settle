@@ -85,11 +85,13 @@ function stubList(listed: () => DecisionSummary[] = () => decisions) {
   });
 }
 
-/** Each group's heading and its lines. */
-function groups(): [string | null | undefined, (string | null)[]][] {
+/** Each group's heading and its rows, each row's columns joined by " | ". */
+function groups(): [string | null | undefined, string[]][] {
   return [...document.querySelectorAll("main section")].map((section) => [
     section.querySelector("h2")?.textContent,
-    [...section.querySelectorAll("li")].map((li) => li.textContent),
+    [...section.querySelectorAll("li")].map((li) =>
+      [...(li.firstElementChild?.children ?? [])].map((cell) => cell.textContent).join(" | "),
+    ),
   ]);
 }
 
@@ -105,14 +107,22 @@ it("lists every Decision by scope: Home-wide first, then each Room in the Home's
   expect(groups()).toEqual([
     [
       "Home-wide",
-      ["Warm minimalism, Design Direction, Locked", "Earthy palette, Palette, Locked, Conflict"],
+      [
+        "Warm minimalism | Design Direction | ●Locked | ",
+        "Earthy palette | Palette | ●Locked | Conflict: The new rug's red clashes with the accent.",
+      ],
     ],
     [
       "Living room",
-      ["Calm and low, Room Direction, Locked, Flagged", "Keep the old sofa, Purchase, Rejected"],
+      [
+        "Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened",
+        "Keep the old sofa | Purchase | ✕Rejected | ",
+      ],
     ],
-    ["Hallway", ["Reading nook, Room use, Candidate"]],
+    ["Hallway", ["Reading nook | Room use | ○Candidate | "]],
   ]);
+  // A flag says it is one to screen readers, not by its color alone.
+  expect(screen.getByRole("img", { name: "Flagged" })).toBeDefined();
   expect(screen.getByRole("link", { name: "Calm and low" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/living-room-direction",
   );
@@ -134,7 +144,8 @@ it("filters by state and by kind with plain links, each keeping the other", asyn
   fireEvent.click(within(filters("Kind")).getByRole("link", { name: "Palette" }));
   await waitFor(() => expect(screen.queryByText("Warm minimalism")).toBeNull());
   expect(router.state.location.search).toBe("?state=locked&kind=palette");
-  expect(groups()).toEqual([["Home-wide", ["Earthy palette, Palette, Locked, Conflict"]]]);
+  expect(groups().map(([title, rows]) => [title, rows.length])).toEqual([["Home-wide", 1]]);
+  expect(screen.getByRole("link", { name: "Earthy palette" })).toBeDefined();
   // The filters in force read as plain text, and All clears one.
   expect(within(filters("State")).queryByRole("link", { name: "Locked" })).toBeNull();
   expect(within(filters("Kind")).queryByRole("link", { name: "Palette" })).toBeNull();
@@ -161,4 +172,58 @@ it("says when there are no Decisions, or none match the filters", async () => {
 
   renderRoutes("/homes/flat/decisions?state=rejected");
   expect(await screen.findByText("No Decisions match.")).toBeDefined();
+});
+
+it("shows the Decisions needing review, the Leaning ones, or those whose title matches", async () => {
+  const fetch = stubList();
+  const { router } = renderRoutes("/homes/flat/decisions");
+  await screen.findByText("Reading nook");
+  const views = screen.getByRole("navigation", { name: "Views" });
+  expect(within(views).getByRole("link", { name: "All" }).getAttribute("aria-current")).toBe(
+    "true",
+  );
+
+  // Needs review: an open flag or Conflict, worked out from the list the server gave.
+  fireEvent.click(within(views).getByRole("link", { name: "Needs review" }));
+  await waitFor(() => expect(screen.queryByText("Reading nook")).toBeNull());
+  expect(router.state.location.search).toBe("?view=review");
+  expect(groups().flatMap(([, rows]) => rows.map((row) => row.split(" | ")[0]))).toEqual([
+    "Earthy palette",
+    "Calm and low",
+  ]);
+
+  // Leaning is the Leaning state filter.
+  fireEvent.click(within(views).getByRole("link", { name: "Leaning" }));
+  expect(await screen.findByText("No Decisions match.")).toBeDefined();
+  expect(router.state.location.search).toBe("?state=leaning");
+
+  fireEvent.click(within(views).getByRole("link", { name: "All" }));
+  await screen.findByText("Reading nook");
+  expect(router.state.location.search).toBe("");
+
+  // The title search keeps its words in the query string.
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search titles" }), {
+    target: { value: "CALM low" },
+  });
+  await waitFor(() => expect(screen.queryByText("Reading nook")).toBeNull());
+  expect(router.state.location.search).toBe("?q=CALM+low");
+  expect(groups()).toHaveLength(1);
+  expect(inputsTo(fetch, "list_decisions")).toContainEqual({ home: "flat", state: "leaning" });
+});
+
+it("shows a Palette's colors as small swatches in its row, and a Fulfilled note", async () => {
+  stubList(() => [
+    summary("palette", "Earthy palette", "palette", "locked", {
+      colors: [
+        { name: "Setting Plaster", hex: "#e3c9b6", provenance: "estimated", role: "base" },
+        { name: "Olive", provenance: "estimated", role: "accent" },
+      ],
+    }),
+    summary("rug", "Wool rug", "purchase", "locked", { fulfilledAt: raised }),
+  ]);
+  renderRoutes("/homes/flat/decisions");
+  await screen.findByText("Earthy palette");
+  expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
+  expect(screen.getByTitle("No screen color recorded")).toBeDefined();
+  expect(groups()[0]?.[1][1]).toBe("Wool rug | Purchase | ●Locked✓ Fulfilled | ");
 });

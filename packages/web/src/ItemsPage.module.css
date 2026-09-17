@@ -1,0 +1,112 @@
+/* The Items page: a compact table with name search and filters. */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.search input {
+  width: 16rem;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.table td {
+  font-size: var(--text-sm);
+}
+
+.expand {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: baseline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-align: left;
+}
+
+.expand:hover {
+  border: 0;
+  background: none;
+  color: var(--color-accent-strong);
+}
+
+.caret {
+  width: 0.8em;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.quantity {
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.category {
+  display: block;
+  padding-left: calc(0.8em + var(--space-1));
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.numbers {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.looks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.archived > td {
+  opacity: 0.55;
+}
+
+.archived .name {
+  text-decoration: line-through;
+}
+
+.detailRow > td {
+  padding-top: 0;
+  background: var(--color-card);
+}
+
+.details {
+  margin: 0;
+  padding-left: calc(0.8em + var(--space-1));
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.list li:last-child {
+  border-bottom: 0;
+}

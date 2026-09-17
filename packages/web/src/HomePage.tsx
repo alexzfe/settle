@@ -1,266 +1,324 @@
-import type { PlannedStay } from "@idh/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
-import { Link, useParams } from "react-router";
-import styles from "./App.module.css";
-import { call, type DecisionSummary, type Home, type Level, type Room } from "./api";
-import { BlueprintList, BlueprintUploadForm } from "./Blueprints";
-import { decisionPath, paletteInForce, STATE_LABEL } from "./decisions";
-import { FlagsAndConflicts } from "./Flags";
-import { formatDate, formatTime, sentence } from "./format";
-import { queryKeys, useConstraints, useDecisions, useHome, useNotes, useSessions } from "./queries";
-import { Swatch } from "./Swatch";
-import { ArchivedNote, Fact, Length } from "./Values";
+// The Home's Overview, a status board: what needs the user, where the last Session left off, the
+// Palette in force, the Rooms by Level, and the recent Sessions.
 
-const PLANNED_STAY: Record<PlannedStay, string> = {
-  "under-1-year": "Under a year",
-  "1-3-years": "1–3 years",
-  "3-10-years": "3–10 years",
-  indefinitely: "Indefinitely",
-};
+import { Link, useParams } from "react-router";
+import { HomeFolderSetup } from "./AboutPage";
+import styles from "./App.module.css";
+import type { DecisionSummary, Home, Room, RoomDetail, Session } from "./api";
+import { decisionPath, paletteInForce } from "./decisions";
+import { openReviews, ReviewList } from "./Flags";
+import { sentence } from "./format";
+import page from "./HomePage.module.css";
+import { useDecisions, useHome, useSessions } from "./queries";
+import { count, RoomGrid, roomsWithGaps, useRoomDetails } from "./RoomTiles";
+import { PaletteChips } from "./Swatch";
+import { AgentWritten, shortDate } from "./ui/AgentWritten";
+import { AskAgent, buildPrompt } from "./ui/AskAgent";
+import { Card } from "./ui/Card";
+import { EmptyState } from "./ui/EmptyState";
+import { Section } from "./ui/Section";
+import { StatePill } from "./ui/StatePill";
+
+/** How many Sessions the Overview lists; the change log has the rest. */
+const RECENT_SESSIONS = 5;
+
+/** A Skill's slug as its name: "home-intake" is "Home Intake". */
+export function skillName(slug: string): string {
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/** The Sessions, newest first. */
+function newestFirst(sessions: readonly Session[]): Session[] {
+  return sessions.toSorted((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt));
+}
+
+/** The Design Direction in force: the Locked one, else the latest Leaning, else latest Candidate. */
+export function designDirectionInForce(
+  decisions: readonly DecisionSummary[],
+): DecisionSummary | undefined {
+  const directions = decisions.filter((decision) => decision.kind === "design-direction");
+  return (
+    directions.find((decision) => decision.state === "locked") ??
+    directions.filter((decision) => decision.state === "leaning").at(-1) ??
+    directions.filter((decision) => decision.state === "candidate").at(-1)
+  );
+}
 
 export function HomePage() {
   const { home: slug = "" } = useParams();
   const home = useHome(slug);
+  const rooms = home.data?.rooms ?? [];
+  const details = useRoomDetails(slug, rooms);
   if (home.isPending) return <p>Loading…</p>;
   if (home.isError) return <p className={styles.error}>{home.error.message}</p>;
-  const { levels, rooms, unplacedItems } = home.data;
+  const { levels, unplacedItems } = home.data;
+  const facts = home.data.home;
+  const folder = facts.homeFolderPath;
   return (
     <>
-      <h1>{home.data.home.name}</h1>
-      <HomeFacts home={home.data.home} />
-      <h2>Palette</h2>
-      <PaletteInForce home={slug} />
-      <h2>Flags and Conflicts</h2>
-      <FlagsAndConflicts home={slug} />
-      <h2>Levels and Rooms</h2>
-      <RoomList home={slug} levels={levels} rooms={rooms} />
-      <h2>Blueprints</h2>
-      <BlueprintList home={slug} />
-      <BlueprintUploadForm home={slug} />
-      <h2>Items</h2>
-      <p>
-        <Link to={`/homes/${slug}/items`}>
-          {unplacedItems} Unplaced {unplacedItems === 1 ? "Item" : "Items"}
+      <header className={page.title}>
+        <h1>{facts.name}</h1>
+        <p className={page.caption}>
+          {[facts.city, facts.tenure && sentence(facts.tenure)].filter(Boolean).join(" · ")}
+        </p>
+      </header>
+      <NeedsYou home={slug} rooms={rooms} details={details} homeFolderPath={folder} />
+      <LeftOff home={facts} />
+      <PaletteSection home={slug} homeFolderPath={folder} />
+      <Section
+        title="Rooms"
+        action={
+          <span className={page.roomsActions}>
+            <Link to={`/homes/${slug}/items`}>{count(unplacedItems, "Unplaced Item")}</Link>
+            <Link to={`/homes/${slug}/rooms`}>All Rooms →</Link>
+          </span>
+        }
+      >
+        <RoomGrid
+          home={slug}
+          levels={levels}
+          rooms={rooms}
+          details={details}
+          homeFolderPath={folder}
+        />
+      </Section>
+      <Section title="Recent Sessions" action={<Link to={`/homes/${slug}/log`}>Change log</Link>}>
+        <SessionList home={slug} />
+      </Section>
+      <p className={page.footer}>
+        <Link to={`/homes/${slug}/about`}>
+          About this Home: facts, Constraints, Notes, Blueprints, Home Folder
         </Link>
       </p>
-      <h2>Constraints</h2>
-      <ConstraintList home={slug} />
-      <h2>Notes</h2>
-      <NoteList home={slug} />
-      <h2>Home Folder</h2>
-      <HomeFolderSetup home={home.data.home} />
-      <h2>Sessions</h2>
-      <SessionList home={slug} />
     </>
   );
 }
 
-/** The Palette in force (Locked, else Leaning) as a row of swatches, linking to its Decision. */
-function PaletteInForce({ home }: { home: string }) {
+/** The ochre band: open Flags and Conflicts as questions, and how many Rooms have Gaps. */
+function NeedsYou({
+  home,
+  rooms,
+  details,
+  homeFolderPath,
+}: {
+  home: string;
+  rooms: readonly Room[];
+  details: Map<string, RoomDetail>;
+  homeFolderPath: string | undefined;
+}) {
+  const decisions = useDecisions(home);
+  if (decisions.isPending) return <p>Loading…</p>;
+  if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
+  const reviews = openReviews(decisions.data.decisions);
+  const withGaps = roomsWithGaps(rooms, details);
+  if (reviews.length === 0 && withGaps.length === 0) {
+    return (
+      <section className={`${page.needs} ${page.calm}`} aria-label="Needs you">
+        <p>Nothing needs you right now.</p>
+      </section>
+    );
+  }
+  return (
+    <section className={page.needs} aria-labelledby="needs-you">
+      <h2 id="needs-you" className={page.needsTitle}>
+        Needs you
+      </h2>
+      {reviews.length > 0 && (
+        <ReviewList home={home} reviews={reviews} homeFolderPath={homeFolderPath} />
+      )}
+      {withGaps.length > 0 && (
+        <p className={page.gaps}>
+          <Link to={`/homes/${home}/rooms`}>{count(withGaps.length, "Room")} with Gaps</Link>: facts
+          advice still needs.{" "}
+          <AskAgent
+            label="Fill the Gaps"
+            prompt={buildPrompt({
+              skill: "Home Intake",
+              text: `let's fill the Gaps in ${withGaps.map((room) => room.name).join(", ")}`,
+            })}
+            homeFolderPath={homeFolderPath}
+          />
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** The getting-started checklist while the Home lacks a Home Folder or a Session, then the card. */
+function LeftOff({ home }: { home: Home }) {
+  const sessions = useSessions(home.slug);
+  const decisions = useDecisions(home.slug);
+  if (sessions.isPending) return <p>Loading…</p>;
+  if (sessions.isError) return <p className={styles.error}>{sessions.error.message}</p>;
+  const all = newestFirst(sessions.data.sessions);
+  const last = all.find((session) => session.summary);
+  const direction = decisions.data && designDirectionInForce(decisions.data.decisions);
+  return (
+    <>
+      {(!home.homeFolderPath || all.length === 0) && (
+        <GettingStarted home={home} started={all.length > 0} />
+      )}
+      {last?.summary && (
+        <Section title="Where we left off">
+          <Card className={page.leftOff}>
+            <p className={page.sessionLine}>
+              <Link to={`/homes/${home.slug}/sessions/${last.slug}`}>
+                {last.skills.map(skillName).join(", ") || "Session"}
+              </Link>{" "}
+              · {shortDate(last.closedAt ?? last.openedAt)}
+            </p>
+            <AgentWritten
+              source={`${last.skills.map(skillName).join(", ")} Session`.trim()}
+              date={last.closedAt ?? last.openedAt}
+            >
+              <dl className={page.summary}>
+                <dt>Changed</dt>
+                <dd>{last.summary.changed}</dd>
+                <dt>Still open</dt>
+                <dd>{last.summary.open}</dd>
+              </dl>
+            </AgentWritten>
+            <p className={page.nextLabel}>Next</p>
+            <ol className={page.nextSteps}>
+              {decisions.data && direction?.state !== "locked" && (
+                <li>
+                  <span className={page.next}>Settle the Design Direction</span>
+                  <AskAgent
+                    prompt={buildPrompt({
+                      skill: "Design Direction",
+                      text: "let's settle the Design Direction for my home",
+                      ...(direction ? { slug: direction.slug } : {}),
+                    })}
+                    homeFolderPath={home.homeFolderPath}
+                  />
+                </li>
+              )}
+              <li>
+                <span className={page.next}>{last.summary.next}</span>
+                <AskAgent
+                  label="Continue"
+                  prompt={buildPrompt({
+                    text: `Let's pick up where the last Session left off. Next: ${last.summary.next}`,
+                  })}
+                  homeFolderPath={home.homeFolderPath}
+                />
+              </li>
+            </ol>
+          </Card>
+        </Section>
+      )}
+    </>
+  );
+}
+
+/** Three steps: set up the Home Folder, run claude there, and start Home Intake. */
+function GettingStarted({ home, started }: { home: Home; started: boolean }) {
+  const folder = home.homeFolderPath;
+  return (
+    <Section title="Getting started">
+      <Card>
+        <ol className={page.checklist}>
+          <li className={folder ? page.done : undefined}>
+            <span className={page.check} aria-hidden>
+              {folder ? "✓" : "1"}
+            </span>
+            <div>
+              <p className={page.step}>Set up the Home Folder</p>
+              {folder ? (
+                <p className={styles.muted}>
+                  Set up at <code>{folder}</code>.
+                </p>
+              ) : (
+                <HomeFolderSetup home={home} />
+              )}
+            </div>
+          </li>
+          <li className={started ? page.done : undefined}>
+            <span className={page.check} aria-hidden>
+              {started ? "✓" : "2"}
+            </span>
+            <div>
+              <p className={page.step}>
+                Open a terminal there and run <code>claude</code>
+              </p>
+              <p className={styles.muted}>
+                Every Session started in {folder ? <code>{folder}</code> : "the Home Folder"}{" "}
+                belongs to this Home.
+              </p>
+            </div>
+          </li>
+          <li className={started ? page.done : undefined}>
+            <span className={page.check} aria-hidden>
+              {started ? "✓" : "3"}
+            </span>
+            <div>
+              <p className={page.step}>Start with Home Intake</p>
+              <p className={page.starter}>“Let's record my home; I'll upload the floor plan.”</p>
+              <AskAgent
+                prompt={buildPrompt({
+                  skill: "Home Intake",
+                  text: "Let's record my home; I'll upload the floor plan",
+                })}
+                homeFolderPath={folder}
+              />
+            </div>
+          </li>
+        </ol>
+      </Card>
+    </Section>
+  );
+}
+
+/** The Design Direction on one line, then the Palette in force as chips, linking to its Decision. */
+function PaletteSection({
+  home,
+  homeFolderPath,
+}: {
+  home: string;
+  homeFolderPath: string | undefined;
+}) {
   const decisions = useDecisions(home);
   if (decisions.isPending) return <p>Loading…</p>;
   if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
   const palette = paletteInForce(decisions.data.decisions);
-  if (!palette) return <p>No Palette yet.</p>;
-  return <PaletteRow home={home} palette={palette} />;
-}
-
-/** The Palette's name and state, then its colors, which list_decisions carries for a Palette. */
-function PaletteRow({ home, palette }: { home: string; palette: DecisionSummary }) {
+  const direction = designDirectionInForce(decisions.data.decisions);
   return (
-    <>
-      <p>
-        <Link to={decisionPath(home, palette.slug)}>{palette.title}</Link>,{" "}
-        {STATE_LABEL[palette.state]}
-      </p>
-      <ul className={styles.swatchRow}>
-        {palette.colors?.map((color) => (
-          <li key={color.name}>
-            <Swatch color={color} provenance={false} />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-/** The Home's facts that are recorded; the rest are left out. */
-function HomeFacts({ home }: { home: Home }) {
-  return (
-    <dl className={styles.facts}>
-      <Fact term="City">{home.city}</Fact>
-      <Fact term="Country">{home.country}</Fact>
-      <Fact term="Latitude">{home.latitude}°</Fact>
-      <Fact term="Tenure">{home.tenure && sentence(home.tenure)}</Fact>
-      <Fact term="Planned stay">{home.plannedStay && PLANNED_STAY[home.plannedStay]}</Fact>
-      <Fact term="Building type">{home.buildingType && sentence(home.buildingType)}</Fact>
-      <Fact term="Building era">{home.buildingEra}</Fact>
-      <Fact term="Lift">{home.lift === undefined ? undefined : home.lift ? "Yes" : "None"}</Fact>
-      <Fact term="Lift door width">
-        {home.liftDoorWidth && <Length value={home.liftDoorWidth} />}
-      </Fact>
-      <Fact term="Lift car depth">{home.liftCarDepth && <Length value={home.liftCarDepth} />}</Fact>
-      <Fact term="Narrowest access point">
-        {(home.accessWidth || home.accessNote) && (
+    <Section
+      title="Palette"
+      id="palette"
+      action={
+        palette && (
+          <span className={page.paletteLine}>
+            <Link to={decisionPath(home, palette.slug)}>{palette.title}</Link>
+            <StatePill state={palette.state} />
+          </span>
+        )
+      }
+    >
+      <p className={page.direction}>
+        <span className={page.directionLabel}>Design Direction</span>{" "}
+        {direction ? (
           <>
-            {home.accessWidth && <Length value={home.accessWidth} />}
-            {home.accessWidth && home.accessNote && ", "}
-            {home.accessNote}
-          </>
-        )}
-      </Fact>
-    </dl>
-  );
-}
-
-function RoomList({ home, levels, rooms }: { home: string; levels: Level[]; rooms: Room[] }) {
-  if (rooms.length === 0) {
-    return <p>No Rooms yet. Describe them to the Agent in this Home's Home Folder.</p>;
-  }
-  return levels
-    .toSorted((a, b) => a.storey - b.storey)
-    .map((level) => {
-      const onLevel = rooms.filter((room) => room.level === level.slug);
-      return (
-        <section key={level.slug}>
-          <h3>
-            {level.name} (Level {level.storey})
-          </h3>
-          {onLevel.length === 0 ? (
-            <p>No Rooms.</p>
-          ) : (
-            <ul>
-              {onLevel.map((room) => (
-                <li key={room.slug}>
-                  <Link to={`/homes/${home}/rooms/${room.slug}`}>{room.name}</Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      );
-    });
-}
-
-function ConstraintList({ home }: { home: string }) {
-  const [archived, setArchived] = useState(false);
-  const constraints = useConstraints(home, archived);
-  const shown = constraints.data?.constraints.filter((each) => archived || !each.archivedAt);
-  return (
-    <>
-      <label>
-        <input
-          type="checkbox"
-          checked={archived}
-          onChange={(event) => setArchived(event.target.checked)}
-        />{" "}
-        Show archived Constraints
-      </label>
-      {constraints.isError ? (
-        <p className={styles.error}>{constraints.error.message}</p>
-      ) : !shown ? (
-        <p>Loading…</p>
-      ) : shown.length === 0 ? (
-        <p>No Constraints{archived ? "" : " in force"}.</p>
-      ) : (
-        <ul>
-          {shown.map((constraint) => (
-            <li key={constraint.slug}>
-              {constraint.text}
-              {constraint.archivedAt && (
-                <>
-                  {" "}
-                  <ArchivedNote at={constraint.archivedAt} reason={constraint.archivedReason} />
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-function NoteList({ home }: { home: string }) {
-  const notes = useNotes(home);
-  if (notes.isPending) return <p>Loading…</p>;
-  if (notes.isError) return <p className={styles.error}>{notes.error.message}</p>;
-  if (notes.data.notes.length === 0) return <p>No Notes.</p>;
-  const newestFirst = notes.data.notes.toSorted(
-    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-  );
-  return (
-    <ul>
-      {newestFirst.map((note) => (
-        <li key={note.slug}>
-          {note.text} <span className={styles.muted}>{formatDate(note.createdAt)}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function HomeFolderSetup({ home }: { home: Home }) {
-  const queryClient = useQueryClient();
-  const setUp = useMutation({
-    mutationFn: (path: string) => call("set_up_home_folder", { home: home.slug, path }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.home(home.slug) }),
-  });
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setUp.mutate(String(new FormData(event.currentTarget).get("path") ?? "").trim());
-  }
-
-  return (
-    <>
-      <p>
-        {home.homeFolderPath ? (
-          <>
-            Set up at <code>{home.homeFolderPath}</code>.
+            <Link to={decisionPath(home, direction.slug)}>{direction.title}</Link>{" "}
+            <StatePill state={direction.state} />
           </>
         ) : (
-          "Not set up yet."
+          <span className={styles.muted}>not settled yet</span>
         )}
       </p>
-      <form className={styles.form} onSubmit={onSubmit}>
-        <label>
-          Path{" "}
-          <input
-            name="path"
-            defaultValue={home.homeFolderPath ?? `~/Homes/${home.slug}`}
-            required
-            size={40}
-          />
-        </label>
-        <button type="submit" disabled={setUp.isPending}>
-          Set up Home Folder
-        </button>
-      </form>
-      {setUp.isError && (
-        <p role="alert" className={styles.error}>
-          {setUp.error.message}
-        </p>
+      {palette ? (
+        <PaletteChips colors={palette.colors ?? []} />
+      ) : (
+        <EmptyState
+          text="No Palette yet"
+          prompt={buildPrompt({ skill: "Color", text: "let's choose my home's Palette" })}
+          homeFolderPath={homeFolderPath}
+        />
       )}
-      {setUp.isSuccess && (
-        <>
-          <p>
-            Wrote these files in <code>{setUp.data.path}</code>:
-          </p>
-          <ul>
-            {setUp.data.files.map((file) => (
-              <li key={file}>
-                <code>{file}</code>
-              </li>
-            ))}
-          </ul>
-          <p>
-            Open a terminal in that folder and run <code>claude</code>.
-          </p>
-        </>
-      )}
-    </>
+    </Section>
   );
 }
 
@@ -268,30 +326,20 @@ function SessionList({ home }: { home: string }) {
   const sessions = useSessions(home);
   if (sessions.isPending) return <p>Loading…</p>;
   if (sessions.isError) return <p className={styles.error}>{sessions.error.message}</p>;
-  if (sessions.data.sessions.length === 0) return <p>No Sessions yet.</p>;
-  const newestFirst = sessions.data.sessions.toSorted(
-    (a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt),
-  );
+  if (sessions.data.sessions.length === 0) return <p className={styles.muted}>No Sessions yet.</p>;
   return (
-    <ul>
-      {newestFirst.map((session) => (
-        <li key={session.slug}>
-          <p>
-            <strong>{session.skills.join(", ")}</strong>, opened {formatTime(session.openedAt)}
-            {session.closedAt ? `, closed ${formatTime(session.closedAt)}` : ", unsummarised"}
-          </p>
-          {session.summary && (
-            <dl className={styles.facts}>
-              <dt>Changed</dt>
-              <dd>{session.summary.changed}</dd>
-              <dt>Still open</dt>
-              <dd>{session.summary.open}</dd>
-              <dt>Next</dt>
-              <dd>{session.summary.next}</dd>
-            </dl>
-          )}
-        </li>
-      ))}
+    <ul className={page.sessions}>
+      {newestFirst(sessions.data.sessions)
+        .slice(0, RECENT_SESSIONS)
+        .map((session) => (
+          <li key={session.slug}>
+            <Link to={`/homes/${home}/sessions/${session.slug}`}>
+              {session.skills.map(skillName).join(", ") || "Session"}
+            </Link>
+            <span className={page.sessionDate}>{shortDate(session.openedAt)}</span>
+            {!session.summary && <span className={page.unsummarised}>unsummarised</span>}
+          </li>
+        ))}
     </ul>
   );
 }

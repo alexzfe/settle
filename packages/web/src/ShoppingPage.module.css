@@ -1,0 +1,140 @@
+/* The Shopping section as a calm checklist. */
+
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(14rem, 3fr) minmax(6rem, 1fr) minmax(9rem, 1.6fr) 5.5rem 7rem 6rem;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+.entry:last-child {
+  border-bottom: 0;
+}
+
+/* A quiet, empty checkbox: decorative, since buying is recorded through the Agent. */
+.box {
+  align-self: start;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.3rem;
+  border: 1.5px solid var(--color-stone);
+  border-radius: var(--radius-sm);
+}
+
+.what p {
+  margin: 0;
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+  font-size: var(--text-md);
+}
+
+.title a {
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  text-decoration: none;
+}
+
+.title a:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.statement,
+.so {
+  color: var(--color-ink-muted);
+}
+
+.so {
+  font-size: var(--text-xs);
+}
+
+.room a {
+  color: var(--color-ink);
+}
+
+.measure details ul {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-4);
+}
+
+.measureLabel {
+  color: var(--color-attention);
+}
+
+.measure summary {
+  cursor: pointer;
+}
+
+.listings {
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide {
+  text-align: right;
+}
+
+.downloads {
+  margin-top: var(--space-8);
+}
+
+.downloadsTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.downloadLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.downloadsNote {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 52rem) {
+  .entry {
+    grid-template-columns: 1.25rem 1fr auto;
+  }
+
+  .what {
+    grid-column: 2 / -1;
+  }
+
+  .room,
+  .measure,
+  .listings {
+    grid-column: 2 / 3;
+  }
+
+  .flag,
+  .guide {
+    grid-column: 3 / 4;
+    text-align: right;
+  }
+
+  .measure:empty,
+  .flag:empty,
+  .guide:empty {
+    display: none;
+  }
+}

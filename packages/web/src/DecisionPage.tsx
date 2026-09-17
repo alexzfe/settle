@@ -1,3 +1,5 @@
+import type { DesignDirectionContent } from "@idh/core";
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { Actions } from "./Actions";
 import styles from "./App.module.css";
@@ -9,19 +11,28 @@ import {
   type EvidenceEntry,
   type Flag,
 } from "./api";
+import page from "./DecisionPage.module.css";
 import {
   automaticBasisNote,
   decisionPath,
   KIND_LABEL,
+  KIND_SKILL,
   MOVES,
   RESOLUTION_LABEL,
   STATE_LABEL,
 } from "./decisions";
 import { FlagCause, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
+import { isSafeLink } from "./Markdown";
 import { PurchaseParts } from "./Purchase";
-import { useDecision } from "./queries";
-import { Swatch, SwatchSquare } from "./Swatch";
+import { useDecision, useHome } from "./queries";
+import { LrvBar, PaletteChips, Swatch, SwatchSquare } from "./Swatch";
+import { AgentWritten } from "./ui/AgentWritten";
+import { AskAgent, buildPrompt } from "./ui/AskAgent";
+import { Card } from "./ui/Card";
+import { useDocumentTitle } from "./ui/documentTitle";
+import { Section } from "./ui/Section";
+import { FlagMark, FulfilledNote, STATE_SYMBOL, StatePill } from "./ui/StatePill";
 import { Fact, Parts } from "./Values";
 
 const EVIDENCE_KIND: Record<EvidenceEntry["kind"], string> = {
@@ -34,14 +45,18 @@ const EVIDENCE_KIND: Record<EvidenceEntry["kind"], string> = {
 export function DecisionPage() {
   const { home = "", decision: slug = "" } = useParams();
   const decision = useDecision(home, slug);
+  useDocumentTitle(decision.data?.decision.title);
   if (decision.isPending) return <p>Loading…</p>;
   if (decision.isError) return <p className={styles.error}>{decision.error.message}</p>;
   return <DecisionSheet home={home} decision={decision.data.decision} />;
 }
 
 function DecisionSheet({ home, decision }: { home: string; decision: DecisionDetail }) {
+  const homeFolderPath = useHome(home).data?.home.homeFolderPath;
+  const skill = KIND_SKILL[decision.kind];
   const moves = MOVES[decision.state].map((move) => ({
     label: move.label,
+    consequence: move.consequence,
     post: (reason: string | undefined) =>
       call("set_decision_state", {
         home,
@@ -50,171 +65,208 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
         ...(reason ? { reason } : {}),
       }),
   }));
+  const openFlags = decision.flags.filter((flag) => !flag.clearedAt).length;
   return (
-    <>
-      <h1>{decision.title}</h1>
-      <dl className={styles.facts}>
-        <Fact term="Kind">{KIND_LABEL[decision.kind]}</Fact>
-        <Fact term="Scope">
+    <article className={page.sheet}>
+      <header className={page.header}>
+        <p className={page.eyebrow}>
+          {KIND_LABEL[decision.kind]} ·{" "}
           {decision.room ? (
             <Link to={`/homes/${home}/rooms/${decision.room.slug}`}>{decision.room.name}</Link>
           ) : (
             "Home-wide"
           )}
-        </Fact>
-        <Fact term="State">{STATE_LABEL[decision.state]}</Fact>
-        <Fact term="Fulfilled">{decision.fulfilledAt && formatDate(decision.fulfilledAt)}</Fact>
-      </dl>
-      <p>{decision.statement}</p>
-      <h2>Change its state</h2>
-      {/* Keyed by state, so a refusal from before the change does not linger after it. */}
-      <Actions key={decision.state} home={home} actions={moves} />
-      <Content home={home} decision={decision} />
-      <h2>Basis</h2>
-      {decision.basis.length === 0 ? (
-        <p>None: it rests on no other Decision.</p>
-      ) : (
-        <ul>
-          {decision.basis.map((entry) => (
-            <li key={entry.slug}>
-              <BasisLine home={home} entry={entry} />
-            </li>
-          ))}
-        </ul>
-      )}
-      <h2>Evidence</h2>
-      {decision.evidence.length === 0 ? (
-        <p>None recorded.</p>
-      ) : (
-        <ul>
-          {decision.evidence.map((entry) => (
-            <li key={`${entry.kind}:${entry.id}`}>
-              <EvidenceLine home={home} entry={entry} />
-            </li>
-          ))}
-        </ul>
-      )}
-      <h2>Flags</h2>
-      {decision.flags.length === 0 ? (
-        <p>None.</p>
-      ) : (
-        <ul>
-          {decision.flags.map((flag) => (
-            <li key={flag.slug}>
-              <FlagState home={home} flag={flag} />
-              {!flag.clearedAt && (
-                <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <h2>Conflicts</h2>
-      {decision.conflicts.length === 0 ? (
-        <p>None.</p>
-      ) : (
-        <ul>
-          {decision.conflicts.map((conflict) => (
-            <li key={conflict.slug}>
-              <ConflictState conflict={conflict} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
+        </p>
+        <h1 className={page.title}>{decision.title}</h1>
+        <p className={page.marks}>
+          <StatePill state={decision.state} />
+          {decision.fulfilledAt && (
+            <FulfilledNote>Fulfilled {formatDate(decision.fulfilledAt)}</FulfilledNote>
+          )}
+          {openFlags > 0 && (
+            <FlagMark>
+              <a href="#flags">
+                {openFlags === 1 ? "Needs review" : `${openFlags} flags need review`}
+              </a>
+            </FlagMark>
+          )}
+        </p>
+      </header>
+      <div className={page.layout}>
+        <div className={page.main}>
+          {decision.statement && (
+            <AgentWritten source={skill && `${skill} Session`} date={decision.createdAt}>
+              <p className={page.statement}>{decision.statement}</p>
+            </AgentWritten>
+          )}
+          <Content home={home} decision={decision} />
+          <Section title="Basis" id="basis">
+            {decision.basis.length === 0 ? (
+              <p className={styles.muted}>None: it rests on no other Decision.</p>
+            ) : (
+              <ul className={page.chips}>
+                {decision.basis.map((entry) => (
+                  <li key={entry.slug}>
+                    <BasisChip home={home} entry={entry} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section title="Evidence" id="evidence">
+            {decision.evidence.length === 0 ? (
+              <p className={styles.muted}>None recorded.</p>
+            ) : (
+              <ul className={page.evidence}>
+                {decision.evidence.map((entry) => (
+                  <li key={`${entry.kind}:${entry.id}`}>
+                    <EvidenceLine home={home} entry={entry} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section title="Flags" id="flags">
+            {decision.flags.length === 0 ? (
+              <p className={styles.muted}>None.</p>
+            ) : (
+              <ul className={page.marksList}>
+                {decision.flags.map((flag) => (
+                  <li key={flag.slug} className={flag.clearedAt ? page.settled : page.open}>
+                    <FlagState home={home} flag={flag} />
+                    {!flag.clearedAt && (
+                      <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+          <Section title="Conflicts" id="conflicts">
+            {decision.conflicts.length === 0 ? (
+              <p className={styles.muted}>None.</p>
+            ) : (
+              <ul className={page.marksList}>
+                {decision.conflicts.map((conflict) => (
+                  <li
+                    key={conflict.slug}
+                    className={conflict.resolvedAt ? page.settled : page.open}
+                  >
+                    <ConflictState conflict={conflict} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+        </div>
+        <aside className={page.side} aria-label="Change it">
+          <Card>
+            <h2 className={page.sideTitle}>Change its state</h2>
+            {/* Keyed by state, so a refusal from before the change does not linger after it. */}
+            <Actions key={decision.state} home={home} actions={moves} />
+          </Card>
+          <Card className={page.ask}>
+            <p className={page.askText}>Not sure? Talk it over with the Agent.</p>
+            <AskAgent
+              label="Talk this Decision through"
+              prompt={buildPrompt({
+                skill,
+                text: `let's talk through the Decision "${decision.title}"`,
+                slug: decision.slug,
+              })}
+              homeFolderPath={homeFolderPath}
+            />
+          </Card>
+        </aside>
+      </div>
+    </article>
   );
 }
 
 /** What the Decision decides, as its kind records it; an Other Decision has only its statement. */
 function Content({ home, decision }: { home: string; decision: DecisionDetail }) {
   switch (decision.kind) {
-    case "design-direction": {
-      const { content } = decision;
+    case "design-direction":
       return (
-        <>
-          <h2>Direction</h2>
-          <dl className={styles.facts}>
-            <Fact term="Mood">{content.mood}</Fact>
-            <Fact term="Color temperature">
-              {content.temperature && sentence(content.temperature)}
-            </Fact>
-            <Fact term="Contrast">{content.contrast && sentence(content.contrast)}</Fact>
-            <Fact term="Key materials">{content.keyMaterials?.join(", ")}</Fact>
-            <Fact term="Style references">{content.styleReferences?.join(", ")}</Fact>
-            <Fact term="Guiding principles">
-              {content.principles?.length ? (
-                <ul>
-                  {content.principles.map((principle) => (
-                    <li key={principle}>{principle}</li>
-                  ))}
-                </ul>
-              ) : undefined}
-            </Fact>
-          </dl>
-        </>
+        <Section title="Direction">
+          <Moodboard content={decision.content} />
+        </Section>
       );
-    }
     case "room-direction": {
       const { content } = decision;
       return (
-        <>
-          <h2>Direction</h2>
-          <p>{content.direction}</p>
+        <Section title="Direction">
+          <p className={`${page.direction} ${styles.reading}`}>{content.direction}</p>
           {(content.mood || content.contrast) && (
             <dl className={styles.facts}>
               <Fact term="Mood">{content.mood}</Fact>
               <Fact term="Contrast">{content.contrast && sentence(content.contrast)}</Fact>
             </dl>
           )}
-        </>
+        </Section>
       );
     }
     case "room-use": {
       const done = decision.fulfilment?.roomFunctions;
       return (
-        <>
-          <h2>Functions</h2>
-          <p>{decision.content.functions.map(words).join(", ")}</p>
+        <Section title="Functions">
+          <ul className={page.pills}>
+            {decision.content.functions.map((each) => (
+              <li key={each} className={page.pill}>
+                {sentence(words(each))}
+              </li>
+            ))}
+          </ul>
           {done && <p>Fulfilled as: {done.map(words).join(", ")}</p>}
-        </>
+        </Section>
       );
     }
     case "palette":
       return (
-        <>
-          <h2>Colors</h2>
-          <ul>
-            {decision.content.colors.map((color) => (
-              <li key={color.name}>
-                <Parts>
-                  <Swatch color={color} />
-                  {color.note}
-                </Parts>
+        <Section title="Colors">
+          <PaletteChips colors={decision.content.colors} />
+          <ul className={page.applications} aria-label="Where each color goes">
+            {decision.content.colors.map((color, index) => (
+              // Two colors may share a name, so the position keeps keys apart.
+              <li key={`${index}-${color.name}`}>
+                <span className={page.applicationName}>
+                  <SwatchSquare hex={color.hex} />
+                  {color.name}
+                </span>
+                <span className={page.applicationNote}>
+                  {sentence(color.role)}
+                  {color.note ? ` · ${color.note}` : ""}
+                </span>
+                {color.lrv !== undefined && <LrvBar lrv={color.lrv} />}
               </li>
             ))}
           </ul>
-        </>
+        </Section>
       );
     case "room-color": {
       const { content } = decision;
       const palette = decision.basis.find((entry) => entry.kind === "palette");
       const painted = decision.fulfilment?.color;
       return (
-        <>
-          <h2>Color</h2>
+        <Section title="Color">
+          {decision.paletteColor ? (
+            <div className={page.roomColor}>
+              <PaletteChips colors={[decision.paletteColor]} />
+              {decision.paletteColor.lrv !== undefined && (
+                <LrvBar lrv={decision.paletteColor.lrv} />
+              )}
+            </div>
+          ) : (
+            <p>
+              <Unresolved
+                name={content.color}
+                why={palette ? `not a color of ${palette.title}` : "no Palette in its Basis"}
+              />
+            </p>
+          )}
           <dl className={styles.facts}>
             <Fact term="Surface">{sentence(content.surface)}</Fact>
             <Fact term="Wall">{content.wall !== undefined && wallName(content.wall)}</Fact>
-            <Fact term="Color">
-              {decision.paletteColor ? (
-                <Swatch color={decision.paletteColor} />
-              ) : (
-                <Unresolved
-                  name={content.color}
-                  why={palette ? `not a color of ${palette.title}` : "no Palette in its Basis"}
-                />
-              )}
-            </Fact>
             <Fact term="Finish">{content.finish}</Fact>
           </dl>
           {painted && (
@@ -223,7 +275,7 @@ function Content({ home, decision }: { home: string; decision: DecisionDetail })
               {decision.fulfilment?.finish && `, ${decision.fulfilment.finish}`}
             </p>
           )}
-        </>
+        </Section>
       );
     }
     case "purchase":
@@ -233,15 +285,155 @@ function Content({ home, decision }: { home: string; decision: DecisionDetail })
   }
 }
 
-function BasisLine({ home, entry }: { home: string; entry: BasisEntry }) {
+export type Texture = "oak" | "linen" | "terracotta" | "brass" | "stone" | "neutral";
+
+const TEXTURE_WORDS: [Texture, RegExp][] = [
+  ["oak", /\b(oak|wood|walnut|ash|beech|pine|teak|timber|elm|birch|cherry|bamboo|rattan|cane)/i],
+  ["linen", /\b(linen|cotton|wool|boucl|jute|sisal|hemp|fabric|textile|cashmere|felt)/i],
+  ["terracotta", /\b(terracotta|terra cotta|clay|brick|ceramic|tile|earthenware|cork|leather)/i],
+  ["brass", /\b(brass|bronze|gold|copper|metal|steel|iron|chrome|nickel|aluminium)/i],
+  ["stone", /\b(stone|marble|travertine|limestone|slate|granite|concrete|plaster|terrazzo)/i],
+];
+
+/** Which small texture a key material's pill shows, by the words in it; neutral otherwise. */
+export function materialTexture(material: string): Texture {
+  return TEXTURE_WORDS.find(([, pattern]) => pattern.test(material))?.[0] ?? "neutral";
+}
+
+const TEMPERATURE_AT: Record<NonNullable<DesignDirectionContent["temperature"]>, number> = {
+  warm: 12,
+  neutral: 50,
+  cool: 88,
+};
+
+/**
+ * The Design Direction as a moodboard: the mood as a pull quote, key materials as textured pills,
+ * color temperature on a warm-to-cool bar, contrast as a pair of squares, the guiding principles
+ * numbered, style references as links, and a place kept for photos.
+ */
+function Moodboard({ content }: { content: DesignDirectionContent }) {
+  const { mood, temperature, contrast, keyMaterials, styleReferences, principles } = content;
   return (
-    <Parts>
+    <div className={page.moodboard}>
+      {mood && (
+        <figure className={page.mood}>
+          <p>{mood}</p>
+          <figcaption>Mood</figcaption>
+        </figure>
+      )}
+      {keyMaterials && keyMaterials.length > 0 && (
+        <Tile title="Key materials">
+          <ul className={page.pills}>
+            {keyMaterials.map((material) => (
+              <li key={material} className={page.pill}>
+                <span
+                  className={`${page.texture} ${page[`texture-${materialTexture(material)}`]}`}
+                  aria-hidden
+                />
+                {material}
+              </li>
+            ))}
+          </ul>
+        </Tile>
+      )}
+      {temperature && (
+        <Tile title="Color temperature">
+          <span className={page.temperature}>
+            <span
+              className={page.temperatureBar}
+              role="img"
+              aria-label={`${sentence(temperature)}, on a scale from warm to cool`}
+            >
+              <span
+                className={page.temperatureMarker}
+                style={{ left: `${TEMPERATURE_AT[temperature]}%` }}
+              />
+            </span>
+            <span className={page.scaleEnds} aria-hidden>
+              <span>Warm</span>
+              <span>Cool</span>
+            </span>
+            <strong>{sentence(temperature)}</strong>
+          </span>
+        </Tile>
+      )}
+      {contrast && (
+        <Tile title="Contrast">
+          <span className={page.contrast}>
+            <span
+              className={`${page.contrastPair} ${page[`contrast-${contrast}`]}`}
+              role="img"
+              aria-label={`${sentence(contrast)} contrast`}
+            >
+              <span />
+              <span />
+            </span>
+            <strong>{sentence(contrast)}</strong>
+          </span>
+        </Tile>
+      )}
+      {principles && principles.length > 0 && (
+        <Tile title="Guiding principles" wide>
+          <ol className={page.principles}>
+            {principles.map((principle) => (
+              <li key={principle}>{principle}</li>
+            ))}
+          </ol>
+        </Tile>
+      )}
+      {styleReferences && styleReferences.length > 0 && (
+        <Tile title="Style references">
+          <ul className={page.references}>
+            {styleReferences.map((reference) => (
+              <li key={reference}>
+                <a
+                  href={
+                    isSafeLink(reference)
+                      ? reference
+                      : `https://duckduckgo.com/?ia=images&iax=images&q=${encodeURIComponent(`${reference} interior`)}`
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {reference}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Tile>
+      )}
+      {/* Kept for inspiration photos, once the Home can hold them. */}
+      <div className={page.photos} aria-hidden />
+    </div>
+  );
+}
+
+function Tile({ title, wide, children }: { title: string; wide?: boolean; children: ReactNode }) {
+  return (
+    <section className={wide ? `${page.tile} ${page.wide}` : page.tile}>
+      <h3 className={page.tileTitle}>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** A Decision of the Basis as a chip: its state's symbol, its title, kind, and why it is there. */
+function BasisChip({ home, entry }: { home: string; entry: BasisEntry }) {
+  return (
+    <span className={`${page.chip} ${page[`state-${entry.state}`]}`}>
+      <span className={page.dot} title={STATE_LABEL[entry.state]} aria-hidden>
+        {STATE_SYMBOL[entry.state]}
+      </span>
       <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
-      {KIND_LABEL[entry.kind]}
-      {STATE_LABEL[entry.state]}
-      {entry.fulfilledAt && "Fulfilled"}
-      {entry.automatic && automaticBasisNote(entry.kind)}
-    </Parts>
+      <span className={page.chipMeta}>
+        <Parts>
+          {KIND_LABEL[entry.kind]}
+          {STATE_LABEL[entry.state]}
+          {entry.fulfilledAt && "Fulfilled"}
+          {entry.automatic && automaticBasisNote(entry.kind)}
+        </Parts>
+      </span>
+    </span>
   );
 }
 
@@ -255,16 +447,31 @@ function Unresolved({ name, why }: { name: string; why: string }) {
   );
 }
 
+/**
+ * "Supports · Note", then what it is: a Decision as a chip, a Note in the user's words as a
+ * quote, a Session by its day; and its reason, in the user's words, quoted.
+ */
 function EvidenceLine({ home, entry }: { home: string; entry: EvidenceEntry }) {
   return (
     <>
-      <strong>{sentence(entry.stance)}</strong>: {EVIDENCE_KIND[entry.kind]}{" "}
+      <span className={`${page.stance} ${page[entry.stance]}`}>
+        {sentence(entry.stance)} · {EVIDENCE_KIND[entry.kind]}
+      </span>{" "}
       {entry.kind === "decision" ? (
-        <Link to={decisionPath(home, entry.id)}>{entry.name}</Link>
+        <Link className={page.chip} to={decisionPath(home, entry.id)}>
+          {entry.name}
+        </Link>
+      ) : entry.kind === "note" ? (
+        <q className={page.quote}>{entry.name}</q>
       ) : (
-        entry.name
+        <span>{entry.name}</span>
       )}
-      {entry.note && ` (${entry.note})`}
+      {entry.note && (
+        <>
+          {" "}
+          <q className={page.quote}>{entry.note}</q>
+        </>
+      )}
     </>
   );
 }
@@ -278,18 +485,23 @@ function settled(at: string | undefined, verb: string, mark: Flag | Conflict): s
 
 function FlagState({ home, flag }: { home: string; flag: Flag }) {
   return (
-    <>
+    <p className={page.markLine}>
+      {!flag.clearedAt && (
+        <>
+          <FlagMark />{" "}
+        </>
+      )}
       <FlagCause home={home} flag={flag} />, raised {formatDate(flag.raisedAt)}:{" "}
       {settled(flag.clearedAt, "cleared", flag)}
-    </>
+    </p>
   );
 }
 
 function ConflictState({ conflict }: { conflict: Conflict }) {
   return (
-    <>
+    <p className={page.markLine}>
       {conflict.description}, raised {formatDate(conflict.raisedAt)}:{" "}
       {settled(conflict.resolvedAt, "resolved", conflict)}
-    </>
+    </p>
   );
 }

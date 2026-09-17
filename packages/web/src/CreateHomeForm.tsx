@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import styles from "./App.module.css";
 import { ApiError, call, type Operations } from "./api";
+import layout from "./CreateHomeForm.module.css";
 import { queryKeys } from "./queries";
 
 /**
@@ -38,9 +39,9 @@ export function CreateHomeForm() {
   }
 
   return (
-    <form className={styles.form} onSubmit={onSubmit}>
-      <label>
-        Name <input name="name" required />
+    <form className={`${styles.form} ${layout.form}`} onSubmit={onSubmit}>
+      <label className={layout.wide}>
+        Name <input name="name" required placeholder="Our flat" />
       </label>
       <label>
         Country <input name="country" required />
@@ -49,15 +50,15 @@ export function CreateHomeForm() {
         City <input name="city" required />
       </label>
       {askLatitude && (
-        <label>
+        <label className={layout.wide}>
           Latitude <input name="latitude" type="number" step="any" min={-90} max={90} required />
         </label>
       )}
-      <button type="submit" disabled={createHome.isPending}>
+      <button type="submit" className={layout.wide} disabled={createHome.isPending}>
         Create Home
       </button>
       {createHome.isError && (
-        <p role="alert" className={styles.error}>
+        <p role="alert" className={`${styles.error} ${layout.wide}`}>
           {createHome.error.message}
         </p>
       )}

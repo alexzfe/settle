@@ -1,0 +1,280 @@
+/* The shared components' styles. Values come from tokens.css. */
+
+/* StatePill: symbol plus name, colored by state. */
+.pill {
+  display: inline-flex;
+  gap: 0.3em;
+  align-items: center;
+  padding: 0.05em 0.55em;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.candidate {
+  border-color: var(--color-hairline);
+  background: var(--color-card);
+  color: var(--color-ink-muted);
+}
+
+.leaning {
+  background: var(--color-attention-bg);
+  color: var(--color-attention);
+}
+
+.locked {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.rejected {
+  border-color: var(--color-hairline);
+  color: var(--color-ink-muted);
+  opacity: 0.7;
+}
+
+.rejected .pillLabel {
+  text-decoration: line-through;
+}
+
+.fulfilled {
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.flagMark {
+  color: var(--color-attention);
+  font-size: var(--text-sm);
+}
+
+/* AskAgent. */
+.askAgent {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.askAgent button {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.askAgentNote {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.askAgentNote:empty {
+  display: none;
+}
+
+.selectable {
+  user-select: all;
+  word-break: break-all;
+}
+
+/* AgentWritten. */
+.agentWritten {
+  margin-block: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-agent-bg);
+}
+
+.agentLabel {
+  margin: 0 0 var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+
+.agentBody > :first-child {
+  margin-top: 0;
+}
+
+.agentBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* Card and Section. */
+.card {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.section {
+  margin-block: var(--space-8);
+}
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.sectionTitle {
+  margin: 0;
+}
+
+.sectionAction {
+  font-size: var(--text-sm);
+}
+
+/* EmptyState. */
+.empty {
+  padding: var(--space-5);
+  border: 1px dashed var(--color-hairline);
+  border-radius: var(--radius);
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.empty p {
+  margin-top: 0;
+}
+
+/* Callout: a colored left rule and a soft ground by tone. */
+.callout {
+  margin-block: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.callout.tip {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.callout.important {
+  border-color: var(--color-attention);
+  background: var(--color-attention-bg);
+}
+
+.callout.warning {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.calloutTitle {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.tip .calloutTitle {
+  color: var(--color-accent-strong);
+}
+
+.important .calloutTitle {
+  color: var(--color-attention);
+}
+
+.warning .calloutTitle {
+  color: var(--color-error);
+}
+
+.calloutBody > :first-child {
+  margin-top: 0;
+}
+
+.calloutBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* LivePill. */
+.live {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.live button {
+  padding: 0.1rem var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.liveDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-stone);
+}
+
+.live-live .liveDot {
+  background: var(--color-accent);
+}
+
+.live-reconnecting {
+  color: var(--color-attention);
+}
+
+.live-reconnecting .liveDot {
+  background: var(--color-attention);
+}
+
+.live-stopped {
+  color: var(--color-error);
+}
+
+.live-stopped .liveDot {
+  background: var(--color-error);
+}
+
+/* ThemeToggle: three small segments, the current one filled. */
+.themeToggle {
+  display: inline-flex;
+  padding: 0;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+}
+
+.themeToggle button {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.themeToggle button:first-child {
+  border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px);
+}
+
+.themeToggle button:last-child {
+  border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
+}
+
+.themeToggle button + button {
+  border-left: 1px solid var(--color-hairline);
+}
+
+.themeToggle button:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.themeToggle button[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}

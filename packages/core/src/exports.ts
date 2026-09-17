@@ -1,10 +1,17 @@
-import type { DecisionDetail, FullGuide, Listing, QuickGuideLine } from "./operations/schemas.js";
-import { DECISION_STATE_LABELS as STATES } from "./render.js";
+import type {
+  DecisionDetail,
+  Flag,
+  FullGuide,
+  Listing,
+  QuickGuideLine,
+} from "./operations/schemas.js";
+import { fieldLabel, DECISION_STATE_LABELS as STATES } from "./render.js";
 
 // The files the web serves as they are, rendered from stored data only (docs/poc-design.md#web-ui):
 // the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and
 // Markdown, and the Quick Guide's phone page. Every page is static HTML with no JavaScript, and
-// every stored text is escaped, the Full Guide's Markdown included.
+// every stored text is escaped, the Full Guide's Markdown included. The pages share the web app's
+// "paper and ink" look, with its values copied into their own styles so each file stands alone.
 
 /** The Home an export is for. */
 export interface ExportHome {
@@ -56,12 +63,19 @@ function csvCell(value: string): string {
   return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }
 
-/** The Shopping List as a printable page: each Purchase with a box to tick. */
-export function renderShoppingListPage(home: ExportHome, purchases: DecisionDetail[]): string {
+/**
+ * The Shopping List as a printable page: each Purchase with a box to tick, its state, its open
+ * Flags, and its Measure first lines as instructions with room to write the measurement.
+ */
+export function renderShoppingListPage(
+  home: ExportHome,
+  purchases: DecisionDetail[],
+  generatedAt: string,
+): string {
   const body = [
     "<header>",
+    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt)}</p>`,
     "<h1>Shopping List</h1>",
-    `<p class="home">${escapeHtml(home.name)}</p>`,
     "</header>",
   ];
   if (purchases.length === 0) {
@@ -71,17 +85,19 @@ export function renderShoppingListPage(home: ExportHome, purchases: DecisionDeta
   }
   for (const purchase of purchases) {
     body.push(
-      '<section class="purchase">',
+      `<section class="${purchaseClass(purchase)}">`,
       `<h2><span class="box"></span>${escapeHtml(purchase.title)}</h2>`,
-      `<p class="meta">${escapeHtml(place(purchase))}</p>`,
+      `<p class="meta">${stateHtml(purchase)} · ${escapeHtml(place(purchase))}</p>`,
+      ...flagsHtml(purchase),
       `<p>${escapeHtml(purchase.statement)}</p>`,
-      ...measureFirstHtml(purchase),
-      ...listHtml(3, "Must", requirementTexts(purchase, "must")),
-      ...listHtml(3, "Prefer", requirementTexts(purchase, "prefer")),
+      ...measureFirstHtml(3, purchase),
+      ...checksHtml(3, "Must", requirementTexts(purchase, "must"), { numbers: true }),
+      ...checksHtml(3, "Prefer", requirementTexts(purchase, "prefer")),
       ...listHtml(3, "Listings", purchase.listings.map(listingText)),
       "</section>",
     );
   }
+  body.push(footerHtml(generatedAt));
   return htmlPage(`Shopping List: ${home.name}`, PRINT_STYLE, body);
 }
 
@@ -130,31 +146,40 @@ export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail
   return `${out.join("\n")}\n`;
 }
 
-/** The Shopping Guides as a printable page, each Purchase on a page of its own. */
-export function renderGuidesPage(home: ExportHome, purchases: DecisionDetail[]): string {
+/**
+ * The Shopping Guides as a printable page, each Purchase on a page of its own under a header
+ * naming the Home, its Room, and the day: its Quick Guide kept to one page when it fits, the
+ * blanks to bring back to the Agent, then its Full Guide.
+ */
+export function renderGuidesPage(
+  home: ExportHome,
+  purchases: DecisionDetail[],
+  generatedAt: string,
+): string {
   const body = [
     "<header>",
+    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt)}</p>`,
     "<h1>Shopping Guides</h1>",
-    `<p class="home">${escapeHtml(home.name)}</p>`,
     "</header>",
   ];
   if (purchases.length === 0) body.push("<p>No Purchase has Guides yet.</p>");
   for (const purchase of purchases) {
     body.push(
-      '<article class="purchase guide">',
+      `<article class="${purchaseClass(purchase)} guide">`,
+      `<p class="running">${escapeHtml(home.name)} · ${escapeHtml(place(purchase))} · ` +
+        `${longDay(generatedAt)}</p>`,
       `<h2>${escapeHtml(purchase.title)}</h2>`,
-      `<p class="meta">${escapeHtml(about(purchase))}</p>`,
+      `<p class="meta">${stateHtml(purchase)}</p>`,
+      ...flagsHtml(purchase),
       `<p>${escapeHtml(purchase.statement)}</p>`,
     );
     const bought = boughtText(purchase);
-    if (bought) body.push(`<p><strong>${escapeHtml(bought)}</strong></p>`);
-    body.push("<h3>Quick Guide</h3>", ...measureFirstHtml(purchase));
-    for (const [label, lines] of quickSections(purchase)) body.push(...listHtml(4, label, lines));
-    if (linesOf(purchase, "measure-first").length === 0 && quickSections(purchase).length === 0) {
-      body.push("<p>Nothing to check yet: it has no Requirements.</p>");
-    }
-    body.push("<h3>Full Guide</h3>");
+    if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
+    body.push('<section class="quick">', "<h3>Quick Guide</h3>", ...quickGuideHtml(4, purchase));
+    body.push("</section>");
+    if (!bought) body.push(bringBackHtml(3));
     const full = purchase.guides?.fullGuide;
+    body.push('<section class="full">', "<h3>Full Guide</h3>");
     if (full?.markdown === undefined) body.push("<p>No Full Guide written yet.</p>");
     else {
       body.push(
@@ -162,8 +187,9 @@ export function renderGuidesPage(home: ExportHome, purchases: DecisionDetail[]):
         markdownToHtml(full.markdown, 4),
       );
     }
-    body.push("</article>");
+    body.push("</section>", "</article>");
   }
+  body.push(footerHtml(generatedAt));
   return htmlPage(`Shopping Guides: ${home.name}`, PRINT_STYLE, body);
 }
 
@@ -180,29 +206,27 @@ function fullGuideState(full: FullGuide): string {
 // ─── The phone page ─────────────────────────────────────────────────────────────────────────
 
 /**
- * The Quick Guide on a phone in the shop: Measure first at the top, then the musts, the prefers,
- * and the AI's own lines, with the Full Guide folded away under one tap. No JavaScript.
+ * The Quick Guide on a phone in the shop, in three blocks big enough to read while holding a
+ * sample: Measure first, the musts, then the prefers and the AI's own lines. The Full Guide is
+ * folded away under one tap, and the page ends with the day it was made and the blanks to bring
+ * back to the Agent. No JavaScript.
  */
-export function renderGuidePage(home: ExportHome, purchase: DecisionDetail): string {
+export function renderGuidePage(
+  home: ExportHome,
+  purchase: DecisionDetail,
+  generatedAt: string,
+): string {
   const body = [
     "<main>",
+    "<header>",
     `<p class="home">${escapeHtml(home.name)} · ${escapeHtml(place(purchase))}</p>`,
     `<h1>${escapeHtml(purchase.title)}</h1>`,
     `<p>${escapeHtml(purchase.statement)}</p>`,
+    "</header>",
   ];
   const bought = boughtText(purchase);
-  if (bought) body.push(`<p class="done">${escapeHtml(bought)}</p>`);
-  const measure = linesOf(purchase, "measure-first");
-  if (measure.length > 0) {
-    body.push('<section class="measure">', ...listHtml(2, "Measure first", measure), "</section>");
-  }
-  const sections = quickSections(purchase);
-  for (const [label, lines] of sections) {
-    body.push("<section>", ...listHtml(2, label, lines), "</section>");
-  }
-  if (measure.length === 0 && sections.length === 0) {
-    body.push("<p>Nothing to check yet: this Purchase has no Requirements.</p>");
-  }
+  if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
+  body.push(...quickGuideHtml(2, purchase));
   const full = purchase.guides?.fullGuide;
   if (full?.markdown !== undefined) {
     body.push("<details>", "<summary>Full Guide</summary>");
@@ -211,7 +235,9 @@ export function renderGuidePage(home: ExportHome, purchase: DecisionDetail): str
     }
     body.push(markdownToHtml(full.markdown, 3), "</details>");
   }
-  body.push("</main>");
+  body.push("<footer>");
+  if (!bought) body.push(bringBackHtml(2));
+  body.push(footerHtml(generatedAt), "</footer>", "</main>");
   return htmlPage(`${purchase.title}: Quick Guide`, PHONE_STYLE, body);
 }
 
@@ -234,6 +260,40 @@ function quickSections(purchase: DecisionDetail): [string, string[]][] {
     ["In the shop", linesOf(purchase, "line")],
   ];
   return sections.filter(([, lines]) => lines.length > 0);
+}
+
+/**
+ * The Quick Guide as three blocks: Measure first, Must, then Prefer and In the shop together.
+ * Must and Prefer lines get a box to tick, and a must's numbers are bold.
+ */
+function quickGuideHtml(level: number, purchase: DecisionDetail): string[] {
+  const measure = linesOf(purchase, "measure-first");
+  const must = linesOf(purchase, "must");
+  const prefer = linesOf(purchase, "prefer");
+  const shop = linesOf(purchase, "line");
+  if (measure.length + must.length + prefer.length + shop.length === 0) {
+    return ["<p>Nothing to check yet: this Purchase has no Requirements.</p>"];
+  }
+  const out: string[] = [];
+  if (measure.length > 0) {
+    out.push(...measureFirstHtml(level, purchase));
+  }
+  if (must.length > 0) {
+    out.push(
+      '<section class="block must">',
+      ...checksHtml(level, "Must", must, { numbers: true }),
+      "</section>",
+    );
+  }
+  if (prefer.length + shop.length > 0) {
+    out.push(
+      '<section class="block prefer">',
+      ...checksHtml(level, "Prefer", prefer),
+      ...listHtml(level, "In the shop", shop),
+      "</section>",
+    );
+  }
+  return out;
 }
 
 function requirementTexts(purchase: DecisionDetail, strength: "must" | "prefer"): string[] {
@@ -265,10 +325,131 @@ function boughtText(purchase: DecisionDetail): string | undefined {
 
 const day = (timestamp: string) => timestamp.slice(0, 10);
 
-function measureFirstHtml(purchase: DecisionDetail): string[] {
-  return linesOf(purchase, "measure-first").map(
-    (line) => `<p class="measure"><strong>Measure first:</strong> ${escapeHtml(line)}</p>`,
-  );
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "14 Sep 2026". */
+function longDay(timestamp: string): string {
+  const [year, month, date] = day(timestamp).split("-");
+  return `${Number(date)} ${MONTHS[Number(month) - 1] ?? month} ${year}`;
+}
+
+const SYMBOLS: Record<DecisionDetail["state"], string> = {
+  candidate: "○",
+  leaning: "◐",
+  locked: "●",
+  rejected: "✕",
+};
+
+const considering = (purchase: DecisionDetail) =>
+  purchase.state === "candidate" || purchase.state === "leaning";
+
+function purchaseClass(purchase: DecisionDetail): string {
+  return `purchase${considering(purchase) ? " considering" : ""}`;
+}
+
+/** "● Locked", or "◐ Leaning · Considering: not committed to yet". */
+function stateHtml(purchase: DecisionDetail): string {
+  const state = `<span class="state ${purchase.state}">${SYMBOLS[purchase.state]} ${STATES[purchase.state]}</span>`;
+  return considering(purchase)
+    ? `${state} · <span class="tag">Considering: not committed to yet</span>`
+    : state;
+}
+
+const FLAG_CAUSES: Record<Flag["cause"], string> = {
+  reopened: "was reopened",
+  rejected: "was rejected",
+  deviation: "was Fulfilled with a Deviation from a must Requirement",
+  value_changed: "changed",
+};
+
+/** A Purchase's open Flags: "⚑ Flagged 14 Sep 2026: Warm clay was reopened. Review it." */
+function flagsHtml(purchase: DecisionDetail): string[] {
+  if (purchase.openFlags.length === 0) return [];
+  return [
+    '<ul class="flags">',
+    ...purchase.openFlags.map((flag) => {
+      const cause =
+        flag.cause === "value_changed" && flag.source.field
+          ? `${fieldLabel(flag.source.field)} changed`
+          : FLAG_CAUSES[flag.cause];
+      return (
+        `<li>⚑ Flagged ${longDay(flag.raisedAt)}: ${escapeHtml(flag.source.name)} ${escapeHtml(cause)}. ` +
+        "Review it before buying.</li>"
+      );
+    }),
+    "</ul>",
+  ];
+}
+
+/**
+ * A Measure first line as an instruction with a blank for the measurement:
+ * "living-room/wall-5 length (~3.70 m)" becomes
+ * "Living room · Wall 5 · length. Recorded ~370 cm (estimate). Measured: ____ cm".
+ */
+function measureInstruction(purchase: DecisionDetail, line: string): string {
+  const blank = 'Measured: <span class="blank"></span> cm';
+  const parsed = /^(.*?) \((?:(~?)(\d+(?:\.\d+)?) m|(not recorded))\)$/.exec(line);
+  if (!parsed?.[1]) return `${escapeHtml(line)}. ${blank}`;
+  const [, what, tilde, metres] = parsed;
+  const recorded =
+    metres === undefined
+      ? "Not recorded yet."
+      : `Recorded <span class="num">${tilde}${Math.round(Number(metres) * 100)} cm</span>` +
+        `${tilde ? " (estimate)" : ""}.`;
+  return `${escapeHtml(measurePlace(purchase, what))}. ${recorded} ${blank}`;
+}
+
+/** "living-room/wall-5 length" as "Living room · Wall 5 · length"; a Home's field alone, capitalised. */
+function measurePlace(purchase: DecisionDetail, what: string): string {
+  const named = /^(.+?) \(([^()\s]+)\) (.+)$/.exec(what);
+  if (named?.[1] && named[3]) return `${named[1]} · ${named[3]}`;
+  const slugged = /^(\S*[-/]\S*) (.+)$/.exec(what);
+  if (!slugged?.[1] || !slugged[2]) return capitalise(what);
+  const parts = slugged[1]
+    .split("/")
+    .map((part) =>
+      part === purchase.room?.slug ? purchase.room.name : capitalise(part.replaceAll("-", " ")),
+    );
+  return [...parts, slugged[2]].join(" · ");
+}
+
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+function measureFirstHtml(level: number, purchase: DecisionDetail): string[] {
+  const lines = linesOf(purchase, "measure-first");
+  if (lines.length === 0) return [];
+  return [
+    '<section class="block measure">',
+    `<h${level}>Measure first</h${level}>`,
+    '<ul class="measure-lines">',
+    ...lines.map((line) => `<li>${measureInstruction(purchase, line)}</li>`),
+    "</ul>",
+    "</section>",
+  ];
+}
+
+/** Numbers with their units, as a must's bold figures: "2.0 × 1.4 m", "£450", "85 cm". */
+const NUMBER =
+  /(?:[£€$]\s?)?\d+(?:[.,]\d+)?(?:\s?[×x]\s?\d+(?:[.,]\d+)?)*(?:\s?(?:mm|cm|m²|m|kg|kW|W|K|lm|%)(?!\w))?/g;
+
+/** A list whose lines each get a box to tick; with `numbers`, their figures are bold. */
+function checksHtml(
+  level: number,
+  title: string,
+  items: string[],
+  { numbers = false } = {},
+): string[] {
+  if (items.length === 0) return [];
+  const text = (item: string) =>
+    numbers
+      ? escapeHtml(item).replace(NUMBER, (figure) => `<strong class="num">${figure}</strong>`)
+      : escapeHtml(item);
+  return [
+    `<h${level}>${escapeHtml(title)}</h${level}>`,
+    '<ul class="checks">',
+    ...items.map((item) => `<li>${text(item)}</li>`),
+    "</ul>",
+  ];
 }
 
 function listHtml(level: number, title: string, items: string[]): string[] {
@@ -279,6 +460,28 @@ function listHtml(level: number, title: string, items: string[]): string[] {
     ...items.map((item) => `<li>${escapeHtml(item)}</li>`),
     "</ul>",
   ];
+}
+
+/** The blanks to fill in at the shop and hand back to the Agent. */
+function bringBackHtml(level: number): string {
+  const blank = (label: string) =>
+    `<p class="fill"><span>${label}</span> <span class="blank wide"></span></p>`;
+  return [
+    '<section class="bring-back">',
+    `<h${level}>Bring back to the Agent</h${level}>`,
+    blank("Found or bought"),
+    blank("Link or model"),
+    blank("Dimensions"),
+    blank("What differs from the Requirements"),
+    "</section>",
+  ].join("\n");
+}
+
+function footerHtml(generatedAt: string): string {
+  return (
+    `<p class="generated">Copy generated ${longDay(generatedAt)}. ` +
+    "It won't update; ask the Agent for a fresh one.</p>"
+  );
 }
 
 export function escapeHtml(text: string): string {
@@ -308,51 +511,136 @@ function htmlPage(title: string, style: string, body: string[]): string {
   ].join("\n");
 }
 
+// The styles copy the web app's tokens (packages/web/src/tokens.css): paper #f6f3ee, card
+// #fbfaf7, ink #2a2724, muted ink #6b655d, hairline #e3ded6, olive accent #5e6b4e, attention
+// #f3e6c4 on #8a6414, a serif for headings and a sans for text. Newsreader and Inter are named
+// first but not bundled, so a file opened offline falls back to Georgia and the system sans.
+// Section names are kept out of the styles, so a page's text is the only place they appear.
+
 const PRINT_STYLE = `
-body { font: 11pt/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
+:root { color-scheme: light; --paper: #f6f3ee; --card: #fbfaf7; --ink: #2a2724; --muted: #6b655d;
+  --hairline: #e3ded6; --accent: #5e6b4e; --mark: #f3e6c4; --mark-ink: #8a6414; }
+body { font: 10.5pt/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums; background: var(--paper); color: var(--ink);
   max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
-h1 { font-size: 1.6rem; margin: 0; }
-h2 { font-size: 1.25rem; margin: 0 0 0.2rem; }
-h3, h4 { margin: 1rem 0 0.3rem; }
-.home, .meta { color: #555; margin: 0.2rem 0 0; }
-.purchase { border-top: 1px solid #ccc; margin-top: 1.5rem; padding-top: 1rem; break-inside: avoid; }
-.box { display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid #333;
-  margin-right: 0.5em; vertical-align: -0.05em; }
-.measure { background: #fff4d6; border-left: 4px solid #d99a00; padding: 0.3rem 0.6rem; }
-ul { margin: 0.2rem 0; padding-left: 1.3rem; }
+h1, h2, h3 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
+  line-height: 1.2; letter-spacing: -0.01em; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0; }
+h2 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+h3 { font-size: 1.2rem; margin: 1.25rem 0 0.5rem; }
+h4 { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin: 1rem 0 0.25rem; }
+h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+p { margin: 0.25rem 0 0.5rem; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
+.running, .meta, .generated { color: var(--muted); font-size: 0.85rem; margin: 0; }
+.purchase { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
+  margin-top: 1.5rem; padding: 1rem 1.25rem; break-inside: avoid; }
+.purchase > .running { margin-bottom: 0.5rem; }
+.considering { border-style: dashed; border-color: var(--muted); }
+.state { font-weight: 600; color: var(--ink); }
+.state.leaning, .tag { color: var(--mark-ink); }
+.state.locked { color: var(--accent); }
+.tag { font-weight: 600; }
+.box { display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid var(--ink);
+  border-radius: 2px; margin-right: 0.5em; vertical-align: -0.02em; }
+ul { margin: 0.25rem 0; padding-left: 1.3rem; }
+li { margin: 0.2rem 0; break-inside: avoid; }
+ul.checks, ul.flags, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks li { position: relative; padding-left: 1.6em; }
+ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.85em;
+  height: 0.85em; border: 1.5px solid var(--ink); border-radius: 2px; }
+ul.flags li { background: var(--mark); color: var(--mark-ink); border-left: 3px solid var(--mark-ink);
+  border-radius: 4px; padding: 0.2rem 0.6rem; font-weight: 600; }
+.block { margin-top: 0.75rem; }
+.block.measure { background: var(--mark); border-left: 4px solid var(--mark-ink);
+  border-radius: 6px; padding: 0.25rem 0.9rem 0.5rem; }
+.block.measure h4, .block.measure h3 { color: var(--mark-ink); }
+ul.measure-lines li { padding-bottom: 0.6rem; }
+.blank { display: inline-block; min-width: 5em; border-bottom: 1px solid var(--ink);
+  vertical-align: baseline; height: 1em; }
+.blank.wide { min-width: 0; flex: 1; }
+.num { font-variant-numeric: tabular-nums; }
+.done { font-weight: 600; color: var(--accent); }
+.bring-back { border: 1px solid var(--hairline); border-radius: 6px; margin-top: 1rem;
+  padding: 0.25rem 1rem 0.75rem; break-inside: avoid; }
+.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+.fill > span:first-child { white-space: nowrap; color: var(--muted); }
+.full { margin-top: 1rem; }
+header + .generated, .generated:last-child { margin-top: 1.5rem; }
 @media print {
-  body { margin: 0; max-width: none; }
+  @page { margin: 16mm 14mm; }
+  body { background: none; margin: 0; max-width: none; padding: 0; font-size: 10.5pt; }
   a { color: inherit; }
-  .guide { break-inside: auto; }
-  .guide + .guide { break-before: page; border-top: none; }
+  .purchase { background: none; border: none; border-top: 1px solid #999; border-radius: 0;
+    padding: 0.75rem 0 0; }
+  .considering { border-top: 2px dashed #555; }
+  .block.measure, ul.flags li { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .block.measure { border-left-color: #333; }
+  ul.flags li { border-left-color: #333; }
+  .guide { break-inside: auto; border-top: none; padding-top: 0; }
+  .guide + .guide { break-before: page; }
+  .quick { break-inside: avoid; }
+  .full { break-before: auto; }
 }
 `;
 
 const PHONE_STYLE = `
-:root { color-scheme: light dark; --ink: #1a1a1a; --muted: #5c5c5c; --paper: #fff;
-  --mark: #fff4d6; --edge: #d99a00; }
+:root { color-scheme: light dark; --ink: #2a2724; --muted: #6b655d; --paper: #f6f3ee;
+  --card: #fbfaf7; --hairline: #e3ded6; --accent: #5e6b4e; --mark: #f3e6c4; --mark-ink: #8a6414; }
 @media (prefers-color-scheme: dark) {
-  :root { --ink: #ececec; --muted: #a8a8a8; --paper: #141414; --mark: #3a2e0c; --edge: #e0a82e; }
+  :root { --ink: #ece6dc; --muted: #aaa196; --paper: #1d1b18; --card: #26231f; --hairline: #3a352f;
+    --accent: #aab894; --mark: #3a2f1a; --mark-ink: #e3b95c; }
 }
 body { margin: 0; background: var(--paper); color: var(--ink);
-  font: 1.125rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1.125rem/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 main { max-width: 38rem; margin: 0 auto; padding: 1rem 1.1rem 3rem; }
-h1 { font-size: 1.6rem; line-height: 1.2; margin: 0.2rem 0 0.4rem; }
-h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
-  margin: 1.4rem 0 0.3rem; }
-h3, h4, h5, h6 { font-size: 1.1rem; margin: 1.2rem 0 0.3rem; }
+h1, h3, h4, h5, h6 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
+  line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0.5rem; letter-spacing: -0.01em; }
+h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 0.4rem; }
+h3, h4, h5, h6 { font-size: 1.3rem; margin: 1.2rem 0 0.3rem; }
 p { margin: 0.4rem 0; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
 .home { color: var(--muted); font-size: 0.95rem; margin: 0; }
 ul { margin: 0; padding-left: 1.3rem; }
-li { margin: 0.4rem 0; }
-.measure { background: var(--mark); border-left: 5px solid var(--edge); border-radius: 4px;
-  padding: 0.1rem 0.9rem 0.5rem; margin-top: 1rem; }
-.measure h2 { color: var(--ink); }
-.done, .stale { font-weight: 600; }
-details { margin-top: 2rem; border-top: 1px solid var(--muted); padding-top: 0.6rem; }
-summary { font-weight: 600; padding: 0.5rem 0; }
-a { color: inherit; }
+li { margin: 0.5rem 0; }
+.block { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
+  padding: 0.9rem 1rem 0.6rem; margin-top: 1rem; }
+.block h2 + ul + h2 { margin-top: 1.1rem; }
+.block.measure { background: var(--mark); border: none; border-left: 5px solid var(--mark-ink); }
+.block.measure h2 { color: var(--mark-ink); }
+.num { font-weight: 700; }
+ul.checks, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks li { position: relative; padding-left: 1.7em; }
+ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
+  height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
+ul.measure-lines li + li { margin-top: 0.9rem; }
+.block.must li { font-size: 1.25rem; }
+.blank { display: inline-block; min-width: 4em; border-bottom: 1.5px solid currentColor;
+  height: 1em; vertical-align: baseline; }
+.done { font-weight: 600; color: var(--accent); }
+.stale { font-weight: 600; color: var(--mark-ink); }
+details { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 0.6rem; }
+summary { font-family: "Newsreader", Georgia, serif; font-size: 1.3rem; padding: 0.5rem 0; }
+footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
+.bring-back { border: 1px dashed var(--muted); border-radius: 6px; padding: 0.9rem 1rem 1rem; }
+.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+.fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
+.blank.wide { min-width: 0; flex: 1; }
+.generated { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
+@media print {
+  :root { color-scheme: light; --ink: #2a2724; --muted: #555; --paper: #fff; --card: #fff;
+    --hairline: #999; --mark: #f3e6c4; --mark-ink: #333; }
+  body { font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  h2 { break-after: avoid; }
+  .block, .bring-back, li { break-inside: avoid; }
+  .block.measure { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 `;
 
 // ─── Markdown ───────────────────────────────────────────────────────────────────────────────

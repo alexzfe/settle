@@ -1,0 +1,66 @@
+/* The About page: a two-column reference page on wide screens. Values come from tokens.css. */
+
+.back {
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-sm);
+}
+
+.back + h1 {
+  margin-top: var(--space-2);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--space-10);
+}
+
+@media (min-width: 56rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.columns section:first-child {
+  margin-top: var(--space-4);
+}
+
+.facts {
+  margin: 0;
+  gap: var(--space-2) var(--space-5);
+}
+
+.list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.list > li {
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.list > li:last-child {
+  border-bottom: 0;
+}
+
+.archived {
+  color: var(--color-ink-muted);
+}
+
+.date {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.toggle {
+  color: var(--color-ink-muted);
+}
+
+.inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}

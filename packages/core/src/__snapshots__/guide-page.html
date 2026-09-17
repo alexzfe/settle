@@ -6,58 +6,89 @@
 <meta name="robots" content="noindex">
 <title>Wool rug: Quick Guide</title>
 <style>
-:root { color-scheme: light dark; --ink: #1a1a1a; --muted: #5c5c5c; --paper: #fff;
-  --mark: #fff4d6; --edge: #d99a00; }
+:root { color-scheme: light dark; --ink: #2a2724; --muted: #6b655d; --paper: #f6f3ee;
+  --card: #fbfaf7; --hairline: #e3ded6; --accent: #5e6b4e; --mark: #f3e6c4; --mark-ink: #8a6414; }
 @media (prefers-color-scheme: dark) {
-  :root { --ink: #ececec; --muted: #a8a8a8; --paper: #141414; --mark: #3a2e0c; --edge: #e0a82e; }
+  :root { --ink: #ece6dc; --muted: #aaa196; --paper: #1d1b18; --card: #26231f; --hairline: #3a352f;
+    --accent: #aab894; --mark: #3a2f1a; --mark-ink: #e3b95c; }
 }
 body { margin: 0; background: var(--paper); color: var(--ink);
-  font: 1.125rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1.125rem/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 main { max-width: 38rem; margin: 0 auto; padding: 1rem 1.1rem 3rem; }
-h1 { font-size: 1.6rem; line-height: 1.2; margin: 0.2rem 0 0.4rem; }
-h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
-  margin: 1.4rem 0 0.3rem; }
-h3, h4, h5, h6 { font-size: 1.1rem; margin: 1.2rem 0 0.3rem; }
+h1, h3, h4, h5, h6 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 500;
+  line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0.25rem 0 0.5rem; letter-spacing: -0.01em; }
+h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin: 0 0 0.4rem; }
+h3, h4, h5, h6 { font-size: 1.3rem; margin: 1.2rem 0 0.3rem; }
 p { margin: 0.4rem 0; }
+a { color: var(--accent); text-underline-offset: 0.18em; }
 .home { color: var(--muted); font-size: 0.95rem; margin: 0; }
 ul { margin: 0; padding-left: 1.3rem; }
-li { margin: 0.4rem 0; }
-.measure { background: var(--mark); border-left: 5px solid var(--edge); border-radius: 4px;
-  padding: 0.1rem 0.9rem 0.5rem; margin-top: 1rem; }
-.measure h2 { color: var(--ink); }
-.done, .stale { font-weight: 600; }
-details { margin-top: 2rem; border-top: 1px solid var(--muted); padding-top: 0.6rem; }
-summary { font-weight: 600; padding: 0.5rem 0; }
-a { color: inherit; }
+li { margin: 0.5rem 0; }
+.block { background: var(--card); border: 1px solid var(--hairline); border-radius: 6px;
+  padding: 0.9rem 1rem 0.6rem; margin-top: 1rem; }
+.block h2 + ul + h2 { margin-top: 1.1rem; }
+.block.measure { background: var(--mark); border: none; border-left: 5px solid var(--mark-ink); }
+.block.measure h2 { color: var(--mark-ink); }
+.num { font-weight: 700; }
+ul.checks, ul.measure-lines { list-style: none; padding-left: 0; }
+ul.checks li { position: relative; padding-left: 1.7em; }
+ul.checks li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9em;
+  height: 0.9em; border: 2px solid var(--muted); border-radius: 3px; }
+ul.measure-lines li + li { margin-top: 0.9rem; }
+.block.must li { font-size: 1.25rem; }
+.blank { display: inline-block; min-width: 4em; border-bottom: 1.5px solid currentColor;
+  height: 1em; vertical-align: baseline; }
+.done { font-weight: 600; color: var(--accent); }
+.stale { font-weight: 600; color: var(--mark-ink); }
+details { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 0.6rem; }
+summary { font-family: "Newsreader", Georgia, serif; font-size: 1.3rem; padding: 0.5rem 0; }
+footer { margin-top: 2rem; border-top: 1px solid var(--hairline); padding-top: 1rem; }
+.bring-back { border: 1px dashed var(--muted); border-radius: 6px; padding: 0.9rem 1rem 1rem; }
+.fill { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.9rem 0 0; }
+.fill > span:first-child { white-space: nowrap; color: var(--muted); font-size: 1rem; }
+.blank.wide { min-width: 0; flex: 1; }
+.generated { color: var(--muted); font-size: 0.9rem; margin-top: 1rem; }
+@media print {
+  :root { color-scheme: light; --ink: #2a2724; --muted: #555; --paper: #fff; --card: #fff;
+    --hairline: #999; --mark: #f3e6c4; --mark-ink: #333; }
+  body { font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  h2 { break-after: avoid; }
+  .block, .bring-back, li { break-inside: avoid; }
+  .block.measure { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 </head>
 <body>
 <main>
+<header>
 <p class="home">Fixture Home · Living room</p>
 <h1>Wool rug</h1>
 <p>A large wool rug under the sofa.</p>
-<section class="measure">
+</header>
+<section class="block measure">
 <h2>Measure first</h2>
-<ul>
-<li>living-room/wall-5 length (~3.70 m)</li>
+<ul class="measure-lines">
+<li>Living room · Wall 5 · length. Recorded <span class="num">~370 cm</span> (estimate). Measured: <span class="blank"></span> cm</li>
 </ul>
 </section>
-<section>
+<section class="block must">
 <h2>Must</h2>
-<ul>
-<li>At least 2.0 × 1.4 m</li>
-<li>No longer than 3.4 m, to keep the walk past the west window clear</li>
+<ul class="checks">
+<li>At least <strong class="num">2.0 × 1.4 m</strong></li>
+<li>No longer than <strong class="num">3.4 m</strong>, to keep the walk past the west window clear</li>
 </ul>
 </section>
-<section>
+<section class="block prefer">
 <h2>Prefer</h2>
-<ul>
+<ul class="checks">
 <li>Wool, low pile: loops catch the cats' claws</li>
 <li>Warm terracotta, the Palette's accent, or close to it</li>
 </ul>
-</section>
-<section>
 <h2>In the shop</h2>
 <ul>
 <li>Avoid loop pile and viscose blends: claws catch in loops, and viscose marks</li>
@@ -81,6 +112,16 @@ a { color: inherit; }
 <li><strong>Warm terracotta</strong> (prefer). The accent of the Warm clay Palette, echoing the dining-end tiles; a rug is the one large surface in the room that can carry it.</li>
 </ul>
 </details>
+<footer>
+<section class="bring-back">
+<h2>Bring back to the Agent</h2>
+<p class="fill"><span>Found or bought</span> <span class="blank wide"></span></p>
+<p class="fill"><span>Link or model</span> <span class="blank wide"></span></p>
+<p class="fill"><span>Dimensions</span> <span class="blank wide"></span></p>
+<p class="fill"><span>What differs from the Requirements</span> <span class="blank wide"></span></p>
+</section>
+<p class="generated">Copy generated 14 Sep 2026. It won't update; ask the Agent for a fresh one.</p>
+</footer>
 </main>
 </body>
 </html>

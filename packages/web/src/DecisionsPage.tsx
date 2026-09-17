@@ -1,14 +1,21 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import styles from "./App.module.css";
 import type { DecisionSummary, Room } from "./api";
+import page from "./DecisionsPage.module.css";
 import {
   DECISION_KINDS,
   DECISION_STATES,
   decisionPath,
+  flagSummary,
   KIND_LABEL,
   STATE_LABEL,
 } from "./decisions";
 import { type DecisionFilter, useDecisions, useHome } from "./queries";
+import { SwatchSquare } from "./Swatch";
+import { buildPrompt } from "./ui/AskAgent";
+import { useDocumentTitle } from "./ui/documentTitle";
+import { EmptyState } from "./ui/EmptyState";
+import { FlagMark, FulfilledNote, StatePill } from "./ui/StatePill";
 import { Parts } from "./Values";
 
 export interface DecisionGroup {
@@ -59,62 +66,173 @@ function oneOf<T extends string>(value: string | null, values: readonly T[]): T 
   return values.find((each) => each === value);
 }
 
-/** Every Decision of the Home by scope, filtered by state and kind through the query string. */
+/** Whether a Decision needs the user: an open flag or Conflict. */
+export function needsReview(decision: DecisionSummary): boolean {
+  return decision.openFlags.length + decision.openConflicts.length > 0;
+}
+
+/** The Decisions whose title holds every word of `search`, ignoring case. */
+export function matchingTitle(
+  decisions: readonly DecisionSummary[],
+  search: string,
+): DecisionSummary[] {
+  const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+  return decisions.filter((decision) => {
+    const title = decision.title.toLowerCase();
+    return words.every((word) => title.includes(word));
+  });
+}
+
+/** A new query string from the current one, with `changes` set or (when undefined) removed. */
+function withParams(search: URLSearchParams, changes: Record<string, string | undefined>): string {
+  const next = new URLSearchParams(search);
+  for (const [name, value] of Object.entries(changes)) {
+    if (value === undefined || value === "") next.delete(name);
+    else next.set(name, value);
+  }
+  const query = next.toString();
+  return query ? `?${query}` : ".";
+}
+
+/**
+ * Every Decision of the Home by scope, as aligned rows. Views (All, Needs review, Leaning), the
+ * state and kind filters, and a title search all live in the query string.
+ */
 export function DecisionsPage() {
   const { home = "" } = useParams();
-  const [search] = useSearchParams();
+  const [search, setSearch] = useSearchParams();
+  useDocumentTitle("Decisions");
   const filter: DecisionFilter = {
     state: oneOf(search.get("state"), DECISION_STATES),
     kind: oneOf(search.get("kind"), DECISION_KINDS),
   };
+  const review = search.get("view") === "review";
+  const query = search.get("q") ?? "";
   const decisions = useDecisions(home, filter);
-  const rooms = useHome(home);
-  const error = decisions.error ?? rooms.error;
-  const filtered = filter.state !== undefined || filter.kind !== undefined;
+  const homeQuery = useHome(home);
+  const error = decisions.error ?? homeQuery.error;
+  const filtered = filter.state !== undefined || filter.kind !== undefined || review || query;
+  const shown = decisions.data
+    ? matchingTitle(decisions.data.decisions, query).filter(
+        (decision) => !review || needsReview(decision),
+      )
+    : [];
   return (
     <>
       <h1>Decisions</h1>
-      <FilterLinks
-        name="state"
-        title="State"
-        options={DECISION_STATES.map((state) => [state, STATE_LABEL[state]])}
-      />
-      <FilterLinks
-        name="kind"
-        title="Kind"
-        options={DECISION_KINDS.map((kind) => [kind, KIND_LABEL[kind]])}
-      />
+      <div className={page.toolbar}>
+        <Views />
+        <label className={page.search}>
+          <span className={page.searchLabel}>Search titles</span>
+          <input
+            type="search"
+            value={query}
+            placeholder="Search titles"
+            onChange={(event) => {
+              const next = new URLSearchParams(search);
+              if (event.target.value) next.set("q", event.target.value);
+              else next.delete("q");
+              setSearch(next, { replace: true });
+            }}
+          />
+        </label>
+      </div>
+      <div className={page.filters}>
+        <FilterLinks
+          name="state"
+          title="State"
+          options={DECISION_STATES.map((state) => [state, STATE_LABEL[state]])}
+        />
+        <FilterLinks
+          name="kind"
+          title="Kind"
+          options={DECISION_KINDS.map((kind) => [kind, KIND_LABEL[kind]])}
+        />
+      </div>
       {error ? (
         <p className={styles.error}>{error.message}</p>
-      ) : !decisions.data || !rooms.data ? (
+      ) : !decisions.data || !homeQuery.data ? (
         <p>Loading…</p>
-      ) : decisions.data.decisions.length === 0 ? (
-        <p>
-          {filtered
-            ? "No Decisions match."
-            : "No Decisions yet. Settle them with the Agent in this Home's Home Folder."}
-        </p>
+      ) : shown.length === 0 ? (
+        filtered ? (
+          <EmptyState text="No Decisions match." />
+        ) : (
+          <EmptyState
+            text="No Decisions yet. Settle them with the Agent in this Home's Home Folder."
+            prompt={buildPrompt({
+              skill: "Design Direction",
+              text: "help me settle the direction for my home",
+            })}
+            homeFolderPath={homeQuery.data.home.homeFolderPath}
+          />
+        )
       ) : (
-        groupDecisions(decisions.data.decisions, rooms.data.rooms).map((group) => (
-          <section key={group.key}>
-            <h2>
-              {group.room ? (
-                <Link to={`/homes/${home}/rooms/${group.room}`}>{group.title}</Link>
-              ) : (
-                group.title
-              )}
-            </h2>
-            <ul>
-              {group.decisions.map((decision) => (
-                <li key={decision.slug}>
-                  <DecisionLine home={home} decision={decision} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <div className={page.list}>
+          <div className={page.columns} aria-hidden>
+            <span>Decision</span>
+            <span>Kind</span>
+            <span>State</span>
+            <span>Review</span>
+          </div>
+          {groupDecisions(shown, homeQuery.data.rooms).map((group) => (
+            <section key={group.key} className={page.group}>
+              <h2 className={page.groupTitle}>
+                {group.room ? (
+                  <Link to={`/homes/${home}/rooms/${group.room}`}>{group.title}</Link>
+                ) : (
+                  group.title
+                )}
+              </h2>
+              <ul className={page.rows}>
+                {group.decisions.map((decision) => (
+                  <li key={decision.slug}>
+                    <DecisionRow home={home} decision={decision} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </>
+  );
+}
+
+type View = "all" | "review" | "leaning";
+
+/**
+ * Segmented buttons for the common views: All clears the view and the state filter, Needs review
+ * shows the flagged and Conflicted Decisions, and Leaning is the Leaning state filter.
+ */
+function Views() {
+  const [search] = useSearchParams();
+  // Another state filter in force is none of the views.
+  const current: View | undefined =
+    search.get("view") === "review"
+      ? "review"
+      : search.get("state") === "leaning"
+        ? "leaning"
+        : search.get("state") === null
+          ? "all"
+          : undefined;
+  const views: [View, string, string][] = [
+    ["all", "All", withParams(search, { view: undefined, state: undefined })],
+    ["review", "Needs review", withParams(search, { view: "review", state: undefined })],
+    ["leaning", "Leaning", withParams(search, { view: undefined, state: "leaning" })],
+  ];
+  return (
+    <nav className={page.views} aria-label="Views">
+      {views.map(([view, label, to]) => (
+        <Link
+          key={view}
+          to={to}
+          className={view === current ? page.viewCurrent : page.view}
+          aria-current={view === current ? "true" : undefined}
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -130,29 +248,66 @@ function FilterLinks({
 }) {
   const [search] = useSearchParams();
   const current = search.get(name);
-  const to = (value: string | undefined) => {
-    const next = new URLSearchParams(search);
-    if (value === undefined) next.delete(name);
-    else next.set(name, value);
-    const query = next.toString();
-    return query ? `?${query}` : ".";
-  };
   const all: [string | undefined, string][] = [[undefined, "All"], ...options];
   return (
-    <nav className={styles.nav} aria-label={title}>
-      {title}:
+    <nav className={page.filter} aria-label={title}>
+      <span className={page.filterTitle}>{title}</span>
       {all.map(([value, label]) =>
         (value ?? null) === current ? (
-          <strong key={label} aria-current="true">
+          <strong key={label} aria-current="true" className={page.filterCurrent}>
             {label}
           </strong>
         ) : (
-          <Link key={label} to={to(value)}>
+          <Link key={label} to={withParams(search, { [name]: value })}>
             {label}
           </Link>
         ),
       )}
     </nav>
+  );
+}
+
+/**
+ * One Decision in aligned columns: its title (with a Palette's colors as small swatches), kind,
+ * state with any Fulfilment, and what needs review: each open flag's cause, and any Conflict.
+ */
+function DecisionRow({ home, decision }: { home: string; decision: DecisionSummary }) {
+  const [flag, ...moreFlags] = decision.openFlags;
+  const [conflict, ...moreConflicts] = decision.openConflicts;
+  const rejected = decision.state === "rejected";
+  return (
+    <div className={`${page.row} ${rejected ? page.rejected : ""}`}>
+      <span className={page.title}>
+        <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>
+        {decision.colors && decision.colors.length > 0 && (
+          <span className={page.swatches}>
+            {decision.colors.map((color, index) => (
+              // Two colors may share a name, so the position keeps keys apart.
+              <SwatchSquare key={`${index}-${color.name}`} hex={color.hex} />
+            ))}
+          </span>
+        )}
+      </span>
+      <span className={page.kind}>{KIND_LABEL[decision.kind]}</span>
+      <span className={page.state}>
+        <StatePill state={decision.state} />
+        {decision.fulfilledAt && <FulfilledNote />}
+      </span>
+      <span className={page.review}>
+        {flag && (
+          <FlagMark>
+            {flagSummary(flag)}
+            {moreFlags.length > 0 && ` (and ${moreFlags.length} more)`}
+          </FlagMark>
+        )}
+        {conflict && (
+          <span className={page.conflict}>
+            Conflict: {conflict.description}
+            {moreConflicts.length > 0 && ` (and ${moreConflicts.length} more)`}
+          </span>
+        )}
+      </span>
+    </div>
   );
 }
 

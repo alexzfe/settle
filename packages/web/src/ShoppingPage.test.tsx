@@ -36,7 +36,10 @@ const rug = entry("wool-rug", "Wool rug", {
   ],
   openFlags: 1,
 });
-const lamp = entry("reading-lamp", "Reading lamp", { requirements: { must: 1, prefer: 0 } });
+const lamp = entry("reading-lamp", "Reading lamp", {
+  requirements: { must: 1, prefer: 0 },
+  measureFirst: ["Measure first: the desk height (not recorded)"],
+});
 const sofa = entry("low-sofa", "Low sofa", {
   state: "leaning",
   room: livingRoom,
@@ -60,12 +63,33 @@ function stubShopping(handlers: ApiHandlers) {
   return stubApi({ list_homes: () => ({ homes: [flat] }), ...handlers });
 }
 
-/** Each entry of the list after `heading`, as the text of its lines. */
+function sectionOf(heading: string): HTMLElement {
+  return screen.getByRole("heading", { name: heading }).closest("section") as HTMLElement;
+}
+
+/**
+ * Each row of the checklist under `heading`: its title, statement, and what it has so far, then
+ * its Room, Measure first, flag, Listings, and Quick Guide link.
+ */
 function entriesAfter(heading: string): string[][] {
-  const list = screen.getByRole("heading", { name: heading }).nextElementSibling;
+  const list = sectionOf(heading).querySelector("ul");
   return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) =>
-    [...li.querySelectorAll("p, li")].map((line) => line.textContent ?? ""),
+    [...li.children]
+      .slice(1)
+      .flatMap((cell, index) =>
+        index === 0
+          ? [...cell.querySelectorAll("p")].map((line) => line.textContent ?? "")
+          : [cell.textContent ?? ""],
+      ),
   );
+}
+
+/** The text of a section after its title. */
+function after(heading: string): string {
+  return [...sectionOf(heading).children]
+    .slice(1)
+    .map((child) => child.textContent)
+    .join("");
 }
 
 function entryOf(title: string): HTMLElement {
@@ -82,25 +106,51 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
 
   expect(entriesAfter("Shopping List")).toEqual([
     [
-      "Wool rug, Living room, Flagged",
+      "Wool rug",
       "A large wool rug under the sofa.",
-      "2 musts, 1 prefer; Guides written, Full Guide out of date; 2 Listings",
-      "Measure first: living-room/wall-2 length (~3.60 m)",
-      "Measure first: the Home's narrowest access width (not recorded)",
+      "2 musts, 1 prefer; Guides written, Full Guide out of date",
+      "Living room",
+      // Several things to measure: a count, opening to the list.
+      "Measure first: 2 things" +
+        "living-room/wall-2 length (~3.60 m)" +
+        "the Home's narrowest access width (not recorded)",
+      "⚑ Flagged",
+      "2 Listings",
+      "Quick Guide",
     ],
     [
-      "Reading lamp, Home-wide",
+      "Reading lamp",
       "Reading lamp.",
-      "1 must, 0 prefers; no Guides yet; no Listings yet",
+      "1 must, 0 prefers; no Guides yet",
+      "Home-wide",
+      // One thing to measure: the phrase itself.
+      "Measure first: the desk height (not recorded)",
+      "",
+      "No Listings yet",
+      "",
     ],
   ]);
   // Considering names each one's state.
   expect(entriesAfter("Considering")).toEqual([
-    ["Low sofa, Living room, Leaning", "Low sofa.", "1 must, 2 prefers; Guides written; 1 Listing"],
     [
-      "Desk chair, Home-wide, Candidate",
+      "Low sofa◐Leaning",
+      "Low sofa.",
+      "1 must, 2 prefers; Guides written",
+      "Living room",
+      "",
+      "",
+      "1 Listing",
+      "Quick Guide",
+    ],
+    [
+      "Desk chair○Candidate",
       "Desk chair.",
-      "No Requirements yet; no Guides yet; no Listings yet",
+      "No Requirements yet; no Guides yet",
+      "Home-wide",
+      "",
+      "",
+      "No Listings yet",
+      "",
     ],
   ]);
 
@@ -111,8 +161,11 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
   expect(within(wool).getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/living-room",
   );
-  expect(within(wool).getByText(/^Measure first: living-room/).tagName).toBe("STRONG");
+  expect(within(wool).getByText(/^living-room\/wall-2/).tagName).toBe("STRONG");
   expect(within(wool).getByText("Full Guide out of date").tagName).toBe("STRONG");
+  expect(within(wool).getByRole("link", { name: "Quick Guide" }).getAttribute("href")).toBe(
+    "/homes/flat/decisions/wool-rug#quick-guide",
+  );
   expect(screen.getByRole("link", { name: "Desk chair" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/desk-chair",
   );
@@ -146,12 +199,10 @@ it("says when there is nothing to buy or consider, and is linked from every page
   stubShopping({ get_shopping: () => ({ shoppingList: [], considering: [] }) });
   renderRoutes("/homes/flat/shopping");
   await screen.findByRole("heading", { name: "Shopping List" });
-  expect(
-    screen.getByRole("heading", { name: "Shopping List" }).nextElementSibling?.textContent,
-  ).toBe("Nothing to buy: no Locked Purchase is waiting to be Fulfilled.");
-  expect(screen.getByRole("heading", { name: "Considering" }).nextElementSibling?.textContent).toBe(
-    "Nothing under consideration.",
+  expect(after("Shopping List")).toBe(
+    "Nothing to buy: no Locked Purchase is waiting to be Fulfilled.",
   );
+  expect(after("Considering")).toBe("Nothing under consideration.");
   expect(screen.getByRole("link", { name: "Shopping" }).getAttribute("href")).toBe(
     "/homes/flat/shopping",
   );
@@ -174,10 +225,7 @@ it("moves an entry to the Shopping List when a Decision change event arrives", a
     }),
   );
   expect(await screen.findByText("Nothing under consideration.")).toBeDefined();
-  expect(entriesAfter("Shopping List").map(([title]) => title)).toEqual([
-    "Wool rug, Living room, Flagged",
-    "Low sofa, Living room",
-  ]);
+  expect(entriesAfter("Shopping List").map(([title]) => title)).toEqual(["Wool rug", "Low sofa"]);
 });
 
 it("refetches the Measure-first lines when a Wall is measured", async () => {
@@ -186,7 +234,7 @@ it("refetches the Measure-first lines when a Wall is measured", async () => {
     get_shopping: () => ({ shoppingList: [{ ...rug, measureFirst }], considering: [] }),
   });
   renderRoutes("/homes/flat/shopping");
-  await screen.findByText(/^Measure first: living-room/);
+  await screen.findByText(/^living-room\/wall-2/);
 
   measureFirst = rug.measureFirst.slice(1);
   act(() =>
@@ -196,6 +244,6 @@ it("refetches the Measure-first lines when a Wall is measured", async () => {
       recordSlug: "living-room/wall-2",
     }),
   );
-  await vi.waitFor(() => expect(screen.queryByText(/^Measure first: living-room/)).toBeNull());
-  expect(screen.getByText(/^Measure first: the Home's/)).toBeDefined();
+  await vi.waitFor(() => expect(screen.queryByText(/^living-room\/wall-2/)).toBeNull());
+  expect(screen.getByText(/^the Home's/)).toBeDefined();
 });

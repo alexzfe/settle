@@ -63,6 +63,8 @@ export class FakeEventSource {
   static instances: FakeEventSource[] = [];
   readonly url: string;
   closed = false;
+  /** 0 connecting, 1 open, 2 closed: a test sets 2 before emitting "error" when the browser gives up. */
+  readyState = 0;
   readonly #listeners = new Map<string, Set<Listener>>();
 
   constructor(url: string) {

@@ -1,55 +1,69 @@
-// The Shopping section: the Shopping List (Locked Purchases not yet Fulfilled) and Considering
-// (Candidate and Leaning ones), each entry with its Room, its Measure-first lines, and what it has
-// so far, linking to its Decision page, where its Quick Guide and Full Guide are; and the exports
-// the server renders from stored data.
+// The Shopping section as a calm checklist: the Shopping List (Locked Purchases not yet Fulfilled)
+// and Considering (Candidate and Leaning ones), each row with its Purchase Decision, Room, what to
+// measure first, any flag, its Listings, and a link to its Quick Guide; and the exports the server
+// renders from stored data.
 
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import { guidesExportUrl, type ShoppingEntry, shoppingListExportUrl } from "./api";
-import { decisionPath, STATE_LABEL } from "./decisions";
+import { decisionPath } from "./decisions";
 import { useShopping } from "./queries";
-import { Parts } from "./Values";
+import page from "./ShoppingPage.module.css";
+import { Card } from "./ui/Card";
+import { useDocumentTitle } from "./ui/documentTitle";
+import { EmptyState } from "./ui/EmptyState";
+import { Section } from "./ui/Section";
+import { FlagMark, StatePill } from "./ui/StatePill";
 
 export function ShoppingPage() {
   const { home = "" } = useParams();
   const shopping = useShopping(home);
+  useDocumentTitle("Shopping");
   return (
     <>
       <h1>Shopping</h1>
-      <nav className={styles.nav} aria-label="Downloads">
-        <a href={shoppingListExportUrl(home, "html")} target="_blank" rel="noreferrer">
-          Printable Shopping List
-        </a>
-        <a href={shoppingListExportUrl(home, "csv")} download>
-          Shopping List as CSV
-        </a>
-        <a href={guidesExportUrl(home, "html")} target="_blank" rel="noreferrer">
-          Printable Shopping Guides
-        </a>
-        <a href={guidesExportUrl(home, "markdown")} download>
-          Shopping Guides as Markdown
-        </a>
-      </nav>
       {shopping.isError ? (
         <p className={styles.error}>{shopping.error.message}</p>
       ) : shopping.isPending ? (
         <p>Loading…</p>
       ) : (
         <>
-          <h2>Shopping List</h2>
-          <Entries
-            home={home}
-            entries={shopping.data.shoppingList}
-            none="Nothing to buy: no Locked Purchase is waiting to be Fulfilled."
-          />
-          <h2>Considering</h2>
-          <Entries
-            home={home}
-            entries={shopping.data.considering}
-            none="Nothing under consideration."
-          />
+          <Section title="Shopping List" id="shopping-list">
+            <Entries
+              home={home}
+              entries={shopping.data.shoppingList}
+              none="Nothing to buy: no Locked Purchase is waiting to be Fulfilled."
+            />
+          </Section>
+          <Section title="Considering" id="considering">
+            <Entries
+              home={home}
+              entries={shopping.data.considering}
+              none="Nothing under consideration."
+            />
+          </Section>
         </>
       )}
+      <Card className={page.downloads}>
+        <h2 className={page.downloadsTitle}>Take it with you</h2>
+        <nav className={page.downloadLinks} aria-label="Downloads">
+          <a href={shoppingListExportUrl(home, "html")} target="_blank" rel="noreferrer">
+            Printable Shopping List
+          </a>
+          <a href={shoppingListExportUrl(home, "csv")} download>
+            Shopping List as CSV
+          </a>
+          <a href={guidesExportUrl(home, "html")} target="_blank" rel="noreferrer">
+            Printable Shopping Guides
+          </a>
+          <a href={guidesExportUrl(home, "markdown")} download>
+            Shopping Guides as Markdown
+          </a>
+        </nav>
+        <p className={page.downloadsNote}>
+          A saved copy won't update when the Agent changes a Guide.
+        </p>
+      </Card>
     </>
   );
 }
@@ -63,11 +77,11 @@ function Entries({
   entries: ShoppingEntry[];
   none: string;
 }) {
-  if (entries.length === 0) return <p>{none}</p>;
+  if (entries.length === 0) return <EmptyState text={none} />;
   return (
-    <ul className={styles.entries}>
+    <ul className={page.entries}>
       {entries.map((entry) => (
-        <li key={entry.slug}>
+        <li key={entry.slug} className={page.entry}>
           <Entry home={home} entry={entry} />
         </li>
       ))}
@@ -79,48 +93,77 @@ function counted(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+const MEASURE_FIRST = /^Measure first:\s*/i;
+
 /**
- * Its title (linking to its Decision page), Room, state when not Locked, and any flag; its
- * statement; what it has so far; then its Measure-first lines, to do before buying.
+ * A checklist row: a quiet box, its title (linking to its Decision page) with its state when not
+ * Locked and what it has so far, its Room, what to measure first (the phrase for one, a count
+ * with the list for more), any flag, its Listings, and a link to its Quick Guide.
  */
 function Entry({ home, entry }: { home: string; entry: ShoppingEntry }) {
   const { must, prefer } = entry.requirements;
+  const measure = entry.measureFirst.map((line) => line.replace(MEASURE_FIRST, ""));
   return (
     <>
-      <p>
-        <Parts>
+      <span className={page.box} aria-hidden />
+      <div className={page.what}>
+        <p className={page.title}>
           <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
-          {entry.room ? (
-            <Link to={`/homes/${home}/rooms/${entry.room.slug}`}>{entry.room.name}</Link>
-          ) : (
-            "Home-wide"
+          {entry.state !== "locked" && <StatePill state={entry.state} />}
+        </p>
+        <p className={page.statement}>{entry.statement}</p>
+        <p className={page.so}>
+          {must + prefer === 0
+            ? "No Requirements yet"
+            : `${counted(must, "must")}, ${counted(prefer, "prefer")}`}
+          ; {entry.hasGuides ? "Guides written" : "no Guides yet"}
+          {entry.fullGuideOutOfDate && (
+            <>
+              , <strong className={styles.warning}>Full Guide out of date</strong>
+            </>
           )}
-          {entry.state !== "locked" && STATE_LABEL[entry.state]}
-          {entry.openFlags > 0 && <span className={styles.tag}>Flagged</span>}
-        </Parts>
-      </p>
-      <p>{entry.statement}</p>
-      <p className={styles.muted}>
-        {must + prefer === 0
-          ? "No Requirements yet"
-          : `${counted(must, "must")}, ${counted(prefer, "prefer")}`}
-        ; {entry.hasGuides ? "Guides written" : "no Guides yet"}
-        {entry.fullGuideOutOfDate && (
-          <>
-            , <strong className={styles.warning}>Full Guide out of date</strong>
-          </>
+        </p>
+      </div>
+      <span className={page.room}>
+        {entry.room ? (
+          <Link to={`/homes/${home}/rooms/${entry.room.slug}`}>{entry.room.name}</Link>
+        ) : (
+          "Home-wide"
         )}
-        ; {entry.listings === 0 ? "no Listings yet" : counted(entry.listings, "Listing")}
-      </p>
-      {entry.measureFirst.length > 0 && (
-        <ul>
-          {entry.measureFirst.map((line) => (
-            <li key={line}>
-              <strong>{line}</strong>
-            </li>
-          ))}
-        </ul>
-      )}
+      </span>
+      <span className={page.measure}>
+        {measure.length === 1 ? (
+          <span className={page.measureLabel}>
+            Measure first: <strong>{measure[0]}</strong>
+          </span>
+        ) : measure.length > 1 ? (
+          <details>
+            <summary className={page.measureLabel}>
+              Measure first: <strong>{measure.length} things</strong>
+            </summary>
+            <ul>
+              {measure.map((line) => (
+                <li key={line}>
+                  <strong>{line}</strong>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </span>
+      <span className={page.flag}>
+        {entry.openFlags > 0 && (
+          <FlagMark>{entry.openFlags === 1 ? "Flagged" : `${entry.openFlags} flags`}</FlagMark>
+        )}
+      </span>
+      <span className={page.listings}>
+        {entry.listings === 0 ? "No Listings yet" : counted(entry.listings, "Listing")}
+      </span>
+      <span className={page.guide}>
+        {entry.hasGuides && (
+          <Link to={`${decisionPath(home, entry.slug)}#quick-guide`}>Quick Guide</Link>
+        )}
+      </span>
     </>
   );
 }

@@ -1,0 +1,220 @@
+/* The Overview as a status board. Values come from tokens.css. */
+
+.title h1 {
+  margin-bottom: var(--space-1);
+  font-size: 2.75rem;
+  line-height: 1.1;
+}
+
+.caption {
+  margin: 0 0 var(--space-6);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Needs you: the ochre band. */
+.needs {
+  margin-block: var(--space-6);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-radius: var(--radius);
+  background: var(--color-attention-bg);
+}
+
+.needsTitle {
+  margin: 0 0 var(--space-3);
+  color: var(--color-attention);
+  font-size: var(--text-lg);
+}
+
+.calm {
+  padding-block: var(--space-3);
+  background: var(--color-card);
+  border: 1px solid var(--color-hairline);
+  color: var(--color-ink-muted);
+}
+
+.calm p {
+  margin: 0;
+}
+
+.gaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin: var(--space-4) 0 0;
+  color: var(--color-attention);
+  font-size: var(--text-sm);
+}
+
+.gaps a {
+  color: var(--color-attention);
+  font-weight: 600;
+}
+
+/* Where we left off. */
+.leftOff {
+  max-width: 48rem;
+}
+
+.sessionLine {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.summary dd {
+  margin: 0;
+  font-variant-numeric: normal;
+}
+
+.nextLabel {
+  margin: var(--space-4) 0 var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nextSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline-start: var(--space-6);
+}
+
+.nextSteps li::marker {
+  color: var(--color-ink-muted);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+}
+
+.next {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  line-height: 1.25;
+}
+
+/* Getting started. */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist > li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: 50%;
+  color: var(--color-ink-muted);
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+}
+
+.done .check {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.step {
+  margin: 0.15rem 0 var(--space-1);
+  font-weight: 500;
+}
+
+.done .step {
+  color: var(--color-ink-muted);
+}
+
+.starter {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-style: italic;
+}
+
+/* Palette. */
+.direction {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0 0 var(--space-3);
+}
+
+.directionLabel {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.paletteLine {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Recent Sessions. */
+.sessions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sessions > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.sessionDate {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.unsummarised {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+
+.footer {
+  margin-top: var(--space-10);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-hairline);
+  font-size: var(--text-sm);
+}
+
+/* Rooms: the Unplaced Items and All Rooms links beside the heading. */
+.roomsActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}

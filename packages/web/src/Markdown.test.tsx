@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { Markdown } from "./Markdown";
+import { headings, Markdown } from "./Markdown";
 
 afterEach(cleanup);
 
@@ -56,4 +56,29 @@ it("links only to web pages and email addresses, and passes no HTML through", ()
   expect(html("[click](javascript:alert(1)) <script>alert(1)</script>")).toBe(
     "<p>click) &lt;script&gt;alert(1)&lt;/script&gt;</p>",
   );
+});
+
+it("renders GitHub alerts as Callouts, their lines as Markdown of their own", () => {
+  const { container } = render(
+    <Markdown
+      markdown={"> [!TIP]\n> Measure **twice**.\n> - once\n\n> [!caution]\n> Viscose sheds."}
+    />,
+  );
+  const callouts = [...container.querySelectorAll("aside")];
+  expect(callouts.map((aside) => aside.firstElementChild?.textContent)).toEqual(["Tip", "Caution"]);
+  expect(callouts[0]?.querySelector("strong")?.textContent).toBe("twice");
+  expect(callouts[0]?.querySelector("li")?.textContent).toBe("once");
+  expect(callouts[1]?.querySelector("p:last-child")?.textContent).toBe("Viscose sheds.");
+  // A plain quote stays a quote, and a marker later in a quote is only text.
+  expect(html("> Measure\n> [!TIP]")).toBe("<blockquote>Measure [!TIP]</blockquote>");
+});
+
+it("gives headings unique anchors when asked, for a table of contents", () => {
+  expect(headings("# Size & access\n## Pile\n# Size & access", "guide")).toEqual([
+    { level: 1, text: "Size & access", id: "guide-size-access" },
+    { level: 2, text: "Pile", id: "guide-pile" },
+    { level: 1, text: "Size & access", id: "guide-size-access-2" },
+  ]);
+  const { container } = render(<Markdown markdown={"# Size\n## Pile"} level={3} anchors="g" />);
+  expect(container.innerHTML).toBe('<h3 id="g-size">Size</h3><h4 id="g-pile">Pile</h4>');
 });

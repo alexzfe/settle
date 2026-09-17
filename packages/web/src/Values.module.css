@@ -1,0 +1,47 @@
+/* Recorded values: lengths and their quiet Provenance tags. */
+
+.length {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0 0.4em;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.55;
+  vertical-align: 0.08em;
+  white-space: nowrap;
+}
+
+/* Estimated: a small muted word with a dotted underline hinting at its tooltip. */
+.estimate {
+  padding: 0;
+  color: var(--color-ink-muted);
+  font-style: italic;
+  font-weight: 400;
+  text-decoration: underline dotted var(--color-stone);
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+
+/* Blueprint-derived: a chip, olive when it links to the page it is printed on. */
+.blueprint {
+  border: 1px solid var(--color-hairline);
+  background: var(--color-card);
+  color: var(--color-ink-muted);
+}
+
+a.blueprint {
+  border-color: var(--color-accent-soft);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+a.blueprint:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}

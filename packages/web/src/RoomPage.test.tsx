@@ -1,6 +1,7 @@
-import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { DecisionSummary, Home, RoomDetail } from "./api";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DecisionSummary, Home, Room, RoomDetail } from "./api";
+import { daylightOpenings, facingMeaning, placeOpening, roomSize } from "./RoomPage";
 import { FakeEventSource, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -158,9 +159,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const rooms: Room[] = [
+  { slug: "hall", name: "Hall", level: "ground" },
+  { slug: "living-room", name: "Living room", level: "ground" },
+  { slug: "kitchen", name: "Kitchen", level: "ground" },
+];
+
 function stubRoom(room: () => RoomDetail, decisions: () => DecisionSummary[] = () => []) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
+    get_home: () => ({
+      home: { ...flat, homeFolderPath: "~/Homes/flat" },
+      levels: [{ slug: "ground", name: "Ground", storey: 0 }],
+      rooms,
+      unplacedItems: 0,
+    }),
     get_room: () => ({ room: room(), decisions: decisions() }),
   });
 }
@@ -186,87 +199,137 @@ function roomDecision(
   };
 }
 
-/** The text of the section a heading starts. */
-function section(heading: string): string {
-  const section = screen.getByRole("heading", { name: heading }).closest("section");
-  if (!section) throw new Error(`No section for ${heading}`);
-  return section.textContent ?? "";
+/** The text of the section or card a heading starts. */
+function section(heading: string, level = 2): string {
+  const found = partOf(heading, level);
+  if (!found) throw new Error(`No section for ${heading}`);
+  return found.textContent ?? "";
 }
 
-/** The text of what follows a heading: its list or facts. */
-function after(heading: string): string {
-  return screen.getByRole("heading", { name: heading }).nextElementSibling?.textContent ?? "";
+/** A section a heading starts, or for a card's heading the card. */
+function partOf(heading: string, level: number): Element | null {
+  const [found] = screen
+    .getAllByRole("heading", { name: heading, level })
+    .filter((each) => each.parentElement?.tagName !== "DIV" || level === 2);
+  if (!found) return null;
+  return found.closest("section") ?? found.parentElement;
 }
 
-function listAfter(heading: string): string[] {
-  const list = screen.getByRole("heading", { name: heading }).nextElementSibling;
+/** The items of the first list in the part of the page a heading starts. */
+function listIn(heading: string): string[] {
+  const part = partOf(heading, 2);
+  const list = part?.querySelector("ul");
   return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) => li.textContent ?? "");
 }
 
-it("renders the Room Sheet from get_room as structured sections", async () => {
+/** The drawing card of one Wall, by its title. */
+function wallCard(title: string): HTMLElement {
+  const button = screen.getByRole("button", {
+    name: new RegExp(`^${title.replace(/[()]/g, "\\$&")}`),
+  });
+  return button.closest("li") as HTMLElement;
+}
+
+it("renders the Room Sheet from get_room: banner, Walls, daylight, Gaps, and the rest", async () => {
   const fetch = stubRoom(livingRoom);
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByRole("heading", { name: "Living room", level: 1 });
   const request = fetch.mock.calls.find(([url]) => url === "/api/get_room")?.[1]?.body;
   expect(JSON.parse(String(request))).toEqual({ home: "flat", room: "living-room" });
 
-  // The Room's own facts, the empty ones left out, the lengths tagged with their Provenance.
+  // The banner, filled with the walls color, with functions, Level and size as a caption.
+  const banner = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
+  expect(banner.style.backgroundColor).toBe("rgb(227, 201, 182)");
+  expect(banner.textContent).toBe(
+    "Living room" +
+      "Living, office · Ground (Level 0) · 4.20 × ~3.60 m" +
+      "Walls: Setting Plaster (Farrow & Ball 231)",
+  );
+  // The Room's other facts, the empty ones left out; a Measured length reads plain.
   expect(document.querySelector("dl")?.textContent).toBe(
-    "LevelGround (Level 0)" +
-      "Functionsliving, office" +
-      "Ceiling height2.60 m Measured" +
-      "Times of useevening, night" +
-      "DaylightWindow facing S, Skylight facing N, Glazed door facing S",
+    "Ceiling height2.60 m" + "Times of useevening, night",
   );
 
-  // Walls in clockwise order, each with its Windows and Doors in order along it.
-  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-    "Wall 1 (window wall)",
-    "Wall 2",
-    "Wall 3",
-    "Wall 4",
-    "In the roof",
-  ]);
-  expect(section("Wall 1 (window wall)")).toBe(
+  // One drawing per Wall in clockwise order, with its facing, length, and what lies beyond.
+  const titles = screen
+    .getAllByRole("button", { expanded: false })
+    .map((button) => button.querySelector("span span")?.textContent);
+  expect(titles.slice(0, 4)).toEqual(["Wall 1 (window wall)", "Wall 2", "Wall 3", "Wall 4"]);
+  expect(wallCard("Wall 1 (window wall)").textContent).toBe(
+    "Wall 1 (window wall)SWindow4.20 mBeyond: Balcony (outdoor)" +
+      "Glazed door · position not recorded",
+  );
+  // The doorway is seen from side B, so it is never placed on this Wall.
+  expect(wallCard("Wall 2").textContent).toBe(
+    "Wall 2?~3.60 mBeyond: Kitchen" + "Doorway · position not recorded",
+  );
+  expect(wallCard("Wall 4").textContent).toBe("Wall 4?length ?Beyond: not recorded");
+  // The bay window is placed from its offset, width, height, and sill; the door lacks a size.
+  const wall1 = within(wallCard("Wall 1 (window wall)"));
+  expect(wall1.getByRole("img").querySelectorAll("rect")).toHaveLength(2);
+  expect(wall1.getByText("Glazed door · position not recorded")).toBeDefined();
+
+  // Clicking a Wall shows its facts below the strip.
+  fireEvent.click(screen.getByRole("button", { name: /^Wall 1/ }));
+  expect(section("Wall 1 (window wall)", 3)).toBe(
     "Wall 1 (window wall)" +
-      "Length4.20 m Measured" +
+      "Length4.20 m" +
       "FacingS" +
       "BeyondBalcony (outdoor)" +
       "ObstructionPartly, deciduous trees" +
       "Windows and Doors" +
-      "Bay window, W 2.40 m × H 1.50 m Blueprint, sill ~0.45 m Estimated, " +
-      "0.30 m Measured from the Wall's start" +
-      "Glazed door to Balcony, 2.90 m Measured from the Wall's start",
+      "Bay window, W 2.40 m × H 1.50 m Blueprint, sill ~0.45 m estimate, " +
+      "0.30 m from the Wall's start" +
+      "Glazed door to Balcony, 2.90 m from the Wall's start",
   );
-  expect(section("Wall 2")).toBe(
-    "Wall 2" +
-      "Length~3.60 m Estimated" +
-      "BeyondKitchen" +
-      "Windows and Doors" +
-      "Doorway to Kitchen (its Wall 4), clear width 0.80 m Measured",
-  );
-  expect(section("Wall 3")).toBe("Wall 3Length3.60 m BlueprintBeyondOutside");
-  expect(section("Wall 4")).toBe("Wall 4");
-  expect(section("In the roof")).toBe("In the roofRoof window, roof facing N, obscured glass");
+  expect(section("In the roof", 3)).toBe("In the roofRoof window, roof facing N, obscured glass");
   expect(screen.getAllByRole("link", { name: "Kitchen" })[0]?.getAttribute("href")).toBe(
     "/homes/flat/rooms/kitchen",
   );
 
-  // The Surfaces, with the whole-Wall exception after the Room's own.
-  expect(after("Surfaces")).toBe(
-    "Wallsplaster, Setting Plaster (Farrow & Ball 231) Measured, matt" +
-      "Flooroak boards (living end), tiles (by the door)" +
-      "Wall 3~Inchyra Blue Estimated",
+  // Daylight: the skylight above the compass, the openings with their obstruction, and a line
+  // on what the facing means (Madrid is north of the equator, so south faces the sun).
+  expect(screen.getByRole("img", { name: /^Compass:/ }).getAttribute("aria-label")).toBe(
+    "Compass: Window and Glazed door facing S",
   );
-  expect(listAfter("Features")).toEqual([
-    "Radiator or heater, Wall 1, under the window, W 1.00 m × H 0.60 m Measured",
+  expect(section("Daylight")).toBe(
+    "Daylight" +
+      "☼ Skylight facing N" +
+      "NNEESESSWWNW2" +
+      "▭ Window facing S, Partly blocked (deciduous trees)" +
+      "▮ Glazed door facing S, Partly blocked (deciduous trees)" +
+      "Faces the sun: bright, warm light, so colors read warmer and lighter, and cool colors hold up well.",
+  );
+
+  // Gaps as a checklist, with a prompt naming Home Intake.
+  expect(listIn("Gaps")).toEqual(["Length of Wall 4", "Woodwork Surface"]);
+  expect(screen.getByRole("button", { name: /Fill the Gaps/ }).getAttribute("title")).toBe(
+    `claude "Using the Home Intake Skill: Let's fill the Gaps in Living room: length of Wall 4, woodwork Surface (slug: living-room)"`,
+  );
+
+  // Surfaces as swatches, the whole-Wall exception after the Room's own.
+  expect(listIn("Surfaces")).toEqual([
+    "WallsSetting Plaster (Farrow & Ball 231), plaster, matt",
+    "Flooroak boards (living end), tiles (by the door)",
+    "Wall 3~Inchyra Blue estimate",
   ]);
-  expect(listAfter("Lights")).toEqual(["Floor lamp (Item): ambient, 2700 K, dim to warm"]);
-  expect(listAfter("Items")).toEqual([
-    "Sofa (Seating), Wall 3, W 2.10 m Measured × D ~0.95 m Estimated",
+  expect(listIn("Features")).toEqual([
+    "Radiator or heater, Wall 1, under the window, W 1.00 m × H 0.60 m",
+  ]);
+  expect(listIn("Lights")).toEqual(["Floor lamp (Item): ambient, 2700 K, dim to warm"]);
+  expect(listIn("Items")).toEqual([
+    "Sofa (Seating), Wall 3, W 2.10 m × D ~0.95 m estimate",
     "Floor lamp (Lighting), light: ambient, 2700 K, dim to warm",
   ]);
-  expect(listAfter("Gaps")).toEqual(["length of Wall 4", "woodwork Surface"]);
+
+  // The Rooms either side, in the Home's order.
+  const nav = within(screen.getByRole("navigation", { name: "Rooms" }));
+  expect(nav.getByRole("link", { name: "← Hall" }).getAttribute("href")).toBe(
+    "/homes/flat/rooms/hall",
+  );
+  expect(nav.getByRole("link", { name: "Kitchen →" }).getAttribute("href")).toBe(
+    "/homes/flat/rooms/kitchen",
+  );
 });
 
 it("links every value printed on a Blueprint to its page, with the text as printed", async () => {
@@ -298,10 +361,10 @@ it("links every value printed on a Blueprint to its page, with the text as print
     doors: [],
   }));
   renderRoutes("/homes/flat/rooms/living-room");
-  await screen.findByRole("heading", { name: "Wall 1", level: 3 });
+  fireEvent.click(await screen.findByRole("button", { name: /^Wall 1/ }));
 
   // Values printed on a Blueprint are tagged one by one, even when they share the Provenance.
-  expect(section("Wall 1")).toBe(
+  expect(section("Wall 1", 3)).toBe(
     "Wall 1" +
       `Length4.19 m Blueprint p.2: 13'9"` +
       "BeyondOutside" +
@@ -311,8 +374,9 @@ it("links every value printed on a Blueprint to its page, with the text as print
   expect(screen.getByRole("link", { name: `Blueprint p.2: 13'9"` }).getAttribute("href")).toBe(
     "/homes/flat/blueprints/estate-agent-plan/2",
   );
-  // A Blueprint value recorded without its source keeps the plain tag.
-  expect(section("Wall 3")).toBe("Wall 3Length3.60 m BlueprintBeyondOutside");
+  // A Blueprint value recorded without its source keeps the plain chip.
+  fireEvent.click(screen.getByRole("button", { name: /^Wall 3/ }));
+  expect(section("Wall 3", 3)).toBe("Wall 3Length3.60 m BlueprintBeyondOutside");
 });
 
 it("says what is not recorded when the Room has nothing yet", async () => {
@@ -335,12 +399,16 @@ it("says what is not recorded when the Room has nothing yet", async () => {
   }));
   renderRoutes("/homes/flat/rooms/box-room");
   await screen.findByText("No Walls recorded.");
-  expect(document.querySelector("dl")?.textContent).toBe("LevelFirst (Level 1)");
+  expect(screen.getByRole("heading", { level: 1 }).closest("header")?.textContent).toBe(
+    "Box roomFirst (Level 1)",
+  );
+  expect(screen.getByText("No Windows recorded yet.")).toBeDefined();
   expect(screen.getByText("No Surfaces recorded.")).toBeDefined();
   expect(screen.getByText("No Features recorded.")).toBeDefined();
   expect(screen.getByText("No lights recorded, so how the Room is lit is unknown.")).toBeDefined();
   expect(screen.getByText("No Items in this Room.")).toBeDefined();
-  expect(screen.getByText("None: everything advice needs is recorded.")).toBeDefined();
+  expect(section("Gaps")).toBe("Gaps✓ None: everything advice needs is recorded.");
+  expect(screen.queryByRole("button", { name: /Fill the Gaps/ })).toBeNull();
 });
 
 it("lists the Room's open Decisions that get_room answers with, each linking to its page", async () => {
@@ -362,14 +430,15 @@ it("lists the Room's open Decisions that get_room answers with, each linking to 
   ]);
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByText("A reading corner");
-  expect(listAfter("Decisions")).toEqual([
-    "A reading corner, Room use, Candidate",
-    "A low sofa, Purchase, Leaning",
-    "Calm and low, Room Direction, Locked, Flagged",
+  expect(listIn("Decisions")).toEqual([
+    "○CandidateA reading cornerRoom use",
+    "◐LeaningA low sofaPurchase",
+    "●LockedCalm and lowRoom Direction⚑",
   ]);
   expect(screen.getByRole("link", { name: "Calm and low" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/calm",
   );
+  expect(screen.getByRole("img", { name: "Flagged" })).toBeDefined();
 });
 
 it("says when the Room has no open Decisions, and shows one the Agent adds", async () => {
@@ -426,19 +495,18 @@ it("shows the new value when the Agent saves the Room while the page is open", a
   expect(screen.queryByText("~3.60 m")).toBeNull();
 });
 
-/** The value of one term in the Surfaces list: "Walls", or a Wall's name for its exception. */
-function surfaceFact(term: string): HTMLElement {
-  const surfaces = screen.getByRole("heading", { name: "Surfaces" }).nextElementSibling;
-  return within(surfaces as HTMLElement).getByText(term).nextElementSibling as HTMLElement;
+/** The card of one Surface: "Walls", or a Wall's name for its exception. */
+function surfaceCard(term: string): HTMLElement {
+  return screen.getByRole("heading", { name: term, level: 3 }).closest("li") as HTMLElement;
 }
 
 it("shows each Surface color as a swatch, with a placeholder when it has no hex", async () => {
   stubRoom(livingRoom);
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByRole("heading", { name: "Surfaces" });
-  const swatch = within(surfaceFact("Walls")).getByTitle("Approximately #e3c9b6");
+  const swatch = within(surfaceCard("Walls")).getByTitle("Approximately #e3c9b6");
   expect(swatch.style.backgroundColor).toBe("rgb(227, 201, 182)");
-  expect(within(surfaceFact("Wall 3")).getByTitle("No screen color recorded")).toBeDefined();
+  expect(within(surfaceCard("Wall 3")).getByTitle("No screen color recorded")).toBeDefined();
 });
 
 it("shows the new Surface color when a Room color is Fulfilled while the page is open", async () => {
@@ -454,9 +522,9 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByText("Olive walls");
   // A Room color is listed with the Room's other open Decisions.
-  expect(listAfter("Decisions")).toEqual([
-    "Olive walls, Room color, Locked",
-    "A low sofa, Purchase, Leaning",
+  expect(listIn("Decisions")).toEqual([
+    "●LockedOlive wallsRoom color",
+    "◐LeaningA low sofaPurchase",
   ]);
 
   // Fulfilment changes the walls Surface and publishes a surface change, then a decision one.
@@ -466,7 +534,7 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
       surface.part === "walls"
         ? {
             ...surface,
-            color: { name: "Olive", hex: "#708238", provenance: "estimated" },
+            color: { name: "Olive", hex: "#708238", provenance: "estimated", lrv: 18 },
             finish: "eggshell",
           }
         : surface,
@@ -481,8 +549,13 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
     }),
   );
   expect(await screen.findByTitle("Approximately #708238")).toBeDefined();
-  expect(surfaceFact("Walls").textContent).toBe("plaster, ~Olive Estimated, eggshell");
+  expect(surfaceCard("Walls").textContent).toBe(
+    "Walls~Olive estimate, plaster, eggshellLRV 18 · dark, soaks up light",
+  );
   expect(screen.queryByTitle("Approximately #e3c9b6")).toBeNull();
+  // The banner takes the new walls color, with light text on the dark ground.
+  const banner = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
+  expect(banner.style.backgroundColor).toBe("rgb(112, 130, 56)");
 
   act(() =>
     FakeEventSource.open().emit("change", {
@@ -491,5 +564,74 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
       recordSlug: "olive-walls",
     }),
   );
-  await waitFor(() => expect(listAfter("Decisions")).toEqual(["A low sofa, Purchase, Leaning"]));
+  await waitFor(() => expect(listIn("Decisions")).toEqual(["◐LeaningA low sofaPurchase"]));
+});
+
+describe("placeOpening", () => {
+  const measured = (mm: number) => ({ mm, provenance: "measured" as const });
+
+  it("places a Window only with its offset, width, height, and sill", () => {
+    const window = {
+      slug: "w",
+      wall: "r/wall-1",
+      offset: measured(300),
+      width: measured(1200),
+      height: measured(1400),
+    };
+    expect(placeOpening({ window })).toBeUndefined();
+    expect(placeOpening({ window: { ...window, sillHeight: measured(900) } })).toEqual({
+      slug: "w",
+      kind: "window",
+      offset: 300,
+      width: 1200,
+      height: 1400,
+      sill: 900,
+    });
+  });
+
+  it("never places a Door seen from side B", () => {
+    const door = {
+      slug: "d",
+      wall: "r/wall-2",
+      to: "room" as const,
+      offset: measured(100),
+      clearWidth: measured(800),
+      height: measured(2000),
+      glazed: true,
+    };
+    expect(placeOpening({ door: { ...door, sideA: false } })).toBeUndefined();
+    expect(placeOpening({ door: { ...door, sideA: true } })?.kind).toBe("glazed door");
+  });
+});
+
+describe("facingMeaning", () => {
+  it("turns the sun side round south of the equator", () => {
+    expect(facingMeaning(["n"], 40)).toMatch(/^Faces away from the sun/);
+    expect(facingMeaning(["n"], -12)).toMatch(/^Faces the sun:/);
+    expect(facingMeaning(["se"], 51)).toMatch(/^Faces the sun in the morning/);
+  });
+
+  it("reads east and west by the time of day, and several sides as even light", () => {
+    expect(facingMeaning(["e"])).toMatch(/^Faces east/);
+    expect(facingMeaning(["w"])).toMatch(/^Faces west/);
+    expect(facingMeaning(["s", "sw"], 40)).toMatch(/^Faces the sun/);
+    expect(facingMeaning(["s", "w"], 40)).toMatch(/^Light from more than one side/);
+    expect(facingMeaning([])).toBe("");
+  });
+});
+
+it("counts a glazed Door leading outside as daylight, but not one to an indoor Room", () => {
+  const room = livingRoom();
+  const kinds = (doors: RoomDetail["doors"]) =>
+    daylightOpenings({ ...room, windows: [], doors }).map((opening) => opening.kind);
+  const [balcony, kitchen] = room.doors as [RoomDetail["doors"][0], RoomDetail["doors"][0]];
+  expect(kinds([balcony])).toEqual(["glazed door"]);
+  expect(kinds([{ ...kitchen, glazed: true, noDoor: false }])).toEqual([]);
+});
+
+it("gives a size only for a four-Walled Room with its first two lengths", () => {
+  const room = livingRoom();
+  const walls = room.walls.toSorted((a, b) => a.position - b.position);
+  expect(roomSize(walls)).toBe("4.20 × ~3.60 m");
+  expect(roomSize(walls.slice(0, 3))).toBeUndefined();
 });

@@ -1,23 +1,56 @@
-// Flags and Conflicts: the Home page's list of every one still open, with the actions that clear
-// it, and a flag's cause with its source named, which the Decision page shows too.
+// Flags and Conflicts: each one still open, asked as a plain question with a way back to the
+// Agent, and the actions that clear it behind "Decide here instead"; and a flag's cause with its
+// source named, which the Decision page shows too.
 
 import { Link } from "react-router";
 import { type Action, Actions } from "./Actions";
-import styles from "./App.module.css";
-import { call, type DecisionState, type DecisionSummary, type Flag, type Resolution } from "./api";
-import { decisionPath, flagCauseText, KIND_LABEL, recordPath, STATE_LABEL } from "./decisions";
-import { formatDate } from "./format";
-import { useDecisions, useHome } from "./queries";
+import {
+  type Conflict,
+  call,
+  type DecisionKind,
+  type DecisionState,
+  type DecisionSummary,
+  type Flag,
+  type Resolution,
+} from "./api";
+import { decisionPath, flagCauseText, KIND_LABEL, recordPath } from "./decisions";
+import flagStyles from "./Flags.module.css";
+import { useHome } from "./queries";
+import { shortDate } from "./ui/AgentWritten";
+import { AskAgent, buildPrompt } from "./ui/AskAgent";
+import { FlagMark, StatePill } from "./ui/StatePill";
 
-/** Keep always; Reopen only a Locked Decision; Reject any that is not Rejected already. */
+/** The Skill that owns a Decision of each kind, named in a prompt; none for Other. */
+export const SKILL_OF_KIND: Record<DecisionKind, string | undefined> = {
+  "design-direction": "Design Direction",
+  "room-direction": "Design Direction",
+  "room-use": "Design Direction",
+  palette: "Color",
+  "room-color": "Color",
+  purchase: "Purchase",
+  other: undefined,
+};
+
+/** What each resolution does, beside its button. */
+const RESOLUTION_EFFECT: Record<Resolution, string> = {
+  keep: "Keep leaves it as it is.",
+  reopen: "Reopen moves it back to Leaning and flags what rests on it.",
+  reject: "Reject retires it.",
+};
+
+/** The resolutions a Decision allows: Keep always, Reopen only Locked, Reject unless Rejected. */
+function allowedResolutions(decision: { state: DecisionState }): [Resolution, string][] {
+  const allowed: [Resolution, string][] = [["keep", "Keep"]];
+  if (decision.state === "locked") allowed.push(["reopen", "Reopen"]);
+  if (decision.state !== "rejected") allowed.push(["reject", "Reject"]);
+  return allowed;
+}
+
 function resolutions(
   decision: { state: DecisionState },
   post: (resolution: Resolution, reason: string | undefined) => Promise<unknown>,
 ): Action[] {
-  const allowed: [Resolution, string][] = [["keep", "Keep"]];
-  if (decision.state === "locked") allowed.push(["reopen", "Reopen"]);
-  if (decision.state !== "rejected") allowed.push(["reject", "Reject"]);
-  return allowed.map(([resolution, label]) => ({
+  return allowedResolutions(decision).map(([resolution, label]) => ({
     label,
     post: (reason) => post(resolution, reason),
   }));
@@ -55,52 +88,175 @@ export function FlagCause({ home, flag }: { home: string; flag: Flag }) {
   );
 }
 
-export function FlagsAndConflicts({ home }: { home: string }) {
-  const decisions = useDecisions(home);
-  if (decisions.isPending) return <p>Loading…</p>;
-  if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
-  const flags = decisions.data.decisions.flatMap((decision) =>
-    decision.openFlags.map((flag) => ({ flag, decision })),
-  );
-  const conflicts = decisions.data.decisions.flatMap((decision) =>
-    decision.openConflicts.map((conflict) => ({ conflict, decision })),
-  );
-  if (flags.length + conflicts.length === 0) return <p>None: no Decision needs review.</p>;
+export type Review =
+  | { kind: "flag"; flag: Flag; decision: DecisionSummary }
+  | { kind: "conflict"; conflict: Conflict; decision: DecisionSummary };
+
+/** Every open flag, then every open Conflict, of the Decisions. */
+export function openReviews(decisions: readonly DecisionSummary[]): Review[] {
+  return [
+    ...decisions.flatMap((decision) =>
+      decision.openFlags.map((flag): Review => ({ kind: "flag", flag, decision })),
+    ),
+    ...decisions.flatMap((decision) =>
+      decision.openConflicts.map((conflict): Review => ({ kind: "conflict", conflict, decision })),
+    ),
+  ];
+}
+
+/** The open Flags and Conflicts, each as a question. */
+export function ReviewList({
+  home,
+  reviews,
+  homeFolderPath,
+}: {
+  home: string;
+  reviews: readonly Review[];
+  homeFolderPath?: string | undefined;
+}) {
   return (
-    <ul>
-      {flags.map(({ flag, decision }) => (
-        <li key={flag.slug}>
-          Flag on <DecisionName home={home} decision={decision} />:{" "}
-          <FlagCause home={home} flag={flag} />, raised {formatDate(flag.raisedAt)}.
-          <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
-        </li>
-      ))}
-      {conflicts.map(({ conflict, decision }) => (
-        <li key={conflict.slug}>
-          Conflict on <DecisionName home={home} decision={decision} />: {conflict.description},
-          raised {formatDate(conflict.raisedAt)}.
-          <Actions
+    <ul className={flagStyles.reviews}>
+      {reviews.map((review) =>
+        review.kind === "flag" ? (
+          <FlagQuestion
+            key={review.flag.slug}
             home={home}
-            actions={resolutions(decision, (resolution, reason) =>
-              call("resolve_conflict", {
-                home,
-                conflict: conflict.slug,
-                resolution,
-                ...withReason(reason),
-              }),
-            )}
+            flag={review.flag}
+            decision={review.decision}
+            homeFolderPath={homeFolderPath}
           />
-        </li>
-      ))}
+        ) : (
+          <ConflictQuestion
+            key={review.conflict.slug}
+            home={home}
+            conflict={review.conflict}
+            decision={review.decision}
+            homeFolderPath={homeFolderPath}
+          />
+        ),
+      )}
     </ul>
   );
 }
 
-function DecisionName({ home, decision }: { home: string; decision: DecisionSummary }) {
+function FlagQuestion({
+  home,
+  flag,
+  decision,
+  homeFolderPath,
+}: {
+  home: string;
+  flag: Flag;
+  decision: DecisionSummary;
+  homeFolderPath?: string | undefined;
+}) {
+  const prompt = buildPrompt({
+    skill: SKILL_OF_KIND[decision.kind],
+    text:
+      `${decision.title} was flagged because ${flag.source.name}${flagCauseText(flag)}. ` +
+      "Help me decide whether to keep it, reopen it, or reject it.",
+    slug: decision.slug,
+  });
   return (
-    <>
-      <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link> (
-      {KIND_LABEL[decision.kind]}, {STATE_LABEL[decision.state]})
-    </>
+    <li className={flagStyles.review}>
+      <p className={flagStyles.question}>
+        <FlagMark /> Something under <DecisionName home={home} decision={decision} /> changed:{" "}
+        <FlagCause home={home} flag={flag} />. Is <em>{decision.title}</em> still right?
+      </p>
+      <ReviewMeta decision={decision} raisedAt={flag.raisedAt} />
+      <AskAgent label="Talk it through" prompt={prompt} homeFolderPath={homeFolderPath} />
+      <DecideHere
+        home={home}
+        decision={decision}
+        actions={flagActions(home, decision, flag.slug)}
+      />
+    </li>
   );
+}
+
+function ConflictQuestion({
+  home,
+  conflict,
+  decision,
+  homeFolderPath,
+}: {
+  home: string;
+  conflict: Conflict;
+  decision: DecisionSummary;
+  homeFolderPath?: string | undefined;
+}) {
+  const prompt = buildPrompt({
+    skill: SKILL_OF_KIND[decision.kind],
+    text:
+      `${decision.title} has a Conflict: ${conflict.description} ` +
+      "Help me decide whether to keep it, reopen it, or reject it.",
+    slug: decision.slug,
+  });
+  return (
+    <li className={flagStyles.review}>
+      <p className={flagStyles.question}>
+        <FlagMark /> Something new goes against <DecisionName home={home} decision={decision} />:{" "}
+        {conflict.description} Does <em>{decision.title}</em> still hold?
+      </p>
+      <ReviewMeta decision={decision} raisedAt={conflict.raisedAt} conflict />
+      <AskAgent label="Talk it through" prompt={prompt} homeFolderPath={homeFolderPath} />
+      <DecideHere
+        home={home}
+        decision={decision}
+        actions={resolutions(decision, (resolution, reason) =>
+          call("resolve_conflict", {
+            home,
+            conflict: conflict.slug,
+            resolution,
+            ...withReason(reason),
+          }),
+        )}
+      />
+    </li>
+  );
+}
+
+/** "Conflict · Room Direction · ● Locked · raised 14 Sep". */
+function ReviewMeta({
+  decision,
+  raisedAt,
+  conflict = false,
+}: {
+  decision: DecisionSummary;
+  raisedAt: string;
+  conflict?: boolean;
+}) {
+  return (
+    <p className={flagStyles.meta}>
+      {conflict ? "Conflict" : "Flag"} · {KIND_LABEL[decision.kind]} ·{" "}
+      <StatePill state={decision.state} /> · raised {shortDate(raisedAt) ?? raisedAt}
+    </p>
+  );
+}
+
+/** Keep, Reopen, and Reject, each with what it does, behind a disclosure. */
+function DecideHere({
+  home,
+  decision,
+  actions,
+}: {
+  home: string;
+  decision: DecisionSummary;
+  actions: Action[];
+}) {
+  return (
+    <details className={flagStyles.decide}>
+      <summary>Decide here instead</summary>
+      <ul className={flagStyles.effects}>
+        {allowedResolutions(decision).map(([resolution]) => (
+          <li key={resolution}>{RESOLUTION_EFFECT[resolution]}</li>
+        ))}
+      </ul>
+      <Actions home={home} actions={actions} />
+    </details>
+  );
+}
+
+function DecisionName({ home, decision }: { home: string; decision: DecisionSummary }) {
+  return <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>;
 }

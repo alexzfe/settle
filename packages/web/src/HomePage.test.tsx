@@ -3,16 +3,14 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
   Conflict,
-  Constraint,
   DecisionSummary,
   Flag,
   Home,
   Level,
-  Note,
   Room,
+  RoomDetail,
   Session,
 } from "./api";
-import { formatDate } from "./format";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -34,8 +32,6 @@ function stubHomePage(handlers: ApiHandlers) {
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({ home: flat, levels: [ground], rooms: [], unplacedItems: 0 }),
     list_sessions: () => ({ sessions: [] }),
-    list_constraints: () => ({ constraints: [] }),
-    list_notes: () => ({ notes: [] }),
     list_decisions: () => ({ decisions: [] }),
     ...handlers,
   });
@@ -85,19 +81,20 @@ function conflictOn(decision: DecisionSummary, description: string): Conflict {
   };
 }
 
-/** The Decisions line of the Home page's Flags and Conflicts list: its text and its buttons. */
-function reviewLines(): { text: string; buttons: (string | null)[] }[] {
-  const list = screen.getByRole("heading", { name: "Flags and Conflicts" }).nextElementSibling;
-  return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) => ({
-    text: [...li.childNodes]
-      .filter((node) => node.nodeName !== "FORM")
-      .map((node) => node.textContent)
-      .join(""),
-    buttons: [...li.querySelectorAll("button")].map((button) => button.textContent),
+/** The "Needs you" band. */
+function needsYou(): HTMLElement {
+  return screen.getByRole("region", { name: "Needs you" });
+}
+
+/** Each open flag and Conflict in the band: its question, and the buttons that decide it here. */
+function reviewLines(): { question: string | null; decide: (string | null)[] }[] {
+  return [...needsYou().querySelectorAll(":scope > ul > li")].map((li) => ({
+    question: li.querySelector("p")?.textContent ?? null,
+    decide: [...li.querySelectorAll("details button")].map((button) => button.textContent),
   }));
 }
 
-it("shows each open flag and Conflict on one line, linking to its Decision", async () => {
+it("asks about each open flag and Conflict in plain words, linking to its Decision", async () => {
   const decisions: DecisionSummary[] = [
     { ...calm, openFlags: [flagOn(calm)] },
     { ...nook, openFlags: [flagOn(nook)] },
@@ -106,28 +103,52 @@ it("shows each open flag and Conflict on one line, linking to its Decision", asy
   stubHomePage({ list_decisions: () => ({ decisions }) });
   renderRoutes("/homes/flat");
   await screen.findByText(/The sofa we saw/);
-  const date = formatDate(raised);
   expect(reviewLines()).toEqual([
     {
-      text: `Flag on Calm and low (Room Direction, Locked): Warm minimalism was reopened, raised ${date}.`,
-      buttons: ["Keep", "Reopen", "Reject"],
+      question:
+        "⚑ Something under Calm and low changed: Warm minimalism was reopened. " +
+        "Is Calm and low still right?",
+      decide: ["Keep", "Reopen", "Reject"],
     },
     {
       // Only a Locked Decision can be reopened.
-      text: `Flag on Reading nook (Room use, Candidate): Warm minimalism was reopened, raised ${date}.`,
-      buttons: ["Keep", "Reject"],
+      question:
+        "⚑ Something under Reading nook changed: Warm minimalism was reopened. " +
+        "Is Reading nook still right?",
+      decide: ["Keep", "Reject"],
     },
     {
-      text: `Conflict on A low sofa (Purchase, Locked): The sofa we saw is 90 cm tall., raised ${date}.`,
-      buttons: ["Keep", "Reopen", "Reject"],
+      question:
+        "⚑ Something new goes against A low sofa: The sofa we saw is 90 cm tall. " +
+        "Does A low sofa still hold?",
+      decide: ["Keep", "Reopen", "Reject"],
     },
   ]);
   expect(screen.getByRole("link", { name: "Reading nook" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/hallway-use",
   );
+  // What each resolution does is said beside it.
+  const first = needsYou().querySelector(":scope > ul > li") as HTMLElement;
+  expect(within(first).getByText(/Reopen moves it back to Leaning/)).toBeDefined();
 });
 
-it("keeps a flagged Decision: posts resolve_flag with the reason, and the line goes", async () => {
+it("offers to talk a flag through with the owning Skill, naming the Decision's slug", async () => {
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  stubHomePage({
+    list_decisions: () => ({ decisions: [{ ...calm, openFlags: [flagOn(calm)] }] }),
+  });
+  renderRoutes("/homes/flat");
+  const button = await screen.findByRole("button", { name: /Talk it through/ });
+  await act(async () => fireEvent.click(button));
+  expect(writeText).toHaveBeenCalledWith(
+    `claude "Using the Design Direction Skill: Calm and low was flagged because Warm minimalism ` +
+      `was reopened. Help me decide whether to keep it, reopen it, or reject it. ` +
+      `(slug: living-room-direction)"`,
+  );
+});
+
+it("keeps a flagged Decision: posts resolve_flag with the reason, and the question goes", async () => {
   let flags = [flagOn(calm)];
   const fetch = stubHomePage({
     list_decisions: () => ({ decisions: [{ ...calm, openFlags: flags }] }),
@@ -137,14 +158,14 @@ it("keeps a flagged Decision: posts resolve_flag with the reason, and the line g
     },
   });
   renderRoutes("/homes/flat");
-  const line = (await screen.findByText(/Flag on/)).closest("li") as HTMLElement;
+  const line = (await screen.findByText(/Something under/)).closest("li") as HTMLElement;
 
   fireEvent.change(within(line).getByLabelText("Reason (optional)"), {
     target: { value: "still right for the room" },
   });
   fireEvent.click(within(line).getByRole("button", { name: "Keep" }));
 
-  expect(await screen.findByText("None: no Decision needs review.")).toBeDefined();
+  expect(await screen.findByText("Nothing needs you right now.")).toBeDefined();
   expect(inputsTo(fetch, "resolve_flag")).toEqual([
     {
       home: "flat",
@@ -163,7 +184,7 @@ it("reopens the Decision in Conflict through resolve_conflict", async () => {
     resolve_conflict: () => ({ receipt: "Reopened Calm and low.", decision: calm }),
   });
   renderRoutes("/homes/flat");
-  await screen.findByText(/Conflict on/);
+  await screen.findByText(/Something new goes against/);
   fireEvent.click(screen.getByRole("button", { name: "Reopen" }));
   await waitFor(() => expect(inputsTo(fetch, "resolve_conflict")).toHaveLength(1));
   expect(inputsTo(fetch, "resolve_conflict")).toEqual([
@@ -216,21 +237,22 @@ it("names the source of Deviation and value_changed flags, and the field that ch
   });
   renderRoutes("/homes/flat");
   await screen.findByText(/length changed/);
-  const date = formatDate(raised);
   expect(reviewLines()).toEqual([
     {
-      text:
-        `Flag on Clay cushions (Purchase, Leaning): Wool rug was Fulfilled with a Deviation ` +
-        `from a must Requirement, raised ${date}.`,
-      buttons: ["Keep", "Reject"],
+      question:
+        "⚑ Something under Clay cushions changed: Wool rug was Fulfilled with a Deviation from " +
+        "a must Requirement. Is Clay cushions still right?",
+      decide: ["Keep", "Reject"],
     },
     {
-      text: `Flag on A low sofa (Purchase, Locked): Wall 2's length changed, raised ${date}.`,
-      buttons: ["Keep", "Reopen", "Reject"],
+      question:
+        "⚑ Something under A low sofa changed: Wall 2's length changed. Is A low sofa still right?",
+      decide: ["Keep", "Reopen", "Reject"],
     },
     {
-      text: `Flag on A low sofa (Purchase, Locked): Hallway door changed, raised ${date}.`,
-      buttons: ["Keep", "Reopen", "Reject"],
+      question:
+        "⚑ Something under A low sofa changed: Hallway door changed. Is A low sofa still right?",
+      decide: ["Keep", "Reopen", "Reject"],
     },
   ]);
   // Each source links to the page showing it; a Door's Room is found among the Home's Rooms.
@@ -253,7 +275,7 @@ it("shows a new flag when a flag change event arrives", async () => {
   let flags: Flag[] = [];
   stubHomePage({ list_decisions: () => ({ decisions: [{ ...calm, openFlags: flags }] }) });
   renderRoutes("/homes/flat");
-  await screen.findByText("None: no Decision needs review.");
+  await screen.findByText("Nothing needs you right now.");
 
   flags = [flagOn(calm)];
   act(() =>
@@ -263,7 +285,83 @@ it("shows a new flag when a flag change event arrives", async () => {
       recordSlug: "living-room-direction/flag-1",
     }),
   );
-  expect(await screen.findByText(/Flag on/)).toBeDefined();
+  expect(await screen.findByText(/Something under/)).toBeDefined();
+});
+
+/** A Room Sheet with nothing recorded but what is given. */
+function roomDetail(room: Room, rest: Partial<RoomDetail> = {}): RoomDetail {
+  return {
+    slug: room.slug,
+    name: room.name,
+    level: ground,
+    functions: [],
+    outdoor: false,
+    timesOfUse: [],
+    windowless: false,
+    walls: [],
+    windows: [],
+    doors: [],
+    surfaces: [],
+    features: [],
+    items: [],
+    lights: [],
+    gaps: [],
+    ...rest,
+  };
+}
+
+it("shows each Room as a tile with its wall color, functions, Gaps, open Decisions, and flag", async () => {
+  const living: Room = { slug: "living-room", name: "Living room", level: "ground" };
+  const balcony: Room = { slug: "balcony", name: "Balcony", level: "ground" };
+  const details: Record<string, RoomDetail> = {
+    "living-room": roomDetail(living, {
+      functions: ["living", "dining"],
+      surfaces: [
+        {
+          slug: "living-room/walls",
+          part: "walls",
+          color: { name: "Setting Plaster", hex: "#e3c9b6", provenance: "measured" },
+        },
+      ],
+      gaps: ["ceiling height", "times of use", "floor Surface"],
+    }),
+    balcony: roomDetail(balcony, { outdoor: true }),
+  };
+  const onLiving = (slug: string, title: string, state: DecisionSummary["state"]) => ({
+    ...summary(slug, title, "purchase", state),
+    room: { slug: "living-room", name: "Living room" },
+  });
+  stubHomePage({
+    get_home: () => ({ home: flat, levels: [ground], rooms: [living, balcony], unplacedItems: 0 }),
+    get_room: (input) => {
+      const room = details[input.room];
+      if (!room) throw new Error(`No Room ${input.room}`);
+      return { room, decisions: [] };
+    },
+    list_decisions: () => ({
+      decisions: [
+        onLiving("rug", "Wool rug", "candidate"),
+        { ...onLiving("lamp", "Floor lamp", "leaning"), openFlags: [flagOn(calm)] },
+        onLiving("sofa", "A low sofa", "locked"),
+      ],
+    }),
+  });
+  renderRoutes("/homes/flat");
+  await screen.findByText("3 Gaps");
+  const tile = screen.getByRole("link", { name: "Living room" }).closest("li") as HTMLElement;
+  expect(tile.textContent).toBe("Living room ⚑Living, dining3 Gaps2 open Decisions");
+  expect(within(tile).getByRole("img", { name: "Flagged" })).toBeDefined();
+  expect(within(tile).getByTitle("Walls: Setting Plaster, approximately #e3c9b6")).toBeDefined();
+  const outdoor = screen.getByRole("link", { name: "Balcony" }).closest("li") as HTMLElement;
+  expect(outdoor.textContent).toBe("BalconyNo functions yetOutdoorNo Gaps");
+  expect(screen.getByRole("heading", { name: /^Level 0/ }).textContent).toBe("Level 0 · Ground");
+  // The band counts the Rooms with Gaps, linking to the Rooms page.
+  expect(
+    within(needsYou()).getByRole("link", { name: "1 Room with Gaps" }).getAttribute("href"),
+  ).toBe("/homes/flat/rooms");
+  expect(screen.getByRole("link", { name: "All Rooms →" }).getAttribute("href")).toBe(
+    "/homes/flat/rooms",
+  );
 });
 
 it("re-renders the Room list when a Room change event arrives", async () => {
@@ -284,92 +382,11 @@ it("re-renders the Room list when a Room change event arrives", async () => {
   );
 });
 
-it("refetches only the Sessions list when a Session change event arrives", async () => {
-  const opened: Session = { slug: "s1", skills: ["home-intake"], openedAt: "2026-09-13T10:00:00Z" };
-  let sessions: Session[] = [opened];
-  const fetch = stubHomePage({ list_sessions: () => ({ sessions }) });
+it("offers Home Intake when there are no Rooms yet", async () => {
+  stubHomePage({});
   renderRoutes("/homes/flat");
-  await screen.findByText(/unsummarised/);
-  const homeFetches = fetch.mock.calls.filter(([url]) => url === "/api/get_home").length;
-
-  sessions = [
-    {
-      ...opened,
-      closedAt: "2026-09-13T10:30:00Z",
-      summary: { changed: "Added the Kitchen.", open: "Its size.", next: "home-intake" },
-    },
-  ];
-  act(() =>
-    FakeEventSource.open().emit("change", {
-      home: "flat",
-      recordKind: "session",
-      recordSlug: "s1",
-    }),
-  );
-
-  expect(await screen.findByText("Added the Kitchen.")).toBeDefined();
-  expect(fetch.mock.calls.filter(([url]) => url === "/api/get_home")).toHaveLength(homeFetches);
-});
-
-it("shows only the Home facts that are recorded, with their Provenance", async () => {
-  const described: Home = {
-    ...flat,
-    tenure: "rented",
-    plannedStay: "1-3-years",
-    buildingType: "apartment",
-    buildingEra: "1960s block",
-    lift: true,
-    liftDoorWidth: { mm: 800, provenance: "measured" },
-    liftCarDepth: { mm: 1400, provenance: "estimated" },
-    accessWidth: { mm: 760, provenance: "measured" },
-    accessNote: "turn in the communal stair",
-  };
-  stubHomePage({
-    get_home: () => ({ home: described, levels: [ground], rooms: [], unplacedItems: 0 }),
-  });
-  renderRoutes("/homes/flat");
-  await screen.findByText("Rented");
-  const facts = [...(document.querySelector("dl")?.children ?? [])].map((each) => each.textContent);
-  expect(facts).toEqual([
-    "City",
-    "Madrid",
-    "Country",
-    "Spain",
-    "Latitude",
-    "40.4°",
-    "Tenure",
-    "Rented",
-    "Planned stay",
-    "1–3 years",
-    "Building type",
-    "Apartment",
-    "Building era",
-    "1960s block",
-    "Lift",
-    "Yes",
-    "Lift door width",
-    "0.80 m Measured",
-    "Lift car depth",
-    "~1.40 m Estimated",
-    "Narrowest access point",
-    "0.76 m Measured, turn in the communal stair",
-  ]);
-});
-
-it("leaves out the Home facts that are not recorded, and says when there is no lift", async () => {
-  stubHomePage({
-    get_home: () => ({
-      home: { ...flat, lift: false },
-      levels: [ground],
-      rooms: [],
-      unplacedItems: 0,
-    }),
-  });
-  renderRoutes("/homes/flat");
-  await screen.findByText("Madrid");
-  expect(screen.queryByText("Tenure")).toBeNull();
-  expect(screen.queryByText("Lift door width")).toBeNull();
-  expect(screen.getByText("Lift").nextElementSibling?.textContent).toBe("None");
+  const empty = (await screen.findByText("No Rooms yet")).parentElement as HTMLElement;
+  expect(within(empty).getByRole("button", { name: /Ask the Agent/ })).toBeDefined();
 });
 
 it("links the Unplaced Item count to the Items list", async () => {
@@ -381,59 +398,97 @@ it("links the Unplaced Item count to the Items list", async () => {
   expect(link.getAttribute("href")).toBe("/homes/flat/items");
 });
 
-it("shows the Constraints in force, and the Archived ones on request", async () => {
-  const drilling: Constraint = { slug: "no-drilling", text: "Rented: no drilling." };
-  const painting: Constraint = {
-    slug: "no-painting",
-    text: "Rented: no painting.",
-    archivedAt: "2026-09-10T09:00:00Z",
-    archivedReason: "the landlord agreed to paint",
-  };
-  const fetch = stubHomePage({
-    list_constraints: (input) => ({
-      constraints: input.archived ? [drilling, painting] : [drilling],
-    }),
-  });
+it("links to the About page for the Home's facts", async () => {
+  stubHomePage({});
   renderRoutes("/homes/flat");
-  await screen.findByText("Rented: no drilling.");
-  expect(screen.queryByText(/Rented: no painting\./)).toBeNull();
-
-  fireEvent.click(screen.getByLabelText("Show archived Constraints"));
-
-  const archived = await screen.findByText(/Rented: no painting\./);
-  expect(archived.textContent).toContain("the landlord agreed to paint");
-  expect(fetch.mock.calls.filter(([url]) => url === "/api/list_constraints")).toHaveLength(2);
+  const link = await screen.findByRole("link", { name: /^About this Home/ });
+  expect(link.getAttribute("href")).toBe("/homes/flat/about");
 });
 
-it("refetches the Constraints when a Constraint change event arrives", async () => {
-  let constraints: Constraint[] = [];
-  stubHomePage({ list_constraints: () => ({ constraints }) });
+it("shows the getting-started checklist until there is a Home Folder and a Session", async () => {
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  stubHomePage({});
   renderRoutes("/homes/flat");
-  await screen.findByText("No Constraints in force.");
+  await screen.findByRole("heading", { name: "Getting started" });
+  expect(screen.getByRole("button", { name: "Set up Home Folder" })).toBeDefined();
+  const intake = screen.getByText("Start with Home Intake").parentElement as HTMLElement;
+  await act(async () =>
+    fireEvent.click(within(intake).getByRole("button", { name: /Ask the Agent/ })),
+  );
+  expect(writeText).toHaveBeenCalledWith(
+    `claude "Using the Home Intake Skill: Let's record my home; I'll upload the floor plan"`,
+  );
+});
 
-  constraints = [{ slug: "two-cats", text: "Two cats." }];
+const walkthrough: Session = {
+  slug: "s1",
+  skills: ["home-intake"],
+  openedAt: "2026-09-13T10:00:00Z",
+  closedAt: "2026-09-13T10:30:00Z",
+  summary: {
+    changed: "Added the Kitchen.",
+    open: "Its ceiling height.",
+    next: "Measure the Kitchen",
+  },
+};
+
+it("picks up where the newest summarised Session left off, settling the Design Direction first", async () => {
+  const set = { ...flat, homeFolderPath: "~/Homes/flat" };
+  const later: Session = { slug: "s2", skills: ["color"], openedAt: "2026-09-15T10:00:00Z" };
+  let decisions = [summary("design-direction", "Warm minimalism", "design-direction", "leaning")];
+  stubHomePage({
+    get_home: () => ({ home: set, levels: [ground], rooms: [], unplacedItems: 0 }),
+    list_sessions: () => ({ sessions: [walkthrough, later] }),
+    list_decisions: () => ({ decisions }),
+  });
+  renderRoutes("/homes/flat");
+  const card = (await screen.findByRole("heading", { name: "Where we left off" })).closest(
+    "section",
+  ) as HTMLElement;
+  expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
+  expect(within(card).getByText(/Written by the Agent/).textContent).toBe(
+    "Written by the Agent · Home Intake Session · 13 Sep",
+  );
+  expect(within(card).getByText("Added the Kitchen.")).toBeDefined();
+  expect(within(card).getByText("Its ceiling height.")).toBeDefined();
+  const steps = () =>
+    [...card.querySelectorAll("ol > li > span:first-child")].map((s) => s.textContent);
+  expect(steps()).toEqual(["Settle the Design Direction", "Measure the Kitchen"]);
+
+  decisions = [summary("design-direction", "Warm minimalism", "design-direction", "locked")];
   act(() =>
     FakeEventSource.open().emit("change", {
       home: "flat",
-      recordKind: "constraint",
-      recordSlug: "two-cats",
+      recordKind: "decision",
+      recordSlug: "design-direction",
     }),
   );
-  expect(await screen.findByText("Two cats.")).toBeDefined();
+  await waitFor(() => expect(steps()).toEqual(["Measure the Kitchen"]));
 });
 
-it("shows the Notes, newest first", async () => {
-  const notes: Note[] = [
-    { slug: "dog", text: "We might get a dog.", createdAt: "2026-09-01T10:00:00Z" },
-    { slug: "cat", text: "The cat scratches fabric.", createdAt: "2026-09-12T10:00:00Z" },
-  ];
-  stubHomePage({ list_notes: () => ({ notes }) });
+it("refetches only the Sessions when a Session change event arrives", async () => {
+  const opened: Session = { slug: "s1", skills: ["home-intake"], openedAt: "2026-09-13T10:00:00Z" };
+  let sessions: Session[] = [opened];
+  const fetch = stubHomePage({ list_sessions: () => ({ sessions }) });
   renderRoutes("/homes/flat");
-  await screen.findByText(/We might get a dog/);
-  const list = screen.getByRole("heading", { name: "Notes" }).nextElementSibling;
-  expect([...(list?.querySelectorAll("li") ?? [])].map((li) => li.firstChild?.textContent)).toEqual(
-    ["The cat scratches fabric.", "We might get a dog."],
+  await screen.findByText(/unsummarised/);
+  expect(screen.getByRole("link", { name: "Home Intake" }).getAttribute("href")).toBe(
+    "/homes/flat/sessions/s1",
   );
+  const homeFetches = fetch.mock.calls.filter(([url]) => url === "/api/get_home").length;
+
+  sessions = [walkthrough];
+  act(() =>
+    FakeEventSource.open().emit("change", {
+      home: "flat",
+      recordKind: "session",
+      recordSlug: "s1",
+    }),
+  );
+
+  expect(await screen.findByText("Added the Kitchen.")).toBeDefined();
+  expect(fetch.mock.calls.filter(([url]) => url === "/api/get_home")).toHaveLength(homeFetches);
 });
 
 const earthyColors: PaletteColor[] = [
@@ -453,17 +508,18 @@ function palette(slug: string, title: string, state: DecisionSummary["state"]): 
   return { ...summary(slug, title, "palette", state), colors: earthyColors };
 }
 
-/** The Palette section: the line naming the Palette, and the row of its colors. */
+/** The Palette section: the Palette's name and state, and its colors' names. */
 function paletteSection(): { line: string | null | undefined; colors: (string | null)[] } {
-  const line = screen.getByRole("heading", { name: "Palette" }).nextElementSibling;
-  const row = line?.nextElementSibling;
+  const section = screen.getByRole("heading", { name: "Palette" }).closest("section");
   return {
-    line: line?.textContent,
-    colors: [...(row?.querySelectorAll("li") ?? [])].map((li) => li.textContent),
+    line: section?.querySelector("h2")?.nextElementSibling?.textContent,
+    colors: [...(section?.querySelectorAll("figure li") ?? [])].map(
+      (li) => li.querySelector("span + span > span")?.textContent ?? null,
+    ),
   };
 }
 
-it("shows the Locked Palette as a row of swatches linking to its Decision", async () => {
+it("shows the Locked Palette as chips linking to its Decision", async () => {
   const fetch = stubHomePage({
     list_decisions: () => ({
       decisions: [
@@ -476,22 +532,23 @@ it("shows the Locked Palette as a row of swatches linking to its Decision", asyn
   renderRoutes("/homes/flat");
   await screen.findByText(/Setting Plaster/);
   expect(paletteSection()).toEqual({
-    line: "Earthy palette, Locked",
-    colors: ["Setting Plaster (Farrow & Ball 231), base", "~Olive, accent"],
+    line: "Earthy palette●Locked",
+    colors: ["Setting Plaster", "Olive"],
   });
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/earthy-palette",
   );
   expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
-  expect(screen.getByTitle("No screen color recorded")).toBeDefined();
+  expect(screen.getAllByTitle("No screen color recorded")).toHaveLength(1);
   // The list carries the colors, so no Decision is fetched for them.
   expect(inputsTo(fetch, "get_decision")).toEqual([]);
 });
 
-it("shows the latest Leaning Palette when none is Locked", async () => {
+it("shows the latest Leaning Palette when none is Locked, under the Design Direction", async () => {
   stubHomePage({
     list_decisions: () => ({
       decisions: [
+        summary("design-direction", "Warm minimalism", "design-direction", "locked"),
         palette("sunny-palette", "Sunny palette", "leaning"),
         palette("earthy-palette", "Earthy palette", "leaning"),
       ],
@@ -499,7 +556,9 @@ it("shows the latest Leaning Palette when none is Locked", async () => {
   });
   renderRoutes("/homes/flat");
   await screen.findByText(/Setting Plaster/);
-  expect(paletteSection().line).toBe("Earthy palette, Leaning");
+  expect(paletteSection().line).toBe("Earthy palette◐Leaning");
+  const direction = screen.getByText("Design Direction").parentElement;
+  expect(direction?.textContent).toBe("Design Direction Warm minimalism ●Locked");
 });
 
 it("says there is no Palette yet, and shows one the Agent Locks", async () => {
@@ -509,7 +568,7 @@ it("says there is no Palette yet, and shows one the Agent Locks", async () => {
   ];
   stubHomePage({ list_decisions: () => ({ decisions }) });
   renderRoutes("/homes/flat");
-  expect(await screen.findByText("No Palette yet.")).toBeDefined();
+  expect(await screen.findByText("No Palette yet")).toBeDefined();
 
   decisions = [palette("earthy-palette", "Earthy palette", "locked")];
   act(() =>
@@ -520,5 +579,5 @@ it("says there is no Palette yet, and shows one the Agent Locks", async () => {
     }),
   );
   await screen.findByText(/Setting Plaster/);
-  expect(paletteSection().line).toBe("Earthy palette, Locked");
+  expect(paletteSection().line).toBe("Earthy palette●Locked");
 });

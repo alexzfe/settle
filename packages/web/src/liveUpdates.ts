@@ -1,6 +1,6 @@
 import type { ChangeEvent, RecordKind } from "@idh/core";
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { queryKeys } from "./queries";
 
 /**
@@ -86,30 +86,46 @@ function queriesOfHome(home: string): QueryKey[] {
 }
 
 /**
+ * How the live connection stands: connecting at first, live once open, reconnecting while the
+ * browser retries a dropped connection, and stopped when the browser has given up (the page must
+ * be reloaded to get updates again).
+ */
+export type LiveState = "connecting" | "live" | "reconnecting" | "stopped";
+
+// EventSource.CLOSED, spelled out so a stand-in EventSource without the constants still works.
+const CLOSED = 2;
+
+/**
  * Keeps one Home's queries fresh while its pages are open: each change event invalidates the
  * queries showing that record kind, and after a dropped connection comes back (the browser
  * retries on its own) everything for the Home is refetched, since changes may have been missed.
+ * Returns how the connection stands.
  */
-export function useLiveUpdates(home: string) {
+export function useLiveUpdates(home: string): LiveState {
   const queryClient = useQueryClient();
+  const [state, setState] = useState<LiveState>("connecting");
   useEffect(() => {
     const invalidate = (keys: QueryKey[]) => {
       for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey });
     };
     const events = new EventSource(`/events?home=${encodeURIComponent(home)}`);
     let dropped = false;
+    setState("connecting");
     events.addEventListener("change", (event: MessageEvent<string>) => {
       const change = JSON.parse(event.data) as ChangeEvent;
       invalidate(queriesShowing(change.recordKind, change.home));
     });
     events.addEventListener("error", () => {
       dropped = true;
+      setState(events.readyState === CLOSED ? "stopped" : "reconnecting");
     });
     events.addEventListener("open", () => {
+      setState("live");
       if (!dropped) return;
       dropped = false;
       invalidate(queriesOfHome(home));
     });
     return () => events.close();
   }, [home, queryClient]);
+  return state;
 }

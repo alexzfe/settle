@@ -80,7 +80,7 @@ export const exportShoppingList = defineOperation({
       : {
           mimeType: HTML,
           fileName: `${home.slug}-shopping-list.html`,
-          text: renderShoppingListPage(home, purchases),
+          text: renderShoppingListPage(home, purchases, context.now()),
         };
   },
 });
@@ -115,7 +115,11 @@ export const exportGuides = defineOperation({
     const name = `${input.decision === undefined ? home.slug : rows[0]?.slug}-shopping-guides`;
     return input.format === "markdown"
       ? { mimeType: MARKDOWN, fileName: `${name}.md`, text: renderGuidesMarkdown(home, purchases) }
-      : { mimeType: HTML, fileName: `${name}.html`, text: renderGuidesPage(home, purchases) };
+      : {
+          mimeType: HTML,
+          fileName: `${name}.html`,
+          text: renderGuidesPage(home, purchases, context.now()),
+        };
   },
 });
 
@@ -159,7 +163,11 @@ export const getGuidePage = defineOperation({
     return {
       mimeType: HTML,
       fileName: `${decision.slug}-quick-guide.html`,
-      text: renderGuidePage(model.home, toDetail(model, decision, { includeFullGuide: true })),
+      text: renderGuidePage(
+        model.home,
+        toDetail(model, decision, { includeFullGuide: true }),
+        context.now(),
+      ),
     };
   },
 });

@@ -50,7 +50,7 @@ const guides: Guides = {
   fullGuide: { writtenAt: written, outOfDate: false },
 };
 
-const markdown = [
+const shortGuide = [
   "# Size",
   "It must reach under the sofa's front legs, so **at least 2.0 × 1.4 m**.",
   "",
@@ -60,6 +60,12 @@ const markdown = [
   "",
   "See [the care notes](https://example.com/care).",
 ].join("\n");
+
+/** A longer Full Guide, with enough headings for a table of contents. */
+const longGuide = [shortGuide, "## Colour", "Clay or rust.", "# Care", "Vacuum weekly."].join("\n");
+
+/** The Full Guide the fake API gives when asked for it. */
+let markdown = shortGuide;
 
 type Parts = Partial<
   Pick<
@@ -147,6 +153,7 @@ function rugSummary(): DecisionSummary {
 }
 
 beforeEach(() => {
+  markdown = shortGuide;
   FakeEventSource.instances = [];
   vi.stubGlobal("EventSource", FakeEventSource);
 });
@@ -175,12 +182,34 @@ function showRug(parts: Parts = {}, handlers: ApiHandlers = {}) {
   return fetch;
 }
 
-function after(heading: string): Element | null | undefined {
-  return screen.getByRole("heading", { name: heading }).nextElementSibling;
+/** The section a heading (h2) titles. */
+function sectionOf(heading: string): HTMLElement {
+  return screen.getByRole("heading", { name: heading, level: 2 }).closest("section") as HTMLElement;
 }
 
-function listAfter(heading: string): (string | null)[] {
-  return [...(after(heading)?.querySelectorAll(":scope > li") ?? [])].map((li) => li.textContent);
+/** The text of a section after its header. */
+function after(heading: string): string {
+  return [...sectionOf(heading).children]
+    .slice(1)
+    .map((child) => child.textContent)
+    .join("");
+}
+
+/** Each item of the first list in a section, its parts joined by " | ". */
+function listAfter(heading: string): string[] {
+  const list = sectionOf(heading).querySelector("ul");
+  return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) =>
+    li.children.length > 1
+      ? [...li.children].map((child) => child.textContent).join(" | ")
+      : (li.textContent ?? ""),
+  );
+}
+
+/** The items of the list under a Quick Guide block's title. */
+function block(title: string): (string | null)[] {
+  const heading = within(sectionOf("Quick Guide")).getByText(title);
+  const list = heading.nextElementSibling;
+  return [...(list?.querySelectorAll("li") ?? [])].map((li) => li.textContent);
 }
 
 function href(name: string): string | null {
@@ -191,40 +220,47 @@ it("lists the musts before the prefers, each reason linking to the record it poi
   showRug({ quickGuide, guides });
   await screen.findByRole("heading", { name: "Requirements" });
   expect(listAfter("Requirements")).toEqual([
-    "Must: At least 2.0 × 1.4 m (Wall 2, length)",
-    "Must: Rolls to fit through the hallway door (Door to the Hallway, clear width)",
-    "Prefer: Wool, low pile (Two cats)",
-    "Prefer: In the Palette's clay (Warm clay)",
-    "Prefer: No wider than the sofa (Grey sofa)",
+    "Must | At least 2.0 × 1.4 m | Wall 2, length",
+    "Must | Rolls to fit through the hallway door | Door to the Hallway, clear width",
+    "Prefer | Wool, low pile | Two cats",
+    "Prefer | In the Palette's clay | Warm clay",
+    "Prefer | No wider than the sofa | Grey sofa",
   ]);
   // A Door is found in its Room once the Home's Rooms arrive.
-  await screen.findByRole("link", { name: "Door to the Hallway" });
-  expect(href("Door to the Hallway")).toBe("/homes/flat/rooms/living-room");
-  expect(href("Wall 2")).toBe("/homes/flat/rooms/living-room");
-  expect(href("Two cats")).toBe("/homes/flat");
+  await screen.findByRole("link", { name: "Door to the Hallway, clear width" });
+  expect(href("Door to the Hallway, clear width")).toBe("/homes/flat/rooms/living-room");
+  expect(href("Wall 2, length")).toBe("/homes/flat/rooms/living-room");
+  expect(href("Two cats")).toBe("/homes/flat/about");
   expect(href("Warm clay")).toBe("/homes/flat/decisions/warm-clay");
   expect(href("Grey sofa")).toBe("/homes/flat/items");
 });
 
-it("shows the Quick Guide in one block and the Full Guide on a tap", async () => {
+it("shows the Quick Guide in three blocks and the Full Guide on a tap", async () => {
   const fetch = showRug({ quickGuide, guides });
   await screen.findByRole("heading", { name: "Quick Guide" });
-  const quick = after("Quick Guide");
-  expect(quick?.tagName).toBe("UL");
-  expect(listAfter("Quick Guide")).toEqual([
-    "Measure first: living-room/wall-2 length (~3.60 m)",
-    "Must: At least 2.0 × 1.4 m",
-    "Must: Rolls to fit through the hallway door",
-    "Prefer: Wool, low pile",
-    "Prefer: In the Palette's clay",
-    "Prefer: No wider than the sofa",
+  // Measure first, set off as important, before anything else.
+  const measure = within(sectionOf("Quick Guide")).getByText("Measure first").closest("aside");
+  expect([...(measure?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
+    "living-room/wall-2 length (~3.60 m)",
+  ]);
+  expect(measure?.querySelector("li strong")?.textContent).toBe(
+    "living-room/wall-2 length (~3.60 m)",
+  );
+  expect(block("Must")).toEqual(["At least 2.0 × 1.4 m", "Rolls to fit through the hallway door"]);
+  // The numbers of a must stand out.
+  expect(within(sectionOf("Quick Guide")).getByText("2.0 × 1.4 m").tagName).toBe("STRONG");
+  expect(block("Prefer")).toEqual([
+    "Wool, low pile",
+    "In the Palette's clay",
+    "No wider than the sofa",
+  ]);
+  expect(block("In the shop")).toEqual([
     "Avoid viscose: it sheds",
     "In the shop: drag a key across it; loops that snag catch claws",
   ]);
-  expect(quick?.querySelector("strong")?.textContent).toBe(
-    "Measure first: living-room/wall-2 length (~3.60 m)",
+  expect(sectionOf("Full Guide").querySelector("p")?.textContent).toBe(
+    `Written ${formatDate(written)}.`,
   );
-  expect(after("Full Guide")?.textContent).toBe(`Written ${formatDate(written)}.`);
   // The Full Guide's text is not fetched until it is asked for.
   expect(inputsTo(fetch, "get_decision")).toEqual([{ home: "flat", decision: "wool-rug" }]);
 
@@ -233,6 +269,12 @@ it("shows the Quick Guide in one block and the Full Guide on a tap", async () =>
   expect(await screen.findByRole("heading", { name: "Size", level: 3 })).toBeDefined();
   expect(screen.getByRole("heading", { name: "Fibre", level: 4 })).toBeDefined();
   expect(screen.getByText("at least 2.0 × 1.4 m").tagName).toBe("STRONG");
+  // The Agent wrote it, and a short Guide needs no table of contents.
+  expect(screen.getAllByText(/^Written by the Agent/).map((label) => label.textContent)).toEqual([
+    "Written by the Agent · Purchase Session · 10 Sep",
+    "Written by the Agent · Full Guide · 12 Sep",
+  ]);
+  expect(screen.queryByRole("navigation", { name: "Contents" })).toBeNull();
   expect(screen.getByText("Avoid viscose").tagName).toBe("LI");
   expect(href("the care notes")).toBe("https://example.com/care");
   expect(inputsTo(fetch, "get_decision")).toEqual([
@@ -253,7 +295,7 @@ it("marks the Full Guide out of date when a Requirement changed after it was wri
     },
   });
   await screen.findByRole("heading", { name: "Full Guide" });
-  expect(after("Full Guide")?.textContent).toBe(
+  expect(sectionOf("Full Guide").querySelector("p")?.textContent).toBe(
     `Written ${formatDate(written)}. ` +
       `Out of date: a Requirement changed on ${formatDate(changed)} after it was written.`,
   );
@@ -263,12 +305,10 @@ it("marks the Full Guide out of date when a Requirement changed after it was wri
 it("says so when the Agent has written no Guides and checked no Listing yet", async () => {
   showRug();
   await screen.findByRole("heading", { name: "Quick Guide" });
-  expect(after("Quick Guide")?.textContent).toBe(
-    "None yet: the Agent writes the Guides in a Purchase Session.",
-  );
-  expect(after("Full Guide")?.textContent).toBe("None yet.");
+  expect(after("Quick Guide")).toBe("None yet: the Agent writes the Guides in a Purchase Session.");
+  expect(after("Full Guide")).toBe("None yet.");
   expect(screen.queryByRole("button", { name: "Show the Full Guide" })).toBeNull();
-  expect(after("Listings")?.textContent).toBe(
+  expect(after("Listings")).toBe(
     "None yet: the Agent checks a product you bring it against the Requirements.",
   );
   // Not Fulfilled, so no Fulfilment and no Deviations.
@@ -354,65 +394,108 @@ const listings: Listing[] = [
   },
 ];
 
-function section(name: string): HTMLElement {
-  return screen.getByRole("heading", { name, level: 3 }).closest("section") as HTMLElement;
-}
-
-function paragraphs(within: HTMLElement): (string | null)[] {
-  return [...within.querySelectorAll("p")].map((p) => p.textContent);
-}
-
-/** Each check's row: the Requirement, the result, the note. */
-function rows(within: HTMLElement): (string | null)[][] {
-  return [...within.querySelectorAll("tbody tr")].map((row) =>
-    [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+/** The matrix: each Listing's head, then each Requirement's row of results. */
+function matrix(): { heads: string[]; rows: string[][] } {
+  const table = sectionOf("Listings").querySelector("table") as HTMLTableElement;
+  const heads = [...table.querySelectorAll("thead th")]
+    .slice(1)
+    .map((th) =>
+      [...(th.firstElementChild?.children ?? [])].map((part) => part.textContent).join(" | "),
+    );
+  const rows = [...table.querySelectorAll("tbody tr")].map((row) =>
+    [...row.children].map((cell) =>
+      [...cell.childNodes].map((node) => node.textContent).join(cell.tagName === "TD" ? " / " : ""),
+    ),
   );
+  return { heads, rows };
 }
 
-it("shows each Listing with its counts and checks, musts first, a failed must marked", async () => {
+it("compares the Listings side by side, musts first, a failed must marked, with no score", async () => {
   showRug({ quickGuide, guides, listings });
-  await screen.findByRole("heading", { name: "Hay Plain rug", level: 3 });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
   const date = formatDate(written);
-
-  const hay = section("Hay Plain rug");
-  expect(within(hay).getByRole("link", { name: "Hay Plain rug" }).getAttribute("href")).toBe(
+  expect(screen.getByRole("link", { name: "Hay Plain rug" }).getAttribute("href")).toBe(
     "https://example.com/hay-plain",
   );
-  expect(within(hay).getByRole("link", { name: "photo" }).getAttribute("href")).toBe(
+  expect(screen.getByRole("link", { name: "photo" }).getAttribute("href")).toBe(
     "https://example.com/hay-plain.jpg",
   );
-  expect(paragraphs(hay)).toEqual([
-    `£450, W 2.00 m × D 3.00 m, photo, recorded ${date}`,
-    "3 pass, 0 fail, 2 unknown.",
-  ]);
-  expect(rows(hay)).toEqual([
-    ["Must: At least 2.0 × 1.4 m", "Pass", "200 × 300 cm"],
-    ["Must: Rolls to fit through the hallway door", "Pass", ""],
-    ["Prefer: Wool, low pile", "Pass", "wool"],
-    ["Prefer: In the Palette's clay", "Unknown", "only a photo"],
-    ["Prefer: No wider than the sofa", "Unknown: added after it was checked", ""],
-  ]);
-  expect(hay.querySelectorAll("strong")).toHaveLength(0);
-
-  const runner = section("Viscose runner");
   // Without a web address, the name is not a link.
-  expect(within(runner).queryByRole("link")).toBeNull();
-  expect(paragraphs(runner)).toEqual([
-    `£89, recorded ${date}`,
-    "2 pass, 2 fail, 1 unknown. Fails a must: At least 2.0 × 1.4 m.",
+  expect(screen.queryByRole("link", { name: "Viscose runner" })).toBeNull();
+
+  const { heads, rows } = matrix();
+  expect(heads).toEqual([
+    `Hay Plain rug | £450 | W 2.00 m × D 3.00 m, photo, recorded ${date} | Meets every must`,
+    `Viscose runner | £89 | recorded ${date} | Fails a must: At least 2.0 × 1.4 m`,
   ]);
-  expect(within(runner).getByText("Fails a must: At least 2.0 × 1.4 m.").tagName).toBe("STRONG");
-  expect(rows(runner)).toEqual([
-    ["Must: At least 2.0 × 1.4 m", "Fail", "80 × 250 cm"],
-    ["Must: Rolls to fit through the hallway door", "Pass", ""],
-    ["Prefer: Wool, low pile", "Fail", "viscose"],
-    ["Prefer: In the Palette's clay", "Pass", ""],
-    ["Prefer: No wider than the sofa", "Unknown", ""],
+  expect(rows).toEqual([
+    ["Must At least 2.0 × 1.4 m", "✓ Pass / 200 × 300 cm", "✕ Fail / 80 × 250 cm"],
+    ["Must Rolls to fit through the hallway door", "✓ Pass", "✓ Pass"],
+    ["Prefer Wool, low pile", "✓ Pass / wool", "✕ Fail / viscose"],
+    ["Prefer In the Palette's clay", "? Unknown / only a photo", "✓ Pass"],
+    ["Prefer No wider than the sofa", "? Unknown: added after it was checked", "? Unknown"],
   ]);
-  // Only the failed must is marked, not the failed prefer.
-  expect([...runner.querySelectorAll("tbody strong")].map((each) => each.textContent)).toEqual([
+  // Only the failed must is marked, not the failed prefer, and the Listing leads with it.
+  const table = sectionOf("Listings").querySelector("table") as HTMLElement;
+  expect([...table.querySelectorAll("tbody strong")].map((each) => each.textContent)).toEqual([
     "Fail",
   ]);
+  expect(within(table).getByText("Fails a must: At least 2.0 × 1.4 m").tagName).toBe("STRONG");
+  // No overall score.
+  expect(within(table).queryByText(/\d+ pass/)).toBeNull();
+});
+
+it("says when a price is not recorded or a must not checked, and stacks cards on a phone", async () => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({ matches: false, addEventListener() {}, removeEventListener() {} })),
+  );
+  const [hay] = listings as [Listing];
+  const unpriced: Listing = {
+    ...hay,
+    slug: "unpriced",
+    name: "Unpriced rug",
+    url: undefined,
+    price: undefined,
+    photo: undefined,
+    dimensions: undefined,
+    checks: hay.checks.map((check) =>
+      check.requirement === 3 ? { ...check, result: "unknown" } : check,
+    ),
+  };
+  showRug({ quickGuide, guides, listings: [unpriced, listings[1] as Listing] });
+  await screen.findByText("Unpriced rug");
+  expect(sectionOf("Listings").querySelector("table")).toBeNull();
+  const cards = [...(sectionOf("Listings").querySelector("ul")?.children ?? [])];
+  expect(
+    cards.map((card) => card.querySelector("div > div")?.lastElementChild?.textContent),
+  ).toEqual([
+    "Must not checked: Rolls to fit through the hallway door",
+    "Fails a must: At least 2.0 × 1.4 m",
+  ]);
+  expect(within(cards[0] as HTMLElement).getByText("Price not recorded")).toBeDefined();
+  expect([...(cards[1]?.querySelectorAll("ul li") ?? [])].map((li) => li.textContent)).toEqual([
+    "✕ FailMust: At least 2.0 × 1.4 m · 80 × 250 cm",
+    "✓ PassMust: Rolls to fit through the hallway door",
+    "✕ FailPrefer: Wool, low pile · viscose",
+    "✓ PassPrefer: In the Palette's clay",
+    "? UnknownPrefer: No wider than the sofa",
+  ]);
+});
+
+it("gives a long Full Guide a table of contents linking to its headings", async () => {
+  markdown = longGuide;
+  showRug({ quickGuide, guides });
+  fireEvent.click(await screen.findByRole("button", { name: "Show the Full Guide" }));
+  const contents = await screen.findByRole("navigation", { name: "Contents" });
+  const links = [...contents.querySelectorAll("a")];
+  expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+    ["Size", "#wool-rug-guide-size"],
+    ["Fibre", "#wool-rug-guide-fibre"],
+    ["Colour", "#wool-rug-guide-colour"],
+    ["Care", "#wool-rug-guide-care"],
+  ]);
+  expect(screen.getByRole("heading", { name: "Care", level: 3 }).id).toBe("wool-rug-guide-care");
 });
 
 it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations", async () => {
@@ -447,7 +530,7 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
     ],
   });
   await screen.findByRole("heading", { name: "Fulfilment" });
-  expect(after("Fulfilment")?.textContent).toBe(
+  expect(after("Fulfilment")).toBe(
     "BoughtHay Plain rug, 190 × 290 cm, rust, £450" +
       "Item addedhay-plain-rug" +
       "Item replaced (Archived)old-jute-rug",
@@ -470,9 +553,11 @@ it("offers no phone page, exports, or QR code for a Rejected Purchase, and says 
   showRug({ state: "rejected", quickGuide, guides: { ...guides, lanUrl } });
   await screen.findByRole("heading", { name: "Quick Guide" });
 
-  expect(after("Quick Guide")?.nextElementSibling?.textContent).toBe(
-    "Rejected, so it has no Guides to open, print, or take shopping.",
-  );
+  expect(
+    within(sectionOf("Quick Guide")).getByText(
+      "Rejected, so it has no Guides to open, print, or take shopping.",
+    ),
+  ).toBeDefined();
   expect(screen.queryByRole("navigation", { name: "The Guides elsewhere" })).toBeNull();
   expect(screen.queryByRole("link", { name: "Phone page" })).toBeNull();
   expect(screen.queryByRole("img", { name: /^QR code/ })).toBeNull();
@@ -509,7 +594,7 @@ it("names the changed record and field of a value_changed flag, and clears it wi
   renderRoutes("/homes/flat/decisions/wool-rug");
   await screen.findByRole("heading", { name: "Flags" });
 
-  const list = after("Flags") as HTMLElement;
+  const list = sectionOf("Flags").querySelector("ul") as HTMLElement;
   const lines = () =>
     [...list.querySelectorAll(":scope > li")].map((li) => ({
       text: [...li.childNodes]
@@ -520,7 +605,7 @@ it("names the changed record and field of a value_changed flag, and clears it wi
     }));
   expect(lines()).toEqual([
     {
-      text: `Living room, Wall 2's length changed, raised ${formatDate(raised)}: open`,
+      text: `⚑ Living room, Wall 2's length changed, raised ${formatDate(raised)}: open`,
       buttons: ["Keep", "Reopen", "Reject"],
     },
   ]);
@@ -585,5 +670,5 @@ it("shows a Listing the Agent records without a reload", async () => {
       recordSlug: "wool-rug",
     }),
   );
-  expect(await screen.findByRole("heading", { name: "Hay Plain rug", level: 3 })).toBeDefined();
+  expect(await screen.findByRole("link", { name: "Hay Plain rug" })).toBeDefined();
 });

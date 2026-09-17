@@ -31,7 +31,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The Home page's operations, answering with a Home without Blueprints unless told otherwise. */
+/** The About page's operations, answering with a Home without Blueprints unless told otherwise. */
 function stubHomePage(handlers: ApiHandlers) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
@@ -44,9 +44,10 @@ function stubHomePage(handlers: ApiHandlers) {
   });
 }
 
-/** The text of the Blueprint list, which follows its heading. */
+/** The text of the Blueprint list, or of what shows in its place, below the section's heading. */
 function blueprintList(): string {
-  return screen.getByRole("heading", { name: "Blueprints" }).nextElementSibling?.textContent ?? "";
+  const section = screen.getByRole("heading", { name: "Blueprints" }).closest("section");
+  return section?.querySelector(":scope > ul, :scope > p")?.textContent ?? "";
 }
 
 function choose(file: File) {
@@ -57,7 +58,7 @@ function choose(file: File) {
 
 it("lists each Blueprint with its page count, and names each page's Level when mapped", async () => {
   stubHomePage({ list_blueprints: () => ({ blueprints: [agentPlan] }) });
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   await screen.findByText("Estate agent plan");
   expect(blueprintList()).toBe(
     "Estate agent plan, 3 pages" +
@@ -72,7 +73,7 @@ it("lists each Blueprint with its page count, and names each page's Level when m
 
 it("says when the Home has no Blueprints yet", async () => {
   stubHomePage({});
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   expect(await screen.findByText("No Blueprints yet.")).toBeDefined();
 });
 
@@ -96,7 +97,7 @@ it.each([
   stubHomePage({
     upload_blueprint: () => Response.json({ error: { code, message } }, { status: 400 }),
   });
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   await screen.findByText("No Blueprints yet.");
 
   choose(new File(["…"], name, { type }));
@@ -115,7 +116,7 @@ it("posts the file, the Home, and the label as a form, then lists the new Bluepr
       return { blueprint: agentPlan };
     },
   });
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   await screen.findByText("No Blueprints yet.");
   const button = screen.getByRole("button", { name: "Upload Blueprint" });
   expect(button).toHaveProperty("disabled", true);
@@ -144,7 +145,7 @@ it("posts the file, the Home, and the label as a form, then lists the new Bluepr
 
 it("leaves the label out when none is given, so the server names the Blueprint", async () => {
   const fetch = stubHomePage({ upload_blueprint: () => ({ blueprint: agentPlan }) });
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   await screen.findByText("No Blueprints yet.");
   choose(new File(["%PDF-1.7"], "plan.pdf", { type: "application/pdf" }));
   fireEvent.click(screen.getByRole("button", { name: "Upload Blueprint" }));
@@ -157,7 +158,7 @@ it("leaves the label out when none is given, so the server names the Blueprint",
 it("re-renders the Blueprint list when a Blueprint change event arrives", async () => {
   let blueprints: Blueprint[] = [];
   stubHomePage({ list_blueprints: () => ({ blueprints }) });
-  renderRoutes("/homes/flat");
+  renderRoutes("/homes/flat/about");
   await screen.findByText("No Blueprints yet.");
 
   // The Agent maps the third page to the ground Level.

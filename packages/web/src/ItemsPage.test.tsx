@@ -79,11 +79,25 @@ function stubItems(list: (archived: boolean) => Item[]) {
   });
 }
 
-it("lists the Inventory by Room with an Unplaced group, and includes Archived Items on request", async () => {
+function rows(): string[][] {
+  return screen
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => [...row.querySelectorAll("td")].map((cell) => cell.textContent ?? ""));
+}
+
+it("lists the Inventory in a table in Room order, and includes Archived Items on request", async () => {
   const inventory = [
     item("sofa", "Sofa", "living-room", {
       category: "seating",
       width: { mm: 2100, provenance: "measured" },
+      depth: { mm: 950, provenance: "estimated" },
+      colors: [{ name: "Oatmeal", hex: "#d8cbb4", provenance: "estimated" }],
+      materials: ["linen"],
+      condition: "worn",
+      brand: "Muji",
+      price: "€900",
+      link: "https://example.com/sofa",
     }),
     item("dining-chair", "Dining chair", "kitchen", { category: "seating", quantity: 6 }),
     item("boxed-lamp", "Boxed lamp", undefined, { category: "lighting" }),
@@ -97,28 +111,69 @@ it("lists the Inventory by Room with an Unplaced group, and includes Archived It
   renderRoutes("/homes/flat/items");
 
   await screen.findByText("Sofa");
-  const headings = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-  expect(headings()).toEqual(["Living room", "Kitchen", "Unplaced"]);
+  expect(screen.getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
+    "Item",
+    "Room",
+    "Dimensions W×D×H",
+    "Color and material",
+    "Condition",
+  ]);
+  expect(rows()).toEqual([
+    [
+      "▸Sofa" + "Seating",
+      "Living room",
+      "W 2.10 m × D ~0.95 m estimate",
+      "~Oatmeal estimatelinen",
+      "Worn",
+    ],
+    ["▸Dining chair×6" + "Seating", "Kitchen", "", "", ""],
+    ["▸Boxed lamp" + "Lighting", "Unplaced", "", "", ""],
+  ]);
   expect(screen.getByRole("link", { name: "Kitchen" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/kitchen",
   );
-  expect(screen.getByText("Dining chair").parentElement?.textContent).toBe(
-    "Dining chair ×6 (Seating)",
+
+  // A row expands for brand, price, and links.
+  fireEvent.click(screen.getByRole("button", { name: /Sofa/ }));
+  expect(rows()[1]).toEqual(["BrandMujiPrice€900Linkproduct page"]);
+  expect(screen.getByRole("link", { name: "product page" }).getAttribute("href")).toBe(
+    "https://example.com/sofa",
   );
   expect(screen.queryByText("Old rug")).toBeNull();
 
   fireEvent.click(screen.getByLabelText("Include Archived"));
 
   expect(await screen.findByText("Old rug")).toBeDefined();
-  expect(screen.getByText(/^Archived/).textContent).toContain("worn out");
+  fireEvent.click(screen.getByRole("button", { name: /Old rug/ }));
+  expect(screen.getByText(/^Archived \d/).textContent).toContain("worn out");
   expect(inputsTo(fetch, "list_items")).toEqual([
     { home: "flat", archived: false },
     { home: "flat", archived: true },
   ]);
 });
 
-it("says so when there are no Items", async () => {
+it("finds Items by name, and shows only the Unplaced ones on request", async () => {
+  stubItems(() => [
+    item("sofa", "Sofa", "living-room"),
+    item("sofa-cushions", "Sofa cushions"),
+    item("mirror", "Mirror"),
+  ]);
+  renderRoutes("/homes/flat/items");
+  await screen.findByText("Mirror");
+
+  fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "sofa" } });
+  expect(rows().map((row) => row[0])).toEqual(["▸SofaDecor", "▸Sofa cushionsDecor"]);
+
+  fireEvent.click(screen.getByLabelText("Unplaced only"));
+  expect(rows().map((row) => row[0])).toEqual(["▸Sofa cushionsDecor"]);
+
+  fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "lamp" } });
+  expect(screen.getByText("No Items match.")).toBeDefined();
+});
+
+it("says so when there are no Items, with a prompt for the Agent", async () => {
   stubItems(() => []);
   renderRoutes("/homes/flat/items");
   expect(await screen.findByText(/No Items yet/)).toBeDefined();
+  expect(screen.getByRole("button", { name: /Ask the Agent/ })).toBeDefined();
 });

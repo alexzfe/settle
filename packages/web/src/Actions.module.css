@@ -1,0 +1,32 @@
+/* Actions that say what they do: one per line, the consequence under its button. */
+
+.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: var(--space-2);
+}
+
+.stacked .reason {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-ink-muted);
+}
+
+.stacked .reason input {
+  width: 100%;
+}
+
+.move {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.consequence {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}

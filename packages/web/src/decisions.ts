@@ -37,25 +37,33 @@ export interface Move {
   to: DecisionState;
   /** The button's label. */
   label: string;
+  /** What the change does, in one line beside the button. */
+  consequence: string;
 }
+
+const FLAGS_DEPENDENTS = "Every Decision resting on it is flagged for review.";
 
 /** The legal state changes from each state, as their buttons name them. The server refuses others. */
 export const MOVES: Record<DecisionState, readonly Move[]> = {
   candidate: [
-    { to: "leaning", label: "Move to Leaning" },
-    { to: "locked", label: "Lock" },
-    { to: "rejected", label: "Reject" },
+    {
+      to: "leaning",
+      label: "Move to Leaning",
+      consequence: "Say you favour it, still uncommitted.",
+    },
+    { to: "locked", label: "Lock", consequence: "Commit to it; other Decisions can rest on it." },
+    { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
   leaning: [
-    { to: "candidate", label: "Move to Candidate" },
-    { to: "locked", label: "Lock" },
-    { to: "rejected", label: "Reject" },
+    { to: "candidate", label: "Move to Candidate", consequence: "Back to under consideration." },
+    { to: "locked", label: "Lock", consequence: "Commit to it; other Decisions can rest on it." },
+    { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
   locked: [
-    { to: "leaning", label: "Reopen" },
-    { to: "rejected", label: "Reject" },
+    { to: "leaning", label: "Reopen", consequence: `Back to Leaning. ${FLAGS_DEPENDENTS}` },
+    { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
-  rejected: [{ to: "candidate", label: "Revive" }],
+  rejected: [{ to: "candidate", label: "Revive", consequence: "Bring it back as a Candidate." }],
 };
 
 export function decisionPath(home: string, decision: string): string {
@@ -84,7 +92,7 @@ export function recordPath(
     case "home":
     case "constraint":
     case "note":
-      return homePath;
+      return `${homePath}/about`;
     case "item":
       return `${homePath}/items`;
     case "room":
@@ -138,6 +146,22 @@ export function flagCauseText(flag: Flag): string {
   if (flag.cause === "value_changed" && field) return `'s ${words(field)} changed`;
   return CAUSE[flag.cause];
 }
+
+/** A flag's cause in one phrase, its source named: "Wall 5's length changed". */
+export function flagSummary(flag: Flag): string {
+  return `${flag.source.name}${flagCauseText(flag)}`;
+}
+
+/** The Skill that settles each kind of Decision, for a prompt back to the Agent. */
+export const KIND_SKILL: Record<DecisionKind, string | undefined> = {
+  "design-direction": "Design Direction",
+  "room-direction": "Design Direction",
+  "room-use": "Design Direction",
+  palette: "Color",
+  "room-color": "Color",
+  purchase: "Purchase",
+  other: undefined,
+};
 
 /**
  * Why an automatic Basis entry is there: the Design Direction is under every Decision, and the
