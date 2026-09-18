@@ -2,7 +2,7 @@
 // phone page's order (the looking-for line, Measure first, Must, Avoid, then Prefer, In the shop,
 // and Ask the seller), and how to take it shopping; then the Full Guide one tap away, marked when
 // a Requirement changed after it was written; its Requirements under Must and Prefer, each with a
-// chip linking to the record it comes from; the Listings checked against the Requirements, side by
+// short line linking to the record it comes from; the Listings checked against the Requirements, side by
 // side; and, once Fulfilled, what was bought and how it differs from what was asked.
 
 import { type ReactNode, useState } from "react";
@@ -40,13 +40,12 @@ function byStrength(a: Pick<Requirement, "strength">, b: Pick<Requirement, "stre
 /** A Full Guide with at least this many headings (more than 3) gets a table of contents. */
 const CONTENTS_FROM = 4;
 
+/** The Guides and the Requirements: what is read beside the Decision's side panel. */
 export function PurchaseParts({ home, decision }: { home: string; decision: DecisionDetail }) {
   // A Window, Door, or Feature is found in its Room through the Home's Rooms.
   const rooms = useHome(home).data?.rooms;
   const quickLines = decision.quickGuide?.lines ?? [];
   const fullGuide = decision.guides?.fullGuide;
-  // Musts first, both in the Requirements list and down the side of the board.
-  const requirements = decision.requirements.toSorted(byStrength);
   return (
     <>
       <Section title="Quick Guide" id="quick-guide">
@@ -80,6 +79,17 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
       <Section title="Requirements" id="requirements">
         <Requirements home={home} rooms={rooms} requirements={decision.requirements} />
       </Section>
+    </>
+  );
+}
+
+/** The Listing board and any Fulfilment: below the side panel, so the board can take the width. */
+export function PurchaseBoard({ home, decision }: { home: string; decision: DecisionDetail }) {
+  const rooms = useHome(home).data?.rooms;
+  // Musts first, both in the Requirements list and down the side of the board.
+  const requirements = decision.requirements.toSorted(byStrength);
+  return (
+    <>
       <Section title="Listings" id="listings">
         {decision.listings.length === 0 ? (
           <p className={styles.muted}>
@@ -126,7 +136,11 @@ function Requirements({
   });
 }
 
-/** "under 85 cm tall · [Front door, clear width]", the reason chip linking to its record. */
+/**
+ * "under 85 cm tall", then a quiet line under it naming where it comes from ("Front door, clear
+ * width") and linking to that record. A Note or a Constraint is named by its whole text, so the
+ * line keeps what comes before its colon, and the full text shows on hover.
+ */
 function RequirementLine({
   requirement,
   path,
@@ -135,26 +149,28 @@ function RequirementLine({
   path: string | undefined;
 }) {
   const { reason } = requirement;
-  const chip = (
-    <>
-      {reason.name}
-      {reason.field && `, ${words(reason.field)}`}
-    </>
-  );
+  const full = `${reason.name}${reason.field ? `, ${words(reason.field)}` : ""}`;
+  const label = `${shortName(reason.name)}${reason.field ? `, ${words(reason.field)}` : ""}`;
   return (
     <>
       <span className={page.requirementText}>{requirement.text}</span>
       {path ? (
-        <Link className={page.reason} to={path} title="Where it comes from">
-          {chip}
+        <Link className={page.reason} to={path} title={full}>
+          {label}
         </Link>
       ) : (
-        <span className={page.reason} title="Where it comes from">
-          {chip}
+        <span className={page.reason} title={full}>
+          {label}
         </span>
       )}
     </>
   );
+}
+
+/** A name's lead-in before its colon, when it has a short one: "Living room window cover: it must…". */
+function shortName(name: string): string {
+  const colon = name.indexOf(":");
+  return colon > 0 && colon <= 48 ? name.slice(0, colon) : name;
 }
 
 // A number with any unit or ×-joined numbers after it: "2.0 × 1.4 m", "85 cm", "£450", "~3.60 m".

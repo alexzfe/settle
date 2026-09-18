@@ -1,8 +1,8 @@
 /* The app shell and the classes pages share. Values come from tokens.css. */
 
+/* The header and the Home's nav bar run the window's full width; what a page shows is centered
+   in .content, wide enough for boards, while running text keeps to .reading. */
 .page {
-  max-width: var(--width-page);
-  margin: 0 auto;
   padding: 0 var(--space-4) var(--space-12);
 }
 
@@ -10,6 +10,11 @@
   .page {
     padding-inline: var(--space-8);
   }
+}
+
+.content {
+  max-width: var(--width-page);
+  margin-inline: auto;
 }
 
 .header {
@@ -51,7 +56,7 @@
   padding-top: var(--space-2);
 }
 
-.main > h1:first-child {
+.content > h1:first-child {
   margin-top: var(--space-6);
 }
 

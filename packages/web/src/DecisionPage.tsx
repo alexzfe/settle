@@ -24,7 +24,7 @@ import {
 import { FlagCause, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
 import { isSafeLink } from "./Markdown";
-import { PurchaseParts } from "./Purchase";
+import { PurchaseBoard, PurchaseParts } from "./Purchase";
 import { useDecision, useHome } from "./queries";
 import { LrvBar, PaletteChips, Swatch, SwatchSquare } from "./Swatch";
 import { AgentWritten } from "./ui/AgentWritten";
@@ -66,6 +66,68 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
       }),
   }));
   const openFlags = decision.flags.filter((flag) => !flag.clearedAt).length;
+  const purchase = decision.kind === "purchase";
+  // What it rests on and what is wrong with it: under the Content, or for a Purchase, under its
+  // Listing board.
+  const records = (
+    <>
+      <Section title="Basis" id="basis">
+        {decision.basis.length === 0 ? (
+          <p className={styles.muted}>None: it rests on no other Decision.</p>
+        ) : (
+          <ul className={page.chips}>
+            {decision.basis.map((entry) => (
+              <li key={entry.slug}>
+                <BasisChip home={home} entry={entry} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+      <Section title="Evidence" id="evidence">
+        {decision.evidence.length === 0 ? (
+          <p className={styles.muted}>None recorded.</p>
+        ) : (
+          <ul className={page.evidence}>
+            {decision.evidence.map((entry) => (
+              <li key={`${entry.kind}:${entry.id}`}>
+                <EvidenceLine home={home} entry={entry} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+      <Section title="Flags" id="flags">
+        {decision.flags.length === 0 ? (
+          <p className={styles.muted}>None.</p>
+        ) : (
+          <ul className={page.marksList}>
+            {decision.flags.map((flag) => (
+              <li key={flag.slug} className={flag.clearedAt ? page.settled : page.open}>
+                <FlagState home={home} flag={flag} />
+                {!flag.clearedAt && (
+                  <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+      <Section title="Conflicts" id="conflicts">
+        {decision.conflicts.length === 0 ? (
+          <p className={styles.muted}>None.</p>
+        ) : (
+          <ul className={page.marksList}>
+            {decision.conflicts.map((conflict) => (
+              <li key={conflict.slug} className={conflict.resolvedAt ? page.settled : page.open}>
+                <ConflictState conflict={conflict} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </>
+  );
   return (
     <article className={page.sheet}>
       <header className={page.header}>
@@ -100,64 +162,7 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
             </AgentWritten>
           )}
           <Content home={home} decision={decision} />
-          <Section title="Basis" id="basis">
-            {decision.basis.length === 0 ? (
-              <p className={styles.muted}>None: it rests on no other Decision.</p>
-            ) : (
-              <ul className={page.chips}>
-                {decision.basis.map((entry) => (
-                  <li key={entry.slug}>
-                    <BasisChip home={home} entry={entry} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section title="Evidence" id="evidence">
-            {decision.evidence.length === 0 ? (
-              <p className={styles.muted}>None recorded.</p>
-            ) : (
-              <ul className={page.evidence}>
-                {decision.evidence.map((entry) => (
-                  <li key={`${entry.kind}:${entry.id}`}>
-                    <EvidenceLine home={home} entry={entry} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section title="Flags" id="flags">
-            {decision.flags.length === 0 ? (
-              <p className={styles.muted}>None.</p>
-            ) : (
-              <ul className={page.marksList}>
-                {decision.flags.map((flag) => (
-                  <li key={flag.slug} className={flag.clearedAt ? page.settled : page.open}>
-                    <FlagState home={home} flag={flag} />
-                    {!flag.clearedAt && (
-                      <Actions home={home} actions={flagActions(home, decision, flag.slug)} />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-          <Section title="Conflicts" id="conflicts">
-            {decision.conflicts.length === 0 ? (
-              <p className={styles.muted}>None.</p>
-            ) : (
-              <ul className={page.marksList}>
-                {decision.conflicts.map((conflict) => (
-                  <li
-                    key={conflict.slug}
-                    className={conflict.resolvedAt ? page.settled : page.open}
-                  >
-                    <ConflictState conflict={conflict} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
+          {!purchase && records}
         </div>
         <aside className={page.side} aria-label="Change it">
           <Card>
@@ -179,6 +184,12 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
           </Card>
         </aside>
       </div>
+      {purchase && (
+        <>
+          <PurchaseBoard home={home} decision={decision} />
+          <div className={page.after}>{records}</div>
+        </>
+      )}
     </article>
   );
 }

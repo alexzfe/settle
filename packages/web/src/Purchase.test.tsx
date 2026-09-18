@@ -79,6 +79,7 @@ type Parts = Partial<
     | "state"
     | "quickGuide"
     | "guides"
+    | "requirements"
     | "listings"
     | "deviations"
     | "fulfilledAt"
@@ -258,6 +259,35 @@ it("groups the Requirements under Must and Prefer, each reason linking to its re
   expect(href("Two cats")).toBe("/homes/flat/about");
   expect(href("Warm clay")).toBe("/homes/flat/decisions/warm-clay");
   expect(href("Grey sofa")).toBe("/homes/flat/items");
+});
+
+it("names a reason on a long Note by what comes before its colon, the whole text on hover", async () => {
+  const note =
+    "Living room window cover: it must cut the afternoon glare and heat through the west-facing glass door";
+  const long =
+    "Window covers will be made to measure by a service that measures, cuts and fits them";
+  showRug({
+    requirements: [
+      {
+        position: 1,
+        text: "Cuts the glare",
+        strength: "must",
+        reason: { kind: "note", id: "n1", name: note },
+      },
+      {
+        position: 2,
+        text: "Made to measure",
+        strength: "must",
+        reason: { kind: "note", id: "n2", name: long },
+      },
+    ],
+  });
+  await screen.findByRole("heading", { name: "Requirements" });
+  expect(requirementsUnder("Must")).toEqual([
+    "Cuts the glare | Living room window cover",
+    `Made to measure | ${long}`,
+  ]);
+  expect(screen.getByText("Living room window cover").getAttribute("title")).toBe(note);
 });
 
 it("shows the Quick Guide in the phone page's order and the Full Guide on a tap", async () => {

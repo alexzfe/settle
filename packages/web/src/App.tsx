@@ -31,7 +31,14 @@ export const routes: RouteObject[] = [
   {
     element: <Layout />,
     children: [
-      { path: "/", element: <HomeListPage /> },
+      {
+        path: "/",
+        element: (
+          <div className={styles.content}>
+            <HomeListPage />
+          </div>
+        ),
+      },
       {
         path: "/homes/:home",
         element: <HomeLayout />,
@@ -141,7 +148,9 @@ function HomeScope({ home }: { home: string }) {
         </nav>
         <LivePill state={live} />
       </div>
-      <Outlet />
+      <div className={styles.content}>
+        <Outlet />
+      </div>
     </HomeNameContext.Provider>
   );
 }

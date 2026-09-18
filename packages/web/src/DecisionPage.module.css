@@ -41,6 +41,15 @@
     align-items: start;
   }
 
+  /* A Purchase's sections under its board keep to the main column's width. */
+  .after {
+    max-width: calc(100% - 17rem - var(--space-6));
+  }
+}
+
+/* The panel stays in reach while the record scrolls, but only on a window tall enough to show
+   all of it: a pinned panel taller than the window would hide its own last buttons. */
+@media (min-width: 60rem) and (min-height: 40rem) {
   .side {
     position: sticky;
     top: var(--space-4);
