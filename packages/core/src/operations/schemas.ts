@@ -2215,6 +2215,20 @@ export const shoppingEntrySchema = z.object({
    * a Purchase is nearly decided. Absent when none of them qualifies.
    */
   bestRating: z.number().int().min(1).max(5).optional(),
+  /**
+   * The Listing `bestRating` comes from, the first recorded on a tie, for the Shopping page to
+   * show its picture. Absent exactly when `bestRating` is.
+   */
+  bestListing: z
+    .object({
+      slug: z.string(),
+      name: z.string(),
+      /** Where the picture came from; hotlinked when no bytes are stored. */
+      photoUrl: z.string().optional(),
+      /** Present only when the platform holds the bytes: get_listing_photo's `v`. */
+      photoVersion: z.string().optional(),
+    })
+    .optional(),
   /** Its Quick Guide's "Measure first" lines, in full. */
   measureFirst: z.array(z.string()),
   openFlags: z.number(),

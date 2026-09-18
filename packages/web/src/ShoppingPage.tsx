@@ -1,12 +1,15 @@
 // The Shopping section as a calm checklist: the Shopping List (Locked Purchases not yet Fulfilled)
 // and Considering (Candidate and Leaning ones), each row with its Purchase Decision, Room, what to
-// measure first, any flag, its Listings with the best Rating among the ones it could actually buy,
-// and a link to its Quick Guide; and the exports the server renders from stored data.
+// measure first, any flag, its Listings with the best Rating among the ones it could actually buy
+// and that Listing's picture, and a link to its Quick Guide; and the exports the server renders
+// from stored data.
 
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import { guidesExportUrl, type ShoppingEntry, shoppingListExportUrl } from "./api";
+import { guidesExportUrl, listingPhotoUrl, type ShoppingEntry, shoppingListExportUrl } from "./api";
 import { decisionPath } from "./decisions";
+import { isSafeLink } from "./Markdown";
 import { useShopping } from "./queries";
 import page from "./ShoppingPage.module.css";
 import { Card } from "./ui/Card";
@@ -94,16 +97,39 @@ function counted(count: number, noun: string): string {
 }
 
 /**
- * "3 Listings, best is 4 stars": the line that says a Purchase is nearly decided. The best Rating
- * counts only Listings that fail no must and are not Held, so when none of them qualifies this
- * says the count alone rather than headline a Rating the user cannot act on.
+ * "3 Listings, best is 4 stars: Hay Plain rug": the line that says a Purchase is nearly decided.
+ * The best Rating counts only Listings that fail no must and are not Held, so when none of them
+ * qualifies this says the count alone rather than headline a Rating the user cannot act on.
  */
 function listingsLine(entry: ShoppingEntry): string {
   if (entry.listings === 0) return "No Listings yet";
   const listings = counted(entry.listings, "Listing");
-  return entry.bestRating === undefined
-    ? listings
-    : `${listings}, best is ${counted(entry.bestRating, "star")}`;
+  if (entry.bestRating === undefined) return listings;
+  const best = `${listings}, best is ${counted(entry.bestRating, "star")}`;
+  return entry.bestListing ? `${best}: ${entry.bestListing.name}` : best;
+}
+
+/**
+ * The best Listing's picture as a thumbnail, linking to the Purchase like the rest of the row: the
+ * stored copy when there is one, else the link it came from, else nothing at all. A must-failer or
+ * a Held Listing never gets here, since core only names one the user could buy today.
+ */
+function BestPicture({ home, entry }: { home: string; entry: ShoppingEntry }) {
+  const best = entry.bestListing;
+  const [broken, setBroken] = useState(false);
+  const hotlink = best?.photoUrl && isSafeLink(best.photoUrl) ? best.photoUrl : undefined;
+  const src =
+    best?.photoVersion === undefined
+      ? hotlink
+      : listingPhotoUrl(home, best.slug, best.photoVersion);
+  // A new address is a new picture, and deserves its own try even if the last one would not load.
+  useEffect(() => setBroken(false), [src]);
+  if (best === undefined || src === undefined || broken) return null;
+  return (
+    <Link to={decisionPath(home, entry.slug)} className={page.thumb} tabIndex={-1}>
+      <img src={src} alt={best.name} loading="lazy" onError={() => setBroken(true)} />
+    </Link>
+  );
 }
 
 const MEASURE_FIRST = /^Measure first:\s*/i;
@@ -120,22 +146,25 @@ function Entry({ home, entry }: { home: string; entry: ShoppingEntry }) {
     <>
       <span className={page.box} aria-hidden />
       <div className={page.what}>
-        <p className={page.title}>
-          <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
-          {entry.state !== "locked" && <StatePill state={entry.state} />}
-        </p>
-        <p className={page.statement}>{entry.statement}</p>
-        <p className={page.so}>
-          {must + prefer === 0
-            ? "No Requirements yet"
-            : `${counted(must, "must")}, ${counted(prefer, "prefer")}`}
-          ; {entry.hasGuides ? "Guides written" : "no Guides yet"}
-          {entry.fullGuideOutOfDate && (
-            <>
-              , <strong className={styles.warning}>Full Guide out of date</strong>
-            </>
-          )}
-        </p>
+        <BestPicture home={home} entry={entry} />
+        <div className={page.words}>
+          <p className={page.title}>
+            <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
+            {entry.state !== "locked" && <StatePill state={entry.state} />}
+          </p>
+          <p className={page.statement}>{entry.statement}</p>
+          <p className={page.so}>
+            {must + prefer === 0
+              ? "No Requirements yet"
+              : `${counted(must, "must")}, ${counted(prefer, "prefer")}`}
+            ; {entry.hasGuides ? "Guides written" : "no Guides yet"}
+            {entry.fullGuideOutOfDate && (
+              <>
+                , <strong className={styles.warning}>Full Guide out of date</strong>
+              </>
+            )}
+          </p>
+        </div>
       </div>
       <span className={page.room}>
         {entry.room ? (

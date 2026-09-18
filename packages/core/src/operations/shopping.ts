@@ -30,6 +30,7 @@ import {
   type GetShoppingResult,
   getGuidePageInput,
   getShoppingInput,
+  type Listing,
   type ShoppingEntry,
 } from "./schemas.js";
 import { requireHome } from "./scope.js";
@@ -228,8 +229,28 @@ function toEntry(model: DecisionModel, row: DecisionRow): ShoppingEntry {
     hasGuides: hasGuides(guide),
     fullGuideOutOfDate: outOfDate(guide),
     listings: model.listings.filter((each) => each.decisionId === row.id).length,
-    ...optional({ bestRating: bestRating(toListings(model, row)) }),
+    ...best(toListings(model, row)),
     measureFirst: measureFirst(model, row),
     openFlags: openFlags(model, row).length,
+  };
+}
+
+/**
+ * `bestRating` and the Listing it comes from: the first recorded of those rated that high, among
+ * the ones `bestRating` counts. Both absent when none qualifies.
+ */
+function best(listings: Listing[]): Pick<ShoppingEntry, "bestRating" | "bestListing"> {
+  const rating = bestRating(listings);
+  const listing = listings.find(
+    (each) => each.rating === rating && each.failedMusts.length === 0 && each.held === undefined,
+  );
+  if (rating === undefined || listing === undefined) return {};
+  return {
+    bestRating: rating,
+    bestListing: {
+      slug: listing.slug,
+      name: listing.name,
+      ...optional({ photoUrl: listing.photoUrl, photoVersion: listing.photoVersion }),
+    },
   };
 }

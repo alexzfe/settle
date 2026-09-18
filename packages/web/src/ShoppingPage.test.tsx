@@ -31,6 +31,7 @@ const rug = entry("wool-rug", "Wool rug", {
   fullGuideOutOfDate: true,
   listings: 2,
   bestRating: 4,
+  bestListing: { slug: "hay-plain-rug", name: "Hay Plain rug", photoVersion: "625b0d88aa11bb22" },
   measureFirst: [
     "Measure first: living-room/wall-2 length (~3.60 m)",
     "Measure first: the Home's narrowest access width (not recorded)",
@@ -116,7 +117,7 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
         "living-room/wall-2 length (~3.60 m)" +
         "the Home's narrowest access width (not recorded)",
       "⚑ Flagged",
-      "2 Listings, best is 4 stars",
+      "2 Listings, best is 4 stars: Hay Plain rug",
       "Quick Guide",
     ],
     [
@@ -173,6 +174,70 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
   expect(screen.getByRole("link", { name: "Desk chair" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/desk-chair",
   );
+});
+
+it("shows the best Listing's picture beside the entry, stored copy first, then its link, else nothing", async () => {
+  const best = (name: string, rest: Partial<NonNullable<ShoppingEntry["bestListing"]>> = {}) => ({
+    listings: 1,
+    bestRating: 5,
+    bestListing: { slug: name.toLowerCase().replaceAll(" ", "-"), name, ...rest },
+  });
+  stubShopping({
+    get_shopping: () => ({
+      shoppingList: [
+        rug,
+        // A stored copy wins over the link it came from.
+        entry("floor-lamp", "Floor lamp", {
+          ...best("Arc lamp", { photoUrl: "https://shop.example/arc.jpg", photoVersion: "abc" }),
+        }),
+        entry(
+          "door-mat",
+          "Door mat",
+          best("Coir mat", { photoUrl: "https://shop.example/mat.jpg" }),
+        ),
+        // A link that is not http(s) is never put in an <img>.
+        entry("side-table", "Side table", best("Oak table", { photoUrl: "javascript:alert(1)" })),
+        entry("blind", "Blind", best("Linen blind")),
+      ],
+      considering: [],
+    }),
+  });
+  renderRoutes("/homes/flat/shopping");
+  await screen.findByRole("heading", { name: "Shopping List" });
+
+  const picture = (title: string) => entryOf(title).querySelector("img");
+  const hay = within(entryOf("Wool rug")).getByRole("img", { name: "Hay Plain rug" });
+  expect(hay.getAttribute("src")).toBe(
+    "/api/get_listing_photo?home=flat&listing=hay-plain-rug&v=625b0d88aa11bb22",
+  );
+  // It links to the Purchase, like the rest of the entry.
+  expect(hay.closest("a")?.getAttribute("href")).toBe("/homes/flat/decisions/wool-rug");
+  expect(picture("Floor lamp")?.getAttribute("src")).toBe(
+    "/api/get_listing_photo?home=flat&listing=arc-lamp&v=abc",
+  );
+  expect(picture("Door mat")?.getAttribute("src")).toBe("https://shop.example/mat.jpg");
+  expect(picture("Door mat")?.getAttribute("alt")).toBe("Coir mat");
+  // No picture to show: no empty slot either, just the line naming it.
+  expect(picture("Side table")).toBeNull();
+  expect(picture("Blind")).toBeNull();
+  expect(
+    within(entryOf("Blind")).getByText("1 Listing, best is 5 stars: Linen blind"),
+  ).toBeDefined();
+  expect(entryOf("Wool rug").querySelectorAll("img")).toHaveLength(1);
+
+  // A hotlink that will not load goes quietly, rather than leave a broken image.
+  const mat = picture("Door mat") as HTMLImageElement;
+  act(() => {
+    mat.dispatchEvent(new Event("error"));
+  });
+  expect(picture("Door mat")).toBeNull();
+});
+
+it("shows no picture for an entry with no best Listing", async () => {
+  stubShopping({ get_shopping: () => ({ shoppingList: [lamp], considering: [sofa] }) });
+  renderRoutes("/homes/flat/shopping");
+  await screen.findByRole("heading", { name: "Shopping List" });
+  expect(document.querySelectorAll("main img, li img")).toHaveLength(0);
 });
 
 it("links to the printable Shopping List, its CSV, and the Shopping Guides", async () => {

@@ -522,4 +522,55 @@ describe("the Shopping entry's best rating", () => {
     await core.run("drop_listing", web, { home, listing: "hay-plain-rug" });
     expect((await entry())?.bestRating).toBeUndefined();
   });
+
+  it("names its Listing, with the picture, under the same rules: the first recorded on a tie, and absent exactly when the rating is", async () => {
+    expect((await entry())?.bestListing).toBeUndefined();
+
+    answers.set("https://shop.example/hay.jpg", JPEG);
+    await listing(
+      hay({ rating: 4, ratingNote: "Pricey", photoUrl: "https://shop.example/hay.jpg" }),
+    );
+    const version = (await listings())[0]?.photoVersion;
+    expect(version).toMatch(/^[0-9a-f]{16}$/);
+    expect((await entry())?.bestListing).toEqual({
+      slug: "hay-plain-rug",
+      name: "Hay Plain rug",
+      photoUrl: "https://shop.example/hay.jpg",
+      photoVersion: version,
+    });
+
+    // A must-failer rated higher, and a Held one, never lend it their picture.
+    await listing({
+      name: "Jute loop rug",
+      rating: 5,
+      ratingNote: "Cheap",
+      checks: [
+        { requirement: 1, result: "fail" },
+        { requirement: 2, result: "pass" },
+        { requirement: 3, result: "pass" },
+      ],
+    });
+    await listing({ ...hay(), name: "Nordic Story wool rug", rating: 5, ratingNote: "The one" });
+    await core.run("hold_listing", web, {
+      home,
+      listing: "nordic-story-wool-rug",
+      held: { reason: "out-of-stock" },
+    });
+    expect((await entry())?.bestListing?.slug).toBe("hay-plain-rug");
+
+    // A tie goes to the one recorded first; a link that could not be stored has no version.
+    await listing({ ...hay(), name: "Loom rug", rating: 4, ratingNote: "Also fine" });
+    expect((await entry())?.bestListing?.slug).toBe("hay-plain-rug");
+    await core.run("hold_listing", web, {
+      home,
+      listing: "hay-plain-rug",
+      held: { reason: "too-expensive-now" },
+    });
+    expect((await entry())?.bestListing).toEqual({ slug: "loom-rug", name: "Loom rug" });
+
+    await core.run("drop_listing", web, { home, listing: "loom-rug" });
+    const gone = await entry();
+    expect(gone?.bestRating).toBeUndefined();
+    expect(gone?.bestListing).toBeUndefined();
+  });
 });
