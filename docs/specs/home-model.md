@@ -68,7 +68,7 @@ Every Home has at least one Level. Gardens and patios sit on the ground Level.
 | functions | How it is used now; may be empty (use undecided). Choosing a use is a Decision, and Fulfilling it updates this field | zero or more of the [function list](#fixed-lists) | User | Opt |
 | outdoor | A balcony of any size you can step onto, a terrace, patio, or garden. A railing-only (Juliet) balcony is not a Room: it is a glazed Door to outside | yes / no, default no | User | Opt |
 | ceiling height | Full ceiling height | mm | Provenance | Gap |
-| times of use | When the Room is mostly used; drives daylight versus lamplight advice | any of morning / daytime / evening / night | User | Gap |
+| times of use | When the Room is mostly used; drives daylight versus lamplight advice. *rarely* answers it for a Room used too seldom to name a time | any of morning / daytime / evening / night / rarely | User | Gap |
 | windowless | Marks a Room confirmed to have no Windows **and** no glazed Door leading outside or onto an outdoor Room, so the missing daylight opening isn't reported as a Gap. A Room whose only glazing is a balcony door is not windowless, and recording a daylight opening clears the flag | yes / no | User | Opt |
 | Surfaces | Walls, ceiling, floor, and woodwork (see [Surface](#surface)) | | | Gap |
 | Walls | Ordered list (see [Wall](#wall)) | | | Gap |

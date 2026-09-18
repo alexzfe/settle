@@ -605,6 +605,12 @@ describe("Gaps", () => {
     expect((await my.room("balcony")).gaps).toEqual(["times of use"]);
   });
 
+  it("take rarely as an answer to times of use", async () => {
+    const my = await setUp();
+    await my.saveRoom({ name: "Balcony", outdoor: true, timesOfUse: ["rarely"] });
+    expect((await my.room("balcony")).gaps).toEqual(["floor Surface"]);
+  });
+
   it("end the receipt, for the touched Room", async () => {
     const my = await setUp();
     const { receipt } = await my.saveRoom({ name: "Balcony", outdoor: true });

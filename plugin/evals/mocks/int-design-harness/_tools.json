@@ -621,11 +621,11 @@
             "required": ["mm", "provenance"]
           },
           "timesOfUse": {
-            "description": "When the Room is mostly used, replacing the recorded list: morning, daytime, evening, night.",
+            "description": "When the Room is mostly used, replacing the recorded list: morning, daytime, evening, night, or rarely for a Room used too seldom to name a time.",
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["morning", "daytime", "evening", "night"]
+              "enum": ["morning", "daytime", "evening", "night", "rarely"]
             }
           },
           "windowless": {

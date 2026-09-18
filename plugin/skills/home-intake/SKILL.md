@@ -51,7 +51,7 @@ Use the stages below for the work agreed for this Session. Begin a new Home with
    - Gather it into one numbered list with each Item's name, category, quantity, and whatever else the user gave (where it sits, size, colors, materials, condition). Show the list in one reply and ask the user to confirm or correct it.
    - Call `save_items` only after the user confirms, with exactly the entries they confirmed: their corrections in, what they struck out left out.
    - Done when each Room's list is confirmed and saved, or the user has skipped that Room.
-5. **Times of use.** Ask when a Room is mostly used as soon as this matters to the next task. Offer morning, daytime, evening, and night as answer choices, with the recorded times already filled in. Leave unrecorded times blank; Room functions do not tell you the user's routine. For a whole-Home pass, gather the remaining answers in one optional table. Save only what the user answers or confirms; skipped Rooms keep their Gaps.
+5. **Times of use.** Ask when a Room is mostly used as soon as this matters to the next task. Offer morning, daytime, evening, night, and rarely (a Room used too seldom to name a time) as answer choices, with the recorded times already filled in. Leave unrecorded times blank; Room functions do not tell you the user's routine. For a whole-Home pass, gather the remaining answers in one optional table. Save only what the user answers or confirms; skipped Rooms keep their Gaps.
 
 ## Rooms
 

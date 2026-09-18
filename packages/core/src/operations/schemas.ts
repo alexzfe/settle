@@ -49,7 +49,7 @@ export const FEATURE_KINDS = [
   "tiling-or-panelling",
   "other",
 ] as const;
-export const TIMES_OF_USE = ["morning", "daytime", "evening", "night"] as const;
+export const TIMES_OF_USE = ["morning", "daytime", "evening", "night", "rarely"] as const;
 export const COMPASS_POINTS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"] as const;
 export const TENURES = ["owned", "rented", "other"] as const;
 export const PLANNED_STAYS = ["under-1-year", "1-3-years", "3-10-years", "indefinitely"] as const;
@@ -482,7 +482,8 @@ export const saveRoomInput = z.object({
     .array(z.enum(TIMES_OF_USE))
     .optional()
     .describe(
-      "When the Room is mostly used, replacing the recorded list: morning, daytime, evening, night.",
+      "When the Room is mostly used, replacing the recorded list: morning, daytime, evening, night, " +
+        "or rarely for a Room used too seldom to name a time.",
     ),
   windowless: z
     .boolean()
