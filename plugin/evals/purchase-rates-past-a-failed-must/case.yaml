@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: purchase-rates-past-a-failed-must
+context:
+  history_file: history.jsonl

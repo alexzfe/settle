@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: purchase-uses-the-users-image-url
+context:
+  history_file: history.jsonl

@@ -528,6 +528,56 @@ The Main bedroom has the double bed against Wall 2 (1.60 × 2.10 m), a west wind
 3. **Pile.** *(Recommended: a flat, tightly woven wool: claws don't catch in it.)*
 4. **Colour.** *(Recommended: warm terracotta, the Palette's accent, which warms a room used at night.)*`;
 
+const RUG_FLAG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked.
+
+The *Wool rug* for the living room is Leaning, with four Requirements and three Listings already checked against them:
+
+**Must**
+1. At least 2.0 × 1.4 m — from the living room's Wall 2, 2.10 m.
+3. No longer than 3.4 m, to keep the walk past the west window clear — from Wall 5, ~3.70 m.
+
+**Prefer**
+2. Wool, low pile: loops catch the cats' claws — from the Constraint *Two cats*.
+4. Warm terracotta, the Palette's accent, or close to it — from the Palette, *Warm clay*.
+
+One thing before we go on: there's a flag on the rug. *Calm evenings*, the living room's direction, was reopened on 14 September, and the rug rests on it. Does the rug still hold as it is, or would you rather change its Requirements, reopen it, or give up on it? *(Recommended: keep it — nothing in the reopened direction changes what a rug under the sofa has to do.)*`;
+
+const RUG_KEPT = `Kept as it is: *Wool rug*, still Leaning, and its flag is cleared.
+
+Send me whatever you've found — a link, or the details off the label — and I'll check it against all four Requirements.`;
+
+/**
+ * A Purchase Session on the living room rug: the opening, the Purchase read in full, and its flag
+ * settled, so the graded turn is about the Listing alone. `get_decision` is where the three
+ * recorded Listings, their Ratings, and the hold on the Nordic Story arrive.
+ */
+function rugListingStart(
+  context: HistoryContext,
+  message: string,
+): { turns: Turn[]; session: string } {
+  const { turns, session } = opening(context, message, "purchase");
+  const read = { session, decision: "wool-rug" };
+  const kept = "It still holds — leave it as it is for now.";
+  const keep = { session, decision: "wool-rug", to: "leaning", reason: kept };
+  return {
+    session,
+    turns: [
+      ...turns,
+      { tool: "get_decision", input: read, result: context.answer("get_decision", read) },
+      { assistant: RUG_FLAG_ROUND },
+      { user: kept },
+      // The case has no set_decision_state mock of its own, so the keep gets its receipt in core's
+      // wording here.
+      {
+        tool: "set_decision_state",
+        input: keep,
+        result: "Wool rug (wool-rug): kept as Leaning; cleared wool-rug/flag-1",
+      },
+      { assistant: RUG_KEPT },
+    ],
+  };
+}
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -803,4 +853,46 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     ).turns,
     { assistant: BEDROOM_RUG_ROUND },
   ],
+
+  // Graded turn: the user brings a rug that is superb and too long for must 3. Its Rating stays
+  // high and the failed must is stated beside it, not folded into it.
+  "purchase-rates-past-a-failed-must": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: a fourth rug arrives, plainly worse than the three already rated. It is placed
+  // below them on the same scale, and none of the three is re-rated.
+  "purchase-anchors-rating-to-the-set": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: a rug is recorded with a Rating. Its ratingNote is a fragment saying what the
+  // stars rest on, not a line of praise.
+  "purchase-rating-always-has-a-reason": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: the details the user pastes carry the product's own image link. It goes in
+  // photoUrl, and the product page stays in url.
+  "purchase-passes-the-image-url": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: the user hands over the image URL they found themselves, beside a search
+  // thumbnail. Theirs is sent, character for character.
+  "purchase-uses-the-users-image-url": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: the user asks which rug to buy. The best one that passes every must is Held, out
+  // of stock since 14 September, and the reply says so before or with any recommendation.
+  "purchase-names-the-hold": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
+
+  // Graded turn: the link is a Falabella product id that does not exist, so the page comes back
+  // with no product on it. Nothing is recorded and no specs are read out of the address.
+  "purchase-asks-when-the-page-gives-nothing": (context) =>
+    rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
+      .turns,
 };
