@@ -28,6 +28,7 @@ import {
   type Requirement,
   upload,
 } from "./api";
+import { useDragScroll } from "./dragScroll";
 import { formatDate, metres, sentence } from "./format";
 import { queriesShowing } from "./liveUpdates";
 import { isSafeLink } from "./Markdown";
@@ -67,6 +68,13 @@ const HOLD_REASONS = Object.keys(HOLD_REASON_LABELS) as HoldReason[];
 
 /** What the paste box takes, and what core will accept: the three types it can sniff. */
 const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp";
+
+/**
+ * How many Listings load their pictures at once. The heads sit well down the page, below the
+ * Guides and the Requirements, so a lazy picture there waits to be scrolled to; the first few are
+ * the ones the reader is about to see, and the rest wait their turn.
+ */
+const EAGER_PICTURES = 4;
 
 /** "2 Listings", "1 week". */
 function counted(count: number, noun: string): string {
@@ -196,33 +204,49 @@ export function ListingComparison({
   listings: readonly Listing[];
 }) {
   const wide = useWide("48rem");
+  const drag = useDragScroll<HTMLDivElement>(`.${page.picture}`);
   const shown = listings.toSorted(byBest);
   if (!wide) {
     return (
       <ul className={page.listingCards}>
-        {shown.map((listing) => (
+        {shown.map((listing, index) => (
           <li key={listing.slug}>
-            <ListingCard home={home} listing={listing} requirements={requirements} />
+            <ListingCard
+              home={home}
+              listing={listing}
+              requirements={requirements}
+              eager={index < EAGER_PICTURES}
+            />
           </li>
         ))}
       </ul>
     );
   }
   return (
-    <div className={`${styles.scroll} ${page.matrixWrap}`}>
+    // Dragged sideways by its ground as well as by the scrollbar, the Requirement column pinned
+    // so a cell far to the right still says which Requirement it answers.
+    <div
+      className={`${styles.scroll} ${page.matrixWrap} ${drag.dragging ? page.dragging : ""}`}
+      {...drag.handlers}
+    >
       <table className={page.matrix}>
         <thead>
           <tr>
             <th scope="col" className={page.corner}>
               Requirement
             </th>
-            {shown.map((listing) => (
+            {shown.map((listing, index) => (
               <th
                 key={listing.slug}
                 scope="col"
                 className={listing.failedMusts.length > 0 ? page.failedListing : undefined}
               >
-                <ListingHead home={home} listing={listing} requirements={requirements} />
+                <ListingHead
+                  home={home}
+                  listing={listing}
+                  requirements={requirements}
+                  eager={index < EAGER_PICTURES}
+                />
               </th>
             ))}
           </tr>
@@ -282,15 +306,18 @@ function ListingHead({
   home,
   listing,
   requirements,
+  eager,
 }: {
   home: string;
   listing: Listing;
   requirements: readonly Requirement[];
+  /** Whether its picture loads at once rather than when scrolled to. */
+  eager: boolean;
 }) {
   const verdict = listingVerdict(listing, requirements);
   return (
     <div className={page.listingHead}>
-      <ListingPicture home={home} listing={listing} />
+      <ListingPicture home={home} listing={listing} eager={eager} />
       <span className={page.listingName}>
         <WebLink href={listing.url}>{listing.name}</WebLink>
       </span>
@@ -356,7 +383,15 @@ function HeldLine({ held }: { held: Held }) {
  * empty slot that opens the paste box. The paste box is here at every Listing, not only where a
  * fetch failed — a retailer's own photo is often the worst picture of the thing.
  */
-function ListingPicture({ home, listing }: { home: string; listing: Listing }) {
+function ListingPicture({
+  home,
+  listing,
+  eager,
+}: {
+  home: string;
+  listing: Listing;
+  eager: boolean;
+}) {
   const [pasting, setPasting] = useState(false);
   const [broken, setBroken] = useState(false);
   const hotlink = listing.photoUrl && isSafeLink(listing.photoUrl) ? listing.photoUrl : undefined;
@@ -382,20 +417,54 @@ function ListingPicture({ home, listing }: { home: string; listing: Listing }) {
           className={page.photo}
           src={src}
           alt={listing.name}
-          loading="lazy"
+          loading={eager ? "eager" : "lazy"}
           onError={() => setBroken(true)}
         />
       )}
+      <div className={page.pictureActions}>
+        {listing.photoUrl && listing.photoVersion === undefined && (
+          <FetchPicture home={home} listing={listing.slug} url={listing.photoUrl} />
+        )}
+        <button
+          type="button"
+          className={`secondary ${page.pictureButton}`}
+          aria-expanded={pasting}
+          onClick={() => setPasting(!pasting)}
+        >
+          {empty ? "Add a picture" : "Change the picture"}
+        </button>
+      </div>
+      {pasting && <PasteBox home={home} listing={listing.slug} onDone={() => setPasting(false)} />}
+    </div>
+  );
+}
+
+/**
+ * Stores a copy of the picture a Listing links to, in one click, for the Listings recorded before
+ * the app kept its own copies and any whose fetch failed once. Core fetches it exactly as it would
+ * an address typed into the paste box, and refuses it in the same words.
+ */
+function FetchPicture({ home, listing, url }: { home: string; listing: string; url: string }) {
+  const send = useBoardWrite(home, (form: FormData) => upload("set_listing_photo", form));
+  function fetchIt() {
+    const form = new FormData();
+    form.append("home", home);
+    form.append("listing", listing);
+    form.append("url", url);
+    send.mutate(form);
+  }
+  return (
+    <>
       <button
         type="button"
         className={`secondary ${page.pictureButton}`}
-        aria-expanded={pasting}
-        onClick={() => setPasting(!pasting)}
+        disabled={send.isPending}
+        onClick={fetchIt}
       >
-        {empty ? "Add a picture" : "Change the picture"}
+        {send.isPending ? "Fetching…" : "Fetch the picture"}
       </button>
-      {pasting && <PasteBox home={home} listing={listing.slug} onDone={() => setPasting(false)} />}
-    </div>
+      <Refusal of={send} />
+    </>
   );
 }
 
@@ -673,14 +742,16 @@ function ListingCard({
   home,
   listing,
   requirements,
+  eager,
 }: {
   home: string;
   listing: Listing;
   requirements: readonly Requirement[];
+  eager: boolean;
 }) {
   return (
     <Card className={listing.failedMusts.length > 0 ? page.failedCard : undefined}>
-      <ListingHead home={home} listing={listing} requirements={requirements} />
+      <ListingHead home={home} listing={listing} requirements={requirements} eager={eager} />
       <ul className={page.cardChecks}>
         {requirements.map((requirement) => {
           const check = checkFor(listing, requirement);

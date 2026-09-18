@@ -297,7 +297,8 @@ it("shows the stored picture by its version, falls back to the link, and invites
   expect(stored.getAttribute("src")).toBe(
     "/api/get_listing_photo?home=flat&listing=hay-plain-rug&v=9f8e7d6c5b4a3210",
   );
-  expect(stored.getAttribute("loading")).toBe("lazy");
+  // Among the first four on the board, so it loads at once rather than waiting to be scrolled to.
+  expect(stored.getAttribute("loading")).toBe("eager");
   // No bytes: the source link hotlinked, which is what the board did before it stored anything,
   // with the text link still behind it.
   expect(
@@ -317,6 +318,75 @@ it("shows the stored picture by its version, falls back to the link, and invites
       name: "No picture yet. Paste or choose one.",
     }),
   ).toBeDefined();
+});
+
+it("loads the first four pictures at once and the rest when scrolled to", async () => {
+  const rugs = [1, 2, 3, 4, 5].map((n) =>
+    listing({
+      slug: `rug-${n}`,
+      name: `Rug ${n}`,
+      photoUrl: `https://example.com/rug-${n}.jpg`,
+      rating: 6 - n,
+    }),
+  );
+  showBoard(rugs);
+  await screen.findByText("Rug 1");
+  expect(
+    rugs.map((rug) => within(headOf(rug.name)).getByAltText(rug.name).getAttribute("loading")),
+  ).toEqual(["eager", "eager", "eager", "eager", "lazy"]);
+});
+
+it("fetches the linked picture in one click, only where the app holds no copy", async () => {
+  let listings = [hay, nordic, listing({ slug: "linen", name: "Linen rug" })];
+  let refuse = true;
+  const fetch = showBoard(listings, {
+    get_decision: () => ({ decision: rug(listings) }),
+    set_listing_photo: () => {
+      if (refuse) {
+        return Response.json(
+          { error: { code: "fetch_failed", message: "That page did not answer." } },
+          { status: 400 },
+        );
+      }
+      listings = listings.map((each) =>
+        each.slug === nordic.slug ? { ...each, photoVersion: "0123456789abcdef" } : each,
+      );
+      return { decision: "wool-rug", listing: { ...nordic, photoVersion: "0123456789abcdef" } };
+    },
+  });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+
+  // A stored copy already, or nothing to fetch: no action.
+  const action = { name: "Fetch the picture" };
+  expect(within(headOf("Hay Plain rug")).queryByRole("button", action)).toBeNull();
+  expect(within(headOf("Linen rug")).queryByRole("button", action)).toBeNull();
+
+  // Refused: core's own words, where it happened.
+  fireEvent.click(within(headOf("Nordic Story wool rug")).getByRole("button", action));
+  expect((await within(headOf("Nordic Story wool rug")).findByRole("alert")).textContent).toBe(
+    "That page did not answer.",
+  );
+
+  refuse = false;
+  fireEvent.click(within(headOf("Nordic Story wool rug")).getByRole("button", action));
+  await waitFor(() =>
+    expect(within(headOf("Nordic Story wool rug")).queryByRole("button", action)).toBeNull(),
+  );
+  expect(
+    within(headOf("Nordic Story wool rug"))
+      .getByAltText("Nordic Story wool rug")
+      .getAttribute("src"),
+  ).toBe("/api/get_listing_photo?home=flat&listing=nordic-story-wool-rug&v=0123456789abcdef");
+
+  const forms = fetch.mock.calls
+    .filter(([url]) => url === "/api/set_listing_photo")
+    .map(([, init]) => init?.body as FormData);
+  expect(forms).toHaveLength(2);
+  expect([...(forms[1] as FormData).entries()]).toEqual([
+    ["home", "flat"],
+    ["listing", "nordic-story-wool-rug"],
+    ["url", "https://example.com/nordic.jpg"],
+  ]);
 });
 
 it("does not hotlink a picture whose address is not a safe link", async () => {
@@ -559,6 +629,69 @@ it("redraws the board when the Agent records a Listing, with the new picture's v
   expect(within(headOf("Hay Plain rug")).getByAltText("Hay Plain rug").getAttribute("src")).toBe(
     "/api/get_listing_photo?home=flat&listing=hay-plain-rug&v=ffffffffffffffff",
   );
+});
+
+/** The board's scrolling box, made wider inside than out, as jsdom lays nothing out itself. */
+function scrollingBoard(): HTMLElement {
+  const box = boardSection().querySelector("table")?.parentElement as HTMLElement;
+  let left = 0;
+  Object.defineProperties(box, {
+    scrollWidth: { configurable: true, value: 2000 },
+    clientWidth: { configurable: true, value: 800 },
+    scrollLeft: {
+      configurable: true,
+      get: () => left,
+      set: (value: number) => {
+        left = value;
+      },
+    },
+  });
+  return box;
+}
+
+it("scrolls sideways when its ground is dragged with the mouse", async () => {
+  showBoard([hay, jute]);
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  const box = scrollingBoard();
+  const cell = within(box).getAllByRole("cell")[0] as HTMLElement;
+  const mouse = { pointerType: "mouse", pointerId: 1, button: 0, buttons: 1 };
+
+  // Under six pixels it is still a click, and nothing moves.
+  fireEvent.pointerDown(cell, { ...mouse, clientX: 500 });
+  fireEvent.pointerMove(cell, { ...mouse, clientX: 496 });
+  expect(box.scrollLeft).toBe(0);
+
+  // Past it, the board follows the mouse, with a hand to show it has hold of the board.
+  fireEvent.pointerMove(cell, { ...mouse, clientX: 380 });
+  expect(box.scrollLeft).toBe(120);
+  expect(box.className).toMatch(/dragging/);
+  fireEvent.pointerUp(cell, { ...mouse, buttons: 0, clientX: 380 });
+  expect(box.className).not.toMatch(/dragging/);
+  fireEvent.pointerMove(cell, { ...mouse, buttons: 0, clientX: 100 });
+  expect(box.scrollLeft).toBe(120);
+
+  // A touch scrolls natively, so the board leaves it alone.
+  fireEvent.pointerDown(cell, { ...mouse, pointerType: "touch", clientX: 500 });
+  fireEvent.pointerMove(cell, { ...mouse, pointerType: "touch", clientX: 300 });
+  expect(box.scrollLeft).toBe(120);
+});
+
+it("leaves a press on a control or the picture alone, so a click still clicks", async () => {
+  showBoard([hay, jute]);
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  const box = scrollingBoard();
+  const mouse = { pointerType: "mouse", pointerId: 1, button: 0, buttons: 1 };
+  const drop = within(headOf("Jute loop rug")).getByRole("button", { name: "Drop" });
+  const picture = within(headOf("Hay Plain rug")).getByAltText("Hay Plain rug");
+
+  for (const pressed of [drop, picture]) {
+    fireEvent.pointerDown(pressed, { ...mouse, clientX: 500 });
+    fireEvent.pointerMove(pressed, { ...mouse, clientX: 300 });
+    fireEvent.pointerUp(pressed, { ...mouse, buttons: 0, clientX: 300 });
+    expect(box.scrollLeft).toBe(0);
+  }
+  fireEvent.click(drop);
+  expect(within(headOf("Jute loop rug")).getByText(/^Drops Jute loop rug/)).toBeDefined();
 });
 
 it("still says when a price is not recorded, and when it was recorded", async () => {

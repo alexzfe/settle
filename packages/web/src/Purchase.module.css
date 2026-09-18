@@ -272,6 +272,13 @@ a.reason:hover {
   font-size: var(--text-sm);
 }
 
+/* Being dragged sideways by its ground: a hand holding the sheet, and no text selected on the
+   way. */
+.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .matrix th,
 .matrix td {
   min-width: 11rem;
@@ -309,6 +316,18 @@ a.reason:hover {
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
+}
+
+/* The Requirement column stays put while the Listings slide under it, so a cell far to the right
+   still says which Requirement it answers. It needs the board's own ground behind it, and a rule
+   down its edge to show where the sliding starts. */
+.matrix .corner,
+.matrix .rowHead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-card);
+  box-shadow: inset -1px 0 0 var(--color-hairline);
 }
 
 .failedListing {
@@ -356,6 +375,19 @@ a.reason:hover {
   border-color: var(--color-accent);
   background: var(--color-ground);
   color: var(--color-accent);
+}
+
+.pictureActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+}
+
+/* A refusal takes a line of its own under the buttons. */
+.pictureActions > p {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .pictureButton {

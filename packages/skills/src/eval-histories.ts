@@ -578,6 +578,55 @@ function rugListingStart(
   };
 }
 
+const BED_FRAME_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked, and the bed frame rests on it.
+
+The *Bed frame* for the Main bedroom is Leaning, with four Requirements and nothing checked against them yet:
+
+**Must**
+1. Queen size, for the mattress you have — from the Double bed.
+2. Comes apart to pass a 0.76 m doorway — from the front door, the narrowest way in.
+
+**Prefer**
+3. Solid wood, warm natural finish — from the Design Direction.
+4. No fabric headboard: claws shred it — from the Constraint *Two cats*.
+
+Send me a link to any frame you've found, and I'll check it against all four.`;
+
+const BED_FRAME_IDEAS = `Here are three on Falabella to start from:
+
+1. **Cama de madera pino natural Queen + sabanera**, Muebles Macrumo — https://www.falabella.com.pe/falabella-pe/product/132345417/Cama-de-madera-pino-natural-Queen-+-sabanera
+   Natural pine with a wooden headboard and a drawer underneath; Queen, and it comes flat for assembly.
+2. **Cama con Sabanera Torneada Patas 3x3, acabado miel**, Muebles Macrumo — https://www.falabella.com.pe/falabella-pe/product/147661956/Cama-con-Sabanera-Torneada-Patas-3x3-acabado-miel-2plz
+   Pine in a honey finish, turned legs, two drawers, and it comes apart. It's sold as 2 plazas, so the size needs a look.
+3. **Cama Tapizada Líneas Ivory Queen** — https://www.falabella.com.pe/falabella-pe/product/148899191/Cama-Tapizada-Lineas-Ivory-Queen
+   A low Queen base with a tall ivory headboard, wood inside but covered in fabric, which the cats may go for.
+
+Add these three to the bed frame's Listings? I'd check each against the four Requirements and keep its picture.`;
+
+/**
+ * A Purchase Session on the Main bedroom's bed frame, which has Requirements and no Listings: the
+ * opening, the Purchase found and read, then the user asking for ideas and the Agent showing three
+ * real Falabella frames, ending on the offer to add them. The case's own mocks give the bed frame.
+ * No fetch is in the history, so the pages' facts and pictures are only to be had by fetching them.
+ */
+function bedFrameIdeas(context: HistoryContext): Turn[] {
+  const { turns, session } = opening(
+    context,
+    "Let's carry on with the bed frame for the main bedroom.",
+    "purchase",
+  );
+  const find = { session, kind: "purchase", room: "main-bedroom" };
+  const read = { session, decision: "bed-frame" };
+  return [
+    ...turns,
+    { tool: "find_decisions", input: find, result: context.answer("find_decisions", find) },
+    { tool: "get_decision", input: read, result: context.answer("get_decision", read) },
+    { assistant: BED_FRAME_ROUND },
+    { user: "can you find me a few bed frame ideas on falabella? just for inspo" },
+    { assistant: BED_FRAME_IDEAS },
+  ];
+}
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -895,4 +944,9 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   "purchase-asks-when-the-page-gives-nothing": (context) =>
     rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
       .turns,
+
+  // Graded turn: the user says yes to the three bed frames the Agent showed when asked for ideas.
+  // Each is recorded once, with a Rating, its reason, and the picture from its own page; nothing
+  // else is recorded.
+  "purchase-offers-to-record-what-it-showed": bedFrameIdeas,
 };

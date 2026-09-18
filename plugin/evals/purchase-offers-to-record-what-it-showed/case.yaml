@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: purchase-offers-to-record-what-it-showed
+context:
+  history_file: history.jsonl
