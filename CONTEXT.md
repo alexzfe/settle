@@ -15,7 +15,7 @@ The one Home a Session can see: the Home whose Home Folder the Agent is running 
 _Avoid_: Current home, selected home, default home
 
 **Home Folder**:
-A folder on the user's computer, one per Home, in which the user runs their Agent. Every Session started there belongs to that Home.
+A folder on one of the user's computers in which the user runs their Agent; a Home may have one on each computer the user works from. Every Session started there belongs to that Home. It holds only the two files that point the Agent at the platform and at that Home; none of the Home's record is in it, so moving the platform to another machine moves the Home with it and leaves the Home Folder to be pointed again.
 _Avoid_: Workspace, project, project folder
 
 **Tenure**:
