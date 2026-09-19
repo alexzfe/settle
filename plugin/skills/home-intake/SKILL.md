@@ -9,7 +9,7 @@ Records or corrects the Active Home's facts, Levels, Rooms, and Inventory, from 
 
 ## Starting
 
-1. **Check the tools.** Follow "App not running" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "home-intake"`, or join the Session this conversation already has. Name the Home. The Overview's Room lines and their Gaps tell you what the interview still needs.
 3. **Read-back.** When the user asks what is recorded, read the relevant Room Sheet or use `find_items` for Inventory. Summarise its recorded facts and Gaps, keeping estimates visibly approximate. Answer without changing the Home's facts or starting the interview. Offer a correction or further intake as an optional next step.
 4. **Pick the work.** Handle the fact, correction, or Item the user came with first. For a wider intake, ask what they want help with next if they have not said. Recommend a first Room from the Overview and explain why. Agree this Session's scope; use the Gaps to find missing facts within it.
@@ -96,9 +96,9 @@ Follow "Closing" in the Session protocol. Close when the user is done. In `open`
 
 This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
 
-### App not running
+### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Settle app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
 
 ### Opening
 

@@ -105,15 +105,7 @@ export function openReviews(decisions: readonly DecisionSummary[]): Review[] {
 }
 
 /** The open Flags and Conflicts, each as a question. */
-export function ReviewList({
-  home,
-  reviews,
-  homeFolderPath,
-}: {
-  home: string;
-  reviews: readonly Review[];
-  homeFolderPath?: string | undefined;
-}) {
+export function ReviewList({ home, reviews }: { home: string; reviews: readonly Review[] }) {
   return (
     <ul className={flagStyles.reviews}>
       {reviews.map((review) =>
@@ -123,7 +115,6 @@ export function ReviewList({
             home={home}
             flag={review.flag}
             decision={review.decision}
-            homeFolderPath={homeFolderPath}
           />
         ) : (
           <ConflictQuestion
@@ -131,7 +122,6 @@ export function ReviewList({
             home={home}
             conflict={review.conflict}
             decision={review.decision}
-            homeFolderPath={homeFolderPath}
           />
         ),
       )}
@@ -143,12 +133,10 @@ function FlagQuestion({
   home,
   flag,
   decision,
-  homeFolderPath,
 }: {
   home: string;
   flag: Flag;
   decision: DecisionSummary;
-  homeFolderPath?: string | undefined;
 }) {
   const prompt = buildPrompt({
     skill: SKILL_OF_KIND[decision.kind],
@@ -164,7 +152,7 @@ function FlagQuestion({
         <FlagCause home={home} flag={flag} />. Is <em>{decision.title}</em> still right?
       </p>
       <ReviewMeta decision={decision} raisedAt={flag.raisedAt} />
-      <AskAgent label="Talk it through" prompt={prompt} homeFolderPath={homeFolderPath} />
+      <AskAgent label="Talk it through" prompt={prompt} />
       <DecideHere
         home={home}
         decision={decision}
@@ -178,12 +166,10 @@ function ConflictQuestion({
   home,
   conflict,
   decision,
-  homeFolderPath,
 }: {
   home: string;
   conflict: Conflict;
   decision: DecisionSummary;
-  homeFolderPath?: string | undefined;
 }) {
   const prompt = buildPrompt({
     skill: SKILL_OF_KIND[decision.kind],
@@ -199,7 +185,7 @@ function ConflictQuestion({
         {conflict.description} Does <em>{decision.title}</em> still hold?
       </p>
       <ReviewMeta decision={decision} raisedAt={conflict.raisedAt} conflict />
-      <AskAgent label="Talk it through" prompt={prompt} homeFolderPath={homeFolderPath} />
+      <AskAgent label="Talk it through" prompt={prompt} />
       <DecideHere
         home={home}
         decision={decision}

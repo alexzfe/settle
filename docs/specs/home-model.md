@@ -44,9 +44,8 @@
 | lift | Whether the building has a lift | none / yes | User | Opt |
 | lift door width, lift car depth | For getting furniture in | mm | Provenance | Opt |
 | narrowest access point | Narrowest point on the way into the Home: its width and what it is (e.g. "turn in the communal stair") | mm + text | Provenance | Opt |
-| Home Folder path | Where the user set up this Home's Home Folder, so the web UI can show it and set it up again. Never given to the AI | path | Platform, from the web UI's setup action | Opt |
 
-The web UI creates a Home from its name, country, and city, and the platform derives the latitude. A Home Folder can be set up only once its Home exists.
+The web UI creates a Home from its name, country, and city, and the platform derives the latitude. A Home Folder can be set up only once its Home exists. The Home stores no Home Folder path: the platform may be hosted and cannot see the user's disk, and a Home has one folder per computer ([ADR 0006](../adr/0006-home-folder-files-fetched-not-written.md), 2026-09-19).
 
 There is no Home-level orientation: compass direction is recorded on each Wall. There is no structured household either: people and pets who impose rules are Constraints, and softer context is Notes.
 
@@ -282,7 +281,7 @@ The model follows the wall-reference pattern of Floorplanner, react-planner, and
 
 1. **Palette and Surface colors:** yes. One [Color value](#color-value) shape serves Surfaces, Palette colors, and Items, with Provenance.
 2. **Requirement reasons:** yes. A reason can point at a Wall, Window, Door, Feature, Surface, or Item as well as a Room, and a change to the pointed-at value flags the Purchase Decision.
-3. **Home Folder:** the Home record stores the Home Folder's path (see [Home](#home)), so the web UI can show it and set it up again. The path is never given to the AI.
+3. **Home Folder:** the Home record stores the Home Folder's path (see [Home](#home)), so the web UI can show it and set it up again. The path is never given to the AI. **Superseded 2026-09-19:** no path is stored ([ADR 0006](../adr/0006-home-folder-files-fetched-not-written.md)).
 
 ## Questions for the Skill-set session
 

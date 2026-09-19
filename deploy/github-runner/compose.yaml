@@ -1,0 +1,66 @@
+# github-runner: a self-hosted GitHub Actions runner for the alexzfe/settle repo, so the `deploy` job
+# of Settle's workflow runs on the homeserver itself. Nothing reaches in: the runner dials out to
+# GitHub and waits for jobs, so there is no SSH key, no open port, and no Tailscale rule.
+#
+# This file is written in the Settle repo (deploy/github-runner/compose.yaml) and copied by hand to
+# /docker/github-runner/compose.yaml; from then on the homeserver's nightly backup keeps it.
+# Setup and the token it needs: deploy/README.md in the Settle repo.
+#
+#   docker compose up -d                  # register and start waiting for jobs
+#   docker compose logs -f github-runner  # "Listening for Jobs" means it is ready
+#
+# What it can do, plainly: with the Docker socket it can start, stop, and replace any container on
+# this box, which is root-equivalent. It only runs jobs from alexzfe/settle, and only the `deploy`
+# job asks for it (runs-on: [self-hosted, homeserver]). Keep the repo's Actions setting "Require
+# approval for all external contributors" on, so a stranger's pull request cannot run on it.
+
+services:
+  github-runner:
+    # A maintained image of GitHub's own runner, with the Docker CLI and Compose plugin inside.
+    # `latest` lets Watchtower keep it current, like the rest of the box.
+    image: myoung34/github-runner:latest
+    container_name: github-runner
+    restart: unless-stopped
+
+    # The deploy job checks the app at http://127.0.0.1:4380/health, which is the host's loopback
+    # only when the runner shares the host's network. It publishes nothing.
+    network_mode: host
+
+    environment:
+      # Registered on the one repo, not an account or organization.
+      RUNNER_SCOPE: repo
+      REPO_URL: https://github.com/alexzfe/settle
+      RUNNER_NAME: homeserver
+      # Jobs pick the runner by label: the workflow asks for [self-hosted, homeserver]. The
+      # self-hosted, Linux, and X64 labels are added automatically.
+      LABELS: homeserver
+      # A fine-grained token that may register runners on alexzfe/settle (in .env, never here).
+      # With it the runner fetches a fresh registration token each time it starts.
+      ACCESS_TOKEN: ${ACCESS_TOKEN:?set ACCESS_TOKEN in .env}
+      # One job per registration: after each job the runner unregisters and the restart policy
+      # brings up a clean one, so nothing a job leaves behind leaks into the next.
+      EPHEMERAL: "true"
+      # Keep the token out of the jobs' environment.
+      UNSET_CONFIG_VARS: "true"
+
+    volumes:
+      # The host's Docker: `docker compose` in a job drives the host's containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Settle's stack folder at the same path as on the host. Compose resolves ./data in
+      # /docker/settle/compose.yaml to /docker/settle/data and hands that path to the host's
+      # Docker, so the two paths must match.
+      - /docker/settle:/docker/settle
+
+    # A deploy is a checkout, a pull, and a restart; the runner idles far below this.
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          memory: 128M
+
+    labels:
+      # Watchtower keeps this `latest` image current on Sundays. The runner also updates its own
+      # runner binary when GitHub asks it to.
+      com.centurylinklabs.watchtower.enable: "true"

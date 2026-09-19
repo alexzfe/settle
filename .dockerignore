@@ -1,0 +1,22 @@
+# The image builds from sources and the lockfile; everything else stays out of the context.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/coverage
+.git
+.github
+.claude
+docs
+plugin/evals*
+deploy
+Dockerfile
+.dockerignore
+
+# Data folders and local settings
+/data
+/.data
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+**/.env
+**/.env.*

@@ -52,7 +52,7 @@ This is the deep module of the build. Its interface is small and its implementat
 **Interface.** One `Core` object whose operations are declared once in an **operation registry**: `{ name, input: ZodSchema, readOnly, handler }`. The operations are:
 
 - the nineteen tool-shaped operations of the [MCP tool surface](specs/skill-set.md#mcp-tool-surface), named exactly as the tools
-- the web-UI-only operations: `create_home`, `list_homes`, `set_up_home_folder`, `upload_blueprint`, `upload_photo`, `list_sessions`, `resolve_flag`, `resolve_conflict`, `set_decision_state` from the UI (same op, different caller), `list_decisions`, `get_shopping`, `export_shopping_list`, `export_guides`, `get_change_log`, and the read views each page needs
+- the web-UI-only operations: `create_home`, `list_homes`, `home_folder_setup` (replaced `set_up_home_folder` on 2026-09-19, [ADR 0006](adr/0006-home-folder-files-fetched-not-written.md)), `upload_blueprint`, `upload_photo`, `list_sessions`, `resolve_flag`, `resolve_conflict`, `set_decision_state` from the UI (same op, different caller), `list_decisions`, `get_shopping`, `export_shopping_list`, `export_guides`, `get_change_log`, and the read views each page needs
 
 Every operation takes a **caller**: `{ kind: "session", sessionId }` or `{ kind: "web" }`. Inside core, the caller decides Home scoping (a Session's Home is fixed at `open_session`), whether a Session and reason are required, how the change log records the origin, and whether receipts are rendered.
 
@@ -76,7 +76,7 @@ Normalised tables, one per record kind in the Home model, all scoped by `home_id
 
 | Table | Key columns beyond id, home_id, slug |
 |---|---|
-| `homes` | name, country, city, latitude, tenure, planned_stay, building_type, building_era, lift, lift door width and car depth (values), access width (value) and note, home_folder_path |
+| `homes` | name, country, city, latitude, tenure, planned_stay, building_type, building_era, lift, lift door width and car depth (values), access width (value) and note (`home_folder_path` was dropped in migration 0011, [ADR 0006](adr/0006-home-folder-files-fetched-not-written.md)) |
 | `levels` | name, storey |
 | `rooms` | level_id, name, functions (JSON list), outdoor, ceiling height (value), times_of_use (JSON list), windowless, archived_at, archived_reason |
 | `walls` | room_id, position, length (value), facing, beyond_kind, beyond_room_id, label, obstruction, deciduous, archived_at |
@@ -115,10 +115,13 @@ Every committed write appends to `change_log` and publishes one event `{ home, r
 ## The server process
 
 - One process, `pnpm start`, port **4380**, overridable by `SETTLE_PORT`. Data in `$XDG_DATA_HOME/settle/` (database, `uploads/`, `rendered/`), overridable by `SETTLE_DATA_DIR`.
-- Routes: `/` the built UI, `/api/<op>` the web API, `/events` SSE, `/mcp/homes/<slug>` the MCP endpoint, `/guide/<decision slug>` the phone-readable Quick Guide page.
+- `SETTLE_HOST`: the address the main listener binds, default `127.0.0.1`. A non-loopback value requires `SETTLE_PUBLIC_ORIGIN`, or the server refuses to start and says why.
+- `SETTLE_PUBLIC_ORIGIN`: the origin the app is reached at (`scheme://host[:port]`, e.g. `https://settle.example.com`). The host guard and the MCP allowlist accept its host besides `localhost` and `127.0.0.1`, and the app names itself by it in the Home Folder command and the phone URL. Unset, the app names itself `http://127.0.0.1:<port>` and behaves as a local app.
+- Routes: `/` the built UI, `/api/<op>` the web API, `/events` SSE, `/mcp/homes/<slug>` the MCP endpoint, `/guide/<decision slug>` the phone-readable Quick Guide page, `/api/home_folder_script?home=<slug>` the `sh` script the Home Folder command fetches ([ADR 0006](adr/0006-home-folder-files-fetched-not-written.md)).
 - MCP: streamable HTTP, stateless, one endpoint per Home. The URL fixes the Home; the Session id is an explicit tool argument, never an MCP session. Read tools carry `readOnlyHint: true`. Server `instructions` are the 512-character backstop from the spec.
 - **LAN mode** (slice 6, narrowed after the review of 2026-09-14): `SETTLE_LAN=1` opens a second listener on the LAN address, same port, that serves only `/guide/<token>` (a per-Purchase random token stored with its Guides) and answers 404 to every other path; the web app, the API, and the MCP endpoint stay on loopback. The Decision page shows that URL as a QR code. No auth on the guide pages; the user's own network.
-- Starting the app automatically is deferred; a Skill's first step checks that the tools are present and tells the user to start the app if not.
+- Starting the app automatically is deferred; a Skill's first step checks that the tools are present and, if not, tells the user to check that Settle is running and reachable.
+- The hosted deployment (the container, its settings, and CI/CD to the homeserver) is described in `deploy/README.md`.
 
 ## Plugin and Skills
 

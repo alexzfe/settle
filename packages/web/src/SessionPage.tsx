@@ -17,7 +17,7 @@ import {
 } from "./ChangeLogPage";
 import page from "./ChangeLogPage.module.css";
 import { formatTime } from "./format";
-import { useChangeLog, useHome, useSessions } from "./queries";
+import { useChangeLog, useSessions } from "./queries";
 import { AgentWritten } from "./ui/AgentWritten";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { useDocumentTitle } from "./ui/documentTitle";
@@ -57,7 +57,7 @@ export function SessionPage() {
   }
   return (
     <>
-      <SessionHeader home={home} session={session} />
+      <SessionHeader session={session} />
       <Section title="Changes">
         {log.isPending ? (
           <p>Loading…</p>
@@ -78,9 +78,7 @@ export function SessionPage() {
   );
 }
 
-function SessionHeader({ home, session }: { home: string; session: Session }) {
-  const homeRead = useHome(home);
-  const folder = homeRead.data?.home.homeFolderPath;
+function SessionHeader({ session }: { session: Session }) {
   return (
     <header>
       <h1>{sessionName(session)}</h1>
@@ -114,7 +112,6 @@ function SessionHeader({ home, session }: { home: string; session: Session }) {
           prompt={buildPrompt({
             text: `Let's carry on from the last Session: ${session.summary.next}`,
           })}
-          homeFolderPath={folder}
         />
       )}
     </header>

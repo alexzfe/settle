@@ -29,11 +29,18 @@ export function mcpTools(core: Core): AnyOperation[] {
 
 /**
  * Answers one MCP request statelessly: a fresh server and transport per request, bound to the
- * Home the URL names. The SDK's DNS-rebinding protection accepts only this machine's names.
+ * Home the URL names. The SDK's DNS-rebinding protection accepts only this machine's names and,
+ * when hosted, the public origin's.
  */
 export async function handleMcpRequest(
   request: Request,
-  { core, tools, home, port }: { core: Core; tools: AnyOperation[]; home: string; port: number },
+  {
+    core,
+    tools,
+    home,
+    port,
+    publicOrigin,
+  }: { core: Core; tools: AnyOperation[]; home: string; port: number; publicOrigin?: string },
 ): Promise<Response> {
   if (request.method !== "POST") {
     // Stateless: there is no standalone SSE stream to open and no MCP session to delete.
@@ -44,8 +51,16 @@ export async function handleMcpRequest(
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
     enableDnsRebindingProtection: true,
-    allowedHosts: [`127.0.0.1:${port}`, `localhost:${port}`],
-    allowedOrigins: [`http://127.0.0.1:${port}`, `http://localhost:${port}`],
+    allowedHosts: [
+      `127.0.0.1:${port}`,
+      `localhost:${port}`,
+      ...(publicOrigin ? [new URL(publicOrigin).host] : []),
+    ],
+    allowedOrigins: [
+      `http://127.0.0.1:${port}`,
+      `http://localhost:${port}`,
+      ...(publicOrigin ? [publicOrigin] : []),
+    ],
   });
   await server.connect(transport);
   try {

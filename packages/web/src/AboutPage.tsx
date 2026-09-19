@@ -2,8 +2,8 @@
 // and Home Folder, in two columns on a wide screen.
 
 import type { PlannedStay } from "@settle/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import about from "./AboutPage.module.css";
 import styles from "./App.module.css";
@@ -11,6 +11,7 @@ import { call, type Home } from "./api";
 import { BlueprintList, BlueprintUploadForm } from "./Blueprints";
 import { formatDate, sentence } from "./format";
 import { queryKeys, useConstraints, useHome, useNotes } from "./queries";
+import { CopyButton } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { Section } from "./ui/Section";
 import { ArchivedNote, Fact, Length } from "./Values";
@@ -165,66 +166,83 @@ function NoteList({ home }: { home: string }) {
   );
 }
 
-/** Sets up the Home Folder at a path, and says which files it wrote. */
+/**
+ * How to set up the Home Folder: a command to paste in a folder on any computer the user talks to
+ * the Agent from, which fetches a script from the server that writes the folder's two files. The
+ * server writes nothing itself, so the same steps work wherever it runs.
+ */
 export function HomeFolderSetup({ home }: { home: Home }) {
-  const queryClient = useQueryClient();
-  const setUp = useMutation({
-    mutationFn: (path: string) => call("set_up_home_folder", { home: home.slug, path }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.home(home.slug) }),
+  const [shown, setShown] = useState(false);
+  const setup = useQuery({
+    queryKey: [...queryKeys.home(home.slug), "home-folder-setup"],
+    queryFn: () => call("home_folder_setup", { home: home.slug }),
+    enabled: shown,
   });
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setUp.mutate(String(new FormData(event.currentTarget).get("path") ?? "").trim());
-  }
-
-  return (
-    <>
-      <p>
-        {home.homeFolderPath ? (
-          <>
-            Set up at <code>{home.homeFolderPath}</code>.
-          </>
-        ) : (
-          "Not set up yet."
-        )}
-      </p>
-      <form className={`${styles.form} ${about.inline}`} onSubmit={onSubmit}>
-        <label>
-          Path{" "}
-          <input
-            name="path"
-            defaultValue={home.homeFolderPath ?? `~/Homes/${home.slug}`}
-            required
-            size={32}
-          />
-        </label>
-        <button type="submit" disabled={setUp.isPending}>
+  if (!shown) {
+    return (
+      <>
+        <p className={styles.muted}>
+          A folder for this Home on each computer you talk to the Agent from.
+        </p>
+        <button type="button" onClick={() => setShown(true)}>
           Set up Home Folder
         </button>
-      </form>
-      {setUp.isError && (
-        <p role="alert" className={styles.error}>
-          {setUp.error.message}
+      </>
+    );
+  }
+  if (setup.isPending) return <p>Loading…</p>;
+  if (setup.isError) {
+    return (
+      <p role="alert" className={styles.error}>
+        {setup.error.message}
+      </p>
+    );
+  }
+  const { command, pluginInstall, files } = setup.data;
+  return (
+    <>
+      <ol className={about.setupSteps}>
+        <li>
+          <p>
+            Make a folder for this Home, e.g. <code>~/Homes/{home.slug}</code>, open a terminal in
+            it, and paste this:
+          </p>
+          <pre>
+            <code>{command}</code>
+          </pre>
+          <CopyButton text={command} label="Copy the command" />
+        </li>
+        <li>
+          <p>Once on each computer, install the Settle plugin:</p>
+          <pre>
+            <code>{pluginInstall}</code>
+          </pre>
+          <CopyButton text={pluginInstall} label="Copy the install line" />
+        </li>
+        <li>
+          <p>
+            Then run <code>claude</code> in the folder.
+          </p>
+        </li>
+      </ol>
+      <details className={about.byHand}>
+        <summary>Show the files</summary>
+        <p className={styles.muted}>
+          The command writes these two files in the folder. Write them by hand instead if you
+          prefer.
         </p>
-      )}
-      {setUp.isSuccess && (
-        <>
-          <p>
-            Wrote these files in <code>{setUp.data.path}</code>:
-          </p>
-          <ul>
-            {setUp.data.files.map((file) => (
-              <li key={file}>
-                <code>{file}</code>
-              </li>
-            ))}
-          </ul>
-          <p>
-            Open a terminal in that folder and run <code>claude</code>.
-          </p>
-        </>
-      )}
+        {files.map((file) => (
+          <figure key={file.path} className={about.file}>
+            <figcaption>
+              <code>{file.path}</code>
+            </figcaption>
+            <pre>
+              <code>{file.content}</code>
+            </pre>
+          </figure>
+        ))}
+      </details>
     </>
   );
 }

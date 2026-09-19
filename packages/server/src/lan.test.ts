@@ -24,7 +24,7 @@ describe("the LAN listener", () => {
       { caller: { kind: "web" } },
       { home: fixture.home, decision: "wool-rug" },
     );
-    const url = decision.guides?.lanUrl ?? "";
+    const url = decision.guides?.phoneUrl ?? "";
     expect(url.startsWith(`${LAN_URL}/guide/`)).toBe(true);
     token = url.slice(url.lastIndexOf("/") + 1);
   });
@@ -103,6 +103,7 @@ describe("LAN mode on real listeners", () => {
     // 127.0.0.2 stands in for the LAN address: another address of this machine, which the
     // loopback listener on 127.0.0.1 does not cover.
     server = await startServer({
+      host: "127.0.0.1",
       port: 0,
       dataDir: join(root, "data"),
       lan: { host: "127.0.0.2" },
@@ -171,7 +172,7 @@ describe("LAN mode on real listeners", () => {
       home: "lan-home",
       decision: "wool-rug",
     })) as GetDecisionResult;
-    const guideUrl = decision.guides?.lanUrl ?? "";
+    const guideUrl = decision.guides?.phoneUrl ?? "";
     expect(guideUrl.startsWith(`${lanUrl}/guide/`)).toBe(true);
     const guide = await fetch(guideUrl);
     expect(guide.status).toBe(200);

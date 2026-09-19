@@ -1,4 +1,5 @@
-// The way back to the Agent: a button that copies a ready prompt and says where to run it.
+// The way back to the Agent: a button that copies a ready prompt and says where to run it, and
+// its plainer sibling for any command the user pastes into a terminal.
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./ui.module.css";
@@ -55,19 +56,10 @@ async function copyText(text: string): Promise<boolean> {
  * A small secondary "Ask the Agent" button. Clicking copies `prompt` (usually from buildPrompt)
  * and says for a few seconds where to run it; if copying fails, it shows the prompt to copy by hand.
  */
-export function AskAgent({
-  prompt,
-  label = "Ask the Agent",
-  homeFolderPath,
-}: {
-  prompt: string;
-  label?: string;
-  homeFolderPath?: string | null | undefined;
-}) {
+export function AskAgent({ prompt, label = "Ask the Agent" }: { prompt: string; label?: string }) {
   const [result, setResult] = useState<"copied" | "failed">();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const folder = homeFolderPath ? <code>{homeFolderPath}</code> : "your Home Folder";
   return (
     <span className={styles.askAgent}>
       <button
@@ -86,14 +78,45 @@ export function AskAgent({
       <span aria-live="polite" className={styles.askAgentNote}>
         {result === "copied" && (
           <>
-            Copied. Run it with <code>claude</code> in {folder}
+            Copied. Run it with <code>claude</code> in your Home Folder
           </>
         )}
         {result === "failed" && (
           <>
-            Copy this and run it in {folder}: <code className={styles.selectable}>{prompt}</code>
+            Copy this and run it in your Home Folder:{" "}
+            <code className={styles.selectable}>{prompt}</code>
           </>
         )}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * A small secondary "Copy" button for a command shown beside it: it says "Copied." for a few
+ * seconds, or, if copying fails, asks the user to select the command by hand.
+ */
+export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [result, setResult] = useState<"copied" | "failed">();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (
+    <span className={styles.askAgent}>
+      <button
+        type="button"
+        className="secondary"
+        onClick={async () => {
+          const copied = await copyText(text);
+          setResult(copied ? "copied" : "failed");
+          clearTimeout(timer.current);
+          if (copied) timer.current = setTimeout(() => setResult(undefined), COPIED_NOTE_MS);
+        }}
+      >
+        {label}
+      </button>
+      <span aria-live="polite" className={styles.askAgentNote}>
+        {result === "copied" && "Copied."}
+        {result === "failed" && "Could not copy. Select it and copy it by hand."}
       </span>
     </span>
   );

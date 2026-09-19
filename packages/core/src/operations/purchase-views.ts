@@ -70,7 +70,7 @@ export function measureFirst(model: DecisionModel, decision: DecisionRow): strin
   return lines;
 }
 
-/** The phone page on this computer: "/guide/wool-rug?home=fixture-home". */
+/** The phone page's path on the server: "/guide/wool-rug?home=fixture-home". */
 export function guidePath(model: DecisionModel, decision: DecisionRow): string {
   return `/guide/${encodeURIComponent(decision.slug)}?home=${encodeURIComponent(model.home.slug)}`;
 }
@@ -117,10 +117,18 @@ export function outOfDate(guide: GuideRow | undefined): boolean {
   return guide?.writtenAt != null && guide.requirementsChangedAt !== null;
 }
 
+/** Where a phone reaches a Quick Guide: the public origin when hosted, else the LAN listener. */
+export interface PhoneOrigins {
+  publicOrigin?: string;
+  lanUrl?: string;
+}
+
 /** A Purchase's saved Guides, the Full Guide's Markdown only with `includeFullGuide`. */
 export function toGuides(
+  model: DecisionModel,
+  decision: DecisionRow,
   guide: GuideRow | undefined,
-  { includeFullGuide = false, lanUrl }: { includeFullGuide?: boolean; lanUrl?: string } = {},
+  { includeFullGuide = false, ...phone }: { includeFullGuide?: boolean } & PhoneOrigins = {},
 ): Guides | undefined {
   if (!guide) return undefined;
   const written = guide.fullMarkdown !== null && guide.writtenAt !== null;
@@ -136,7 +144,9 @@ export function toGuides(
             ...optional({ markdown: includeFullGuide ? guide.fullMarkdown : undefined }),
           }
         : undefined,
-      lanUrl: lanUrl && `${lanUrl}/guide/${guide.lanToken}`,
+      phoneUrl: phone.publicOrigin
+        ? `${phone.publicOrigin}${guidePath(model, decision)}`
+        : phone.lanUrl && `${phone.lanUrl}/guide/${guide.lanToken}`,
     }),
   };
 }

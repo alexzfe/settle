@@ -22,9 +22,7 @@ export type CoreErrorCode =
   | "reason_required"
   /** A Conflict raised, or a Fulfilment recorded, on a Decision that is not Locked. */
   | "not_locked"
-  | "city_not_found"
-  | "folder_belongs_to_other_home"
-  | "home_folder_unusable";
+  | "city_not_found";
 
 export class CoreError extends Error {
   readonly code: CoreErrorCode;

@@ -25,7 +25,7 @@ import { FlagCause, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
 import { isSafeLink } from "./Markdown";
 import { PurchaseBoard, PurchaseParts } from "./Purchase";
-import { useDecision, useHome } from "./queries";
+import { useDecision } from "./queries";
 import { LrvBar, PaletteChips, Swatch, SwatchSquare } from "./Swatch";
 import { AgentWritten } from "./ui/AgentWritten";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
@@ -52,7 +52,6 @@ export function DecisionPage() {
 }
 
 function DecisionSheet({ home, decision }: { home: string; decision: DecisionDetail }) {
-  const homeFolderPath = useHome(home).data?.home.homeFolderPath;
   const skill = KIND_SKILL[decision.kind];
   const moves = MOVES[decision.state].map((move) => ({
     label: move.label,
@@ -179,7 +178,6 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
                 text: `let's talk through the Decision "${decision.title}"`,
                 slug: decision.slug,
               })}
-              homeFolderPath={homeFolderPath}
             />
           </Card>
         </aside>

@@ -59,8 +59,47 @@
   color: var(--color-ink-muted);
 }
 
-.inline {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
+/* Home Folder setup: numbered steps, each a line of prose over the command to paste. */
+.setupSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding-inline-start: var(--space-5);
+}
+
+.setupSteps p {
+  margin: 0 0 var(--space-2);
+}
+
+.setupSteps pre {
+  margin: 0 0 var(--space-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.byHand {
+  font-size: var(--text-sm);
+}
+
+.byHand summary {
+  width: fit-content;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.byHand summary:hover {
+  color: var(--color-ink);
+}
+
+.file {
+  margin: var(--space-3) 0 0;
+}
+
+.file figcaption {
+  margin-bottom: var(--space-1);
+}
+
+.file pre {
+  margin: 0;
 }

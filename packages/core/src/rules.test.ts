@@ -1,7 +1,3 @@
-// The server-enforced rules of slice 1, written before their implementation.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -104,49 +100,6 @@ describe("closed Sessions", () => {
 
     expect(closeAgain.code).toBe("session_closed");
     expect(join.code).toBe("session_closed");
-  });
-});
-
-describe("set_up_home_folder", () => {
-  const dirs: string[] = [];
-  const tempFolder = () => {
-    const dir = mkdtempSync(join(tmpdir(), "settle-home-folder-"));
-    dirs.push(dir);
-    return dir;
-  };
-  afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-  });
-
-  it("refuses a folder whose .mcp.json names another Home, and leaves it as it was", async () => {
-    const mine = await createHome("My flat");
-    const other = await createHome("Holiday cottage");
-    const folder = tempFolder();
-    await core.run("set_up_home_folder", web, { home: other, path: folder });
-    const before = readFileSync(join(folder, ".mcp.json"), "utf8");
-
-    const error = await refusal(core.run("set_up_home_folder", web, { home: mine, path: folder }));
-
-    expect(error.code).toBe("folder_belongs_to_other_home");
-    expect(readFileSync(join(folder, ".mcp.json"), "utf8")).toBe(before);
-    const { home } = await core.run("get_home", web, { home: mine });
-    expect(home.homeFolderPath).toBeUndefined();
-  });
-
-  it("never touches .claude/settings.local.json", async () => {
-    const home = await createHome("My flat");
-    const withLocal = tempFolder();
-    mkdirSync(join(withLocal, ".claude"));
-    const local = `{ "enabledMcpjsonServers": ["settle"] }\n`;
-    writeFileSync(join(withLocal, ".claude", "settings.local.json"), local);
-    const withoutLocal = tempFolder();
-
-    await core.run("set_up_home_folder", web, { home, path: withLocal });
-    await core.run("set_up_home_folder", web, { home, path: withLocal });
-    await core.run("set_up_home_folder", web, { home, path: withoutLocal });
-
-    expect(readFileSync(join(withLocal, ".claude", "settings.local.json"), "utf8")).toBe(local);
-    expect(existsSync(join(withoutLocal, ".claude", "settings.local.json"))).toBe(false);
   });
 });
 

@@ -469,9 +469,9 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
 });
 
 it("offers no phone page, exports, or QR code for a Rejected Purchase, and says so", async () => {
-  // Core keeps a Rejected Purchase's Guides and LAN address but serves none of them.
-  const lanUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
-  showRug({ state: "rejected", quickGuide, guides: { ...guides, lanUrl } });
+  // Core keeps a Rejected Purchase's Guides and phone address but serves none of them.
+  const phoneUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
+  showRug({ state: "rejected", quickGuide, guides: { ...guides, phoneUrl } });
   await screen.findByRole("heading", { name: "Quick Guide" });
 
   expect(
@@ -482,7 +482,7 @@ it("offers no phone page, exports, or QR code for a Rejected Purchase, and says 
   expect(screen.queryByRole("navigation", { name: "The Guides elsewhere" })).toBeNull();
   expect(screen.queryByRole("link", { name: "Phone page" })).toBeNull();
   expect(screen.queryByRole("img", { name: /^QR code/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: lanUrl })).toBeNull();
+  expect(screen.queryByRole("link", { name: phoneUrl })).toBeNull();
 });
 
 it("names the changed record and field of a value_changed flag, and clears it with Keep", async () => {
@@ -551,7 +551,7 @@ it("names the changed record and field of a value_changed flag, and clears it wi
   ]);
 });
 
-it("links to the phone page and the Guides' exports, with a QR code only in LAN mode", async () => {
+it("links to the phone page and the Guides' exports, with a QR code only given a phone address", async () => {
   showRug({ quickGuide, guides });
   await screen.findByRole("heading", { name: "Quick Guide" });
   const elsewhere = screen.getByRole("navigation", { name: "The Guides elsewhere" });
@@ -565,15 +565,28 @@ it("links to the phone page and the Guides' exports, with a QR code only in LAN 
     ["Printable Guides", "/api/export_guides?home=flat&format=html&decision=wool-rug"],
     ["Guides as Markdown", "/api/export_guides?home=flat&format=markdown&decision=wool-rug"],
   ]);
-  // Not in LAN mode: no address a phone could reach, so no QR code.
+  // No address a phone could reach: no QR code, and the local hint for LAN mode.
   expect(screen.queryByRole("img", { name: /^QR code/ })).toBeNull();
+  expect(elsewhere.textContent).toContain("Start the app with SETTLE_LAN=1");
   cleanup();
 
-  const lanUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
-  showRug({ quickGuide, guides: { ...guides, lanUrl } });
-  const qr = await screen.findByRole("img", { name: `QR code for ${lanUrl}` });
-  expect(qr.querySelector("path")?.getAttribute("d")).toMatch(/^M4 4h1v1h-1z/);
-  expect(screen.getByRole("link", { name: lanUrl }).getAttribute("href")).toBe(lanUrl);
+  // LAN mode's address and a public origin's read the same; neither mentions a network.
+  for (const phoneUrl of [
+    "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm",
+    "https://settle.example.com/guide/wool-rug",
+  ]) {
+    showRug({ quickGuide, guides: { ...guides, phoneUrl } });
+    const qr = await screen.findByRole("img", { name: `QR code for ${phoneUrl}` });
+    expect(qr.querySelector("path")).not.toBeNull();
+    expect(screen.getByRole("link", { name: phoneUrl }).getAttribute("href")).toBe(phoneUrl);
+    expect(qr.closest("figure")?.querySelector("figcaption")?.textContent).toBe(
+      `Scan it with your phone to take the Quick Guide shopping: ${phoneUrl}`,
+    );
+    expect(
+      screen.getByRole("navigation", { name: "The Guides elsewhere" }).textContent,
+    ).not.toMatch(/SETTLE_LAN|this network/);
+    cleanup();
+  }
 });
 
 it("shows a Listing the Agent records without a reload", async () => {

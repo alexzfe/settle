@@ -59,7 +59,7 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
             None yet: the Agent writes the Guides in a Purchase Session.
           </p>
         )}
-        {/* Core serves no phone page, export, or LAN page for a Rejected Purchase. */}
+        {/* Core serves no phone page, export, or phone address for a Rejected Purchase. */}
         {quickLines.length > 0 &&
           (decision.state === "rejected" ? (
             <p className={styles.muted}>
@@ -261,11 +261,11 @@ function QuickGuideBlocks({
 }
 
 /**
- * How to take the Quick Guide shopping, in steps: open it on a phone (in LAN mode, by the QR code
- * of its address on the user's network), print it or download it, and know the phone page is live.
+ * How to take the Quick Guide shopping, in steps: open it on a phone (by the QR code of its phone
+ * address, when the app has one), print it or download it, and know the phone page is live.
  */
 function TakeItShopping({ home, decision }: { home: string; decision: DecisionDetail }) {
-  const lanUrl = decision.guides?.lanUrl;
+  const phoneUrl = decision.guides?.phoneUrl;
   return (
     <Card className={page.shopping}>
       <h3 className={page.shoppingTitle}>Take it shopping</h3>
@@ -279,7 +279,7 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
                   Phone page
                 </a>
               )}
-              {lanUrl ? (
+              {phoneUrl ? (
                 " or scan the code:"
               ) : (
                 <>
@@ -289,12 +289,12 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
                 </>
               )}
             </span>
-            {lanUrl && (
+            {phoneUrl && (
               <figure className={page.qr}>
-                <QrCode text={lanUrl} />
+                <QrCode text={phoneUrl} />
                 <figcaption>
-                  Scan it with a phone on this network to take the Quick Guide shopping:{" "}
-                  <a href={lanUrl}>{lanUrl}</a>
+                  Scan it with your phone to take the Quick Guide shopping:{" "}
+                  <a href={phoneUrl}>{phoneUrl}</a>
                 </figcaption>
               </figure>
             )}

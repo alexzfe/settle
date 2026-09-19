@@ -11,7 +11,7 @@ let root: string;
 let server: RunningServer;
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "settle-server-"));
-  server = await startServer({ port: 0, dataDir: join(root, "data") });
+  server = await startServer({ host: "127.0.0.1", port: 0, dataDir: join(root, "data") });
 });
 afterAll(async () => {
   await server.close();
@@ -188,14 +188,32 @@ it("keeps an uploaded Blueprint and its rendered pages in the data dir", async (
   expect(page.headers.get("content-type")).toBe("image/png");
 });
 
-it("writes the port it listens on into a Home Folder's .mcp.json when started on port 0", async () => {
+it("names the port it listens on in the Home Folder command when started on port 0", async () => {
   await api("create_home", { name: "Folder home", country: "GB", city: "London" });
-  const folder = join(root, "folder-home");
 
-  await api("set_up_home_folder", { home: "folder-home", path: folder });
+  const { origin, files } = (await api("home_folder_setup", { home: "folder-home" })) as {
+    origin: string;
+    files: { content: string }[];
+  };
+  expect(origin).toBe(server.url);
+  expect(server.origin).toBe(server.url);
+  expect(files[0]?.content).toContain(`"${server.url}/mcp/homes/folder-home"`);
+});
 
-  const mcp = JSON.parse(readFileSync(join(folder, ".mcp.json"), "utf8"));
-  expect(mcp.mcpServers["settle"].url).toBe(`${server.url}/mcp/homes/folder-home`);
+it("names itself by the public origin when hosted, and answers requests for its host", async () => {
+  const hosted = await startServer({
+    host: "127.0.0.1",
+    port: 0,
+    dataDir: join(root, "hosted"),
+    publicOrigin: "https://settle.example.com",
+  });
+  try {
+    expect(hosted.origin).toBe("https://settle.example.com");
+    const health = await fetch(`${hosted.url}/health`, { headers: { host: "settle.example.com" } });
+    expect(health.status).toBe(200);
+  } finally {
+    await hosted.close();
+  }
 });
 
 async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {

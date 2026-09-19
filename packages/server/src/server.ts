@@ -10,12 +10,15 @@ import type { Config } from "./config.js";
 import { createLanApp, lanAddress, NoLanAddressError } from "./lan.js";
 import { WEB_DIST } from "./web.js";
 
-// The loopback listener: the web app, the API, the events, and the MCP endpoint. LAN mode adds a
-// second listener on the LAN address that serves only the Quick Guide pages (lan.ts).
-const HOST = "127.0.0.1";
+// The main listener, on config.host (loopback unless hosted): the web app, the API, the events,
+// and the MCP endpoint. LAN mode adds a second listener on the LAN address that serves only the
+// Quick Guide pages (lan.ts).
 
 export interface RunningServer {
+  /** The main listener's address. */
   url: string;
+  /** The origin the app names itself by: the public origin when hosted, else `url` on loopback. */
+  origin: string;
   /** In LAN mode: the LAN listener's address, which serves only the Quick Guide pages. */
   lanUrl?: string;
   close(): Promise<void>;
@@ -49,12 +52,12 @@ export async function startServer(
   let core: Core | undefined;
   const servers: Server[] = [];
   try {
-    const loopback = await listen(HOST, config.port, (request, env) =>
+    const main = await listen(config.host, config.port, (request, env) =>
       app ? app.fetch(request, env) : unavailable(),
     );
-    servers.push(loopback);
-    const { port } = loopback.address() as AddressInfo;
-    const lanUrl = lanHost && `http://${lanHost.includes(":") ? `[${lanHost}]` : lanHost}:${port}`;
+    servers.push(main);
+    const { port } = main.address() as AddressInfo;
+    const lanUrl = lanHost && `http://${urlHost(lanHost)}:${port}`;
     if (lanHost) {
       servers.push(
         await listen(lanHost, port, (request, env) =>
@@ -67,13 +70,20 @@ export async function startServer(
       dataDir: config.dataDir,
       // The bound port, not config.port: with port 0 only the listener knows which it is.
       port,
+      ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
       ...(lanUrl ? { lanUrl } : {}),
     });
     core = open;
-    app = createApp({ core: open, port, webDist });
+    app = createApp({
+      core: open,
+      port,
+      webDist,
+      ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
+    });
     if (lanHost) lanApp = createLanApp({ core: open });
     return {
-      url: `http://${HOST}:${port}`,
+      url: `http://${urlHost(config.host)}:${port}`,
+      origin: config.publicOrigin ?? `http://127.0.0.1:${port}`,
       ...(lanUrl ? { lanUrl } : {}),
       close: () => closeAll(servers).finally(() => open.close()),
     };
@@ -91,6 +101,11 @@ async function listen(hostname: string, port: number, fetch: Fetch): Promise<Ser
     server.once("error", reject);
   });
   return server;
+}
+
+/** An IPv6 address goes in brackets in a URL. */
+function urlHost(host: string): string {
+  return host.includes(":") ? `[${host}]` : host;
 }
 
 function unavailable(): Response {

@@ -135,19 +135,9 @@
   font-size: var(--text-sm);
 }
 
-.done .check {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
 .step {
   margin: 0.15rem 0 var(--space-1);
   font-weight: 500;
-}
-
-.done .step {
-  color: var(--color-ink-muted);
 }
 
 .starter {

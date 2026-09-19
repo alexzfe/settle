@@ -79,7 +79,7 @@ export interface Operations {
   list_homes: Shapes<"list_homes">;
   create_home: Shapes<"create_home">;
   get_home: Shapes<"get_home">;
-  set_up_home_folder: Shapes<"set_up_home_folder">;
+  home_folder_setup: Shapes<"home_folder_setup">;
   list_sessions: Shapes<"list_sessions">;
   get_room: Shapes<"get_room">;
   list_items: Shapes<"list_items">;
@@ -183,7 +183,7 @@ async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   try {
     response = await fetch(url, init);
   } catch {
-    throw new ApiError("unreachable", "The server is not answering. Start it with pnpm dev.");
+    throw new ApiError("unreachable", unreachableMessage());
   }
   const body: unknown = await response.json().catch(() => undefined);
   if (response.ok && body !== undefined) return body as Output;
@@ -194,6 +194,17 @@ async function send<Output>(url: string, init: RequestInit): Promise<Output> {
     `${url} answered ${response.status} without an error message. Is the server running?`,
     response.status,
   );
+}
+
+/**
+ * What to say when the server cannot be reached. Only a server on this computer can be started
+ * from here, so the hint about starting it is for a page served from localhost.
+ */
+export function unreachableMessage(hostname = location.hostname): string {
+  const local = hostname === "localhost" || hostname === "127.0.0.1";
+  return local
+    ? "The server is not answering. Start it with pnpm dev."
+    : "The server is not answering.";
 }
 
 function errorIn(body: unknown): { code: string; message: string } | undefined {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, call } from "./api";
+import { ApiError, call, unreachableMessage } from "./api";
 
 describe("call", () => {
   afterEach(() => {
@@ -19,15 +19,15 @@ describe("call", () => {
 
   it("turns the error shape into an ApiError with its code, message, and status", async () => {
     const refusal = {
-      error: { code: "folder_belongs_to_other_home", message: "That folder is the Cabin's." },
+      error: { code: "home_not_found", message: "There is no Home 'cabin'." },
     };
-    vi.stubGlobal("fetch", async () => Response.json(refusal, { status: 409 }));
-    const error = await call("set_up_home_folder", { home: "flat", path: "/x" }).catch((e) => e);
+    vi.stubGlobal("fetch", async () => Response.json(refusal, { status: 404 }));
+    const error = await call("home_folder_setup", { home: "cabin" }).catch((e) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({
-      code: "folder_belongs_to_other_home",
-      message: "That folder is the Cabin's.",
-      status: 409,
+      code: "home_not_found",
+      message: "There is no Home 'cabin'.",
+      status: 404,
     });
   });
 
@@ -53,5 +53,14 @@ describe("call", () => {
       code: "unreachable",
       status: undefined,
     });
+  });
+});
+
+describe("unreachableMessage", () => {
+  it("says how to start the server only when the page is served from this computer", () => {
+    const start = "The server is not answering. Start it with pnpm dev.";
+    expect(unreachableMessage("localhost")).toBe(start);
+    expect(unreachableMessage("127.0.0.1")).toBe(start);
+    expect(unreachableMessage("settle.example.com")).toBe("The server is not answering.");
   });
 });

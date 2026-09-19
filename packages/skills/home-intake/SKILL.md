@@ -9,7 +9,7 @@ Records or corrects the Active Home's facts, Levels, Rooms, and Inventory, from 
 
 ## Starting
 
-1. **Check the tools.** Follow "App not running" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "home-intake"`, or join the Session this conversation already has. Name the Home. The Overview's Room lines and their Gaps tell you what the interview still needs.
 3. **Read-back.** When the user asks what is recorded, read the relevant Room Sheet or use `find_items` for Inventory. Summarise its recorded facts and Gaps, keeping estimates visibly approximate. Answer without changing the Home's facts or starting the interview. Offer a correction or further intake as an optional next step.
 4. **Pick the work.** Handle the fact, correction, or Item the user came with first. For a wider intake, ask what they want help with next if they have not said. Recommend a first Room from the Overview and explain why. Agree this Session's scope; use the Gaps to find missing facts within it.

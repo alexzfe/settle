@@ -10,7 +10,6 @@ const flat: Home = {
   country: "Spain",
   city: "Madrid",
   latitude: 40.4,
-  homeFolderPath: "~/Homes/flat",
 };
 
 const color: Session = {

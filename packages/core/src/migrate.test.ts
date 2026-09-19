@@ -32,6 +32,7 @@ describe("migrate", () => {
       { id: 8 },
       { id: 9 },
       { id: 10 },
+      { id: 11 },
     ]);
     db.close();
   });
@@ -40,7 +41,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 11 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 12 });
     db.close();
   });
 
@@ -174,6 +175,14 @@ describe("migrate", () => {
     expect(() => listing(6, null)).toThrow(/CHECK/);
     expect(() => listing(0, null)).toThrow(/CHECK/);
     expect(() => listing(null, "paused")).toThrow(/CHECK/);
+    db.close();
+  });
+
+  it("drops the stored Home Folder path, since the server can't see the user's disk", () => {
+    const db = migrate(":memory:");
+    const columns = db.prepare("SELECT name FROM pragma_table_info('homes')").all();
+    expect(columns.map((column) => column.name)).not.toContain("home_folder_path");
+    expect(columns.map((column) => column.name)).toContain("slug");
     db.close();
   });
 

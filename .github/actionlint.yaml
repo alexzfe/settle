@@ -1,0 +1,4 @@
+# actionlint: the labels of the self-hosted runner on the homeserver (deploy/github-runner/).
+self-hosted-runner:
+  labels:
+    - homeserver

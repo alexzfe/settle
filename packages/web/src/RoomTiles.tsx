@@ -62,13 +62,11 @@ export function RoomGrid({
   levels,
   rooms,
   details,
-  homeFolderPath,
 }: {
   home: string;
   levels: Level[];
   rooms: Room[];
   details: Map<string, RoomDetail>;
-  homeFolderPath: string | undefined;
 }) {
   const decisions = useDecisions(home).data?.decisions ?? [];
   if (rooms.length === 0) {
@@ -79,7 +77,6 @@ export function RoomGrid({
           skill: "Home Intake",
           text: "Let's record my home; I'll upload the floor plan",
         })}
-        homeFolderPath={homeFolderPath}
       />
     );
   }

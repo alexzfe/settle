@@ -34,7 +34,7 @@ Quick Guide, besides the Requirements:
 
 Full Guide: written 2026-09-14, up to date; includeFullGuide shows it
 
-Phone: /guide/wool-rug?home=fixture-home on this computer only; started with SETTLE_LAN=1, the app gives a LAN address and the Decision page shows it as a QR code
+Phone: /guide/wool-rug?home=fixture-home on the Settle server; no phone address is set up (hosted, or started with SETTLE_LAN=1, the Decision page shows one as a QR code)
 
 Listings:
 - Hay Plain rug (hay-plain-rug), £450, rated 4/5 (Right size, real wool, but £120 over the others): 3 pass, 0 fail, 1 unknown

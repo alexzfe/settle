@@ -12,7 +12,7 @@ import {
 import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
-import { SERVER_INSTRUCTIONS } from "./mcp.js";
+import { mcpTools, SERVER_INSTRUCTIONS } from "./mcp.js";
 import { listTools, TOOLS_JSON } from "./tools-list.js";
 
 const PORT = 4380;
@@ -108,18 +108,9 @@ describe("the web API", () => {
     const invalid = await api("create_home", { name: "My flat", country: "GB" });
     const noCity = await api("create_home", { name: "x", country: "GB", city: "Nowhere-on-Sea" });
     const missing = await api("get_home", { home: "nowhere" });
-    await api("create_home", { name: "Mine", country: "GB", city: "London" });
-    await api("create_home", { name: "Theirs", country: "GB", city: "London" });
-    const folder = tempDir();
-    await api("set_up_home_folder", { home: "theirs", path: folder });
-    const taken = await api("set_up_home_folder", { home: "mine", path: folder });
 
-    expect([invalid.status, noCity.status, missing.status, taken.status]).toEqual([
-      400, 400, 404, 409,
-    ]);
-    expect(await taken.json()).toEqual({
-      error: { code: "folder_belongs_to_other_home", message: expect.stringContaining("Theirs") },
-    });
+    // 409, the rule refusals, is set_decision_state's illegal_transition below.
+    expect([invalid.status, noCity.status, missing.status]).toEqual([400, 400, 404]);
     expect(((await noCity.json()) as { error: { code: string } }).error.code).toBe(
       "city_not_found",
     );
@@ -661,9 +652,102 @@ describe("DNS-rebinding protection", () => {
     expect((await api("list_homes", {}, { origin: "http://localhost:5173" })).status).toBe(200);
   });
 
+  it("accepts the public origin's host and origin when the app is hosted, and only then", async () => {
+    const hosted = createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" });
+    const request = (headers: Record<string, string>) =>
+      hosted.request("/api/list_homes", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers },
+        body: "{}",
+      });
+    const publicHost = { host: "settle.example.com" };
+
+    expect((await request(publicHost)).status).toBe(200);
+    expect((await request({ ...publicHost, origin: "https://settle.example.com" })).status).toBe(
+      200,
+    );
+    expect((await request({ host: `127.0.0.1:${PORT}` })).status).toBe(200);
+    expect((await request({ ...publicHost, origin: "https://evil.example" })).status).toBe(403);
+    expect((await request({ ...publicHost, origin: "http://settle.example.com" })).status).toBe(403);
+    expect((await request({ host: "evil.example" })).status).toBe(403);
+    expect((await api("list_homes", {}, publicHost)).status).toBe(403);
+  });
+
+  it("answers MCP tools/list through the public host when hosted", async () => {
+    const hosted = createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" });
+    const tools = (host: string, origin?: string) =>
+      hosted.request("/mcp/homes/any", {
+        method: "POST",
+        headers: {
+          host,
+          ...(origin ? { origin } : {}),
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      });
+
+    const response = await tools("settle.example.com", "https://settle.example.com");
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { result: { tools: unknown[] } }).result.tools.length).toBe(
+      mcpTools(core).length,
+    );
+    expect((await tools("settle.example.com", "https://evil.example")).status).toBe(403);
+    expect((await mcp("any", "tools/list", {}, { host: "settle.example.com" })).status).toBe(403);
+  });
+
   it("has the SDK check the MCP endpoint's Host down to the port", async () => {
     const response = await mcp("any", "tools/list", {}, { host: "localhost:9999" });
     expect(response.status).toBe(403);
     expect(await response.text()).toContain("Invalid Host header");
+  });
+});
+
+describe("the Home Folder script", () => {
+  it("serves the sh script for a Home, naming the origin the app names itself by", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const publicOrigin = "https://settle.example.com";
+    const hostedCore = createCore({ publicOrigin });
+    try {
+      await hostedCore.run(
+        "create_home",
+        { caller: { kind: "web" } },
+        {
+          name: "My flat",
+          country: "GB",
+          city: "London",
+        },
+      );
+      const hosted = createApp({ core: hostedCore, port: PORT, publicOrigin });
+
+      const local = await app.request("/api/home_folder_script?home=my-flat");
+      const remote = await hosted.request("/api/home_folder_script?home=my-flat", {
+        headers: { host: "settle.example.com" },
+      });
+
+      expect(local.status).toBe(200);
+      expect(local.headers.get("content-type")).toBe("text/x-shellscript; charset=utf-8");
+      const script = await local.text();
+      expect(script.startsWith("#!/bin/sh\n")).toBe(true);
+      expect(script).toContain(`"url": "http://127.0.0.1:${PORT}/mcp/homes/my-flat"`);
+      expect(await remote.text()).toContain(`"url": "${publicOrigin}/mcp/homes/my-flat"`);
+    } finally {
+      hostedCore.close();
+    }
+  });
+
+  it("refuses an unknown Home in plain text, which curl -f reports as a failed request", async () => {
+    const response = await app.request("/api/home_folder_script?home=nowhere");
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).toMatch(/^text\/plain/);
+  });
+
+  it("gives home_folder_setup's command and files through the web API", async () => {
+    await api("create_home", { name: "My flat", country: "GB", city: "London" });
+    const response = await api("home_folder_setup", { home: "my-flat" });
+    expect(await response.json()).toMatchObject({
+      origin: `http://127.0.0.1:${PORT}`,
+      command: `curl -fsSL "http://127.0.0.1:${PORT}/api/home_folder_script?home=my-flat" | sh`,
+    });
   });
 });

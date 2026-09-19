@@ -47,7 +47,13 @@ export interface OperationContext extends CallContext {
   now(): string;
   /** A random integer from 0 up to, not including, `max`. */
   random(max: number): number;
-  homeFolder: { port: number; repoRoot: string };
+  /**
+   * The origin the app names itself by: the public origin when hosted, else
+   * "http://127.0.0.1:<port>". The Home Folder's .mcp.json points the Agent at it.
+   */
+  origin: string;
+  /** When hosted: the origin the app is reached at, e.g. "https://settle.example.com". */
+  publicOrigin?: string;
   /**
    * In LAN mode: the address of the listener phones on the user's network reach, e.g.
    * "http://192.168.1.20:4380", which serves only the Quick Guide pages by their tokens.

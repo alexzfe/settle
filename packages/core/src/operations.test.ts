@@ -1,11 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
-import type { FileStore } from "./files.js";
 import { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";
 import { openStore, type Store } from "./store.js";
 
@@ -14,7 +10,6 @@ const agent = (home: string, session?: string): CallContext => ({
   caller: { kind: "session", session },
   home,
 });
-const REPO_ROOT = resolve(import.meta.dirname, "..", "..", "..");
 
 async function refusal(promise: Promise<unknown>): Promise<CoreError> {
   try {
@@ -346,114 +341,57 @@ describe("the change log and the event bus", () => {
   });
 });
 
-describe("set_up_home_folder", () => {
-  const dirs: string[] = [];
-  const tempFolder = () => {
-    const dir = mkdtempSync(join(tmpdir(), "settle-home-folder-"));
-    dirs.push(dir);
-    return dir;
-  };
-  afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-  });
-  const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8")) as unknown;
-
-  it("writes .mcp.json and .claude/settings.json as the spec says, and stores the path", async () => {
+describe("home_folder_setup", () => {
+  it("gives the command, the plugin install line, and the two files, for the local origin", async () => {
     const home = await newHome();
-    const folder = join(tempFolder(), "Homes", "my-flat");
 
-    const result = await core.run("set_up_home_folder", web, { home, path: folder });
+    const setup = await core.run("home_folder_setup", web, { home });
 
-    expect(result).toEqual({
-      path: folder,
-      files: [join(folder, ".mcp.json"), join(folder, ".claude", "settings.json")],
+    expect(setup.origin).toBe("http://127.0.0.1:4380");
+    expect(setup.command).toBe(
+      'curl -fsSL "http://127.0.0.1:4380/api/home_folder_script?home=my-flat" | sh',
+    );
+    expect(setup.pluginInstall).toBe(
+      "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle",
+    );
+    expect(setup.files.map((file) => file.path)).toEqual([".mcp.json", ".claude/settings.json"]);
+    expect(JSON.parse(setup.files[0]?.content ?? "")).toEqual({
+      mcpServers: { settle: { type: "http", url: "http://127.0.0.1:4380/mcp/homes/my-flat" } },
     });
-    expect(readJson(join(folder, ".mcp.json"))).toEqual({
-      mcpServers: {
-        settle: {
-          type: "http",
-          url: "http://127.0.0.1:4380/mcp/homes/my-flat",
-        },
-      },
-    });
-    expect(readJson(join(folder, ".claude", "settings.json"))).toEqual({
+    expect(JSON.parse(setup.files[1]?.content ?? "")).toEqual({
       enabledPlugins: { "settle@settle": true },
       extraKnownMarketplaces: {
-        settle: { source: { source: "directory", path: REPO_ROOT } },
+        settle: { source: { source: "github", repo: "alexzfe/settle" } },
       },
       enabledMcpjsonServers: ["settle"],
     });
-    const got = await core.run("get_home", web, { home });
-    expect(got.home.homeFolderPath).toBe(folder);
+    expect(await core.run("get_home", web, { home })).not.toHaveProperty("home.homeFolderPath");
   });
 
-  it("keeps whatever else the two files hold, and can run again", async () => {
-    const home = await newHome();
-    const folder = tempFolder();
-    await core.run("set_up_home_folder", web, { home, path: folder });
-    const settingsPath = join(folder, ".claude", "settings.json");
-    const settings = readJson(settingsPath) as Record<string, unknown>;
-    writeFileSync(settingsPath, JSON.stringify({ ...settings, enabledPlugins: { "x@y": true } }));
-    writeFileSync(
-      join(folder, ".mcp.json"),
-      JSON.stringify({ mcpServers: { other: { type: "stdio", command: "other" } } }),
-    );
-
-    await core.run("set_up_home_folder", web, { home, path: folder });
-
-    expect(readJson(settingsPath)).toMatchObject({
-      enabledPlugins: { "x@y": true, "settle@settle": true },
-      enabledMcpjsonServers: ["settle"],
-    });
-    expect(readJson(join(folder, ".mcp.json"))).toEqual({
-      mcpServers: {
-        other: { type: "stdio", command: "other" },
-        settle: { type: "http", url: "http://127.0.0.1:4380/mcp/homes/my-flat" },
-      },
-    });
-  });
-
-  it("expands ~, writes the configured port, and refuses a relative path", async () => {
-    const written = new Map<string, string>();
-    const files: FileStore = {
-      readText: (path) =>
-        written.get(path) ?? (path.startsWith(REPO_ROOT) ? readFileSync(path, "utf8") : undefined),
-      writeText: (path, text) => void written.set(path, text),
-      readBytes: () => undefined,
-      writeBytes: () => {},
-      remove: () => {},
-    };
-    const other = createCore({ files, port: 4390 });
-    try {
-      const { home } = await other.run("create_home", web, {
-        name: "My flat",
-        country: "GB",
-        city: "London",
-      });
-      const result = await other.run("set_up_home_folder", web, {
-        home: home.slug,
-        path: "~/Homes/my-flat",
-      });
-      expect(result.path).toBe(join(homedir(), "Homes", "my-flat"));
-      expect(written.get(join(result.path, ".mcp.json"))).toContain(
-        "http://127.0.0.1:4390/mcp/homes/my-flat",
-      );
-      const error = await refusal(
-        other.run("set_up_home_folder", web, { home: home.slug, path: "Homes/my-flat" }),
-      );
-      expect(error.code).toBe("validation");
-      expect(error.message).toContain("~/Homes/my-flat");
-    } finally {
-      other.close();
+  it("names the public origin when there is one, and the configured port when not", async () => {
+    for (const [options, origin] of [
+      [{ publicOrigin: "https://settle.example.com", port: 4380 }, "https://settle.example.com"],
+      [{ port: 4390 }, "http://127.0.0.1:4390"],
+    ] as const) {
+      const other = createCore(options);
+      try {
+        const { home } = await other.run("create_home", web, {
+          name: "My flat",
+          country: "GB",
+          city: "London",
+        });
+        const setup = await other.run("home_folder_setup", web, { home: home.slug });
+        expect(setup.origin).toBe(origin);
+        expect(setup.command).toContain(`"${origin}/api/home_folder_script?home=my-flat"`);
+        expect(setup.files[0]?.content).toContain(`"${origin}/mcp/homes/my-flat"`);
+      } finally {
+        other.close();
+      }
     }
   });
 
-  it("refuses a folder whose .mcp.json is not JSON, leaving it alone", async () => {
-    const home = await newHome();
-    const folder = tempFolder();
-    writeFileSync(join(folder, ".mcp.json"), "{ not json");
-    const error = await refusal(core.run("set_up_home_folder", web, { home, path: folder }));
-    expect(error.code).toBe("home_folder_unusable");
-    expect(readFileSync(join(folder, ".mcp.json"), "utf8")).toBe("{ not json");
+  it("refuses a Home that does not exist", async () => {
+    const error = await refusal(core.run("home_folder_setup", web, { home: "nowhere" }));
+    expect(error.code).toBe("not_found");
   });
 });

@@ -405,7 +405,7 @@ it("links to the About page for the Home's facts", async () => {
   expect(link.getAttribute("href")).toBe("/homes/flat/about");
 });
 
-it("shows the getting-started checklist until there is a Home Folder and a Session", async () => {
+it("shows the getting-started checklist until the first Session", async () => {
   const writeText = vi.fn(async () => {});
   vi.stubGlobal("navigator", { clipboard: { writeText } });
   stubHomePage({});
@@ -434,11 +434,9 @@ const walkthrough: Session = {
 };
 
 it("picks up where the newest summarised Session left off, settling the Design Direction first", async () => {
-  const set = { ...flat, homeFolderPath: "~/Homes/flat" };
   const later: Session = { slug: "s2", skills: ["color"], openedAt: "2026-09-15T10:00:00Z" };
   let decisions = [summary("design-direction", "Warm minimalism", "design-direction", "leaning")];
   stubHomePage({
-    get_home: () => ({ home: set, levels: [ground], rooms: [], unplacedItems: 0 }),
     list_sessions: () => ({ sessions: [walkthrough, later] }),
     list_decisions: () => ({ decisions }),
   });

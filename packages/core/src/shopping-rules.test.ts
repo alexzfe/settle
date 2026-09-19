@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
+import { createFixtureHome } from "./fixture/fixture-home.js";
 import type { Measurement } from "./operations/schemas.js";
 
 const web: CallContext = { caller: { kind: "web" } };
@@ -166,7 +167,7 @@ async function exportText(
 /** The Wool rug's LAN token, from its Guides' LAN URL. */
 async function rugToken(): Promise<string> {
   const { decision } = await core.run("get_decision", web, { home, decision: "wool-rug" });
-  const url = decision.guides?.lanUrl ?? "";
+  const url = decision.guides?.phoneUrl ?? "";
   expect(url).toMatch(/^http:\/\/192\.168\.1\.20:4380\/guide\/[A-Za-z0-9]{24}$/);
   return url.slice(url.lastIndexOf("/") + 1);
 }
@@ -519,6 +520,24 @@ describe("LAN mode", () => {
     const { decision } = await core.run("get_decision", web, { home, decision: "door-mat" });
     // No Guides saved, so no token yet.
     expect(decision.guides).toBeUndefined();
+  });
+
+  it("puts the public origin's guide page on the Guides instead, when the app is hosted", async () => {
+    const hosted = await createFixtureHome({
+      publicOrigin: "https://settle.example.com",
+      lanUrl: LAN_URL,
+    });
+    try {
+      const { decision } = await hosted.core.run("get_decision", web, {
+        home: hosted.home,
+        decision: "wool-rug",
+      });
+      expect(decision.guides?.phoneUrl).toBe(
+        `https://settle.example.com/guide/wool-rug?home=${hosted.home}`,
+      );
+    } finally {
+      hosted.core.close();
+    }
   });
 
   it("gives no LAN URL when LAN mode is off", async () => {

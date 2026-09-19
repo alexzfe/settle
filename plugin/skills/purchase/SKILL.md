@@ -9,7 +9,7 @@ Owns the whole life of a Purchase Decision for the Active Home: grilling the use
 
 ## Starting
 
-1. **Check the tools.** Follow "App not running" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "purchase"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write. The opening's Home-wide Decisions show the Design Direction and the Palette, each with its state.
 3. **The Design Direction.** When it isn't Locked, say so in that first reply, naming its state, since every Requirement about style, material, or color rests on it. Offer Design Direction by name ("Settle the direction in Design Direction now, or carry on with the rug?"), and carry on if the user would rather.
 4. **Find the Decision.** The user may be carrying on with a Purchase already recorded: the opening's flags, the Room Sheet's Decisions, or `find_decisions` with `kind: "purchase"` show it. Work on that one, reading it with `get_decision` (its Requirements by position, Guides, and Listings), rather than creating a second. Otherwise the work is a new Purchase, a Listing to check, or something bought.
@@ -110,7 +110,7 @@ Write both Guides with `save_guides` once the user agrees the Requirements, whet
 - **The Full Guide,** in `fullGuide`, is Markdown to read ahead of time, under headings you pick for the product (a sofa: size and access, frame and seat, cover, color; a lamp: light, shade, placement). **Every `must` explains why:** name it, say why the thing would be wrong without it, and name the record it comes from ("At most 2.10 m wide: the measured usable run is 2.30 m, and this leaves the agreed 0.20 m beside the piece"). The reasoning left out of each Requirement's text belongs here. A `prefer` may explain in a line. Say what to look for when no exact match exists, and how to weigh the likely trade-offs.
 - **Tests that teach.** Choose the few checks most likely to decide this purchase: comfort in the user's usual position, construction and moving parts, care and repair, or light at the task. In the Quick Guide, a `test` gives the action and what to notice. In the Full Guide, explain what that observation tells them and what it cannot prove. Care instructions or construction details that inspection cannot establish become an `ask`. Keep claims about lifespan and durability conditional on the evidence. Within each kind, put the most useful line first; use fewer than eight lines when that is enough.
 - To read or revise a Full Guide already written, call `get_decision` with `includeFullGuide: true`.
-- **Taking it to the shop.** When the user is about to go, say how the Quick Guide gets onto their phone, from the `Phone:` line `get_decision` gives for the Purchase: with a LAN address, open the Purchase's page in the app and scan the QR code, or type that address on the phone; without one, the app has to be started with `SETTLE_LAN=1` first, or the page opens on this computer. Then give the guide's gist in a few lines. Never paste the whole Quick Guide or Full Guide into the reply as a substitute for the page.
+- **Taking it to the shop.** When the user is about to go, say how the Quick Guide gets onto their phone, from the `Phone:` line `get_decision` gives for the Purchase: when it gives a full address, the phone opens that address, by scanning the QR code on the Purchase's page in the app or by typing it; when it gives none, pass on what the line says instead. Then give the guide's gist in a few lines. Never paste the whole Quick Guide or Full Guide into the reply as a substitute for the page.
 
 ## Checking a Listing
 
@@ -190,9 +190,9 @@ Close when the user is done, following "Closing" in the Session protocol below. 
 
 This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
 
-### App not running
+### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Settle app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
 
 ### Opening
 

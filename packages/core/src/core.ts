@@ -30,10 +30,10 @@ import {
 import {
   createHome,
   getHome,
+  homeFolderSetupOperation,
   listHomes,
   listSessions,
   saveHome,
-  setUpHomeFolderOperation,
 } from "./operations/homes.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
@@ -67,7 +67,7 @@ const operations = {
   create_home: createHome,
   list_homes: listHomes,
   get_home: getHome,
-  set_up_home_folder: setUpHomeFolderOperation,
+  home_folder_setup: homeFolderSetupOperation,
   list_sessions: listSessions,
   get_room: getRoom,
   list_items: listItems,
@@ -126,10 +126,16 @@ export interface CoreOptions {
   database?: string;
   /** Internal seam: a store already open, instead of `database`. */
   store?: Store;
-  /** The port the MCP endpoint listens on, written into Home Folder .mcp.json files. */
+  /**
+   * The port the MCP endpoint listens on: without a public origin the app names itself
+   * http://127.0.0.1:<port>, as in each Home Folder's .mcp.json.
+   */
   port?: number;
-  /** This repository's root, written into Home Folder settings as the plugin marketplace. */
-  repoRoot?: string;
+  /**
+   * When hosted: the origin the app is reached at, e.g. "https://settle.example.com", named by
+   * the Home Folder files and each Quick Guide's phone URL instead of the port.
+   */
+  publicOrigin?: string;
   /**
    * The folder for uploads/ and rendered/: uploaded Blueprint files and their rendered pages. A
    * temporary folder, removed by close(), when left out.
@@ -161,9 +167,6 @@ export interface Core {
   close(): void;
 }
 
-// packages/core/src or packages/core/dist, three levels below the repo root.
-const REPO_ROOT = join(import.meta.dirname, "..", "..", "..");
-
 export function createCore(options: CoreOptions = {}): Core {
   const store = options.store ?? openStore(options.database ?? ":memory:");
   const bus = new EventBus();
@@ -188,8 +191,8 @@ export function createCore(options: CoreOptions = {}): Core {
     },
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
-    homeFolder: { port: options.port ?? 4380, repoRoot: options.repoRoot ?? REPO_ROOT },
-    ...optional({ lanUrl: options.lanUrl }),
+    origin: options.publicOrigin ?? `http://127.0.0.1:${options.port ?? 4380}`,
+    ...optional({ publicOrigin: options.publicOrigin, lanUrl: options.lanUrl }),
     write<T>(origin: string, fn: Parameters<OperationContext["write"]>[1]): T {
       const events: ChangeEvent[] = [];
       const result = store.transaction(() =>

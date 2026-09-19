@@ -716,15 +716,16 @@ function purchaseLines(decision: DecisionDetail): string[] {
       lines.push("", `Full Guide, written ${day(full.writtenAt)}, ${state}:`, "", full.markdown);
     }
   }
-  // How the Quick Guide gets into the shop: the LAN address a phone opens (shown as a QR code on
-  // the Decision page in LAN mode), else the page on this computer.
-  if (decision.guides?.lanUrl) {
-    lines.push("", `Phone: ${decision.guides.lanUrl} (the Decision page shows it as a QR code)`);
+  // How the Quick Guide gets into the shop: the address a phone opens (the public origin's page
+  // when hosted, else in LAN mode the LAN listener's; the Decision page shows it as a QR code),
+  // else only the page's path on the server.
+  if (decision.guides?.phoneUrl) {
+    lines.push("", `Phone: ${decision.guides.phoneUrl} (the Decision page shows it as a QR code)`);
   } else if (decision.guides && decision.quickGuide) {
     lines.push(
       "",
-      `Phone: ${decision.quickGuide.path} on this computer only; started with SETTLE_LAN=1, the app ` +
-        "gives a LAN address and the Decision page shows it as a QR code",
+      `Phone: ${decision.quickGuide.path} on the Settle server; no phone address is set up ` +
+        "(hosted, or started with SETTLE_LAN=1, the Decision page shows one as a QR code)",
     );
   }
   section(lines, "Listings", decision.listings.map(listingLine));

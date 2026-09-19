@@ -17,8 +17,8 @@ Run on the user's own real home:
 
 ## Architecture
 
-- Local-first and single-user, with all data scoped per Home so hosting later isn't a rewrite. Docker is the expected next packaging step.
-- One local app: TypeScript, the official MCP TypeScript SDK, one Node server, SQLite, and a React UI (ADR 0002).
+- Single-user, with all data scoped per Home. It runs locally for development and as one container on the user's homeserver, reached over their Tailscale network ([handoff/hosting.md](handoff/hosting.md), `deploy/README.md`).
+- One app: TypeScript, the official MCP TypeScript SDK, one Node server, SQLite, and a React UI (ADR 0002).
 - The platform makes no LLM calls (ADR 0001). Claude Code is the only PoC Agent. Skills use the portable `SKILL.md` format so that supporting Codex later is a packaging task.
 - The web UI and the MCP tools call the same core operations.
 - Home detail grows in stages: a Room list in v1, a 2D Floor Plan as the real target, maybe 3D one day.
@@ -30,7 +30,7 @@ Run on the user's own real home:
 - The AI makes state changes on its own judgment and says plainly what it changed. Before a Reopen, Rejecting a Locked Decision, reviving a Rejected one, or adding or removing a Constraint, it asks the user in the conversation. There are no confirmation dialogs. The server enforces only what it can check from data (ADR 0004).
 - The AI creates a Constraint only from a fact the user states. It reads the Constraint back before saving it, and removes one only on the user's explicit instruction.
 - The AI gets what the current work needs, in full, and nothing it would have to ignore ([home-model.md](specs/home-model.md#context-tiers)). At Session start every Skill gets the Home Overview (the Home's facts, Constraints, and one line per Room with its Gaps) and open flags and Conflicts. Every Skill except Home Intake also gets the Home-wide Decisions in force, with the Design Direction and Palette in full. A Skill fetches a Room Sheet, with that Room's Items and open Decisions, only when the Session needs that Room. Everything else, history included, is looked up only when a question needs it.
-- The AI has no tool to see or switch Homes. Each Home has a Home Folder that the web UI sets up. Every Session started in that folder belongs to its Home, whatever the web UI is showing.
+- The AI has no tool to see or switch Homes. Each Home has a Home Folder on each computer the user works from, set up by a command the web UI shows ([ADR 0006](adr/0006-home-folder-files-fetched-not-written.md)). Every Session started in that folder belongs to its Home, whatever the web UI is showing.
 - Skills name the Active Home at Session start. Every Skill except Home Intake warns while the Design Direction is not yet Locked.
 - Home Intake gathers Items by interview, and the user confirms them before they are saved. Photos were designed as scaffolding in the PoC — stored by the platform, uploaded by the web UI, unused by the AI — but **none of it was built**: there is no `photos` table, no operation, and no upload, and inspiration images are explicitly not stored either (`design-direction/SKILL.md`). The only image bytes the app holds are Blueprints. Corrected 2026-09-17, in the Listing board grilling ([handoff/listing-board.md](handoff/listing-board.md)); see also [skill-set.md](specs/skill-set.md#blueprints-and-photos).
 
@@ -39,7 +39,7 @@ Run on the user's own real home:
 - The user can view everything; create a Home; upload Blueprints onto a Home (uploading Photos onto a Room or an Item was designed but never built); Lock, Reopen, or Reject Decisions; drop a Listing, hold or release one, and paste a picture onto one (the Listing board, 2026-09-17: the first web-callable writes Listings have had, deliberately); resolve Conflicts and review flags; switch which Home the UI shows; and set up a Home Folder for each Home once it exists. The UI updates live when the Agent writes.
 - Everything is ideally done through the Agent. Form-based editing of Rooms, Items, Notes, and Constraints exists for completeness and is expected to be used very little, so it is built in the web UI design session, after the PoC finish line (decided in the build-plan grilling of 2026-09-14). Until then the browser is a viewer plus the actions above, and the PoC's plain UI is judged on the AI and the Home record, not on its look.
 - A Shopping section shows two groups, the Shopping List and Considering. Each entry opens its Quick Guide, with the Full Guide one tap away. Every non-Rejected Purchase Decision has Guides. The AI writes them during Sessions, personalised to that Purchase Decision.
-- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, where it serves only the Quick Guide pages by an unguessable per-Purchase token (never the web app, the API, or the MCP endpoint), and the Decision page shows that URL as a QR code. No auth on those pages, since it is the user's own network. LAN mode is the PoC's stopgap: the app is ultimately meant to run on a server on the user's Tailscale network, where their own devices reach it from anywhere, so the Quick Guide needs neither a QR scan nor a screenshot taken before leaving the house. The page stays live wherever it is read.
+- Exports are rendered from stored data only: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and Markdown. The Quick Guide export must read well on a phone, since that is how it gets into the store during the PoC. To get it there, the app has an opt-in LAN mode: a flag makes the server also listen on the machine's LAN address, where it serves only the Quick Guide pages by an unguessable per-Purchase token (never the web app, the API, or the MCP endpoint), and the Decision page shows that URL as a QR code. No auth on those pages, since it is the user's own network. LAN mode is the PoC's stopgap: the app is ultimately meant to run on a server on the user's Tailscale network, where their own devices reach it from anywhere, so the Quick Guide needs neither a QR scan nor a screenshot taken before leaving the house. On a hosted instance that is how it works: the phone opens the same address as everything else, and the QR code on the Decision page shows that address. The page stays live wherever it is read.
 
 ## Deferred topics
 
@@ -52,7 +52,7 @@ Each of these gets its own research and grilling session.
 - Inspiration images: where they live, and where the pictures come from, given that the Agent cannot generate images and the platform makes no model calls. Not Photos. The web UI already reserves a slot for them (`DecisionPage.tsx`). User's idea, 2026-09-17
 - Budget module
 - 2D Floor Plan editor, then maybe 3D
-- Hosting and Docker: the app run as a server on the user's Tailscale network, reachable from their own devices anywhere, which replaces LAN mode as the way the Guides get onto the phone. User's goal, 2026-09-17
+- Hosting and Docker: done 2026-09-19. The app runs as one container on the user's homeserver, reachable from their own devices anywhere on their Tailscale network, and deploys on every push to `main`. Decisions: [handoff/hosting.md](handoff/hosting.md). Deployment: `deploy/README.md`
 - In-browser chat, built as another client of the core operations (ADR 0001)
 - Codex and other Agents
 - Tidy Skill, which proposes merges and archives for the user to approve
@@ -63,3 +63,5 @@ Each of these gets its own research and grilling session.
 - Undo from the change log (in the PoC, the log is shown read-only)
 - Web UI design session, after the finish line: the look and flow of the whole UI, plus form-based editing of Rooms, Items, Notes, and Constraints
 - Shared library of category guides
+- Login: the hosted instance has none, the same posture as the user's other tailnet services; a login comes later. 2026-09-19
+- Per-Home import and export between instances; the cutover copied the whole database. 2026-09-19

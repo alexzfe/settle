@@ -1,4 +1,10 @@
-import { type Core, CoreError, type CoreErrorCode, type OperationInput } from "@settle/core";
+import {
+  type Core,
+  CoreError,
+  type CoreErrorCode,
+  homeFolderScript,
+  type OperationInput,
+} from "@settle/core";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
@@ -173,6 +179,25 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
       "cache-control": "no-cache",
     });
   });
+}
+
+/**
+ * GET /api/home_folder_script?home=<slug>: the POSIX sh script the Home Folder command pipes into
+ * sh, which writes the folder's two files (core's home-folder.ts). A refusal is plain text under
+ * its status, which `curl -f` reports as the failed request.
+ */
+export async function handleHomeFolderScript(core: Core, c: Context): Promise<Response> {
+  const home = c.req.query("home");
+  try {
+    const { origin } = await core.run("home_folder_setup", web, { home } as { home: string });
+    return c.body(homeFolderScript(origin, home as string), 200, {
+      "content-type": "text/x-shellscript; charset=utf-8",
+      "cache-control": "no-store",
+    });
+  } catch (error) {
+    if (!(error instanceof CoreError)) throw error;
+    return c.text(`${error.message}\n`, statusOf(error.code));
+  }
 }
 
 /** Runs `respond`, turning core's refusal into { error: { code, message } } with its status. */

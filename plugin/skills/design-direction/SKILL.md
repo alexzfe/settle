@@ -9,7 +9,7 @@ Grills the user and Locks the Active Home's Design Direction, then each Room's R
 
 ## Starting
 
-1. **Check the tools.** Follow "App not running" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "design-direction"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write, even when the user asked for something you can do at once. The opening's Home-wide Decisions show the Design Direction, if there is one, with its state.
 3. **Pick the work from the user's request and the recorded state.**
    - For a question about whether a look, material, or inspiration fits the Home, assess it against the current Direction and the Home. Discussion alone changes no Decision. If the user contradicts a Locked Decision, follow "Changing a Decision"; changing it follows "Asking first".
@@ -78,9 +78,9 @@ Close when the user is done (see "Closing"). In `open`, list every Decision of t
 
 This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
 
-### App not running
+### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Settle app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
 
 ### Opening
 

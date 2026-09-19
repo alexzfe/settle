@@ -49,7 +49,6 @@ export interface HomeRow {
   country: string;
   city: string;
   latitude: number;
-  homeFolderPath: string | null;
   tenure: Tenure | null;
   plannedStay: PlannedStay | null;
   buildingType: BuildingType | null;
@@ -488,7 +487,6 @@ export interface Store {
   insertHome(home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude">): HomeRow;
   home(slug: string): HomeRow | undefined;
   homes(): HomeRow[];
-  setHomeFolderPath(homeId: number, path: string): void;
 
   insertLevel(level: Omit<LevelRow, "id">): LevelRow;
   /** In storey order. */
@@ -694,12 +692,9 @@ export function openStore(path: string): Store {
       }
     },
 
-    insertHome: (home) => insert("homes", { ...home, homeFolderPath: null } as NewRow<"homes">),
+    insertHome: (home) => insert("homes", home as NewRow<"homes">),
     home: (slug) => one<HomeRow>("SELECT * FROM homes WHERE slug = ?", slug),
     homes: () => rows<HomeRow>("SELECT * FROM homes ORDER BY name, id"),
-    setHomeFolderPath(homeId, path) {
-      run("UPDATE homes SET home_folder_path = ? WHERE id = ?", path, homeId);
-    },
 
     insertLevel: (level) => insert("levels", level),
     levels: (homeId) =>

@@ -20,7 +20,14 @@ export type {
   TextLine,
 } from "./files.js";
 export { createFixtureHome, FIXTURE_FILES, type FixtureHome } from "./fixture/fixture-home.js";
-export { MCP_SERVER_KEY } from "./home-folder.js";
+export {
+  type HomeFolderFile,
+  type HomeFolderSetup,
+  homeFolderScript,
+  homeFolderSetup,
+  MCP_SERVER_KEY,
+  PLUGIN_INSTALL,
+} from "./home-folder.js";
 export { migrate } from "./migrate.js";
 export type { Session } from "./operations/homes.js";
 export * from "./operations/schemas.js";

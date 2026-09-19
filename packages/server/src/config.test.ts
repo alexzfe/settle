@@ -6,6 +6,7 @@ import { loadConfig } from "./config.js";
 describe("loadConfig", () => {
   it("defaults to port 4380 and the XDG data dir", () => {
     expect(loadConfig({})).toEqual({
+      host: "127.0.0.1",
       port: 4380,
       dataDir: join(homedir(), ".local", "share", "settle"),
     });
@@ -16,6 +17,7 @@ describe("loadConfig", () => {
     expect(
       loadConfig({ SETTLE_PORT: "5000", SETTLE_DATA_DIR: "/data", XDG_DATA_HOME: "/xdg" }),
     ).toEqual({
+      host: "127.0.0.1",
       port: 5000,
       dataDir: "/data",
     });
@@ -39,5 +41,31 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ SETTLE_LAN: "1", SETTLE_LAN_HOST: "0.0.0.0" })).toThrow(
       /SETTLE_LAN_HOST/,
     );
+  });
+
+  it("takes SETTLE_PUBLIC_ORIGIN as an origin only, with no path or trailing slash", () => {
+    expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" }).publicOrigin).toBe(
+      "https://settle.example.com",
+    );
+    expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: "http://box:8080" }).publicOrigin).toBe(
+      "http://box:8080",
+    );
+    expect(loadConfig({}).publicOrigin).toBeUndefined();
+    expect(() => loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com/" })).toThrow(
+      /did you mean "https:\/\/settle.example.com"/,
+    );
+    for (const value of ["settle.example.com", "https://settle.example.com/app", "ftp://box"]) {
+      expect(() => loadConfig({ SETTLE_PUBLIC_ORIGIN: value })).toThrow(/SETTLE_PUBLIC_ORIGIN/);
+    }
+  });
+
+  it("binds SETTLE_HOST, beyond loopback only with SETTLE_PUBLIC_ORIGIN", () => {
+    expect(loadConfig({ SETTLE_HOST: "127.0.0.2" }).host).toBe("127.0.0.2");
+    expect(loadConfig({ SETTLE_HOST: "::1" }).host).toBe("::1");
+    expect(() => loadConfig({ SETTLE_HOST: "0.0.0.0" })).toThrow(/SETTLE_PUBLIC_ORIGIN/);
+    expect(
+      loadConfig({ SETTLE_HOST: "0.0.0.0", SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" })
+        .host,
+    ).toBe("0.0.0.0");
   });
 });

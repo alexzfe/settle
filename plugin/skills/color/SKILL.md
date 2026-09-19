@@ -9,7 +9,7 @@ Propose and settle the Active Home's Palette, then the Room colors: the Palette 
 
 ## Starting
 
-1. **Check the tools.** Follow "App not running" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
 2. **Open the Session.** Call `open_session` with `skill: "color"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write. The opening's Home-wide Decisions show the Design Direction and the Palette, each with its state.
 3. **The Design Direction comes first,** since every color rests on it.
    - **Not Locked** (none yet, only Candidates, or Leaning): say so in that first reply, naming its state, and recommend settling it first in Design Direction, naming that Skill in plain words. It runs only when asked for by name or handed the question, so offer the hand-off yourself: "Settle the direction in Design Direction now, or start on colors anyway?" If the user would rather start on colors, go on, and keep every color Decision you save below Locked (Candidate or Leaning) until the Design Direction is Locked, even when the user commits. When they commit, move it to Leaning at most, say it stays there until the Design Direction is Locked, and offer Design Direction again.
@@ -116,9 +116,9 @@ Close when the user is done (see "Closing"). In `open`, list every color Decisio
 
 This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
 
-### App not running
+### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Settle app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
 
 ### Opening
 

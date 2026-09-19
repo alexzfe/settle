@@ -96,7 +96,6 @@ export function ItemsPage() {
             skill: "Home Intake",
             text: "Let's record what I own, Room by Room",
           })}
-          homeFolderPath={homeRead.data.home.homeFolderPath}
         />
       ) : (
         <ItemTable

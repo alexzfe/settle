@@ -45,6 +45,7 @@ import { type HomeModel, loadHome, overviewView, roomById, roomDetail } from "./
 import {
   activeRequirements,
   guideOf,
+  type PhoneOrigins,
   toDeviations,
   toGuides,
   toListings,
@@ -234,7 +235,7 @@ export const getDecision = defineOperation({
     return {
       decision: toDetail(model, requireDecision(model, input.decision), {
         includeFullGuide: input.includeFullGuide === true,
-        ...optional({ lanUrl: context.lanUrl }),
+        ...optional({ publicOrigin: context.publicOrigin, lanUrl: context.lanUrl }),
       }),
     };
   },
@@ -1098,12 +1099,10 @@ export function toSummary(model: DecisionModel, row: DecisionRow): DecisionSumma
   };
 }
 
-/** How toDetail shows a Purchase's Guides. */
-export interface DetailOptions {
+/** How toDetail shows a Purchase's Guides; the origins make each Quick Guide's phone URL. */
+export interface DetailOptions extends PhoneOrigins {
   /** The Full Guide's Markdown in full, not only its state. */
   includeFullGuide?: boolean;
-  /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
-  lanUrl?: string;
 }
 
 export function toDetail(
@@ -1123,7 +1122,7 @@ export function toDetail(
       paletteColor: palette && colorOf(palette, (row.content as RoomColorContent).color),
       missingAutomatic: missing.length > 0 ? missing : undefined,
       quickGuide: purchase ? toQuickGuide(model, row) : undefined,
-      guides: purchase ? toGuides(guideOf(model, row), options) : undefined,
+      guides: purchase ? toGuides(model, row, guideOf(model, row), options) : undefined,
     }),
     listings: purchase ? toListings(model, row) : [],
     deviations: purchase ? toDeviations(model, row) : [],

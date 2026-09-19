@@ -169,7 +169,7 @@ function stubRoom(room: () => RoomDetail, decisions: () => DecisionSummary[] = (
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({
-      home: { ...flat, homeFolderPath: "~/Homes/flat" },
+      home: flat,
       levels: [{ slug: "ground", name: "Ground", storey: 0 }],
       rooms,
       unplacedItems: 0,

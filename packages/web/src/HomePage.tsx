@@ -56,7 +56,6 @@ export function HomePage() {
   if (home.isError) return <p className={styles.error}>{home.error.message}</p>;
   const { levels, unplacedItems } = home.data;
   const facts = home.data.home;
-  const folder = facts.homeFolderPath;
   return (
     <>
       <header className={page.title}>
@@ -65,9 +64,9 @@ export function HomePage() {
           {[facts.city, facts.tenure && sentence(facts.tenure)].filter(Boolean).join(" · ")}
         </p>
       </header>
-      <NeedsYou home={slug} rooms={rooms} details={details} homeFolderPath={folder} />
+      <NeedsYou home={slug} rooms={rooms} details={details} />
       <LeftOff home={facts} />
-      <PaletteSection home={slug} homeFolderPath={folder} />
+      <PaletteSection home={slug} />
       <Section
         title="Rooms"
         action={
@@ -77,13 +76,7 @@ export function HomePage() {
           </span>
         }
       >
-        <RoomGrid
-          home={slug}
-          levels={levels}
-          rooms={rooms}
-          details={details}
-          homeFolderPath={folder}
-        />
+        <RoomGrid home={slug} levels={levels} rooms={rooms} details={details} />
       </Section>
       <Section title="Recent Sessions" action={<Link to={`/homes/${slug}/log`}>Change log</Link>}>
         <SessionList home={slug} />
@@ -102,12 +95,10 @@ function NeedsYou({
   home,
   rooms,
   details,
-  homeFolderPath,
 }: {
   home: string;
   rooms: readonly Room[];
   details: Map<string, RoomDetail>;
-  homeFolderPath: string | undefined;
 }) {
   const decisions = useDecisions(home);
   if (decisions.isPending) return <p>Loading…</p>;
@@ -126,9 +117,7 @@ function NeedsYou({
       <h2 id="needs-you" className={page.needsTitle}>
         Needs you
       </h2>
-      {reviews.length > 0 && (
-        <ReviewList home={home} reviews={reviews} homeFolderPath={homeFolderPath} />
-      )}
+      {reviews.length > 0 && <ReviewList home={home} reviews={reviews} />}
       {withGaps.length > 0 && (
         <p className={page.gaps}>
           <Link to={`/homes/${home}/rooms`}>{count(withGaps.length, "Room")} with Gaps</Link>: facts
@@ -139,7 +128,6 @@ function NeedsYou({
               skill: "Home Intake",
               text: `let's fill the Gaps in ${withGaps.map((room) => room.name).join(", ")}`,
             })}
-            homeFolderPath={homeFolderPath}
           />
         </p>
       )}
@@ -147,7 +135,7 @@ function NeedsYou({
   );
 }
 
-/** The getting-started checklist while the Home lacks a Home Folder or a Session, then the card. */
+/** The getting-started checklist until the Home's first Session, then the card. */
 function LeftOff({ home }: { home: Home }) {
   const sessions = useSessions(home.slug);
   const decisions = useDecisions(home.slug);
@@ -158,9 +146,7 @@ function LeftOff({ home }: { home: Home }) {
   const direction = decisions.data && designDirectionInForce(decisions.data.decisions);
   return (
     <>
-      {(!home.homeFolderPath || all.length === 0) && (
-        <GettingStarted home={home} started={all.length > 0} />
-      )}
+      {all.length === 0 && <GettingStarted home={home} />}
       {last?.summary && (
         <Section title="Where we left off">
           <Card className={page.leftOff}>
@@ -192,7 +178,6 @@ function LeftOff({ home }: { home: Home }) {
                       text: "let's settle the Design Direction for my home",
                       ...(direction ? { slug: direction.slug } : {}),
                     })}
-                    homeFolderPath={home.homeFolderPath}
                   />
                 </li>
               )}
@@ -203,7 +188,6 @@ function LeftOff({ home }: { home: Home }) {
                   prompt={buildPrompt({
                     text: `Let's pick up where the last Session left off. Next: ${last.summary.next}`,
                   })}
-                  homeFolderPath={home.homeFolderPath}
                 />
               </li>
             </ol>
@@ -214,45 +198,40 @@ function LeftOff({ home }: { home: Home }) {
   );
 }
 
-/** Three steps: set up the Home Folder, run claude there, and start Home Intake. */
-function GettingStarted({ home, started }: { home: Home; started: boolean }) {
-  const folder = home.homeFolderPath;
+/**
+ * Three steps: set up the Home Folder, run claude there, and start Home Intake. The server keeps no
+ * record of where the folder is, so the checklist shows until the first Session proves it.
+ */
+function GettingStarted({ home }: { home: Home }) {
   return (
     <Section title="Getting started">
       <Card>
         <ol className={page.checklist}>
-          <li className={folder ? page.done : undefined}>
+          <li>
             <span className={page.check} aria-hidden>
-              {folder ? "✓" : "1"}
+              1
             </span>
             <div>
               <p className={page.step}>Set up the Home Folder</p>
-              {folder ? (
-                <p className={styles.muted}>
-                  Set up at <code>{folder}</code>.
-                </p>
-              ) : (
-                <HomeFolderSetup home={home} />
-              )}
+              <HomeFolderSetup home={home} />
             </div>
           </li>
-          <li className={started ? page.done : undefined}>
+          <li>
             <span className={page.check} aria-hidden>
-              {started ? "✓" : "2"}
+              2
             </span>
             <div>
               <p className={page.step}>
                 Open a terminal there and run <code>claude</code>
               </p>
               <p className={styles.muted}>
-                Every Session started in {folder ? <code>{folder}</code> : "the Home Folder"}{" "}
-                belongs to this Home.
+                Every Session started in the Home Folder belongs to this Home.
               </p>
             </div>
           </li>
-          <li className={started ? page.done : undefined}>
+          <li>
             <span className={page.check} aria-hidden>
-              {started ? "✓" : "3"}
+              3
             </span>
             <div>
               <p className={page.step}>Start with Home Intake</p>
@@ -262,7 +241,6 @@ function GettingStarted({ home, started }: { home: Home; started: boolean }) {
                   skill: "Home Intake",
                   text: "Let's record my home; I'll upload the floor plan",
                 })}
-                homeFolderPath={folder}
               />
             </div>
           </li>
@@ -273,13 +251,7 @@ function GettingStarted({ home, started }: { home: Home; started: boolean }) {
 }
 
 /** The Design Direction on one line, then the Palette in force as chips, linking to its Decision. */
-function PaletteSection({
-  home,
-  homeFolderPath,
-}: {
-  home: string;
-  homeFolderPath: string | undefined;
-}) {
+function PaletteSection({ home }: { home: string }) {
   const decisions = useDecisions(home);
   if (decisions.isPending) return <p>Loading…</p>;
   if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
@@ -315,7 +287,6 @@ function PaletteSection({
         <EmptyState
           text="No Palette yet"
           prompt={buildPrompt({ skill: "Color", text: "let's choose my home's Palette" })}
-          homeFolderPath={homeFolderPath}
         />
       )}
     </Section>

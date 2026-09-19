@@ -145,7 +145,7 @@ function RoomSheet({
 
       <div className={page.pair}>
         <DaylightCard room={room} latitude={home?.latitude} />
-        <GapsCard room={room} homeFolderPath={home?.homeFolderPath} />
+        <GapsCard room={room} />
       </div>
 
       <Section title="Surfaces" id="surfaces">
@@ -799,13 +799,7 @@ function Compass({ openings }: { openings: Opening[] }) {
 
 // ─── Gaps ──────────────────────────────────────────────────────────────────────────────────
 
-function GapsCard({
-  room,
-  homeFolderPath,
-}: {
-  room: RoomDetail;
-  homeFolderPath: string | undefined;
-}) {
+function GapsCard({ room }: { room: RoomDetail }) {
   const prompt = buildPrompt({
     skill: "Home Intake",
     text: `Let's fill the Gaps in ${room.name}: ${room.gaps.join(", ")}`,
@@ -825,7 +819,7 @@ function GapsCard({
               <li key={gap}>{gap.charAt(0).toUpperCase() + gap.slice(1)}</li>
             ))}
           </ul>
-          <AskAgent prompt={prompt} label="Fill the Gaps" homeFolderPath={homeFolderPath} />
+          <AskAgent prompt={prompt} label="Fill the Gaps" />
         </>
       )}
     </Card>

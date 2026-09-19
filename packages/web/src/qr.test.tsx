@@ -6,7 +6,7 @@ import { type QrCode as Code, qrCode } from "./qr";
 afterEach(cleanup);
 
 /** 41 bytes: version 3 at level M, one block. */
-const lanUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7p";
+const phoneUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7p";
 
 it("picks the smallest version that holds the text at level M", () => {
   // Level M's byte capacities: 14 bytes in version 1, 26 in 2, 42 in 3.
@@ -21,7 +21,7 @@ it("picks the smallest version that holds the text at level M", () => {
 });
 
 it("draws the finder and timing patterns and the dark module", () => {
-  const code = qrCode(lanUrl);
+  const code = qrCode(phoneUrl);
   const { size } = code;
   // Each finder: a dark 7 × 7 ring, a light ring, a dark 3 × 3 core, then a light separator.
   for (const [left, top] of [
@@ -62,7 +62,7 @@ function formatCopies(code: Code): [number, number] {
 }
 
 it("writes the same format bits twice: level M, the mask chosen, and a valid BCH code", () => {
-  const code = qrCode(lanUrl);
+  const code = qrCode(phoneUrl);
   const [first, second] = formatCopies(code);
   expect(first).toBe(second);
   expect(first >>> 13).toBe(0b00); // Level M.
@@ -128,7 +128,7 @@ function readCodewords(code: Code): number[] {
 
 it("carries the text in byte mode, with Reed-Solomon codewords a scanner can check", () => {
   // Version 3 at level M: one block of 44 data and 26 error correction codewords.
-  const code = qrCode(lanUrl);
+  const code = qrCode(phoneUrl);
   expect(code.version).toBe(3);
   const codewords = readCodewords(code).slice(0, 70);
 
@@ -138,7 +138,7 @@ it("carries the text in byte mode, with Reed-Solomon codewords a scanner can che
   expect(number(0, 4)).toBe(0b0100);
   const length = number(4, 8);
   const text = Array.from({ length }, (_, i) => number(12 + i * 8, 8));
-  expect(new TextDecoder().decode(new Uint8Array(text))).toBe(lanUrl);
+  expect(new TextDecoder().decode(new Uint8Array(text))).toBe(phoneUrl);
 
   // Every syndrome of the whole block is zero: c(α^j) = 0 for j = 0 to 25.
   for (let j = 0; j < 26; j++) {
@@ -152,9 +152,9 @@ it("carries the text in byte mode, with Reed-Solomon codewords a scanner can che
 });
 
 it("renders a URL as an SVG of dark modules inside a quiet zone", () => {
-  render(<QrCode text={lanUrl} size={160} />);
-  const svg = screen.getByRole("img", { name: `QR code for ${lanUrl}` });
-  const code = qrCode(lanUrl);
+  render(<QrCode text={phoneUrl} size={160} />);
+  const svg = screen.getByRole("img", { name: `QR code for ${phoneUrl}` });
+  const code = qrCode(phoneUrl);
   // 29 modules a side for version 3, and 4 of quiet zone on each side.
   expect(svg.getAttribute("viewBox")).toBe("0 0 37 37");
   expect(svg.getAttribute("width")).toBe("160");

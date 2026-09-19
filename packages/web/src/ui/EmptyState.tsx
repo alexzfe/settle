@@ -4,19 +4,11 @@ import { AskAgent } from "./AskAgent";
 import styles from "./ui.module.css";
 
 /** "No Rooms yet", and when `prompt` is given an AskAgent copying it. */
-export function EmptyState({
-  text,
-  prompt,
-  homeFolderPath,
-}: {
-  text: string;
-  prompt?: string | undefined;
-  homeFolderPath?: string | null | undefined;
-}) {
+export function EmptyState({ text, prompt }: { text: string; prompt?: string | undefined }) {
   return (
     <div className={styles.empty}>
       <p>{text}</p>
-      {prompt && <AskAgent prompt={prompt} homeFolderPath={homeFolderPath} />}
+      {prompt && <AskAgent prompt={prompt} />}
     </div>
   );
 }

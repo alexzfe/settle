@@ -767,7 +767,6 @@ export const homeSchema = z.object({
   country: z.string(),
   city: z.string(),
   latitude: z.number(),
-  homeFolderPath: z.string().optional(),
   tenure: z.enum(TENURES).optional(),
   plannedStay: z.enum(PLANNED_STAYS).optional(),
   buildingType: z.enum(BUILDING_TYPES).optional(),
@@ -1013,6 +1012,21 @@ export const getHomeResult = z.object({
   lanUrl: z.string().optional(),
 });
 
+/**
+ * home_folder_setup: how to make a folder the Home's Home Folder on a computer. The server never
+ * writes the files itself; `command`, pasted inside the folder, fetches a script that does.
+ */
+export const homeFolderSetupResult = z.object({
+  /** The origin the app names itself by, e.g. "https://settle.example.com". */
+  origin: z.string(),
+  /** curl -fsSL "<origin>/api/home_folder_script?home=<slug>" | sh */
+  command: z.string(),
+  /** Once on each computer: adds the plugin marketplace and installs the plugin. */
+  pluginInstall: z.string(),
+  /** What the script writes, relative to the folder: .mcp.json, then .claude/settings.json. */
+  files: z.array(z.object({ path: z.string(), content: z.string() })),
+});
+
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
 export const findItemsResult = z.object({ items: z.array(itemSchema) });
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
@@ -1059,6 +1073,7 @@ export type ViewedPage = z.infer<typeof viewedPageSchema>;
 export type ViewImagesResult = z.infer<typeof viewImagesResult>;
 export type GetBlueprintPageResult = z.infer<typeof getBlueprintPageResult>;
 export type GetHomeResult = z.infer<typeof getHomeResult>;
+export type HomeFolderSetupResult = z.infer<typeof homeFolderSetupResult>;
 export type GetRoomResult = z.infer<typeof getRoomResult>;
 export type ListItemsResult = z.infer<typeof listItemsResult>;
 export type FindItemsResult = z.infer<typeof findItemsResult>;
@@ -2006,7 +2021,7 @@ export const quickGuideSchema = z.object({
   lookingFor: z.string().optional(),
   /** Measure first, then must, prefer, avoid, test, and ask; musts and prefers by position. */
   lines: z.array(quickGuideLineSchema),
-  /** The phone page on this computer: "/guide/<decision slug>?home=<home slug>". */
+  /** The phone page's path on the server: "/guide/<decision slug>?home=<home slug>". */
   path: z.string(),
 });
 
@@ -2033,8 +2048,12 @@ export const guidesSchema = z.object({
   quickLines: z.array(quickLineSchema),
   /** Absent until a Full Guide is saved. */
   fullGuide: fullGuideSchema.optional(),
-  /** In LAN mode: the Quick Guide's URL for a phone on the same network, for a QR code. */
-  lanUrl: z.string().optional(),
+  /**
+   * The Quick Guide's page for a phone, for a QR code: on the public origin when the app is
+   * hosted, else in LAN mode the LAN listener's URL for a phone on the same network. Absent
+   * otherwise.
+   */
+  phoneUrl: z.string().optional(),
 });
 
 /** One Listing's result against one Requirement not Archived. */

@@ -36,13 +36,7 @@ export function RoomsPage() {
           <Link to={`/homes/${slug}/items`}>{count(unplacedItems, "Unplaced Item")}</Link>
         </p>
       </header>
-      <RoomGrid
-        home={slug}
-        levels={levels}
-        rooms={rooms}
-        details={details}
-        homeFolderPath={home.data.home.homeFolderPath}
-      />
+      <RoomGrid home={slug} levels={levels} rooms={rooms} details={details} />
     </>
   );
 }

@@ -15,6 +15,9 @@ export function streamChanges(core: Core, c: Context): Response {
     const message = "Pass the Home's slug, as /events?home=<slug>.";
     return c.json({ error: { code: "validation", message } }, 400);
   }
+  // A reverse proxy (nginx, as on the homeserver) would otherwise hold the stream in its buffer
+  // and deliver events late or in bursts; this header tells it to pass each one through at once.
+  c.header("X-Accel-Buffering", "no");
   return streamSSE(c, async (stream) => {
     // Writes go out one after another; a failed write means the client left, and onAbort ends it.
     let writing: Promise<unknown> = Promise.resolve();

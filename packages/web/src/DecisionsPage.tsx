@@ -163,7 +163,6 @@ export function DecisionsPage() {
               skill: "Design Direction",
               text: "help me settle the direction for my home",
             })}
-            homeFolderPath={homeQuery.data.home.homeFolderPath}
           />
         )
       ) : (

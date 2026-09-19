@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { cityLatitude, countryCode } from "../cities.js";
 import { CoreError } from "../errors.js";
-import { setUpHomeFolder } from "../home-folder.js";
+import { homeFolderSetup } from "../home-folder.js";
 import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
@@ -19,6 +19,7 @@ import {
   type blueprintPageLevelInput,
   type GetHomeResult,
   type Home,
+  type HomeFolderSetupResult,
   type Level,
   type levelInput,
   type ReceiptResult,
@@ -308,26 +309,18 @@ function unmapLevel(
     });
 }
 
-export const setUpHomeFolderOperation = defineOperation({
-  name: "set_up_home_folder",
+export const homeFolderSetupOperation = defineOperation({
+  name: "home_folder_setup",
   description:
-    "Makes a folder the Home's Home Folder: writes .mcp.json, pointing the Agent at this Home's " +
-    "MCP endpoint, and .claude/settings.json, enabling the plugin and pre-approving the server. " +
-    "Creates the folder if missing. Refuses a folder whose .mcp.json names another Home. Never " +
-    "touches .claude/settings.local.json. Stores the path on the Home.",
-  input: z.object({
-    home: homeInput,
-    path: z
-      .string()
-      .trim()
-      .min(1)
-      .describe("The folder's absolute path; a leading ~ stands for the user's home directory."),
-  }),
-  readOnly: false,
+    "How to make a folder this Home's Home Folder on a computer: the command to paste inside " +
+    "it, which fetches GET /api/home_folder_script and writes .mcp.json (pointing the Agent at " +
+    "this Home's MCP endpoint) and .claude/settings.json (enabling the plugin and pre-approving " +
+    "the server); the one-time plugin install line; and the two files, to show. Writes nothing.",
+  input: z.object({ home: homeInput }),
+  readOnly: true,
   surface: "web",
-  handler(context, input) {
-    return setUpHomeFolder(context, requireHome(context), input.path);
-  },
+  handler: (context): HomeFolderSetupResult =>
+    homeFolderSetup(context.origin, requireHome(context).slug),
 });
 
 export const listSessions = defineOperation({
@@ -351,7 +344,6 @@ export function toHome(row: HomeRow): Home {
     city,
     latitude,
     ...optional({
-      homeFolderPath: row.homeFolderPath,
       tenure: row.tenure,
       plannedStay: row.plannedStay,
       buildingType: row.buildingType,

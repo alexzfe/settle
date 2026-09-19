@@ -157,23 +157,50 @@ it("shows the Notes, newest first", async () => {
   ).toEqual(["The cat scratches fabric.", "We might get a dog."]);
 });
 
-it("sets up the Home Folder and says which files it wrote", async () => {
-  let home = flat;
+it("shows the command that sets up the Home Folder, the plugin install line, and the files", async () => {
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  const origin = "https://settle.example.com";
+  const command = `curl -fsSL "${origin}/api/home_folder_script?home=flat" | sh`;
+  const pluginInstall =
+    "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle";
+  const mcp = `{ "mcpServers": { "settle": { "type": "http", "url": "${origin}/mcp/homes/flat" } } }`;
   const fetch = stubAboutPage({
-    get_home: () => ({ home, levels: [ground], rooms: [], unplacedItems: 0 }),
-    set_up_home_folder: (input) => {
-      home = { ...flat, homeFolderPath: input.path };
-      return { path: input.path, files: ["CLAUDE.md", ".mcp.json"] };
-    },
+    home_folder_setup: () => ({
+      origin,
+      command,
+      pluginInstall,
+      files: [
+        { path: ".mcp.json", content: mcp },
+        { path: ".claude/settings.json", content: '{ "enabledMcpjsonServers": ["settle"] }' },
+      ],
+    }),
   });
   renderRoutes("/homes/flat/about");
-  expect(await screen.findByText("Not set up yet.")).toBeDefined();
-  fireEvent.change(screen.getByLabelText("Path"), { target: { value: " ~/Homes/our-flat " } });
-  fireEvent.click(screen.getByRole("button", { name: "Set up Home Folder" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Set up Home Folder" }));
 
-  expect(await screen.findByText("CLAUDE.md")).toBeDefined();
-  expect(inputsTo(fetch, "set_up_home_folder")).toEqual([
-    { home: "flat", path: "~/Homes/our-flat" },
+  const section = screen.getByRole("heading", { name: "Home Folder" }).closest("section");
+  const steps = await waitFor(() => {
+    const found = section?.querySelector("ol");
+    if (!found) throw new Error("no steps yet");
+    return found;
+  });
+  expect(inputsTo(fetch, "home_folder_setup")).toEqual([{ home: "flat" }]);
+  expect(steps.textContent).toContain("Make a folder for this Home, e.g. ~/Homes/flat");
+  expect([...steps.querySelectorAll("pre")].map((pre) => pre.textContent)).toEqual([
+    command,
+    pluginInstall,
   ]);
-  await waitFor(() => expect(screen.getByText(/Set up at/).textContent).toContain("our-flat"));
+  expect(section?.textContent).not.toMatch(/this computer/);
+
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Copy the command" })));
+  expect(writeText).toHaveBeenCalledWith(command);
+
+  const files = screen.getByText("Show the files").closest("details") as HTMLDetailsElement;
+  expect(files.open).toBe(false);
+  expect([...files.querySelectorAll("figcaption")].map((caption) => caption.textContent)).toEqual([
+    ".mcp.json",
+    ".claude/settings.json",
+  ]);
+  expect(files.querySelector("figure pre")?.textContent).toBe(mcp);
 });
