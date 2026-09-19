@@ -185,6 +185,9 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 TOTAL_STAGES=9
+# Resume after an interruption: START_AT=7 scripts/hosting-cutover.sh runs the preflight, then
+# jumps to stage 7. Stages before it are assumed done.
+START_AT="${START_AT:-1}"
 ENV_FILE="${ENV_FILE:-/dev/null}"   # nothing is written to a local .env in this wizard
 
 HOMESERVER="${HOMESERVER:-homeserver}"          # the tailnet name ssh uses
@@ -220,6 +223,7 @@ fi
 pause
 
 # ─── 2 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 2 )); then _STAGE_INDEX=2; else
 stage "GitHub: a token for the self-hosted runner"
 say "The runner on the homeserver registers itself with GitHub using a fine-grained token that"
 say "may administer only the $REPO repository. It lives on the homeserver, never in GitHub secrets."
@@ -234,9 +238,15 @@ printf 'ACCESS_TOKEN=%s\n' "$ACCESS_TOKEN" | hs 'umask 077; mkdir -p /docker/git
 say "${GREEN}✓${RESET} written to $HOMESERVER:/docker/github-runner/.env (mode 600; gitignored there, as every .env is)."
 pause
 
+fi
+
 # ─── 3 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 3 )); then _STAGE_INDEX=3; else
 stage "Homeserver: start the runner"
 say "Copies deploy/github-runner/compose.yaml to /docker/github-runner/ and starts it."
+# The runner bind-mounts /docker/settle. If that folder is missing, Docker creates it as root and
+# the later data copy (and anything run as alex) cannot write into it, so make it first, as alex.
+hs 'mkdir -p /docker/settle/data'
 scp -q deploy/github-runner/compose.yaml "$HOMESERVER:/docker/github-runner/compose.yaml"
 hs 'cd /docker/github-runner && docker compose up -d' 2>&1 | sed 's/^/    /'
 say "Waiting for the runner to say it is listening for jobs..."
@@ -249,7 +259,10 @@ open_url "https://github.com/$REPO/settings/actions/runners"
 step "Check that a runner named homeserver shows as Idle, with the label homeserver."
 pause "Does it? Press Enter when it does."
 
+fi
+
 # ─── 4 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 4 )); then _STAGE_INDEX=4; else
 stage "GitHub: Actions settings"
 say "The runner holds the homeserver's Docker socket, so no stranger's pull request may ever run on it."
 open_url "https://github.com/$REPO/settings/actions"
@@ -258,7 +271,10 @@ step "Under Workflow permissions, 'Read repository contents and packages permiss
 step "Save if anything changed."
 pause
 
+fi
+
 # ─── 5 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 5 )); then _STAGE_INDEX=5; else
 stage "Nginx Proxy Manager: settle.example.com"
 say "One proxy host, like the other thirty-two: the name already resolves to this box everywhere."
 open_url "http://$HOMESERVER_IP:81"
@@ -277,7 +293,10 @@ else
   confirm "Continue anyway?" || exit 1
 fi
 
+fi
+
 # ─── 6 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 6 )); then _STAGE_INDEX=6; else
 stage "Copy the data: your Home moves to the homeserver"
 say "From $LOCAL_DATA to $HOMESERVER:/docker/settle/data. Both sides are uid 1000, so no chown."
 say "The container starts on this folder and migrates the database itself."
@@ -295,7 +314,10 @@ if [[ ! " ${SKIPPED[*]} " =~ "data copy" ]]; then
 fi
 pause
 
+fi
+
 # ─── 7 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 7 )); then _STAGE_INDEX=7; else
 stage "Ship it: merge hosting into main and push"
 say "The push runs the workflow: check → image → deploy on the homeserver. About five minutes."
 git log --oneline main..hosting | sed 's/^/    /'
@@ -318,7 +340,10 @@ else
 fi
 pause
 
+fi
+
 # ─── 8 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 8 )); then _STAGE_INDEX=8; else
 stage "Gatus: one health check"
 say "Appends an endpoint to /docker/monitoring/gatus/config.yaml (tracked in the homeserver repo) and restarts Gatus."
 SNIPPET=$(cat <<'YAML'
@@ -352,7 +377,10 @@ else
 fi
 pause
 
+fi
+
 # ─── 9 ────────────────────────────────────────────────────────────────────
+if (( START_AT > 9 )); then _STAGE_INDEX=9; else
 stage "Point your Home Folder at the homeserver"
 say "Runs the same command the About page now shows, inside $HOME_FOLDER."
 say "It rewrites .mcp.json to $ORIGIN and .claude/settings.json to the GitHub marketplace,"
@@ -370,6 +398,8 @@ step "Check the Home is there with its Rooms and Decisions."
 step "In a terminal: cd $HOME_FOLDER && claude, then /mcp: settle should be connected over $ORIGIN."
 step "On your phone, open $ORIGIN → Shopping → a Purchase → Phone page."
 pause "Press Enter when you have looked."
+
+fi
 
 finish
 say "Local data stays in $LOCAL_DATA; delete it when you trust the copy. For development, run"
