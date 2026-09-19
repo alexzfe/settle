@@ -8,7 +8,7 @@ plugins: ["../..", "../../test-support/live-server"]
 # scripts/plugin-eval-live.sh seeds this Home's Locked Design Direction. It is not the fixture
 # Home, where a Locked Direction would change what design-direction-saves-candidate-live sees.
 env:
-  EVAL_IDH_HOME: fixture-flat
+  EVAL_SETTLE_HOME: fixture-flat
 ---
 
 Let's choose the colour palette for our flat. We already know the colours we like: Farrow & Ball's Setting Plaster (No. 231) as the main wall colour, their Pointing (No. 2003) for the ceilings and woodwork, and a warm terracotta as an accent for the front door. Please save that as a first idea for the palette; we'll refine it later.

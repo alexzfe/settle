@@ -349,7 +349,7 @@ describe("the change log and the event bus", () => {
 describe("set_up_home_folder", () => {
   const dirs: string[] = [];
   const tempFolder = () => {
-    const dir = mkdtempSync(join(tmpdir(), "idh-home-folder-"));
+    const dir = mkdtempSync(join(tmpdir(), "settle-home-folder-"));
     dirs.push(dir);
     return dir;
   };
@@ -370,18 +370,18 @@ describe("set_up_home_folder", () => {
     });
     expect(readJson(join(folder, ".mcp.json"))).toEqual({
       mcpServers: {
-        "int-design-harness": {
+        settle: {
           type: "http",
           url: "http://127.0.0.1:4380/mcp/homes/my-flat",
         },
       },
     });
     expect(readJson(join(folder, ".claude", "settings.json"))).toEqual({
-      enabledPlugins: { "int-design-harness@int-design-harness": true },
+      enabledPlugins: { "settle@settle": true },
       extraKnownMarketplaces: {
-        "int-design-harness": { source: { source: "directory", path: REPO_ROOT } },
+        settle: { source: { source: "directory", path: REPO_ROOT } },
       },
-      enabledMcpjsonServers: ["int-design-harness"],
+      enabledMcpjsonServers: ["settle"],
     });
     const got = await core.run("get_home", web, { home });
     expect(got.home.homeFolderPath).toBe(folder);
@@ -402,13 +402,13 @@ describe("set_up_home_folder", () => {
     await core.run("set_up_home_folder", web, { home, path: folder });
 
     expect(readJson(settingsPath)).toMatchObject({
-      enabledPlugins: { "x@y": true, "int-design-harness@int-design-harness": true },
-      enabledMcpjsonServers: ["int-design-harness"],
+      enabledPlugins: { "x@y": true, "settle@settle": true },
+      enabledMcpjsonServers: ["settle"],
     });
     expect(readJson(join(folder, ".mcp.json"))).toEqual({
       mcpServers: {
         other: { type: "stdio", command: "other" },
-        "int-design-harness": { type: "http", url: "http://127.0.0.1:4380/mcp/homes/my-flat" },
+        settle: { type: "http", url: "http://127.0.0.1:4380/mcp/homes/my-flat" },
       },
     });
   });

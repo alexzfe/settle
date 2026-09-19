@@ -40,7 +40,7 @@ it("names the Home's sections in the nav and marks the current one", async () =>
     false,
   );
   await screen.findByRole("option", { name: "House" });
-  expect(document.title).toBe("Decisions · House · Interior Design Harness");
+  expect(document.title).toBe("Decisions · House · Settle");
 });
 
 it("marks Rooms as current on a Room's page", () => {

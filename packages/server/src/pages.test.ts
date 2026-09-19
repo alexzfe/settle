@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFixtureHome, type FixtureHome, type GetShoppingResult } from "@idh/core";
+import { createFixtureHome, type FixtureHome, type GetShoppingResult } from "@settle/core";
 import type { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
@@ -62,7 +62,7 @@ describe("the Quick Guide's phone page", () => {
   });
 
   it("leaves /guide to the server when the web UI is built", async () => {
-    const dist = mkdtempSync(join(tmpdir(), "idh-pages-"));
+    const dist = mkdtempSync(join(tmpdir(), "settle-pages-"));
     try {
       writeFileSync(join(dist, "index.html"), "<!doctype html><title>The UI</title>");
       const withUi = createApp({ core: fixture.core, port: PORT, webDist: dist });

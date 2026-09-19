@@ -21,7 +21,7 @@ Quick Guide, besides the Requirements:
 
 Full Guide: written 2026-09-14, up to date; includeFullGuide shows it
 
-Phone: /guide/wool-rug?home=fixture-home on this computer only; started with IDH_LAN=1, the app gives a LAN address and the Decision page shows it as a QR code
+Phone: /guide/wool-rug?home=fixture-home on this computer only; started with SETTLE_LAN=1, the app gives a LAN address and the Decision page shows it as a QR code
 
 Listings:
 - Hay Plain rug (hay-plain-rug), £450, rated 4/5 (Right size, real wool, but £120 over the others): 3 pass, 0 fail, 1 unknown
@@ -79,7 +79,7 @@ Full Guide, written 2026-09-14, up to date:
 - **Warm terracotta** (prefer). The accent of the Warm clay Palette, echoing the dining-end
   tiles; a rug is the one large surface in the room that can carry it.
 
-Phone: /guide/wool-rug?home=fixture-home on this computer only; started with IDH_LAN=1, the app gives a LAN address and the Decision page shows it as a QR code
+Phone: /guide/wool-rug?home=fixture-home on this computer only; started with SETTLE_LAN=1, the app gives a LAN address and the Decision page shows it as a QR code
 
 Listings:
 - Hay Plain rug (hay-plain-rug), £450, rated 4/5 (Right size, real wool, but £120 over the others): 3 pass, 0 fail, 1 unknown

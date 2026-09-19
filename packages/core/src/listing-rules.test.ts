@@ -43,7 +43,7 @@ beforeEach(async () => {
   answers = new Map();
   fetched = [];
   now = "2026-09-17T10:00:00.000Z";
-  dataDir = mkdtempSync(join(tmpdir(), "idh-listings-"));
+  dataDir = mkdtempSync(join(tmpdir(), "settle-listings-"));
   core = createCore({
     dataDir,
     clock: () => new Date(now),

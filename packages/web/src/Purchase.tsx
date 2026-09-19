@@ -284,7 +284,7 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
               ) : (
                 <>
                   {" "}
-                  opens on this computer. Start the app with <code>IDH_LAN=1</code> for a code a
+                  opens on this computer. Start the app with <code>SETTLE_LAN=1</code> for a code a
                   phone can scan.
                 </>
               )}

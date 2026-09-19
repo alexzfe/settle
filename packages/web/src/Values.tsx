@@ -1,7 +1,7 @@
 // Recorded values as the pages show them: lengths in metres with a quiet Provenance tag, and lines of
 // parts that leave out whatever is not recorded. Colors are shown by Swatch.tsx.
 
-import type { BlueprintSource, Light, Provenance } from "@idh/core";
+import type { BlueprintSource, Light, Provenance } from "@settle/core";
 import { Children, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";

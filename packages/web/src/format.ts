@@ -2,7 +2,7 @@
 // millimetres and shown in metres with two decimals (until the units setting exists), Estimated
 // values carry a leading ~, and Measured and Blueprint values read plain.
 
-import type { BlueprintSource, Provenance } from "@idh/core";
+import type { BlueprintSource, Provenance } from "@settle/core";
 
 export interface Measure {
   mm: number;

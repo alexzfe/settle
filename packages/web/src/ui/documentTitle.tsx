@@ -7,7 +7,7 @@ export const HomeNameContext = createContext<string | undefined>(undefined);
 
 /** The tab title for a page: its name, then the Home's, then the app's. */
 export function documentTitle(...parts: (string | undefined)[]): string {
-  return [...parts, "Interior Design Harness"].filter(Boolean).join(" · ");
+  return [...parts, "Settle"].filter(Boolean).join(" · ");
 }
 
 /**

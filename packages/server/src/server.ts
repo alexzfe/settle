@@ -3,7 +3,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
-import { type Core, createCore } from "@idh/core";
+import { type Core, createCore } from "@settle/core";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
 import type { Config } from "./config.js";
@@ -63,7 +63,7 @@ export async function startServer(
       );
     }
     const open = createCore({
-      database: join(config.dataDir, "harness.sqlite"),
+      database: join(config.dataDir, "settle.sqlite"),
       dataDir: config.dataDir,
       // The bound port, not config.port: with port 0 only the listener knows which it is.
       port,

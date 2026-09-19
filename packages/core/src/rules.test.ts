@@ -110,7 +110,7 @@ describe("closed Sessions", () => {
 describe("set_up_home_folder", () => {
   const dirs: string[] = [];
   const tempFolder = () => {
-    const dir = mkdtempSync(join(tmpdir(), "idh-home-folder-"));
+    const dir = mkdtempSync(join(tmpdir(), "settle-home-folder-"));
     dirs.push(dir);
     return dir;
   };
@@ -137,7 +137,7 @@ describe("set_up_home_folder", () => {
     const home = await createHome("My flat");
     const withLocal = tempFolder();
     mkdirSync(join(withLocal, ".claude"));
-    const local = `{ "enabledMcpjsonServers": ["int-design-harness"] }\n`;
+    const local = `{ "enabledMcpjsonServers": ["settle"] }\n`;
     writeFileSync(join(withLocal, ".claude", "settings.local.json"), local);
     const withoutLocal = tempFolder();
 

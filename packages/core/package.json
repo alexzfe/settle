@@ -1,11 +1,11 @@
 {
-  "name": "@idh/core",
+  "name": "@settle/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
-      "@idh/source": "./src/index.ts",
+      "@settle/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }

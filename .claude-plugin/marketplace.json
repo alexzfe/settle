@@ -1,14 +1,14 @@
 {
-  "name": "int-design-harness",
-  "description": "The Interior Design Harness plugin, installed from this repository.",
+  "name": "settle",
+  "description": "The Settle plugin, installed from this repository.",
   "owner": {
     "name": "Alex Ferrer"
   },
   "plugins": [
     {
-      "name": "int-design-harness",
+      "name": "settle",
       "source": "./plugin",
-      "description": "Skills for designing and furnishing your Home with the Interior Design Harness app."
+      "description": "Skills for designing and furnishing your Home with the Settle app."
     }
   ]
 }

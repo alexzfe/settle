@@ -4,8 +4,8 @@
 import { createHash } from "node:crypto";
 
 /** The MCP server key every Home Folder's .mcp.json uses, and so the mock directory's name. */
-export const SERVER = "int-design-harness";
-export const PLUGIN = "int-design-harness";
+export const SERVER = "settle";
+export const PLUGIN = "settle";
 
 /** One step of a scripted conversation. */
 export type Turn =

@@ -11,7 +11,7 @@ import type {
   Wall,
   Window,
   WindowKind,
-} from "@idh/core";
+} from "@settle/core";
 import { type ReactNode, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
@@ -591,7 +591,7 @@ export interface Opening {
 /**
  * The Room's daylight openings: its Windows, and any glazed Door leading outside or onto an
  * outdoor Room, with their Wall's facing and obstruction (a skylight's own facing). Mirrors core's
- * daylightOpenings, since the web takes only types from @idh/core.
+ * daylightOpenings, since the web takes only types from @settle/core.
  */
 export function daylightOpenings(room: RoomDetail): Opening[] {
   const walls = new Map(room.walls.map((wall) => [wall.slug, wall]));

@@ -1,8 +1,8 @@
 // Saves the MCP tools/list result as the eval mocks' _tools.json. Run after changing a tool:
-//   pnpm --filter @idh/server tools:json
+//   pnpm --filter @settle/server tools:json
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { createCore } from "@idh/core";
+import { createCore } from "@settle/core";
 import { createApp } from "../src/app.js";
 import { listTools, TOOLS_JSON } from "../src/tools-list.js";
 

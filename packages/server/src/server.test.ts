@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FIXTURE_FILES } from "@idh/core";
+import { FIXTURE_FILES } from "@settle/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { type RunningServer, startServer } from "./server.js";
 
@@ -10,7 +10,7 @@ import { type RunningServer, startServer } from "./server.js";
 let root: string;
 let server: RunningServer;
 beforeAll(async () => {
-  root = mkdtempSync(join(tmpdir(), "idh-server-"));
+  root = mkdtempSync(join(tmpdir(), "settle-server-"));
   server = await startServer({ port: 0, dataDir: join(root, "data") });
 });
 afterAll(async () => {
@@ -48,7 +48,7 @@ async function callTool(home: string, name: string, args: unknown): Promise<stri
 it("creates the data dir and database, listens, and answers /health", async () => {
   const response = await fetch(`${server.url}/health`);
   expect(await response.json()).toEqual({ status: "ok" });
-  expect(existsSync(join(root, "data", "harness.sqlite"))).toBe(true);
+  expect(existsSync(join(root, "data", "settle.sqlite"))).toBe(true);
 });
 
 it("runs MCP tool calls end to end: open_session, then save_room", async () => {
@@ -195,7 +195,7 @@ it("writes the port it listens on into a Home Folder's .mcp.json when started on
   await api("set_up_home_folder", { home: "folder-home", path: folder });
 
   const mcp = JSON.parse(readFileSync(join(folder, ".mcp.json"), "utf8"));
-  expect(mcp.mcpServers["int-design-harness"].url).toBe(`${server.url}/mcp/homes/folder-home`);
+  expect(mcp.mcpServers["settle"].url).toBe(`${server.url}/mcp/homes/folder-home`);
 });
 
 async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {

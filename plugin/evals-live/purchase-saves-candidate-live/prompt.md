@@ -9,7 +9,7 @@ plugins: ["../..", "../../test-support/live-server"]
 # the fixture Home (the Design Direction case saves its first Direction) nor Fixture Flat (the Color
 # case saves its first Palette).
 env:
-  EVAL_IDH_HOME: fixture-loft
+  EVAL_SETTLE_HOME: fixture-loft
 ---
 
 We want a rug for the living room, in the palette's warm terracotta. It must be at least 2 m by 1.4 m. Please save that as a first idea for now; we'll refine it later.

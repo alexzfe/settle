@@ -181,7 +181,7 @@ export function createCore(options: CoreOptions = {}): Core {
     fetchImage: options.fetchImage ?? nodeImageFetcher,
     dataDir(): string {
       if (dataDir === undefined) {
-        temporaryDataDir = mkdtempSync(join(tmpdir(), "idh-data-"));
+        temporaryDataDir = mkdtempSync(join(tmpdir(), "settle-data-"));
         dataDir = temporaryDataDir;
       }
       return dataDir;

@@ -1,5 +1,5 @@
 ---
 type: tool_used
-tool: mcp__int-design-harness__save_room
+tool: mcp__settle__save_room
 min: 1
 ---

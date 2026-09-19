@@ -3,7 +3,7 @@
 // guessed fill), then its name with maker and code, LRV, Provenance, and a Palette color's role.
 // A Palette shows as PaletteChips, large chips sized by role, and an LRV as an LrvBar.
 
-import type { Color, PaletteRole } from "@idh/core";
+import type { Color, PaletteRole } from "@settle/core";
 import styles from "./App.module.css";
 import { formatColor } from "./format";
 import chips from "./Swatch.module.css";

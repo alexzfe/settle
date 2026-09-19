@@ -10,7 +10,7 @@ const MIGRATIONS = join(import.meta.dirname, "..", "migrations");
 describe("migrate", () => {
   const dirs: string[] = [];
   const tempDatabase = () => {
-    const dir = mkdtempSync(join(tmpdir(), "idh-core-"));
+    const dir = mkdtempSync(join(tmpdir(), "settle-core-"));
     dirs.push(dir);
     return join(dir, "test.sqlite");
   };

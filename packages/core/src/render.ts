@@ -723,7 +723,7 @@ function purchaseLines(decision: DecisionDetail): string[] {
   } else if (decision.guides && decision.quickGuide) {
     lines.push(
       "",
-      `Phone: ${decision.quickGuide.path} on this computer only; started with IDH_LAN=1, the app ` +
+      `Phone: ${decision.quickGuide.path} on this computer only; started with SETTLE_LAN=1, the app ` +
         "gives a LAN address and the Decision page shows it as a QR code",
     );
   }

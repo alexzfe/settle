@@ -65,7 +65,7 @@ function Layout() {
     <div className={styles.page}>
       <header className={styles.header}>
         <Link to="/" className={styles.wordmark}>
-          Interior Design Harness
+          Settle
         </Link>
         <HomeSwitcher />
         <ThemeToggle />

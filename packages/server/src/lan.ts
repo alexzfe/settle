@@ -1,12 +1,12 @@
 import { type NetworkInterfaceInfo, networkInterfaces } from "node:os";
-import { type Core, CoreError } from "@idh/core";
+import { type Core, CoreError } from "@settle/core";
 import { type Context, Hono } from "hono";
 import { FILE_HEADERS, fileResponse, messagePage } from "./pages.js";
 
 const web = { caller: { kind: "web" } } as const;
 
 /**
- * The LAN listener's app (IDH_LAN=1): each Quick Guide's phone page by its unguessable token,
+ * The LAN listener's app (SETTLE_LAN=1): each Quick Guide's phone page by its unguessable token,
  * and nothing else. The web app, the API, the events, and the MCP endpoint stay on the loopback
  * listener, so a phone on the user's network reaches only these pages. The pages carry their
  * styles inline, so there are no static assets to serve. Every miss, a wrong token included, gets
@@ -39,9 +39,9 @@ function notFound(c: Context) {
 export class NoLanAddressError extends Error {
   constructor() {
     super(
-      "IDH_LAN=1, but this computer has no address on a local network (192.168.x.x, " +
+      "SETTLE_LAN=1, but this computer has no address on a local network (192.168.x.x, " +
         "10.x.x.x, or 172.16.x.x to 172.31.x.x) to listen on. Join the network, or name the " +
-        "address with IDH_LAN_HOST.",
+        "address with SETTLE_LAN_HOST.",
     );
     this.name = "NoLanAddressError";
   }

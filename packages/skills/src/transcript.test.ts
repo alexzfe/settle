@@ -61,8 +61,8 @@ describe("encodeTranscript", () => {
     expect(calls.map((call) => call.name)).toEqual([
       "Skill",
       "ToolSearch",
-      "mcp__int-design-harness__open_session",
-      "mcp__int-design-harness__save_room",
+      "mcp__settle__open_session",
+      "mcp__settle__save_room",
     ]);
     expect(results.map((result) => result.tool_use_id)).toEqual(calls.map((call) => call.id));
     expect(results.at(-1)?.is_error).toBe(true);

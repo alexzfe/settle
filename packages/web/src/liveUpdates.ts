@@ -1,4 +1,4 @@
-import type { ChangeEvent, RecordKind } from "@idh/core";
+import type { ChangeEvent, RecordKind } from "@settle/core";
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { queryKeys } from "./queries";

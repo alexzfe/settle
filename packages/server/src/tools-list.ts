@@ -4,7 +4,7 @@ import type { Hono } from "hono";
 /**
  * The eval mocks' copy of tools/list (plugin/evals/mocks/<server>/_tools.json), so the mocked
  * tools carry the real names, descriptions, and input schemas. Rewrite it with
- * `pnpm --filter @idh/server tools:json` after changing a tool.
+ * `pnpm --filter @settle/server tools:json` after changing a tool.
  */
 export const TOOLS_JSON = join(
   import.meta.dirname,
@@ -14,7 +14,7 @@ export const TOOLS_JSON = join(
   "plugin",
   "evals",
   "mocks",
-  "int-design-harness",
+  "settle",
   "_tools.json",
 );
 

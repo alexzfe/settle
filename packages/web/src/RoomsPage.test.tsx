@@ -97,7 +97,7 @@ it("shows every Room by Level under a summary line, titled for the Home", async 
   await waitFor(() =>
     expect(screen.getByText("3 Rooms · 2 with Gaps · 2 open Decisions")).toBeDefined(),
   );
-  await waitFor(() => expect(document.title).toBe("Rooms · Flat · Interior Design Harness"));
+  await waitFor(() => expect(document.title).toBe("Rooms · Flat · Settle"));
 
   const levels = screen.getAllByRole("heading", { level: 3 });
   expect(levels.map((heading) => heading.textContent)).toEqual(["Level 0 · Ground", "Level 1"]);

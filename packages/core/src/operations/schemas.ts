@@ -1006,7 +1006,7 @@ export const getHomeResult = z.object({
   /** How many Items of the Inventory are in no Room. */
   unplacedItems: z.number(),
   /**
-   * In LAN mode (IDH_LAN=1): the address phones on the user's network reach, e.g.
+   * In LAN mode (SETTLE_LAN=1): the address phones on the user's network reach, e.g.
    * "http://192.168.1.20:4380". It serves only the Quick Guide pages, at each Purchase's
    * guides.lanUrl.
    */

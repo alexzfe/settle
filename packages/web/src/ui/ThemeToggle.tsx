@@ -8,7 +8,7 @@ import styles from "./ui.module.css";
 export type ThemeChoice = "system" | "light" | "dark";
 
 /** The localStorage key. index.html's inline script reads the same one. */
-export const THEME_KEY = "idh-theme";
+export const THEME_KEY = "settle-theme";
 
 const CHOICES: [ThemeChoice, string][] = [
   ["system", "System"],

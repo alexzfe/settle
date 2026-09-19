@@ -1,4 +1,4 @@
-import type { RoomDetail } from "@idh/core";
+import type { RoomDetail } from "@settle/core";
 import { useQueries } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router";

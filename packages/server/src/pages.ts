@@ -1,4 +1,4 @@
-import { type Core, CoreError, type ExportResult } from "@idh/core";
+import { type Core, CoreError, type ExportResult } from "@settle/core";
 import type { Context } from "hono";
 import { answer, statusOf } from "./api.js";
 

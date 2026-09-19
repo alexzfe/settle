@@ -1,7 +1,7 @@
 {
   "name": "live-server",
   "version": "0.0.1",
-  "description": "Test-only plugin for the live smoke suite: declares the server on port 4390, serving the fixture Home or the Home a case names in EVAL_IDH_HOME. Never installed.",
+  "description": "Test-only plugin for the live smoke suite: declares the server on port 4390, serving the fixture Home or the Home a case names in EVAL_SETTLE_HOME. Never installed.",
   "author": {
     "name": "Alex Ferrer"
   }

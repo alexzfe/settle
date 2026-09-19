@@ -1,4 +1,4 @@
-import { type Core, CoreError, type CoreErrorCode, type OperationInput } from "@idh/core";
+import { type Core, CoreError, type CoreErrorCode, type OperationInput } from "@settle/core";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 

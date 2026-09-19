@@ -1,6 +1,6 @@
 // Decisions in words: their kinds and states as the pages name them, the state changes the server
 // allows from each state (core's LEGAL_TRANSITIONS), and the pages' paths. The web bundle takes
-// only types from @idh/core, so the lists are spelled out here, typed against core's.
+// only types from @settle/core, so the lists are spelled out here, typed against core's.
 
 import type {
   DecisionKind,

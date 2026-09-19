@@ -1,4 +1,4 @@
-# Interior Design Harness
+# Settle
 
 A workspace that keeps a persistent, detailed model of a user's Home and uses AI-led Sessions to help them make interior design and purchasing Decisions for it. Buying or evaluating real estate is out of scope.
 

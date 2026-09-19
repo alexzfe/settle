@@ -8,7 +8,7 @@
 // dropping one, holding one, and setting its picture. Everything else about a Listing is the
 // Agent's to write.
 
-import type { Held, HoldReason } from "@idh/core";
+import type { Held, HoldReason } from "@settle/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type ChangeEvent,
@@ -52,7 +52,7 @@ const RESULT_SYMBOL: Record<ListingCheck["result"], string> = {
 
 /**
  * Why a Listing is Held, in the words core prints them in (HOLD_REASON_LABELS, render.ts). They
- * are written out here rather than imported, because importing a *value* from @idh/core pulls
+ * are written out here rather than imported, because importing a *value* from @settle/core pulls
  * core's Node-only modules — mupdf's 10 MB of WebAssembly among them — into the browser bundle.
  * The Record keeps the two in step all the same: a reason added or dropped in core fails this
  * build.

@@ -1,7 +1,7 @@
 // About the Home: the reference page for its facts, Constraints, Notes, Blueprints (with upload),
 // and Home Folder, in two columns on a wide screen.
 
-import type { PlannedStay } from "@idh/core";
+import type { PlannedStay } from "@settle/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";

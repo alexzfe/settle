@@ -1,4 +1,4 @@
-import type { DesignDirectionContent } from "@idh/core";
+import type { DesignDirectionContent } from "@settle/core";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { Actions } from "./Actions";

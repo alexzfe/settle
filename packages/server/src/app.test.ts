@@ -8,7 +8,7 @@ import {
   type GetDecisionResult,
   type GetRoomResult,
   type ListDecisionsResult,
-} from "@idh/core";
+} from "@settle/core";
 import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
@@ -27,7 +27,7 @@ afterEach(() => core.close());
 
 const dirs: string[] = [];
 const tempDir = () => {
-  const dir = mkdtempSync(join(tmpdir(), "idh-app-"));
+  const dir = mkdtempSync(join(tmpdir(), "settle-app-"));
   dirs.push(dir);
   return dir;
 };
@@ -76,7 +76,7 @@ describe("the web UI", () => {
   it("is a placeholder page at / when it has not been built", async () => {
     const response = await app.request("/");
     expect(response.headers.get("content-type")).toMatch(/text\/html/);
-    expect(await response.text()).toContain("Interior Design Harness");
+    expect(await response.text()).toContain("Settle");
   });
 
   it("is served from its build, with a history fallback that leaves the server's paths alone", async () => {
@@ -188,7 +188,7 @@ describe("the MCP endpoint", () => {
     const body = (await response.json()) as {
       result: { serverInfo: unknown; instructions: string };
     };
-    expect(body.result.serverInfo).toEqual({ name: "int-design-harness", version: "0.0.1" });
+    expect(body.result.serverInfo).toEqual({ name: "settle", version: "0.0.1" });
     expect(body.result.instructions).toBe(SERVER_INSTRUCTIONS);
     expect(SERVER_INSTRUCTIONS.length).toBeLessThanOrEqual(512);
   });
@@ -263,7 +263,7 @@ describe("the MCP endpoint", () => {
     expect(refused.content[0]?.text).toContain("overrideProvenance");
   });
 
-  it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @idh/server tools:json)", async () => {
+  it("matches the eval mocks' _tools.json (rewrite it with pnpm --filter @settle/server tools:json)", async () => {
     const saved = JSON.parse(readFileSync(TOOLS_JSON, "utf8")) as unknown;
     expect(await listTools(app, PORT)).toEqual(saved);
   });

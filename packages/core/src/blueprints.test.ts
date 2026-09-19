@@ -52,7 +52,7 @@ const printed = (mm: number, page = 1, blueprint = "agent-plan"): Measurement =>
 let dataDir: string;
 let core: Core;
 beforeEach(() => {
-  dataDir = mkdtempSync(join(tmpdir(), "idh-blueprints-"));
+  dataDir = mkdtempSync(join(tmpdir(), "settle-blueprints-"));
   core = createCore({ dataDir, clock: () => new Date("2026-09-14T10:00:00.000Z") });
 });
 afterEach(() => {

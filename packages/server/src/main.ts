@@ -10,11 +10,11 @@ const server = await startServer(config).catch((error: unknown) => {
   }
   if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE") throw error;
   console.error(
-    `Port ${config.port} is in use. Is the app already running? IDH_PORT picks another.`,
+    `Port ${config.port} is in use. Is the app already running? SETTLE_PORT picks another.`,
   );
   process.exit(1);
 });
-console.log(`Interior Design Harness on ${server.url} (data in ${config.dataDir})`);
+console.log(`Settle on ${server.url} (data in ${config.dataDir})`);
 if (server.lanUrl) {
   console.log(
     `LAN mode: phones on this network open Quick Guides at ${server.lanUrl}/guide/<token>, the ` +

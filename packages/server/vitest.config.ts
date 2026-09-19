@@ -4,7 +4,7 @@ export default defineConfig({
   // Resolve workspace packages to their TypeScript sources, as `tsx --conditions` does in dev.
   ssr: {
     resolve: {
-      conditions: ["@idh/source", "node", "import", "default"],
+      conditions: ["@settle/source", "node", "import", "default"],
     },
   },
   test: {

@@ -7,11 +7,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # plugin/test-support/live-server/.mcp.json names this port, and this Home slug unless a case's
-# EVAL_IDH_HOME names another.
+# EVAL_SETTLE_HOME names another.
 PORT=4390
 HOME_SLUG=fixture-home
 BASE="http://127.0.0.1:${PORT}"
-DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/idh-live-XXXXXX")"
+DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/settle-live-XXXXXX")"
 SERVER_LOG="${DATA_DIR}/server.log"
 SERVER_PID=""
 
@@ -36,10 +36,10 @@ if curl -s -o /dev/null "${BASE}/health"; then
 fi
 
 echo "Building the server..."
-pnpm --filter "@idh/server..." build >/dev/null
+pnpm --filter "@settle/server..." build >/dev/null
 
 echo "Starting the server on ${PORT} (data in ${DATA_DIR})..."
-IDH_PORT="${PORT}" IDH_DATA_DIR="${DATA_DIR}" setsid pnpm --filter @idh/server start \
+SETTLE_PORT="${PORT}" SETTLE_DATA_DIR="${DATA_DIR}" setsid pnpm --filter @settle/server start \
   >"${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 
@@ -75,7 +75,7 @@ blueprint="$(node -e '
   fail "upload_blueprint should have made the one-page Blueprint ${BLUEPRINT_SLUG}; it answered: ${response}"
 
 # The Color case's Home: a second Home with a Locked Design Direction, which the case picks with
-# EVAL_IDH_HOME. A Locked Direction on the fixture Home would change what the Design Direction case
+# EVAL_SETTLE_HOME. A Locked Direction on the fixture Home would change what the Design Direction case
 # sees, since that case saves the Home's first Direction.
 COLOR_HOME_SLUG=fixture-flat
 echo "Creating ${COLOR_HOME_SLUG} with a Locked Design Direction..."
@@ -90,7 +90,7 @@ node scripts/seed-live-direction.mjs "${BASE}/mcp/homes/${COLOR_HOME_SLUG}" ||
   fail "Seeding the Design Direction of ${COLOR_HOME_SLUG} failed."
 
 # The Purchase case's Home: a third Home with a Locked Design Direction and a Locked Palette, which
-# the case picks with EVAL_IDH_HOME. A Locked Palette on Fixture Flat would change what the Color
+# the case picks with EVAL_SETTLE_HOME. A Locked Palette on Fixture Flat would change what the Color
 # case sees, since that case saves the Home's first Palette.
 PURCHASE_HOME_SLUG=fixture-loft
 echo "Creating ${PURCHASE_HOME_SLUG} with a Locked Design Direction and Palette..."
@@ -106,7 +106,7 @@ node scripts/seed-live-palette.mjs "${BASE}/mcp/homes/${PURCHASE_HOME_SLUG}" ||
 
 status=0
 claude plugin eval ./plugin --eval-dir evals-live --mocks off \
-  --allow-tools "mcp__plugin_live-server_int-design-harness__*" \
+  --allow-tools "mcp__plugin_live-server_settle__*" \
   --trust-plugin --ablation none --no-publish --runs 1 --max-cost-usd 4 \
   --model claude-sonnet-5 "$@" || status=$?
 exit "${status}"

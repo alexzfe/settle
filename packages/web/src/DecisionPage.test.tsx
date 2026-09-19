@@ -1,4 +1,4 @@
-import type { PaletteColor } from "@idh/core";
+import type { PaletteColor } from "@settle/core";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BasisEntry, DecisionDetail, DecisionState, DecisionSummary, Flag, Home } from "./api";

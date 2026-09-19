@@ -1,5 +1,5 @@
 {
-  "name": "@idh/web",
+  "name": "@settle/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "react-router": "catalog:"
   },
   "devDependencies": {
-    "@idh/core": "workspace:*",
+    "@settle/core": "workspace:*",
     "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",

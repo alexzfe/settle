@@ -118,7 +118,7 @@ This conversation runs in a Home Folder, and every Session held here belongs to 
 
 ### App not running
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Interior Design Harness app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "The Settle app isn't running. Start it, then reconnect with /mcp." Do nothing else until the tools are back.
 
 ### Opening
 

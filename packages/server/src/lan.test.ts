@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { type NetworkInterfaceInfo, tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFixtureHome, type FixtureHome, type GetDecisionResult } from "@idh/core";
+import { createFixtureHome, type FixtureHome, type GetDecisionResult } from "@settle/core";
 import type { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createLanApp, lanAddress } from "./lan.js";
@@ -99,7 +99,7 @@ describe("LAN mode on real listeners", () => {
   let root: string;
   let server: RunningServer;
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), "idh-lan-"));
+    root = mkdtempSync(join(tmpdir(), "settle-lan-"));
     // 127.0.0.2 stands in for the LAN address: another address of this machine, which the
     // loopback listener on 127.0.0.1 does not cover.
     server = await startServer({

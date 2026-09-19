@@ -8,8 +8,8 @@ import type { HomeRow } from "./store.js";
 // Claude Code owns .claude/settings.local.json (the server approval lands there), so this never
 // reads or writes it, and only .mcp.json says which Home a folder belongs to.
 
-/** The server key in .mcp.json, so the Agent's tools are mcp__int-design-harness__<tool>. */
-export const MCP_SERVER_KEY = "int-design-harness";
+/** The server key in .mcp.json, so the Agent's tools are mcp__settle__<tool>. */
+export const MCP_SERVER_KEY = "settle";
 
 const HOME_URL = /\/mcp\/homes\/([^/?#]+)/;
 

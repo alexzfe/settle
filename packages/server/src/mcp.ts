@@ -1,6 +1,6 @@
-import { type AnyOperation, type Core, CoreError } from "@idh/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { type AnyOperation, type Core, CoreError } from "@settle/core";
 
 /**
  * The backstop from docs/specs/skill-set.md#rule-enforcement, in case compaction drops the Skill
@@ -57,7 +57,7 @@ export async function handleMcpRequest(
 
 function buildServer(core: Core, tools: AnyOperation[], home: string): McpServer {
   const server = new McpServer(
-    { name: "int-design-harness", version: "0.0.1" },
+    { name: "settle", version: "0.0.1" },
     { instructions: SERVER_INSTRUCTIONS },
   );
   for (const tool of tools) {

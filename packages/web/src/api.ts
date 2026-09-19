@@ -22,7 +22,7 @@ import type {
   RoomDetail,
   SetDecisionStateWebInput,
   UploadBlueprintResult,
-} from "@idh/core";
+} from "@settle/core";
 
 export type {
   BasisEntry,
@@ -62,9 +62,9 @@ export type {
   ShoppingEntry,
   Wall,
   Window,
-} from "@idh/core";
+} from "@settle/core";
 
-// @idh/core's own `Surface` names which adapters offer an operation, and it shadows the schema's
+// @settle/core's own `Surface` names which adapters offer an operation, and it shadows the schema's
 // Surface record in the package's exports; the record's type is taken from the Room detail.
 export type Surface = RoomDetail["surfaces"][number];
 

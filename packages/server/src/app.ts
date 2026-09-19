@@ -1,4 +1,4 @@
-import type { Core } from "@idh/core";
+import type { Core } from "@settle/core";
 import { Hono, type MiddlewareHandler } from "hono";
 import {
   handleApi,

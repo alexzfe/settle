@@ -14,10 +14,10 @@ const PLACEHOLDER_PAGE = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Interior Design Harness</title>
+    <title>Settle</title>
   </head>
   <body>
-    <h1>Interior Design Harness</h1>
+    <h1>Settle</h1>
     <p>The server is running, but the web UI has not been built. Run <code>pnpm build</code> and
     restart, or run <code>pnpm dev</code> and open the Vite URL.</p>
   </body>

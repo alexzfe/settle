@@ -1,5 +1,5 @@
 {
-  "name": "int-design-harness",
+  "name": "settle",
   "private": true,
   "type": "module",
   "engines": {
@@ -7,15 +7,15 @@
     "pnpm": ">=12"
   },
   "scripts": {
-    "dev": "concurrently --kill-others --names server,web --prefix-colors blue,magenta \"pnpm --filter @idh/server dev\" \"pnpm --filter @idh/web dev\"",
+    "dev": "concurrently --kill-others --names server,web --prefix-colors blue,magenta \"pnpm --filter @settle/server dev\" \"pnpm --filter @settle/web dev\"",
     "build": "pnpm --recursive build",
     "test": "vitest run",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "plugin:build": "pnpm --filter @idh/skills build",
+    "plugin:build": "pnpm --filter @settle/skills build",
     "plugin:eval": "claude plugin eval ./plugin --trust-plugin --ablation none --no-publish --model claude-sonnet-5",
     "plugin:eval:live": "bash scripts/plugin-eval-live.sh",
-    "start": "pnpm --filter @idh/server start"
+    "start": "pnpm --filter @settle/server start"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
