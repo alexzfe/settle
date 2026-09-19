@@ -352,7 +352,7 @@ describe("home_folder_setup", () => {
       'curl -fsSL "http://127.0.0.1:4380/api/home_folder_script?home=my-flat" | sh',
     );
     expect(setup.pluginInstall).toBe(
-      "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle",
+      "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle --scope project",
     );
     expect(setup.files.map((file) => file.path)).toEqual([".mcp.json", ".claude/settings.json"]);
     expect(JSON.parse(setup.files[0]?.content ?? "")).toEqual({

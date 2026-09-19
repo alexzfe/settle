@@ -214,7 +214,7 @@ export function HomeFolderSetup({ home }: { home: Home }) {
           <CopyButton text={command} label="Copy the command" />
         </li>
         <li>
-          <p>Once on each computer, install the Settle plugin:</p>
+          <p>Then, once in that folder, install the Settle plugin for it:</p>
           <pre>
             <code>{pluginInstall}</code>
           </pre>

@@ -12,10 +12,14 @@ export const PLUGIN_REPO = "alexzfe/settle";
 /** The plugin's name in that marketplace. */
 export const PLUGIN_NAME = "settle";
 
-/** Once on each computer: registers the marketplace and installs the plugin. */
+/**
+ * Run inside the Home Folder: registers the marketplace for the user (once per computer) and
+ * installs the plugin for this folder only, since a plugin from a GitHub marketplace does not load
+ * until it is installed, and a user-scope install would put the Skills in every session.
+ */
 export const PLUGIN_INSTALL =
   `claude plugin marketplace add ${PLUGIN_REPO} && ` +
-  `claude plugin install ${PLUGIN_NAME}@${PLUGIN_MARKETPLACE}`;
+  `claude plugin install ${PLUGIN_NAME}@${PLUGIN_MARKETPLACE} --scope project`;
 
 export interface HomeFolderFile {
   /** Relative to the Home Folder. */
@@ -116,7 +120,7 @@ export function homeFolderScript(origin: string, homeSlug: string): string {
     'if [ -n "$kept" ]; then echo "Kept the files that were there as$kept."; fi',
     `echo "This folder is now the Home Folder of the Home \\"$home\\"."`,
     "echo",
-    "echo 'Once on each computer, install the Settle plugin:'",
+    "echo 'Then, once in this folder, install the Settle plugin for it:'",
     `echo '  ${PLUGIN_INSTALL}'`,
     "echo",
     "echo 'Run `claude` here.'",

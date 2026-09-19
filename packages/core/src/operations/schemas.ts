@@ -1021,7 +1021,7 @@ export const homeFolderSetupResult = z.object({
   origin: z.string(),
   /** curl -fsSL "<origin>/api/home_folder_script?home=<slug>" | sh */
   command: z.string(),
-  /** Once on each computer: adds the plugin marketplace and installs the plugin. */
+  /** Run once inside the folder: adds the plugin marketplace and installs the plugin for it. */
   pluginInstall: z.string(),
   /** What the script writes, relative to the folder: .mcp.json, then .claude/settings.json. */
   files: z.array(z.object({ path: z.string(), content: z.string() })),
