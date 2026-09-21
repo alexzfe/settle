@@ -71,7 +71,7 @@ A dated picture of one Room or of a single Item, kept by the platform. Inspirati
 _Avoid_: Image, picture
 
 **Provenance**:
-Where a measurement or color came from: **Measured** by the user, printed on a **Blueprint**, or **Estimated** by eye (from a Photo, scaled off a drawing, or guessed). For a color, Measured means identified exactly, e.g. by a paint code from the tin. Confirming an Estimated value does not make it Measured.
+Where a measurement, color, or fact about an Item came from: **Measured** by the user, printed on a **Blueprint**, **Listed** on the product's Listing (the maker's or shop's figures, e.g. copied onto an Item when a Purchase Decision is Fulfilled), or **Estimated** by eye (from a Photo, scaled off a drawing, or guessed). For a color, Measured means identified exactly, e.g. by a paint code from the tin. Confirming an Estimated or Listed value does not make it Measured.
 _Avoid_: Source, confidence
 
 **Note**:
