@@ -635,3 +635,41 @@ it("gives a size only for a four-Walled Room with its first two lengths", () => 
   expect(roomSize(walls)).toBe("4.20 × ~3.60 m");
   expect(roomSize(walls.slice(0, 3))).toBeUndefined();
 });
+
+it("links each Item, and a light that is an Item, to the Item's page", async () => {
+  stubRoom(livingRoom);
+  renderRoutes("/homes/flat/rooms/living-room");
+  const lamps = await screen.findAllByRole("link", { name: "Floor lamp" });
+  expect(lamps.map((link) => link.getAttribute("href"))).toEqual([
+    "/homes/flat/items/floor-lamp",
+    "/homes/flat/items/floor-lamp",
+  ]);
+  expect(screen.getByRole("link", { name: "Sofa" }).getAttribute("href")).toBe(
+    "/homes/flat/items/sofa",
+  );
+});
+
+it("shows the live Items, with a switch for any Archived ones", async () => {
+  const room = livingRoom();
+  const archived = {
+    slug: "old-rug",
+    name: "Old rug",
+    category: "rugs" as const,
+    quantity: 1,
+    archivedAt: "2026-09-01T12:00:00Z",
+  };
+  stubRoom(() => ({ ...room, items: [...room.items, archived] }));
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByRole("link", { name: "Sofa" });
+  expect(screen.queryByText("Old rug")).toBeNull();
+  fireEvent.click(screen.getByLabelText("Show Archived (1)"));
+  expect(screen.getByRole("link", { name: "Old rug" })).toBeDefined();
+  localStorage.clear();
+});
+
+it("has no Archived switch when every Item is live", async () => {
+  stubRoom(livingRoom);
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByRole("link", { name: "Sofa" });
+  expect(screen.queryByLabelText(/Show Archived/)).toBeNull();
+});

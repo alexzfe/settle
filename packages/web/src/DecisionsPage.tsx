@@ -15,6 +15,7 @@ import { SwatchSquare } from "./Swatch";
 import { buildPrompt } from "./ui/AskAgent";
 import { useDocumentTitle } from "./ui/documentTitle";
 import { EmptyState } from "./ui/EmptyState";
+import { ShowSwitch, useRememberedSwitch } from "./ui/ShowArchived";
 import { FlagMark, FulfilledNote, StatePill } from "./ui/StatePill";
 import { Parts } from "./Values";
 
@@ -108,15 +109,25 @@ export function DecisionsPage() {
   };
   const review = search.get("view") === "review";
   const query = search.get("q") ?? "";
-  const decisions = useDecisions(home, filter);
+  // Archived Decisions come only when asked for; the switch below keeps them out of sight.
+  const decisions = useDecisions(home, { ...filter, archived: true });
   const homeQuery = useHome(home);
   const error = decisions.error ?? homeQuery.error;
   const filtered = filter.state !== undefined || filter.kind !== undefined || review || query;
-  const shown = decisions.data
+  const [showOld, setShowOld] = useRememberedSwitch("settle.decisions.showRejectedArchived");
+  const matched = decisions.data
     ? matchingTitle(decisions.data.decisions, query).filter(
         (decision) => !review || needsReview(decision),
       )
     : [];
+  // The clutter rule: Rejected and Archived Decisions stay out of sight unless the switch is on.
+  // Filtering on the Rejected state asks for the Rejected ones, so only the Archived stay hidden.
+  const old = matched.filter(
+    (decision) =>
+      decision.archivedAt !== undefined ||
+      (decision.state === "rejected" && filter.state !== "rejected"),
+  );
+  const shown = showOld ? matched : matched.filter((decision) => !old.includes(decision));
   return (
     <>
       <h1>Decisions</h1>
@@ -148,13 +159,19 @@ export function DecisionsPage() {
           title="Kind"
           options={DECISION_KINDS.map((kind) => [kind, KIND_LABEL[kind]])}
         />
+        <ShowSwitch
+          label="Show Rejected / Archived"
+          count={old.length}
+          on={showOld}
+          onChange={setShowOld}
+        />
       </div>
       {error ? (
         <p className={styles.error}>{error.message}</p>
       ) : !decisions.data || !homeQuery.data ? (
         <p>Loading…</p>
       ) : shown.length === 0 ? (
-        filtered ? (
+        filtered || old.length > 0 ? (
           <EmptyState text="No Decisions match." />
         ) : (
           <EmptyState
@@ -273,9 +290,9 @@ function FilterLinks({
 function DecisionRow({ home, decision }: { home: string; decision: DecisionSummary }) {
   const [flag, ...moreFlags] = decision.openFlags;
   const [conflict, ...moreConflicts] = decision.openConflicts;
-  const rejected = decision.state === "rejected";
+  const faded = decision.state === "rejected" || decision.archivedAt !== undefined;
   return (
-    <div className={`${page.row} ${rejected ? page.rejected : ""}`}>
+    <div className={`${page.row} ${faded ? page.rejected : ""}`}>
       <span className={page.title}>
         <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>
         {decision.colors && decision.colors.length > 0 && (
@@ -291,6 +308,7 @@ function DecisionRow({ home, decision }: { home: string; decision: DecisionSumma
       <span className={page.state}>
         <StatePill state={decision.state} />
         {decision.fulfilledAt && <FulfilledNote />}
+        {decision.archivedAt && <span className={styles.tag}>Archived</span>}
       </span>
       <span className={page.review}>
         {flag && (

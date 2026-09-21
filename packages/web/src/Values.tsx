@@ -5,17 +5,22 @@ import type { BlueprintSource, Light, Provenance } from "@settle/core";
 import { Children, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import { formatDate, formatLength, type Measure, provenanceText } from "./format";
+import { formatDate, formatLength, type LengthUnit, type Measure, provenanceText } from "./format";
 import values from "./Values.module.css";
 
 /** What the "estimate" tag's tooltip says. */
 export const ESTIMATE_NOTE =
   "Estimated by eye: from a Photo, scaled off a drawing, or guessed. Measure it to be sure.";
 
+/** What the "Listed" tag's tooltip says. */
+export const LISTED_NOTE =
+  "From the Listing: the maker's or shop's figure, not checked here. Measure it to be sure.";
+
 /**
  * A value's Provenance, kept quiet: a Measured value reads plain (nothing is shown), an Estimated
- * one gets a small "estimate" tag with a tooltip, and a value printed on a Blueprint a chip that
- * links to the page it is printed on, with the text as printed: "Blueprint p.2: 12'6"".
+ * one gets a small "estimate" tag with a tooltip, a Listed one a "Listed" chip saying it came from
+ * the Listing, and a value printed on a Blueprint a chip that links to the page it is printed on,
+ * with the text as printed: "Blueprint p.2: 12'6"".
  */
 export function ProvenanceTag({
   provenance,
@@ -33,6 +38,7 @@ export function ProvenanceTag({
       </span>
     );
   }
+  if (provenance === "listed") return <ListedTag />;
   if (source) {
     return (
       <Link
@@ -47,11 +53,20 @@ export function ProvenanceTag({
   return <span className={`${values.tag} ${values.blueprint}`}>{provenanceText(provenance)}</span>;
 }
 
+/** The "Listed" chip, for a Listed value or a register field copied from the Listing. */
+export function ListedTag() {
+  return (
+    <span className={`${values.tag} ${values.listed}`} title={LISTED_NOTE}>
+      Listed
+    </span>
+  );
+}
+
 /** A length with its Provenance: "~3.60 m estimate", or "3.60 m" when Measured. */
-export function Length({ value }: { value: Measure }) {
+export function Length({ value, unit }: { value: Measure; unit?: LengthUnit }) {
   return (
     <span className={values.length}>
-      {formatLength(value)}
+      {formatLength(value, unit)}
       {value.provenance !== "measured" && (
         <>
           {" "}
@@ -68,7 +83,10 @@ export function Length({ value }: { value: Measure }) {
  * tagged once, at the end, unless they come from a Blueprint: each tag then shows where it is
  * printed.
  */
-export function dimensions(parts: [label: string, value: Measure | undefined][]): ReactNode {
+export function dimensions(
+  parts: [label: string, value: Measure | undefined][],
+  unit?: LengthUnit,
+): ReactNode {
   const present = parts.filter((part): part is [string, Measure] => part[1] !== undefined);
   const [first] = present;
   if (!first) return undefined;
@@ -76,7 +94,9 @@ export function dimensions(parts: [label: string, value: Measure | undefined][])
     ([, value]) => value.provenance === first[1].provenance && value.source === undefined,
   );
   if (shared) {
-    const text = present.map(([label, value]) => `${label} ${formatLength(value)}`).join(" × ");
+    const text = present
+      .map(([label, value]) => `${label} ${formatLength(value, unit)}`)
+      .join(" × ");
     return (
       <span className={values.length}>
         {text}
@@ -93,7 +113,7 @@ export function dimensions(parts: [label: string, value: Measure | undefined][])
     <Parts separator=" × ">
       {present.map(([label, value]) => (
         <span key={label}>
-          {label} <Length value={value} />
+          {label} <Length value={value} unit={unit} />
         </span>
       ))}
     </Parts>

@@ -8,7 +8,12 @@ import { homeInput, sessionInput } from "./scope.js";
 
 // ─── Fixed lists (docs/specs/home-model.md#fixed-lists) ─────────────────────────────────────
 
-export const PROVENANCES = ["measured", "blueprint", "estimated"] as const;
+/** In strength order, strongest first. Only an Item's sizes and colors may be Listed. */
+export const PROVENANCES = ["measured", "blueprint", "listed", "estimated"] as const;
+/** The Provenances of the building's values: a Room, Wall, or Surface is never Listed. */
+export const BUILDING_PROVENANCES = ["measured", "blueprint", "estimated"] as const;
+/** The Item fields that can be copied from a Listing and tagged Listed, besides sizes and colors. */
+export const LISTED_FIELDS = ["boughtFrom", "pricePaid", "link"] as const;
 export const ROOM_FUNCTIONS = [
   "kitchen",
   "dining",
@@ -82,6 +87,7 @@ export type Quarter = (typeof QUARTERS)[number];
 export type ImageType = (typeof IMAGE_TYPES)[number];
 
 export type Provenance = (typeof PROVENANCES)[number];
+export type ListedField = (typeof LISTED_FIELDS)[number];
 export type RoomFunction = (typeof ROOM_FUNCTIONS)[number];
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 export type FeatureKind = (typeof FEATURE_KINDS)[number];
@@ -101,9 +107,23 @@ export type Condition = (typeof CONDITIONS)[number];
 
 // Kept short: every length and color repeats it in the tool schemas, and each write tool's
 // description states the Provenance rule in full.
+export const buildingProvenanceSchema = z
+  .enum(BUILDING_PROVENANCES, {
+    error: (issue) =>
+      issue.input === "listed"
+        ? "listed is only for an Item's sizes and colors, the maker's or shop's figures: the " +
+          "building's values are measured, blueprint, or estimated"
+        : undefined,
+  })
+  .describe("measured (by the user), blueprint (printed on one), or estimated (by eye, guessed).");
+
+/** An Item's: its sizes and colors may also be the maker's or shop's figures. */
 export const provenanceSchema = z
   .enum(PROVENANCES)
-  .describe("measured (by the user), blueprint (printed on one), or estimated (by eye, guessed).");
+  .describe(
+    "measured (by the user), blueprint (printed on one), listed (the maker's or shop's " +
+      "figure), or estimated (by eye, guessed).",
+  );
 
 /** Where a Blueprint value is printed. The Blueprint and its page must exist in the Home. */
 export const blueprintSourceSchema = z.object({
@@ -116,15 +136,20 @@ export const blueprintSourceSchema = z.object({
   printed: z.string().trim().min(1).describe(`The text exactly as printed, e.g. 12'6" or 3.62.`),
 });
 
-/** A length with its Provenance, in whole millimetres. */
-export const measurementSchema = z.object({
+/** A length of the building with its Provenance, in whole millimetres: never Listed. */
+export const buildingMeasurementSchema = z.object({
   mm: z.number().int().min(0).describe("Whole millimetres: 3.62 m is 3620."),
-  provenance: provenanceSchema,
+  provenance: buildingProvenanceSchema,
   source: blueprintSourceSchema.optional().describe("With blueprint Provenance only."),
 });
 
+/** A length with its Provenance, which may be Listed: an Item's, and every length read back. */
+export const measurementSchema = buildingMeasurementSchema.extend({
+  provenance: provenanceSchema,
+});
+
 /** One color: a paint, a fabric's color. The same shape in Surfaces, Items, and the Palette. */
-export const colorSchema = z.object({
+export const buildingColorSchema = z.object({
   name: z.string().trim().min(1).describe('A paint\'s name, or a description ("warm grey").'),
   brand: z.string().trim().min(1).optional().describe("The paint maker."),
   code: z.string().trim().min(1).optional().describe("The maker's code."),
@@ -139,8 +164,16 @@ export const colorSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional()
     .describe("Approximate, for the screen only."),
-  provenance: provenanceSchema.describe(
+  provenance: buildingProvenanceSchema.describe(
     "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye).",
+  ),
+});
+
+/** An Item's color, which may be Listed, and every color read back. */
+export const colorSchema = buildingColorSchema.extend({
+  provenance: provenanceSchema.describe(
+    "measured (identified exactly, e.g. a code from the tin), listed (as the maker or shop " +
+      "names it), or estimated (judged by eye).",
   ),
 });
 
@@ -180,7 +213,7 @@ export const surfaceInput = z.object({
     .array(materialSchema)
     .optional()
     .describe("Its materials, replacing any recorded. Usually one; a floor may have several."),
-  color: colorSchema.optional(),
+  color: buildingColorSchema.optional(),
   finish: z
     .string()
     .trim()
@@ -190,8 +223,12 @@ export const surfaceInput = z.object({
 });
 
 export type Measurement = z.infer<typeof measurementSchema>;
+/** A length of the building: never Listed. */
+export type BuildingMeasurement = z.infer<typeof buildingMeasurementSchema>;
 export type BlueprintSource = z.infer<typeof blueprintSourceSchema>;
 export type Color = z.infer<typeof colorSchema>;
+/** A color of the building or the Palette: never Listed. */
+export type BuildingColor = z.infer<typeof buildingColorSchema>;
 export type Light = z.infer<typeof lightSchema>;
 export type Material = z.infer<typeof materialSchema>;
 export type SurfaceInput = z.infer<typeof surfaceInput>;
@@ -280,9 +317,9 @@ export const saveHomeInput = z.object({
     .optional()
     .describe('The building\'s approximate age, e.g. "1890s terrace", "1970s block".'),
   lift: z.boolean().optional().describe("Whether the building has a lift."),
-  liftDoorWidth: measurementSchema.optional().describe("The lift door's clear width."),
-  liftCarDepth: measurementSchema.optional().describe("The lift car's depth."),
-  accessWidth: measurementSchema
+  liftDoorWidth: buildingMeasurementSchema.optional().describe("The lift door's clear width."),
+  liftCarDepth: buildingMeasurementSchema.optional().describe("The lift car's depth."),
+  accessWidth: buildingMeasurementSchema
     .optional()
     .describe("The width of the narrowest point on the way into the Home."),
   accessNote: text
@@ -315,7 +352,7 @@ export const wallInput = z.object({
       "Wall: position 2 of living-room is living-room/wall-2. A rectangular Room has Walls 1-4, " +
       "an L-shaped one 1-6. Saving a position that exists changes that Wall.",
   ),
-  length: measurementSchema
+  length: buildingMeasurementSchema
     .optional()
     .describe("The Wall's length. Wall lengths are the Room's dimensions."),
   facing: z
@@ -362,12 +399,12 @@ export const windowInput = z.object({
     .optional()
     .describe("For a roof window: the direction the roof slope faces."),
   kind: z.enum(WINDOW_KINDS).optional().describe("standard, bay, or roof."),
-  width: measurementSchema.optional(),
-  height: measurementSchema.optional(),
-  sillHeight: measurementSchema
+  width: buildingMeasurementSchema.optional(),
+  height: buildingMeasurementSchema.optional(),
+  sillHeight: buildingMeasurementSchema
     .optional()
     .describe("Sill height above the floor: it decides what fits beneath."),
-  offset: measurementSchema
+  offset: buildingMeasurementSchema
     .optional()
     .describe("From the Wall's start corner (clockwise) to the Window's near edge."),
   glass: z
@@ -405,9 +442,11 @@ export const doorInput = z.object({
   otherWall: wallPosition
     .optional()
     .describe("The position of the other Room's Wall the Door is in, when known."),
-  clearWidth: measurementSchema.optional().describe("Clear width, for getting furniture in."),
-  height: measurementSchema.optional(),
-  offset: measurementSchema
+  clearWidth: buildingMeasurementSchema
+    .optional()
+    .describe("Clear width, for getting furniture in."),
+  height: buildingMeasurementSchema.optional(),
+  offset: buildingMeasurementSchema
     .optional()
     .describe(
       "Along this Room's Wall, from its start corner (clockwise) to the Door's near edge. Only " +
@@ -436,9 +475,9 @@ export const featureInput = z.object({
   description: text.max(200).optional().describe('What it is; needed when the kind is "other".'),
   wall: wallPosition.optional().describe("The position of the Wall it is on or against."),
   positionNote: text.max(200).optional().describe('Where it is, e.g. "under the window".'),
-  width: measurementSchema.optional(),
-  height: measurementSchema.optional(),
-  depth: measurementSchema.optional(),
+  width: buildingMeasurementSchema.optional(),
+  height: buildingMeasurementSchema.optional(),
+  depth: buildingMeasurementSchema.optional(),
   light: lightSchema.optional().describe("For a Feature that gives light, such as a downlight."),
   archive: archiveInput,
   archiveReason: archiveReasonInput,
@@ -477,7 +516,7 @@ export const saveRoomInput = z.object({
       "true for a balcony you can step onto, a terrace, patio, or garden. A railing-only " +
         "(Juliet) balcony is not a Room but a glazed Door to outside.",
     ),
-  ceilingHeight: measurementSchema.optional().describe("The full ceiling height."),
+  ceilingHeight: buildingMeasurementSchema.optional().describe("The full ceiling height."),
   timesOfUse: z
     .array(z.enum(TIMES_OF_USE))
     .optional()
@@ -538,6 +577,44 @@ export type FeatureInput = z.input<typeof featureInput>;
 
 // ─── save_items ─────────────────────────────────────────────────────────────────────────────
 
+/** "2024", "2024-03", or "2024-03-14": as much of the date as the user knows. */
+const REGISTER_DATE = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
+const REGISTER_DATE_ERROR =
+  'A date is a year, a month, or a day, as much as is known: "2024", "2024-03", or "2024-03-14"';
+
+export const registerDate = z
+  .string()
+  .trim()
+  .regex(REGISTER_DATE, { error: REGISTER_DATE_ERROR })
+  .refine(
+    (value) => {
+      const [, year, month, day] = REGISTER_DATE.exec(value) ?? [];
+      if (month === undefined) return true;
+      if (Number(month) < 1 || Number(month) > 12) return false;
+      if (day === undefined) return true;
+      const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+      return date.getUTCMonth() === Number(month) - 1 && date.getUTCDate() === Number(day);
+    },
+    { error: REGISTER_DATE_ERROR },
+  );
+
+/** An Item's register: the owner's facts, recorded when the user mentions them. */
+const registerInput = {
+  boughtOn: registerDate
+    .optional()
+    .describe('When it was bought: "2024", "2024-03", or "2024-03-14", as much as is known.'),
+  boughtFrom: text.max(100).optional().describe('The shop it was bought from, e.g. "Falabella".'),
+  pricePaid: text
+    .max(40)
+    .optional()
+    .describe('What was paid, with the currency, e.g. "£450", "S/ 1,299".'),
+  warrantyUntil: registerDate
+    .optional()
+    .describe('When its warranty ends, as precisely as known: "2027", "2027-03", "2027-03-14".'),
+  serialNumber: text.max(100).optional(),
+  manualLink: z.url().optional().describe("The maker's manual, support, or warranty page."),
+};
+
 export const itemInput = z.object({
   item: slugInput
     .optional()
@@ -584,9 +661,9 @@ export const itemInput = z.object({
   condition: z.enum(CONDITIONS).optional().describe("good, worn, or damaged."),
   brand: text.max(100).optional(),
   model: text.max(100).optional(),
-  price: text.max(40).optional().describe('What it cost, with the currency, e.g. "£450".'),
   link: z.url().optional().describe("A link to the product page."),
   light: lightSchema.optional().describe("For an Item that gives light, such as a lamp."),
+  ...registerInput,
   archive: archiveInput,
   archiveReason: archiveReasonInput,
 });
@@ -905,11 +982,18 @@ export const itemSchema = z.object({
   condition: z.enum(CONDITIONS).optional(),
   brand: z.string().optional(),
   model: z.string().optional(),
-  price: z.string().optional(),
+  pricePaid: z.string().optional(),
   link: z.string().optional(),
   light: lightSchema.optional(),
   archivedAt: z.string().optional(),
   archivedReason: z.string().optional(),
+  boughtOn: z.string().optional(),
+  boughtFrom: z.string().optional(),
+  warrantyUntil: z.string().optional(),
+  serialNumber: z.string().optional(),
+  manualLink: z.string().optional(),
+  /** Which of boughtFrom, pricePaid, link came from a Listing and have not been edited since. */
+  listed: z.array(z.enum(LISTED_FIELDS)).optional(),
 });
 
 /** A light source in a Room: the Item or Feature that carries the light attributes. */
@@ -939,6 +1023,7 @@ export const roomDetailSchema = z.object({
   /** The Room's own Surfaces, in the order walls, ceiling, floor, woodwork; only those recorded. */
   surfaces: z.array(surfaceSchema),
   features: z.array(featureSchema),
+  /** Live ones; get_room adds the Room's Archived ones after them, marked archivedAt. */
   items: z.array(itemSchema),
   lights: z.array(lightSourceSchema),
   /** What advice needs but is missing, e.g. "ceiling height". */
@@ -1153,7 +1238,7 @@ export const DECISION_KIND_SCOPES: Record<DecisionKind, "home" | "room" | "eithe
 const line = text.max(200);
 
 /** One color of the Palette: a Color value with its role. */
-export const paletteColorSchema = colorSchema.extend({
+export const paletteColorSchema = buildingColorSchema.extend({
   role: z.enum(PALETTE_ROLES).describe("base, secondary, or accent."),
   note: line.optional().describe('Where it is meant to go, e.g. "walls throughout".'),
 });
@@ -1513,6 +1598,13 @@ export const recordFulfilmentInput = z.object({
       "Purchase: each Requirement what was bought differs from, with the difference. A " +
         "Deviation from a must flags every Decision resting on this Purchase.",
     ),
+  listing: slugInput
+    .optional()
+    .describe(
+      "Purchase: the slug of the Listing bought, one of this Purchase's. With `item`, the new " +
+        "Item's link, price paid, and shop are copied from it, tagged Listed, and it is bought " +
+        "today; anything given in `item` wins.",
+    ),
   item: fulfilmentItemInput
     .optional()
     .describe("Purchase: the Item bought, added to the Inventory. Leave out when it is a Feature."),
@@ -1832,6 +1924,10 @@ export const listDecisionsInput = z.object({
   room: slugInput.optional().describe("Only the Decisions about this Room (its slug)."),
   kind: z.enum(DECISION_KINDS).optional(),
   state: z.enum(DECISION_STATES).optional(),
+  archived: z
+    .boolean()
+    .optional()
+    .describe("true to include Archived Decisions, marked archivedAt."),
 });
 
 export const resolveFlagInput = z.object({
@@ -1916,6 +2012,8 @@ export const decisionSummarySchema = z.object({
   openConflicts: z.array(conflictSchema),
   /** A Palette's colors, for swatches in a list; absent for every other kind. */
   colors: z.array(paletteColorSchema).optional(),
+  /** When it was Archived; only list_decisions with archived: true returns Archived Decisions. */
+  archivedAt: z.string().optional(),
 });
 
 /** A Decision of the Basis. */
@@ -1987,6 +2085,8 @@ export const fulfilmentSchema = z.object({
   feature: z.string().optional(),
   /** Purchase: the Feature it replaced, now Archived, by slug. */
   replacedFeature: z.string().optional(),
+  /** Purchase: the Listing bought, by slug. It can no longer be dropped. */
+  listing: z.string().optional(),
 });
 
 /**
@@ -2295,3 +2395,127 @@ export const exportResult = z.object({
 export type ShoppingEntry = z.infer<typeof shoppingEntrySchema>;
 export type GetShoppingResult = z.infer<typeof getShoppingResult>;
 export type ExportResult = z.infer<typeof exportResult>;
+
+// ─── The Item page: get_item, edit_item (web only) ──────────────────────────────────────────
+
+const itemSlugInput = slugInput.describe("The Item's slug.");
+
+/** get_item: one Item's page, Archived ones too. */
+export const getItemInput = z.object({ home: homeInput, item: itemSlugInput });
+
+/** A size typed on the page: measured unless the user switches it to estimated. */
+const editedLength = z
+  .object({
+    mm: z.number().int().min(0),
+    provenance: z.enum(["measured", "estimated"], {
+      error: "A size edited on the page is measured or estimated",
+    }),
+  })
+  .nullable()
+  .optional();
+
+const editedText = (max: number) => text.max(max).nullable().optional();
+
+const EDITABLE =
+  "bought on, bought from, price paid, warranty until, serial number, manual link, the three " +
+  "sizes, brand, model, link, condition, colors, materials, and position note";
+
+/**
+ * edit_item: the pencil. Only the fields the page edits; an absent field is untouched, null clears
+ * it. Name, category, quantity, Room, Wall, and archiving are Session work.
+ */
+export const editItemInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  fields: z.strictObject(
+    {
+      boughtOn: registerDate.nullable().optional(),
+      boughtFrom: editedText(100),
+      pricePaid: editedText(40),
+      warrantyUntil: registerDate.nullable().optional(),
+      serialNumber: editedText(100),
+      manualLink: z.url().nullable().optional(),
+      width: editedLength,
+      depth: editedLength,
+      height: editedLength,
+      brand: editedText(100),
+      model: editedText(100),
+      link: z.url().nullable().optional(),
+      condition: z.enum(CONDITIONS).nullable().optional(),
+      colors: z.array(colorSchema).nullable().optional(),
+      materials: z.array(text.max(60)).nullable().optional(),
+      positionNote: editedText(200),
+    },
+    {
+      error: (issue) =>
+        issue.code === "unrecognized_keys"
+          ? `${issue.keys.join(", ")} can't be edited on the page, only ${EDITABLE}: renaming, ` +
+            "moving, or archiving an Item is done in a Session"
+          : undefined,
+    },
+  ),
+});
+
+export type GetItemInput = z.input<typeof getItemInput>;
+export type EditItemInput = z.input<typeof editItemInput>;
+
+/** One Decision tied to an Item, and how. */
+export const itemDecisionSchema = z.object({
+  relation: z.enum(["relies-on", "bought-by", "replaced-by"]),
+  slug: z.string(),
+  title: z.string(),
+  state: z.enum(DECISION_STATES),
+  fulfilled: z.boolean(),
+  archived: z.boolean(),
+  /** relies-on only: the Requirements whose reason is this Item. */
+  requirements: z
+    .array(
+      z.object({
+        position: z.number(),
+        text: z.string(),
+        strength: z.enum(STRENGTHS),
+        field: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/** One change event of an Item's history: its changes of one moment, from one origin. */
+export const itemHistoryEntrySchema = z.object({
+  at: z.string(),
+  /** A Session's slug, or "web". */
+  origin: z.string(),
+  /** The Session's Skills, for its label ("Purchase Session"); absent for "web". */
+  skills: z.array(z.string()).optional(),
+  /** field absent = the Item was created; field "archivedAt" = it was archived. */
+  changes: z.array(
+    z.object({
+      field: z.string().optional(),
+      old: z.unknown().optional(),
+      new: z.unknown().optional(),
+      reason: z.string().optional(),
+    }),
+  ),
+});
+
+/** get_item: an Item's page. */
+export const itemPageSchema = z.object({
+  item: itemSchema,
+  /** The Items this one replaced. */
+  replaces: z.array(namedRefSchema).optional(),
+  /** The Item that replaced this one. */
+  replacedBy: namedRefSchema.optional(),
+  /**
+   * The bought Listing's stored picture. The web builds
+   * /api/get_listing_photo?home=<home>&listing=<listing>&v=<photoVersion>.
+   */
+  picture: z.object({ listing: z.string(), photoVersion: z.string() }).optional(),
+  /** Empty when nothing relates. */
+  decisions: z.array(itemDecisionSchema),
+  /** Newest first. One entry per (at, origin). */
+  history: z.array(itemHistoryEntrySchema),
+});
+
+export type ItemDecision = z.infer<typeof itemDecisionSchema>;
+export type ItemHistoryEntry = z.infer<typeof itemHistoryEntrySchema>;
+export type ItemPage = z.infer<typeof itemPageSchema>;

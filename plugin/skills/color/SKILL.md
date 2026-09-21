@@ -166,7 +166,7 @@ The same goes for Decisions: say every Decision you save and every state change 
 
 ### Refused writes
 
-The server never replaces a value with one of weaker Provenance (Measured beats Blueprint beats Estimated) unless the user says so. Leave that comparison to the server: save what the user gives, with its own Provenance.
+The server never replaces a value with one of weaker Provenance (Measured beats Blueprint beats Listed beats Estimated) unless the user says so. Leave that comparison to the server: save what the user gives, with its own Provenance.
 
 When a write comes back refused for weaker Provenance, whether the whole write or one refused part in its receipt:
 

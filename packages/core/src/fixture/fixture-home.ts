@@ -44,6 +44,9 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * Purchase's best rating; and an "Oak bookcase"
  * Purchase, Fulfilled with a Deviation from a must and one from a prefer, whose new Item replaced
  * the Billy bookcase and whose Deviation flagged the Candidate "Books by color" resting on it.
+ * The Item page adds a register to the Unplaced standing desk (bought 2023, £350, warranty until
+ * June 2028), and a Listing to the Oak bookcase, named as bought when it was Fulfilled: the new
+ * Item's link and shop are copied from it, tagged Listed, and its price paid, given, is not.
  */
 export const FIXTURE_ROOMS = [
   { name: "Living room", level: "ground" },
@@ -330,7 +333,9 @@ export async function createFixtureHome(
         name: "Standing desk",
         category: "tables",
         positionNote: "boxed since the move",
-        price: "£350",
+        pricePaid: "£350",
+        boughtOn: "2023",
+        warrantyUntil: "2028-06",
       },
       { name: "Old armchair", category: "seating", room: "living-room" },
     ],
@@ -673,6 +678,19 @@ export async function createFixtureHome(
       },
     ],
   });
+  await core.run("record_listing", withPurchase, {
+    session: purchase,
+    decision: "oak-bookcase",
+    name: "Solid oak bookcase",
+    url: "https://www.example.com/solid-oak-bookcase",
+    price: "£640",
+    dimensions: { width: 850, depth: 300, height: 1900 },
+    checks: [
+      { requirement: 1, result: "fail", note: "85 cm wide" },
+      { requirement: 2, result: "pass", note: "solid oak" },
+      { requirement: 3, result: "fail", note: "open shelves to the floor" },
+    ],
+  });
   await purchaseMove("oak-bookcase", "locked", `The user: "that's the one, lock it"`);
   await core.run("save_decision", withPurchase, {
     session: purchase,
@@ -702,8 +720,9 @@ export async function createFixtureHome(
       depth: measured(300),
       height: measured(1900),
       materials: ["oak"],
-      price: "£620",
+      pricePaid: "£620",
     },
+    listing: "solid-oak-bookcase",
     replacesItem: "bookcase",
   });
   await core.run("close_session", withPurchase, {

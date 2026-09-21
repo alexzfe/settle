@@ -17,6 +17,7 @@ import { DecisionsPage } from "./DecisionsPage";
 import { FindButton, FindProvider } from "./find/Find";
 import { HomeListPage } from "./HomeListPage";
 import { HomePage } from "./HomePage";
+import { ItemPage } from "./ItemPage";
 import { ItemsPage } from "./ItemsPage";
 import { useLiveUpdates } from "./liveUpdates";
 import { useHomes } from "./queries";
@@ -54,6 +55,7 @@ export const routes: RouteObject[] = [
           { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
           { path: "shopping", element: <ShoppingPage /> },
           { path: "items", element: <ItemsPage /> },
+          { path: "items/:item", element: <ItemPage /> },
           { path: "log", element: <ChangeLogPage /> },
           { path: "sessions/:session", element: <SessionPage /> },
         ],

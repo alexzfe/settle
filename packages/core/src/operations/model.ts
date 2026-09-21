@@ -295,11 +295,17 @@ export function toItem(model: HomeModel, item: ItemRow): Item {
       condition: item.condition,
       brand: item.brand,
       model: item.model,
-      price: item.price,
+      pricePaid: item.pricePaid,
       link: item.link,
       light: item.light,
       archivedAt: item.archivedAt,
       archivedReason: item.archivedReason,
+      boughtOn: item.boughtOn,
+      boughtFrom: item.boughtFrom,
+      warrantyUntil: item.warrantyUntil,
+      serialNumber: item.serialNumber,
+      manualLink: item.manualLink,
+      listed: item.listedFields?.length ? item.listedFields : undefined,
     }),
   };
 }

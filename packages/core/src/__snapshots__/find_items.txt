@@ -2,13 +2,13 @@
 - Sofa (sofa): seating; in Living room (living-room), against living-room/wall-6; 2.10 × 0.95 × 0.85 m (W × D × H); ~warm grey; linen; worn
 - Dining chair (dining-chair): seating; ×6; in Living room (living-room), dining end; oak
 - Pendant lamp (pendant-lamp): lighting; in Living room (living-room), on the ceiling point
-- Oak bookcase (oak-bookcase): storage; in Living room (living-room), against living-room/wall-4; 0.85 × 0.30 × 1.90 m (W × D × H); oak; £620
+- Oak bookcase (oak-bookcase): storage; in Living room (living-room), against living-room/wall-4; 0.85 × 0.30 × 1.90 m (W × D × H); oak; bought 2026-09-14; from *example.com; paid £620
 - Kitchen table (kitchen-table): tables; in Kitchen (kitchen); width 1.20 m
 - Double bed (double-bed): beds; in Main bedroom (main-bedroom), against main-bedroom/wall-2; 1.60 × 2.10 m (W × D)
-- Standing desk (standing-desk): tables; Unplaced; £350
+- Standing desk (standing-desk): tables; Unplaced; bought 2023; paid £350; warranty until 2028-06
 
 # Unplaced
-- Standing desk (standing-desk): tables; Unplaced; £350
+- Standing desk (standing-desk): tables; Unplaced; bought 2023; paid £350; warranty until 2028-06
 
 # seating, Archived included
 - Sofa (sofa): seating; in Living room (living-room), against living-room/wall-6; 2.10 × 0.95 × 0.85 m (W × D × H); ~warm grey; linen; worn
@@ -17,7 +17,7 @@
 
 # text "oak"
 - Dining chair (dining-chair): seating; ×6; in Living room (living-room), dining end; oak
-- Oak bookcase (oak-bookcase): storage; in Living room (living-room), against living-room/wall-4; 0.85 × 0.30 × 1.90 m (W × D × H); oak; £620
+- Oak bookcase (oak-bookcase): storage; in Living room (living-room), against living-room/wall-4; 0.85 × 0.30 × 1.90 m (W × D × H); oak; bought 2026-09-14; from *example.com; paid £620
 
 # the balcony
 No Items match.

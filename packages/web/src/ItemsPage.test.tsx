@@ -96,7 +96,7 @@ it("lists the Inventory in a table in Room order, and includes Archived Items on
       materials: ["linen"],
       condition: "worn",
       brand: "Muji",
-      price: "€900",
+      pricePaid: "€900",
       link: "https://example.com/sofa",
     }),
     item("dining-chair", "Dining chair", "kitchen", { category: "seating", quantity: 6 }),
@@ -120,32 +120,31 @@ it("lists the Inventory in a table in Room order, and includes Archived Items on
   ]);
   expect(rows()).toEqual([
     [
-      "▸Sofa" + "Seating",
+      "Sofa" + "Seating",
       "Living room",
       "W 2.10 m × D ~0.95 m estimate",
       "~Oatmeal estimatelinen",
       "Worn",
     ],
-    ["▸Dining chair×6" + "Seating", "Kitchen", "", "", ""],
-    ["▸Boxed lamp" + "Lighting", "Unplaced", "", "", ""],
+    ["Dining chair ×6" + "Seating", "Kitchen", "", "", ""],
+    ["Boxed lamp" + "Lighting", "Unplaced", "", "", ""],
   ]);
   expect(screen.getByRole("link", { name: "Kitchen" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/kitchen",
   );
 
-  // A row expands for brand, price, and links.
-  fireEvent.click(screen.getByRole("button", { name: /Sofa/ }));
-  expect(rows()[1]).toEqual(["BrandMujiPrice€900Linkproduct page"]);
-  expect(screen.getByRole("link", { name: "product page" }).getAttribute("href")).toBe(
-    "https://example.com/sofa",
+  // A row opens the Item's page; it no longer expands in place.
+  expect(screen.getByRole("link", { name: "Sofa" }).getAttribute("href")).toBe(
+    "/homes/flat/items/sofa",
   );
+  expect(screen.queryByRole("button", { expanded: false })).toBeNull();
+  expect(screen.queryByText("Muji")).toBeNull();
   expect(screen.queryByText("Old rug")).toBeNull();
 
   fireEvent.click(screen.getByLabelText("Include Archived"));
 
-  expect(await screen.findByText("Old rug")).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: /Old rug/ }));
-  expect(screen.getByText(/^Archived \d/).textContent).toContain("worn out");
+  const oldRug = await screen.findByRole("link", { name: "Old rug" });
+  expect(oldRug.getAttribute("href")).toBe("/homes/flat/items/old-rug");
   expect(inputsTo(fetch, "list_items")).toEqual([
     { home: "flat", archived: false },
     { home: "flat", archived: true },
@@ -162,10 +161,10 @@ it("finds Items by name, and shows only the Unplaced ones on request", async () 
   await screen.findByText("Mirror");
 
   fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "sofa" } });
-  expect(rows().map((row) => row[0])).toEqual(["▸SofaDecor", "▸Sofa cushionsDecor"]);
+  expect(rows().map((row) => row[0])).toEqual(["SofaDecor", "Sofa cushionsDecor"]);
 
   fireEvent.click(screen.getByLabelText("Unplaced only"));
-  expect(rows().map((row) => row[0])).toEqual(["▸Sofa cushionsDecor"]);
+  expect(rows().map((row) => row[0])).toEqual(["Sofa cushionsDecor"]);
 
   fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "lamp" } });
   expect(screen.getByText("No Items match.")).toBeDefined();

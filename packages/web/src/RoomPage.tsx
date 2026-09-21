@@ -16,7 +16,7 @@ import { type ReactNode, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import type { DecisionSummary, Room, Surface } from "./api";
-import { decisionPath, KIND_LABEL } from "./decisions";
+import { decisionPath, itemPath, KIND_LABEL } from "./decisions";
 import {
   compass,
   formatColor,
@@ -35,6 +35,7 @@ import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { useDocumentTitle } from "./ui/documentTitle";
 import { Section } from "./ui/Section";
+import { ShowSwitch, useRememberedSwitch } from "./ui/ShowArchived";
 import { FlagMark, FulfilledNote, StatePill } from "./ui/StatePill";
 import { ArchivedNote, dimensions, Fact, Length, lightText, Parts, ProvenanceTag } from "./Values";
 
@@ -100,6 +101,7 @@ function RoomSheet({
   home: Home | undefined;
   rooms: Room[];
 }) {
+  const { home: homeSlug = "" } = useParams();
   const walls = room.walls.toSorted((a, b) => a.position - b.position);
   const wallSlugs = new Set(walls.map((wall) => wall.slug));
   const roofWindows = room.windows.filter((window) => window.wall === "roof");
@@ -173,7 +175,13 @@ function RoomSheet({
           <ul className={page.compact}>
             {room.lights.map((source) => (
               <li key={`${source.source}:${source.slug}`}>
-                <strong>{source.name}</strong>{" "}
+                <strong>
+                  {source.source === "item" ? (
+                    <Link to={itemPath(homeSlug, source.slug)}>{source.name}</Link>
+                  ) : (
+                    source.name
+                  )}
+                </strong>{" "}
                 <span className={styles.muted}>
                   ({source.source === "item" ? "Item" : "Feature"})
                 </span>
@@ -184,13 +192,7 @@ function RoomSheet({
         )}
       </Section>
 
-      <Section title="Items">
-        {room.items.length === 0 ? (
-          <p className={styles.muted}>No Items in this Room.</p>
-        ) : (
-          <ItemList items={room.items} />
-        )}
-      </Section>
+      <RoomItems items={room.items} />
 
       <Section title="Decisions">
         <RoomDecisions decisions={decisions} />
@@ -259,6 +261,36 @@ function Banner({ room, walls }: { room: RoomDetail; walls: Wall[] }) {
         </p>
       )}
     </header>
+  );
+}
+
+/**
+ * The Room's live Items, with a "Show Archived (n)" switch when get_room gives Archived ones too
+ * (after the live ones).
+ */
+function RoomItems({ items }: { items: RoomDetail["items"] }) {
+  const { home = "" } = useParams();
+  const [showArchived, setShowArchived] = useRememberedSwitch("settle.room.showArchivedItems");
+  const archived = items.filter((item) => item.archivedAt).length;
+  const shown = showArchived ? items : items.filter((item) => !item.archivedAt);
+  return (
+    <Section
+      title="Items"
+      action={
+        <ShowSwitch
+          label="Show Archived"
+          count={archived}
+          on={showArchived}
+          onChange={setShowArchived}
+        />
+      }
+    >
+      {shown.length === 0 ? (
+        <p className={styles.muted}>No Items in this Room.</p>
+      ) : (
+        <ItemList home={home} items={shown} />
+      )}
+    </Section>
   );
 }
 

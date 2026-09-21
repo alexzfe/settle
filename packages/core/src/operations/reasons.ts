@@ -51,9 +51,14 @@ export const REASON_FIELDS: Record<RequirementReasonKind, readonly string[]> = {
     "condition",
     "brand",
     "model",
-    "price",
+    "pricePaid",
     "link",
     "light",
+    "boughtOn",
+    "boughtFrom",
+    "warrantyUntil",
+    "serialNumber",
+    "manualLink",
   ],
 };
 

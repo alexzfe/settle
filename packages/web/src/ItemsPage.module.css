@@ -1,4 +1,4 @@
-/* The Items page: a compact table with name search and filters. */
+/* The Items page: a compact table with name search and filters; a row's name opens its page. */
 
 .filters {
   display: flex;
@@ -25,31 +25,6 @@
   font-size: var(--text-sm);
 }
 
-.expand {
-  display: inline-flex;
-  gap: var(--space-1);
-  align-items: baseline;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-ink);
-  font-size: var(--text-sm);
-  font-weight: 400;
-  text-align: left;
-}
-
-.expand:hover {
-  border: 0;
-  background: none;
-  color: var(--color-accent-strong);
-}
-
-.caret {
-  width: 0.8em;
-  color: var(--color-ink-muted);
-  font-size: var(--text-xs);
-}
-
 .name {
   font-weight: 600;
 }
@@ -61,7 +36,6 @@
 
 .category {
   display: block;
-  padding-left: calc(0.8em + var(--space-1));
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
 }
@@ -83,16 +57,6 @@
 
 .archived .name {
   text-decoration: line-through;
-}
-
-.detailRow > td {
-  padding-top: 0;
-  background: var(--color-card);
-}
-
-.details {
-  margin: 0;
-  padding-left: calc(0.8em + var(--space-1));
 }
 
 .list {

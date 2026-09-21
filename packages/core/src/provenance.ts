@@ -1,9 +1,10 @@
 import type { Color, Measurement, Provenance } from "./operations/schemas.js";
 
 // The Provenance rule (docs/specs/home-model.md#rules-the-home-model-owns): a value is never
-// replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so.
+// replaced by one of weaker Provenance (measured > blueprint > listed > estimated) unless the user
+// says so. Only an Item's sizes and colors are ever Listed: the maker's or shop's figures.
 
-const STRENGTH: Record<Provenance, number> = { estimated: 0, blueprint: 1, measured: 2 };
+const STRENGTH: Record<Provenance, number> = { estimated: 0, listed: 1, blueprint: 2, measured: 3 };
 
 /**
  * What to do with an incoming value: store it ("set"), leave the record as it is ("unchanged",

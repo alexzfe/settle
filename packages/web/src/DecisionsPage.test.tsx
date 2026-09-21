@@ -60,6 +60,10 @@ const decisions: DecisionSummary[] = [
     ],
   }),
   summary("old-sofa", "Keep the old sofa", "purchase", "rejected", { room: livingRoom }),
+  summary("old-rug", "A jute rug", "purchase", "locked", {
+    room: livingRoom,
+    archivedAt: "2026-09-10T12:00:00Z",
+  }),
 ];
 
 beforeEach(() => {
@@ -70,6 +74,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  localStorage.clear();
 });
 
 function stubList(listed: () => DecisionSummary[] = () => decisions) {
@@ -79,7 +84,9 @@ function stubList(listed: () => DecisionSummary[] = () => decisions) {
     list_decisions: (input) => ({
       decisions: listed().filter(
         (each) =>
-          (!input.state || each.state === input.state) && (!input.kind || each.kind === input.kind),
+          (!input.state || each.state === input.state) &&
+          (!input.kind || each.kind === input.kind) &&
+          (input.archived === true || !each.archivedAt),
       ),
     }),
   });
@@ -103,7 +110,7 @@ it("lists every Decision by scope: Home-wide first, then each Room in the Home's
   const fetch = stubList();
   renderRoutes("/homes/flat/decisions");
   await screen.findByText("Reading nook");
-  expect(inputsTo(fetch, "list_decisions")).toEqual([{ home: "flat" }]);
+  expect(inputsTo(fetch, "list_decisions")).toEqual([{ home: "flat", archived: true }]);
   expect(groups()).toEqual([
     [
       "Home-wide",
@@ -112,13 +119,7 @@ it("lists every Decision by scope: Home-wide first, then each Room in the Home's
         "Earthy palette | Palette | ●Locked | Conflict: The new rug's red clashes with the accent.",
       ],
     ],
-    [
-      "Living room",
-      [
-        "Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened",
-        "Keep the old sofa | Purchase | ✕Rejected | ",
-      ],
-    ],
+    ["Living room", ["Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened"]],
     ["Hallway", ["Reading nook | Room use | ○Candidate | "]],
   ]);
   // A flag says it is one to screen readers, not by its color alone.
@@ -129,6 +130,51 @@ it("lists every Decision by scope: Home-wide first, then each Room in the Home's
   expect(screen.getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/living-room",
   );
+});
+
+it("hides Rejected and Archived Decisions behind one switch, which it remembers", async () => {
+  const fetch = stubList();
+  const { unmount } = renderRoutes("/homes/flat/decisions");
+  await screen.findByText("Reading nook");
+  expect(screen.queryByText("Keep the old sofa")).toBeNull();
+  expect(screen.queryByText("A jute rug")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Show Rejected / Archived (2)"));
+  expect(groups()[1]).toEqual([
+    "Living room",
+    [
+      "Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened",
+      "Keep the old sofa | Purchase | ✕Rejected | ",
+      "A jute rug | Purchase | ●LockedArchived | ",
+    ],
+  ]);
+  expect(inputsTo(fetch, "list_decisions")).toEqual([{ home: "flat", archived: true }]);
+  unmount();
+
+  renderRoutes("/homes/flat/decisions");
+  expect(await screen.findByText("Keep the old sofa")).toBeDefined();
+});
+
+it("shows Rejected Decisions when filtered on Rejected, keeping Archived ones behind the switch", async () => {
+  stubList(() => [
+    ...decisions,
+    summary("old-lamp", "A brass lamp", "purchase", "rejected", {
+      archivedAt: "2026-09-10T12:00:00Z",
+    }),
+  ]);
+  renderRoutes("/homes/flat/decisions?state=rejected");
+  expect(await screen.findByText("Keep the old sofa")).toBeDefined();
+  expect(screen.queryByText("A brass lamp")).toBeNull();
+  expect(screen.getByLabelText("Show Rejected / Archived (1)")).toBeDefined();
+});
+
+it("has no switch when nothing is Rejected or Archived", async () => {
+  stubList(() =>
+    decisions.filter((decision) => decision.state !== "rejected" && !decision.archivedAt),
+  );
+  renderRoutes("/homes/flat/decisions");
+  await screen.findByText("Reading nook");
+  expect(screen.queryByLabelText(/Show Rejected/)).toBeNull();
 });
 
 it("filters by state and by kind with plain links, each keeping the other", async () => {
@@ -153,10 +199,10 @@ it("filters by state and by kind with plain links, each keeping the other", asyn
   fireEvent.click(within(filters("State")).getByRole("link", { name: "All" }));
   await waitFor(() => expect(router.state.location.search).toBe("?kind=palette"));
   expect(inputsTo(fetch, "list_decisions")).toEqual([
-    { home: "flat" },
-    { home: "flat", state: "locked" },
-    { home: "flat", state: "locked", kind: "palette" },
-    { home: "flat", kind: "palette" },
+    { home: "flat", archived: true },
+    { home: "flat", state: "locked", archived: true },
+    { home: "flat", state: "locked", kind: "palette", archived: true },
+    { home: "flat", kind: "palette", archived: true },
   ]);
 });
 
@@ -208,7 +254,11 @@ it("shows the Decisions needing review, the Leaning ones, or those whose title m
   await waitFor(() => expect(screen.queryByText("Reading nook")).toBeNull());
   expect(router.state.location.search).toBe("?q=CALM+low");
   expect(groups()).toHaveLength(1);
-  expect(inputsTo(fetch, "list_decisions")).toContainEqual({ home: "flat", state: "leaning" });
+  expect(inputsTo(fetch, "list_decisions")).toContainEqual({
+    home: "flat",
+    state: "leaning",
+    archived: true,
+  });
 });
 
 it("shows a Palette's colors as small swatches in its row, and a Fulfilled note", async () => {

@@ -312,3 +312,14 @@
   stroke: var(--color-error);
   stroke-width: 2.75;
 }
+
+/* ShowSwitch: the clutter rule's quiet switch for Archived or Rejected records. */
+.showSwitch {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}

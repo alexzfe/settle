@@ -45,7 +45,7 @@ describe("find_index", () => {
     });
     const count = (kind: FindRow["kind"]) => rows.filter((each) => each.kind === kind).length;
     expect([count("room"), count("decision"), count("item"), count("listing")]).toEqual([
-      5, 10, 9, 3,
+      5, 10, 9, 4,
     ]);
     expect(count("feature")).toBe(8);
   });
@@ -78,13 +78,16 @@ describe("find_index", () => {
     core.close();
   });
 
-  it("reads an Unplaced Item as Unplaced, and opens every Item on the Items page", async () => {
+  it("reads an Unplaced Item as Unplaced, and opens every Item on its own page", async () => {
     expect(await row("item", "standing-desk")).toMatchObject({
       name: "Standing desk",
       where: "Unplaced",
-      path: "/homes/fixture-home/items",
+      path: "/homes/fixture-home/items/standing-desk",
     });
-    expect((await row("item", "sofa")).where).toBe("Living room");
+    expect(await row("item", "sofa")).toMatchObject({
+      where: "Living room",
+      path: "/homes/fixture-home/items/sofa",
+    });
   });
 
   it("reads a Decision without a Room as Home-wide, and one with a Room by its name", async () => {

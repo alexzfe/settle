@@ -25,7 +25,8 @@ export interface PrintedValue {
 
 /**
  * The values of a Room recorded from one page of a Blueprint, in Room Sheet order: ceiling
- * height, Walls, Windows, Doors, Features, then Items.
+ * height, Walls, Windows, Doors, Features, then Items. get_room also gives a Room's Archived
+ * Items, for the Room page's switch; they are no longer in the Room, so they are left out here.
  */
 export function printedValues(room: RoomDetail, blueprint: string, onPage: number): PrintedValue[] {
   const found: PrintedValue[] = [];
@@ -62,7 +63,7 @@ export function printedValues(room: RoomDetail, blueprint: string, onPage: numbe
   for (const feature of room.features) {
     look(feature.slug, feature.description ?? sentence(feature.kind), feature);
   }
-  for (const item of room.items) look(item.slug, item.name, item);
+  for (const item of room.items) if (!item.archivedAt) look(item.slug, item.name, item);
   return found;
 }
 

@@ -258,7 +258,7 @@ it("groups the Requirements under Must and Prefer, each reason linking to its re
   expect(href("Wall 2, length")).toBe("/homes/flat/rooms/living-room");
   expect(href("Two cats")).toBe("/homes/flat/about");
   expect(href("Warm clay")).toBe("/homes/flat/decisions/warm-clay");
-  expect(href("Grey sofa")).toBe("/homes/flat/items");
+  expect(href("Grey sofa")).toBe("/homes/flat/items/grey-sofa");
 });
 
 it("names a reason on a long Note by what comes before its colon, the whole text on hover", async () => {
@@ -456,8 +456,8 @@ it("shows what a Fulfilled Purchase bought, the Home changes, and its Deviations
       "Item addedhay-plain-rug" +
       "Item replaced (Archived)old-jute-rug",
   );
-  expect(href("hay-plain-rug")).toBe("/homes/flat/items");
-  expect(href("old-jute-rug")).toBe("/homes/flat/items");
+  expect(href("hay-plain-rug")).toBe("/homes/flat/items/hay-plain-rug");
+  expect(href("old-jute-rug")).toBe("/homes/flat/items/old-jute-rug");
   // The must's first, and marked as the one that flags the Decisions resting on this one.
   // The reason in brackets after the difference, as the receipt has it.
   expect(listAfter("Deviations")).toEqual([

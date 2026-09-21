@@ -25,7 +25,7 @@ Propose no Requirement before reading what it would rest on:
 - **What was ruled out.** Call `find_decisions` with `kind: "purchase"`, `state: "rejected"`, and the Room (or `homeWide: true` for a Home-wide Purchase). Never propose, recommend, or offer as an option a Purchase it lists, or one close to it under another name.
 - **Items elsewhere.** When the thing replaces or goes with an Item in another Room or Unplaced, find it with `find_items`, not more Room Sheets.
 
-In the Overview and a Room Sheet, a value with `~` before it is Estimated ("~3.70 m"), a `?` or a missing value is unrecorded, and any other value is Measured or printed on a Blueprint.
+In the Overview and a Room Sheet, a value with `~` before it is Estimated ("~3.70 m"), one with `*` is Listed, the maker's or shop's figure ("*1.53 m"), a `?` or a missing value is unrecorded, and any other value is Measured or printed on a Blueprint. Save an Item's size or color taken from a maker's or shop's page as `listed`, not `estimated`.
 
 ## The Purchase Decision
 
@@ -166,7 +166,8 @@ A Locked Purchase is Fulfilled when the thing is bought. Call `record_fulfilment
 - Call `record_fulfilment` with the Decision and:
   - `bought`: what was bought, in one line ("Hay Plain rug, 200 × 300 cm, rust, £450");
   - `deviations`: each with the Requirement's `requirement` position, the difference as `text`, and the user's `reason` when they gave one;
-  - `item`: the new Item, with its name, category, sizes, colors, materials, brand, price, and link, in the Purchase's Room unless the user says otherwise (`room`, or `unplaced: true` while it's boxed), plus `replacesItem` with the slug of the Item it replaces, which is Archived;
+  - `listing`: the slug of the Listing bought, when it is one of this Purchase's; the new Item takes its link, price, and shop;
+  - `item`: the new Item, with its name, category, sizes, colors, materials, and brand (sizes from the Listing as `listed`), and its `pricePaid` or `link` only when they differ from the Listing's, in the Purchase's Room unless the user says otherwise (`room`, or `unplaced: true` while it's boxed), plus `replacesItem` with the slug of the Item it replaces, which is Archived;
   - or, for a part of the building (a radiator, a light point), `feature` instead of `item`, and `replacesFeature`.
 - Say what changed from the receipt, naming every Decision it flagged: "Fulfilled: Purchase 'Living room rug'. Added the Wool rug to the Living room; the jute rug is Archived."
 

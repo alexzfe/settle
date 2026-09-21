@@ -21,6 +21,7 @@ export interface ColorText {
 export const PROVENANCE_LABEL: Record<Provenance, string> = {
   measured: "Measured",
   blueprint: "Blueprint",
+  listed: "Listed",
   estimated: "Estimated",
 };
 
@@ -44,9 +45,36 @@ export function metres(mm: number): string {
   return `${(Math.round(mm / 10) / 100).toFixed(2)} m`;
 }
 
-/** A length in metres with two decimals, "~" in front when it is Estimated: "~3.60 m". */
-export function formatLength(value: Measure): string {
-  return `${estimatedMark(value.provenance)}${metres(value.mm)}`;
+/** Millimetres in centimetres, to one decimal when there is one: 1530 is "153", 1535 "153.5". */
+export function cmFromMm(mm: number): string {
+  return String(Math.round(mm) / 10);
+}
+
+/**
+ * Centimetres as the user types them, "153" or "153,5", in whole millimetres: 1530 and 1535.
+ * Undefined when it is not a length. This is the one place a typed length becomes a stored one,
+ * so a feet-and-inches setting would change it here.
+ */
+export function mmFromCm(text: string): number | undefined {
+  const typed = text.trim().replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(typed)) return undefined;
+  return Math.round(Number(typed) * 10);
+}
+
+/** Millimetres in centimetres: 1535 is "153.5 cm". */
+export function centimetres(mm: number): string {
+  return `${cmFromMm(mm)} cm`;
+}
+
+export type LengthUnit = "m" | "cm";
+
+/**
+ * A length in metres with two decimals (or in centimetres), "~" in front when it is Estimated:
+ * "~3.60 m".
+ */
+export function formatLength(value: Measure, unit: LengthUnit = "m"): string {
+  const text = unit === "cm" ? centimetres(value.mm) : metres(value.mm);
+  return `${estimatedMark(value.provenance)}${text}`;
 }
 
 /** A color by name, with its maker and code when known: "~Setting Plaster (Farrow & Ball 231)". */

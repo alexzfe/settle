@@ -1,0 +1,324 @@
+/* An Item's page: the Decision page's header, then the register (the Listing's picture beside the
+   fact card), the Decisions tied to it, and its history. The pencil's form takes the card's place. */
+
+.header {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.heading {
+  min-width: 0;
+}
+
+.kind {
+  margin: 0;
+  color: var(--color-ink-muted);
+}
+
+/* Thumb-sized: 44 px square. */
+.pencil {
+  flex: none;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-size: var(--text-lg);
+}
+
+.replaces {
+  margin-block: var(--space-2) var(--space-4);
+}
+
+.register {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  max-width: 60rem;
+}
+
+@media (min-width: 48rem) {
+  .withPicture {
+    grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+  }
+}
+
+.picture {
+  margin: 0;
+}
+
+.picture img {
+  display: block;
+  width: 100%;
+  max-height: 20rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  object-fit: contain;
+}
+
+.picture figcaption {
+  margin-top: var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.card {
+  min-width: 0;
+}
+
+.facts {
+  margin: 0;
+  gap: var(--space-2) var(--space-5);
+  overflow-wrap: anywhere;
+}
+
+/* On a phone each term sits above its value, so long values get the card's full width. */
+@media (max-width: 30rem) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .facts dt {
+    font-size: var(--text-sm);
+  }
+
+  .facts dd + dt {
+    margin-top: var(--space-3);
+  }
+}
+
+.looks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+/* Decisions: the relation as a small label beside each Decision. */
+.relations,
+.history,
+.requirements,
+.exact {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relations > li {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.relations > li:last-child {
+  border-bottom: 0;
+}
+
+.relation {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.relationHead {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+}
+
+.requirements {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 30rem) {
+  .relations > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* History: one line per change event, opening to the exact values. */
+.history > li {
+  padding-block: var(--space-1);
+}
+
+/* Date, what happened, and the toggle at the end of the line, which keeps a 44 px target. */
+.historyLine {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) 2.75rem;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 2.75rem;
+  margin: 0;
+}
+
+.historyDate {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.historyLine .expand {
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--color-ink-muted);
+}
+
+.historyLine .expand:hover {
+  border-color: var(--color-hairline);
+  color: var(--color-ink);
+}
+
+.exact {
+  margin: 0 0 var(--space-2) calc(3.5rem + var(--space-3));
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 30rem) {
+  .exact {
+    margin-left: 0;
+  }
+}
+
+/* The pencil's form: one column of labelled boxes, every control at least 44 px tall. */
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.form input:not([type="radio"]),
+.form select,
+.form button {
+  min-height: 2.75rem;
+}
+
+.form input:not([type="radio"]),
+.form select {
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field > label,
+.group legend {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.hint {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+}
+
+.size {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: end;
+}
+
+.size .field {
+  flex: 1 1 8rem;
+}
+
+.withUnit {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Measured / Estimated as two joined segments. */
+.switch {
+  display: inline-flex;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+}
+
+.switch label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.switch label + label {
+  border-left: 1px solid var(--color-hairline);
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch label:has(input:checked) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-weight: 500;
+}
+
+.switch label:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.listRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.listRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.group > button {
+  justify-self: start;
+}
+
+.errors {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.buttons button {
+  min-width: 6rem;
+  justify-content: center;
+}

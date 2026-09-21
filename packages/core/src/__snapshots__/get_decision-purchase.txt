@@ -110,6 +110,9 @@ Requirements:
 2. must: Solid oak or oak veneer (reason: Decision Warm minimalism (warm-minimalism))
 3. prefer: Closed cupboards at the bottom, out of the cats' reach (reason: Constraint Two cats (two-cats))
 
+Listings:
+- Solid oak bookcase (solid-oak-bookcase), £640: 1 pass, 2 fail, 0 unknown; fails must 1 (At most 80 cm wide, to stand where the Billy stands)
+
 Deviations:
 - Requirement 1, must (At most 80 cm wide, to stand where the Billy stands): 85 cm wide, not at most 80 cm (the only oak one under £700; the alcove has 4 cm to spare)
 - Requirement 3, prefer (Closed cupboards at the bottom, out of the cats' reach): open shelves to the floor, no cupboards

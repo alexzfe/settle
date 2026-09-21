@@ -10,6 +10,7 @@ import {
   type FindItemsResult,
   findItemsInput,
   type itemInput,
+  type ListedField,
   type ListItemsResult,
   listItemsInput,
   type ReceiptResult,
@@ -32,11 +33,13 @@ export const saveItems = defineOperation({
     "change. An Item with no Room is Unplaced (boxed, or in off-site storage). Identical pieces " +
     "are one Item with a quantity (six dining chairs). An Item that is sold, broken, given away, " +
     "or replaced is Archived with archive: true and a reason, never deleted. Sizes are whole " +
-    "millimetres with a Provenance: measured, blueprint, or estimated; colors carry one too. A " +
-    "value is never replaced by one of weaker Provenance (measured > blueprint > estimated) " +
-    "unless the user says so: that part is refused, the receipt states both values, and only if " +
-    "the user agrees do you call again with overrideProvenance quoting their words. Needs the " +
-    "open Session's id as `session`.",
+    "millimetres with a Provenance: measured, blueprint, listed (the maker's or shop's " +
+    "figures), or estimated; colors carry one too. A value is never replaced by one of weaker " +
+    "Provenance (measured > blueprint > listed > estimated) unless the user says so: that part " +
+    "is refused, the receipt states both values, and only if the user agrees do you call again " +
+    "with overrideProvenance quoting their words. Record the register (boughtOn, boughtFrom, " +
+    "pricePaid, warrantyUntil, serialNumber, manualLink) when the user mentions it, and never " +
+    "ask for it. Needs the open Session's id as `session`.",
   input: saveItemsInput,
   readOnly: false,
   surface: "agent",
@@ -59,8 +62,10 @@ export const findItems = defineOperation({
   name: "find_items",
   description:
     "Lists Items of this Home, one line each: name and slug, category, where it is (its Room " +
-    "and Wall, or Unplaced), size, colors, materials, and condition. Values marked ~ are " +
-    "Estimated. Filter by Room, by Unplaced, by category, or by text; with no filter it lists " +
+    "and Wall, or Unplaced), size, colors, materials, condition, and whatever of its register " +
+    "is recorded (when and where it was bought, the price paid, the warranty, serial number, " +
+    "manual). Values marked ~ are Estimated; values marked * are Listed, the maker's or shop's " +
+    "figures. Filter by Room, by Unplaced, by category, or by text; with no filter it lists " +
     "the whole Inventory. Archived Items (sold, broken, replaced) are left out unless `archived` " +
     "is true. Use it to find an Item outside the Room being worked on, instead of fetching more " +
     "Room Sheets. Changes nothing.",
@@ -101,12 +106,16 @@ export const listItems = defineOperation({
   },
 });
 
-/** Adds an Item, or changes the one `item` names; returns it, with a receipt line. */
+/**
+ * Adds an Item, or changes the one `item` names; returns it, with a receipt line. A new Item's
+ * `listed` fields were copied from the Listing bought; a changed one's lose that tag.
+ */
 export function saveItem(
   context: OperationContext,
   model: HomeModel,
   writer: Writer,
   input: ItemIn,
+  listed: ListedField[] = [],
 ): ItemRow {
   const existing = input.item === undefined ? undefined : requireItem(model, input.item);
   if (input.room !== undefined && input.unplaced) {
@@ -138,9 +147,14 @@ export function saveItem(
     condition: input.condition,
     brand: input.brand,
     model: input.model,
-    price: input.price,
+    pricePaid: input.pricePaid,
     link: input.link,
     light: input.light,
+    boughtOn: input.boughtOn,
+    boughtFrom: input.boughtFrom,
+    warrantyUntil: input.warrantyUntil,
+    serialNumber: input.serialNumber,
+    manualLink: input.manualLink,
   };
 
   if (!existing) {
@@ -174,14 +188,25 @@ export function saveItem(
         condition: values.condition ?? null,
         brand: values.brand ?? null,
         model: values.model ?? null,
-        price: values.price ?? null,
+        pricePaid: values.pricePaid ?? null,
         link: values.link ?? null,
         light: values.light ?? null,
         archivedAt: null,
         archivedReason: null,
         replacedByItemId: null,
+        boughtOn: values.boughtOn ?? null,
+        boughtFrom: values.boughtFrom ?? null,
+        warrantyUntil: values.warrantyUntil ?? null,
+        serialNumber: values.serialNumber ?? null,
+        manualLink: values.manualLink ?? null,
+        listedFields: listed.length > 0 ? listed : null,
       },
-      { ...values, room: room?.slug, wall: wall?.slug },
+      {
+        ...values,
+        room: room?.slug,
+        wall: wall?.slug,
+        listed: listed.length > 0 ? listed : undefined,
+      },
     );
     model.items.push(created);
     const { name: _, ...shown } = values;
@@ -215,6 +240,7 @@ export function saveItem(
     );
   }
   fields.push(...writer.patch("items", "item", existing, subject, values));
+  untagListed(context, existing, fields);
   const done =
     input.archive === undefined
       ? undefined
@@ -230,7 +256,24 @@ export function saveItem(
   return existing;
 }
 
-function requireItem(model: HomeModel, slug: string): ItemRow {
+/**
+ * A value copied from a Listing stops being Listed once it is changed: the tag goes with the
+ * change, which the change log already records.
+ */
+export function untagListed(
+  context: OperationContext,
+  item: ItemRow,
+  changes: FieldChange[],
+): void {
+  if (!item.listedFields) return;
+  const changed = new Set(changes.map((change) => change.field));
+  const kept = item.listedFields.filter((field) => !changed.has(field));
+  if (kept.length === item.listedFields.length) return;
+  item.listedFields = kept.length > 0 ? kept : null;
+  context.store.update("items", item.id, { listedFields: item.listedFields });
+}
+
+export function requireItem(model: HomeModel, slug: string): ItemRow {
   const item = model.items.find((each) => each.slug === slug);
   if (item) return item;
   throw new CoreError(
@@ -257,6 +300,8 @@ function searchText(item: ItemRow): string {
     item.model,
     item.positionNote,
     item.category,
+    item.boughtFrom,
+    item.serialNumber,
     ...(item.materials ?? []),
     ...(item.colors ?? []).map((color) => color.name),
   ]

@@ -209,3 +209,26 @@ it("finds nothing on a page no value was recorded from", () => {
   expect(printedValues(kitchen(), "estate-agent-plan", 3)).toEqual([]);
   expect(printedValues(kitchen(), "other-plan", 2)).toEqual([]);
 });
+
+it("leaves out an Archived Item, which get_room gives for the Room page's switch", () => {
+  const item = (slug: string, name: string, extra = {}) => ({
+    slug,
+    name,
+    category: "tables" as const,
+    quantity: 1,
+    width: onPage(2, 1200, "1.20"),
+    ...extra,
+  });
+  const room = {
+    ...kitchen(),
+    items: [
+      item("table", "Table"),
+      item("old-table", "Old table", { archivedAt: "2026-09-01T12:00:00Z" }),
+    ],
+  };
+  expect(
+    printedValues(room, "estate-agent-plan", 2)
+      .map((value) => value.label)
+      .filter((label) => label.includes("able")),
+  ).toEqual(["Table width"]);
+});

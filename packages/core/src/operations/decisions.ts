@@ -53,7 +53,7 @@ import {
 } from "./purchase-views.js";
 import { reasonLabel, reasonRecord, resolveReason } from "./reasons.js";
 import {
-  type Color,
+  type BuildingColor,
   DECISION_CONTENT,
   DECISION_KIND_SCOPES,
   type DecisionDetail,
@@ -75,7 +75,9 @@ import {
   getDecisionInput,
   getDecisionWebInput,
   LEGAL_TRANSITIONS,
+  LISTED_FIELDS,
   type ListDecisionsResult,
+  type ListedField,
   listDecisionsInput,
   type PaletteColor,
   type PaletteContent,
@@ -322,7 +324,9 @@ export const recordFulfilment = defineOperation({
     "them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each " +
     "Requirement it differs from, by position, with the difference; `item` adds the Item bought " +
     "to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and " +
-    "`replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought " +
+    "`replacesItem` Archives the Item it replaces; name the Listing bought as `listing`, and " +
+    "the new Item takes its link, price paid, and shop, tagged Listed, and today as bought on; " +
+    "give sizes from the Listing in `item` as listed; `feature` adds a part of the building bought " +
     "(a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a " +
     "must flags every Decision resting on the Purchase for review; one from a prefer flags " +
     "nothing. It is refused while the Decision has an open flag or Conflict: ask the user, then " +
@@ -416,6 +420,7 @@ const FULFILMENT_FIELDS = {
   bought: "purchase",
   deviations: "purchase",
   item: "purchase",
+  listing: "purchase",
   replacesItem: "purchase",
   feature: "purchase",
   replacesFeature: "purchase",
@@ -513,6 +518,8 @@ function fulfilPurchase(
         "it is in.",
     );
   }
+  const listing =
+    input.listing === undefined ? undefined : boughtListing(model, decision, input.listing);
   requireSources(context.store, model.home, { item: input.item, feature: input.feature });
 
   const count = deviations.length;
@@ -553,13 +560,15 @@ function fulfilPurchase(
   const rooms: number[] = scope ? [scope.id] : [];
   let item: ItemRow | undefined;
   if (input.item) {
-    const { room, unplaced, ...rest } = input.item;
+    const { room, unplaced, ...given } = input.item;
     const where = unplaced ? undefined : (room ?? scope?.slug);
+    const { values: rest, listed } = fromListing(given, listing, at);
     item = saveItem(
       context,
       model,
       writer,
       where === undefined ? { ...rest, unplaced: true } : { ...rest, room: where },
+      listed,
     );
     if (item.roomId !== null) rooms.push(item.roomId);
   }
@@ -594,6 +603,7 @@ function fulfilPurchase(
       replacedItem: oldItem?.slug,
       feature: feature?.slug,
       replacedFeature: oldFeature?.slug,
+      listing: listing?.slug,
     }),
   };
   context.store.update("decisions", decision.id, { fulfilment });
@@ -602,6 +612,60 @@ function fulfilPurchase(
     writes.cascade(decision, "deviation");
   }
   return rooms;
+}
+
+/** The Listing a Purchase was Fulfilled with: one of its own. */
+function boughtListing(model: DecisionModel, decision: DecisionRow, slug: string): ListingRow {
+  const listing = model.listings.find((each) => each.slug === slug);
+  if (listing?.decisionId === decision.id) return listing;
+  const subject = titled(decision);
+  const own = model.listings.filter((each) => each.decisionId === decision.id);
+  const theirs = listing && model.decisions.find((each) => each.id === listing.decisionId);
+  throw new CoreError(
+    theirs ? "validation" : "not_found",
+    (theirs
+      ? `The Listing ${slug} belongs to ${titled(theirs)}, not ${subject}. `
+      : `This Home has no Listing "${slug}". `) +
+      (own.length > 0
+        ? `${subject}'s Listings are ${own.map((each) => each.slug).join(", ")}.`
+        : `${subject} has no Listings: leave out listing, or record the one bought first.`),
+  );
+}
+
+/**
+ * The Item bought, filled from the Listing bought: bought today, and its link, price, and shop
+ * (the link's host) copied and tagged Listed. What the Agent gave wins and is not tagged. The
+ * Listing's dimensions are free text and never copied: the Agent gives the sizes.
+ */
+function fromListing<
+  T extends { boughtOn?: string; boughtFrom?: string; pricePaid?: string; link?: string },
+>(given: T, listing: ListingRow | undefined, at: string): { values: T; listed: ListedField[] } {
+  if (!listing) return { values: given, listed: [] };
+  const copied: Partial<Record<ListedField, string>> = optional({
+    boughtFrom: listing.url ? shopOf(listing.url) : undefined,
+    pricePaid: listing.price,
+    link: listing.url,
+  });
+  const listed = LISTED_FIELDS.filter(
+    (field) => given[field] === undefined && copied[field] !== undefined,
+  );
+  return {
+    values: {
+      ...given,
+      boughtOn: given.boughtOn ?? at.slice(0, 10),
+      ...Object.fromEntries(listed.map((field) => [field, copied[field]])),
+    },
+    listed,
+  };
+}
+
+/** "falabella.com.pe", from a product page's URL. */
+function shopOf(url: string): string | undefined {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The Item or Feature a Purchase replaces: one of the Home's, not yet Archived. */
@@ -684,7 +748,7 @@ function fulfilRoomColor(
     );
   }
   const { role: _role, note: _note, ...value } = color;
-  const applied: Color = {
+  const applied: BuildingColor = {
     ...value,
     provenance: color.brand && color.code ? "measured" : "estimated",
   };
@@ -741,7 +805,7 @@ export const listDecisions = defineOperation({
   name: "list_decisions",
   description:
     "The Home's Decisions, Home-wide ones first and then each Room's, with their open flags and " +
-    "Conflicts; filtered by Room, kind, and state.",
+    "Conflicts; filtered by Room, kind, and state. Archived ones on request, marked archivedAt.",
   input: listDecisionsInput,
   readOnly: true,
   surface: "web",
@@ -1007,13 +1071,19 @@ export function sorted(model: DecisionModel, rows: DecisionRow[]): DecisionRow[]
 
 function filterDecisions(
   model: DecisionModel,
-  filter: { room?: string; homeWide?: boolean; kind?: DecisionKind; state?: DecisionState },
+  filter: {
+    room?: string;
+    homeWide?: boolean;
+    kind?: DecisionKind;
+    state?: DecisionState;
+    archived?: boolean;
+  },
 ): DecisionSummary[] {
   const room =
     filter.room === undefined ? undefined : requireRoom(model, filter.room, { archived: true });
   const rows = model.decisions.filter(
     (each) =>
-      active(each) &&
+      (filter.archived === true || active(each)) &&
       (room === undefined || each.scopeRoomId === room.id) &&
       (!filter.homeWide || each.scopeRoomId === null) &&
       (filter.kind === undefined || each.kind === filter.kind) &&
@@ -1095,6 +1165,7 @@ export function toSummary(model: DecisionModel, row: DecisionRow): DecisionSumma
     openConflicts: openConflicts(model, row).map((conflict) => toConflict(model, conflict)),
     ...optional({
       colors: row.kind === "palette" ? (row.content as PaletteContent).colors : undefined,
+      archivedAt: row.archivedAt,
     }),
   };
 }

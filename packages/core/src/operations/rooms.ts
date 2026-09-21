@@ -16,7 +16,7 @@ import {
   requireSources,
   requireWall,
 } from "./lookup.js";
-import { type HomeModel, loadHome, roomById, roomDetail, wallSlug } from "./model.js";
+import { type HomeModel, loadHome, roomById, roomDetail, toItem, wallSlug } from "./model.js";
 import {
   type doorInput,
   type featureInput,
@@ -121,7 +121,7 @@ export const getRoomSheet = defineOperation({
     "and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, " +
     "woodwork); its Features; its lights; one line per Item in it; one line per Decision about " +
     "it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked " +
-    "~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: " +
+    "~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: " +
     "the receipts of later writes keep your picture current. Don't fetch every Room up front; " +
     "the opening lists them all, and find_items finds an Item elsewhere. Values printed on a " +
     "Blueprint render plain; withSources adds after each one its Blueprint, page, and the text " +
@@ -148,7 +148,8 @@ export const getRoom = defineOperation({
   name: "get_room",
   description:
     "One Room with everything on its Room Sheet, for the Room page: its Candidate, Leaning, and " +
-    "Locked-but-not-Fulfilled Decisions too.",
+    "Locked-but-not-Fulfilled Decisions too, and its Archived Items after the live ones, marked " +
+    "archivedAt, for the page's Show Archived switch.",
   input: getRoomInput,
   readOnly: true,
   surface: "web",
@@ -157,7 +158,15 @@ export const getRoom = defineOperation({
     const room =
       model.rooms.find((each) => each.slug === input.room) ??
       requireRoom(model, input.room, { archived: true });
-    return { room: roomDetail(model, room), decisions: roomDecisions(model, room) };
+    const detail = roomDetail(model, room);
+    // The Room Sheet never shows Archived Items; the page keeps them behind a switch (Q9).
+    const archived = model.items
+      .filter((item) => item.roomId === room.id && !active(item))
+      .map((item) => toItem(model, item));
+    return {
+      room: { ...detail, items: [...detail.items, ...archived] },
+      decisions: roomDecisions(model, room),
+    };
   },
 });
 

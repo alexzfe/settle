@@ -514,7 +514,8 @@ export const dropListing = defineOperation({
   name: "drop_listing",
   description:
     "Drops one Listing from its Purchase: the row, its checks, and its stored picture all go, " +
-    "with one change-log entry and no reason asked for. Listings are meant to be culled.",
+    "with one change-log entry and no reason asked for. Listings are meant to be culled, except " +
+    "the one a Fulfilment names as bought, which is refused.",
   input: dropListingInput,
   readOnly: false,
   surface: "web",
@@ -523,6 +524,13 @@ export const dropListing = defineOperation({
     return context.write("web", (log) => {
       const model = loadDecisions(context.store, home);
       const { listing, decision } = requireListing(model, input.listing);
+      if (decision.fulfilment?.listing === listing.slug) {
+        throw new CoreError(
+          "referenced_cannot_delete",
+          `${listing.name} is the Listing bought when ${titled(decision)} was Fulfilled: the ` +
+            "Item it bought shows its picture, and the Fulfilment names it, so it can't be dropped.",
+        );
+      }
       const writer = new Writer(context, home, log, undefined);
       // listing_checks is the only foreign key into listings: a Deviation cites a Requirement.
       context.store.removeListingChecks(listing.id);

@@ -19,7 +19,7 @@ import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
 import { nodeFileStore, type PdfRenderer } from "./files.js";
 import { FIXTURE_FILES } from "./fixture/fixture-home.js";
-import type { Measurement } from "./operations/schemas.js";
+import type { BuildingMeasurement } from "./operations/schemas.js";
 
 const web: CallContext = { caller: { kind: "web" } };
 const agent = (home: string, session?: string): CallContext => ({
@@ -42,8 +42,8 @@ const THREE_PAGES = readFileSync(join(FIXTURE_FILES, "blueprint-3-pages.pdf"));
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
 
-const measured = (mm: number): Measurement => ({ mm, provenance: "measured" });
-const printed = (mm: number, page = 1, blueprint = "agent-plan"): Measurement => ({
+const measured = (mm: number): BuildingMeasurement => ({ mm, provenance: "measured" });
+const printed = (mm: number, page = 1, blueprint = "agent-plan"): BuildingMeasurement => ({
   mm,
   provenance: "blueprint",
   source: { blueprint, page, printed: `${mm / 1000}` },
@@ -452,8 +452,8 @@ describe("Blueprint sources", () => {
   it("go with blueprint Provenance only, and blueprint Provenance needs one, in every write", async () => {
     const my = await setUp();
     await my.upload(A3, "plan.pdf", "Agent plan");
-    const bare: Measurement = { mm: 760, provenance: "blueprint" };
-    const sourced: Measurement = { ...measured(760), source: printed(760).source };
+    const bare: BuildingMeasurement = { mm: 760, provenance: "blueprint" };
+    const sourced: BuildingMeasurement = { ...measured(760), source: printed(760).source };
 
     const refusals = await Promise.all([
       refusal(my.saveHome({ accessWidth: bare })),

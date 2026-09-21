@@ -12,6 +12,9 @@ export const queryKeys = {
   rooms: (home: string) => ["room", home],
   room: (home: string, room: string) => ["room", home, room],
   items: (home: string) => ["items", home],
+  /** The Item pages, each ending in its Item's slug. */
+  itemPages: (home: string) => ["item", home],
+  item: (home: string, item: string) => ["item", home, item],
   constraints: (home: string) => ["constraints", home],
   notes: (home: string) => ["notes", home],
   changeLog: (home: string) => ["change-log", home],
@@ -56,6 +59,13 @@ export function useItems(home: string, archived: boolean) {
     queryKey: [...queryKeys.items(home), { archived }],
     queryFn: () => call("list_items", { home, archived }),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useItem(home: string, item: string) {
+  return useQuery({
+    queryKey: queryKeys.item(home, item),
+    queryFn: () => call("get_item", { home, item }),
   });
 }
 

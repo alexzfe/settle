@@ -9,6 +9,7 @@ import {
   type FindRow,
   type GetDecisionResult,
   type GetRoomResult,
+  type ItemPage,
   type ListDecisionsResult,
 } from "@settle/core";
 import type { Hono } from "hono";
@@ -199,6 +200,55 @@ describe("the search index", () => {
       const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
       expect(tools).toHaveLength(19);
       expect(tools.map((tool) => tool.name)).not.toContain("find_index");
+    } finally {
+      fixture.core.close();
+    }
+  });
+});
+
+describe("the Item page", () => {
+  it("answers POST /api/get_item and /api/edit_item for the fixture Home, neither an Agent tool", async () => {
+    const fixture = await createFixtureHome();
+    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const post = (operation: string, body: unknown) =>
+      withFixture.request(`/api/${operation}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    try {
+      const page = await post("get_item", { home: fixture.home, item: "oak-bookcase" });
+      expect(page.status).toBe(200);
+      expect((await page.json()) as ItemPage).toMatchObject({
+        item: { slug: "oak-bookcase", listed: ["boughtFrom", "link"] },
+        replaces: [{ slug: "bookcase", name: "Bookcase" }],
+        decisions: [{ relation: "bought-by", slug: "oak-bookcase" }],
+      });
+
+      const edited = await post("edit_item", {
+        home: fixture.home,
+        item: "oak-bookcase",
+        fields: { width: { mm: 845, provenance: "measured" }, warrantyUntil: "2031" },
+      });
+      expect(edited.status).toBe(200);
+      expect(((await edited.json()) as { receipt: string }).receipt).toContain("0.85 m");
+      const after = (await (
+        await post("get_item", { home: fixture.home, item: "oak-bookcase" })
+      ).json()) as ItemPage;
+      expect(after.item).toMatchObject({ width: { mm: 845 }, warrantyUntil: "2031" });
+      expect(after.history[0]).toMatchObject({ origin: "web" });
+
+      const renamed = await post("edit_item", {
+        home: fixture.home,
+        item: "oak-bookcase",
+        fields: { name: "Oak shelves" },
+      });
+      expect(renamed.status).toBe(400);
+
+      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      expect(tools).toHaveLength(19);
+      expect(tools.map((tool) => tool.name)).not.toContain("get_item");
+      expect(tools.map((tool) => tool.name)).not.toContain("edit_item");
     } finally {
       fixture.core.close();
     }

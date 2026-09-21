@@ -104,7 +104,7 @@ export const FIND_KINDS: readonly FindKind[] = [
         slug: item.slug,
         name: item.name,
         where: item.roomId === null ? "Unplaced" : roomById(m, item.roomId).name,
-        path: `/homes/${m.home.slug}/items`,
+        path: `/homes/${m.home.slug}/items/${item.slug}`,
         state: archived(item),
       })),
   },

@@ -61,8 +61,8 @@ export interface OperationContext extends CallContext {
   lanUrl?: string;
   /**
    * Runs `fn` as one write: in a transaction, with every change it logs appended to the change
-   * log from `origin` (a Session slug, or "web"), and each changed record published on the event
-   * bus once the transaction commits.
+   * log from `origin` (a Session slug, or "web") at one moment, and each changed record published
+   * on the event bus once the transaction commits.
    */
   write<T>(origin: string, fn: (log: (change: Change) => void) => T): T;
 }

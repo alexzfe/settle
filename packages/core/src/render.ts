@@ -1,6 +1,6 @@
 // The text the AI reads. Rules from docs/specs/home-model.md#context-tiers: leave out empty
-// fields, mark Estimated values with ~, and name records by their names with their readable slugs
-// in brackets, never database ids.
+// fields, mark Estimated values with ~ and Listed ones (the maker's or shop's figures) with *, and
+// name records by their names with their readable slugs in brackets, never database ids.
 import { type DaylightOpening, daylightOpenings } from "./daylight.js";
 import type {
   Blueprint,
@@ -24,6 +24,7 @@ import type {
   Item,
   Level,
   Light,
+  ListedField,
   Listing,
   Material,
   Measurement,
@@ -281,7 +282,7 @@ export function renderRoomSheet(
   section(
     lines,
     "Items",
-    room.items.map((item) => itemLine(item, false, sources)),
+    room.items.map((item) => itemLine(item, { where: false, register: false, sources })),
   );
   section(
     lines,
@@ -386,9 +387,14 @@ function featureLine(feature: Feature, sources: boolean): string {
 
 /**
  * One Item: where it is (with `where`), what it is, its size, colors, and materials; with
- * `sources`, where its Blueprint sizes are printed.
+ * `register`, the owner's facts (when and where it was bought, the warranty) that are recorded;
+ * with `sources`, where its Blueprint sizes are printed. The Room Sheet leaves the register out:
+ * it rarely matters to design advice, and find_items gives it when the talk turns to it.
  */
-export function itemLine(item: Item, where: boolean, sources = false): string {
+export function itemLine(
+  item: Item,
+  { where, register, sources = false }: { where: boolean; register: boolean; sources?: boolean },
+): string {
   const location = where
     ? item.room
       ? join(", ", [
@@ -414,16 +420,30 @@ export function itemLine(item: Item, where: boolean, sources = false): string {
     item.materials?.join(", "),
     item.condition,
     join(" ", [item.brand, item.model]),
-    item.price,
+    ...(register ? registerParts(item) : []),
     item.archivedAt && `Archived ${join(": ", [day(item.archivedAt), item.archivedReason])}`,
   ])}`;
   return line;
 }
 
-/** find_items: one line per Item, with where it is. */
+/** The register facts recorded for an Item, a Listed one marked *, like its sizes. */
+function registerParts(item: Item): (string | undefined)[] {
+  const listed = (field: ListedField, value: string | undefined) =>
+    value && `${item.listed?.includes(field) ? "*" : ""}${value}`;
+  return [
+    item.boughtOn && `bought ${item.boughtOn}`,
+    item.boughtFrom && `from ${listed("boughtFrom", item.boughtFrom)}`,
+    item.pricePaid && `paid ${listed("pricePaid", item.pricePaid)}`,
+    item.warrantyUntil && `warranty until ${item.warrantyUntil}`,
+    item.serialNumber && `serial ${item.serialNumber}`,
+    item.manualLink && `manual ${item.manualLink}`,
+  ];
+}
+
+/** find_items: one line per Item, with where it is and its register. */
 export function renderItems(items: Item[]): string {
   if (items.length === 0) return "No Items match.";
-  return items.map((item) => `- ${itemLine(item, true)}`).join("\n");
+  return items.map((item) => `- ${itemLine(item, { where: true, register: true })}`).join("\n");
 }
 
 /** search_notes: one line per Note, with the day it was written. */
@@ -1068,6 +1088,7 @@ function value(field: string, raw: unknown): string {
 const PROVENANCE: Record<Provenance, string> = {
   measured: "Measured",
   blueprint: "Blueprint",
+  listed: "Listed",
   estimated: "Estimated",
 };
 
@@ -1100,13 +1121,13 @@ export function featureName(kind: FeatureKind, description?: string): string {
   return kind === "other" && description ? description : FEATURE_NAMES[kind];
 }
 
-/** "3.62 m", or "~3.62 m" for an Estimated length. */
+/** "3.62 m", "~3.62 m" for an Estimated length, or "*3.62 m" for a Listed one. */
 export function length(measurement: Measurement): string {
   return `${lengthNumber(measurement)} m`;
 }
 
 function lengthNumber(measurement: Measurement): string {
-  const tilde = measurement.provenance === "estimated" ? "~" : "";
+  const tilde = MARKS[measurement.provenance] ?? "";
   // Rounded to whole centimetres first: 3505 mm / 1000 is 3.50499… in floating point. The web's
   // `metres` (web/src/format.ts) rounds the same way, so the Agent reads what the page shows;
   // render.test.ts and the web's format.test.ts check the same lengths.
@@ -1158,8 +1179,11 @@ function size(sides: [string, Measurement | undefined][], sources = false): stri
 
 const SIDES: Record<string, string> = { W: "width", H: "height", D: "depth" };
 
+/** How the AI's text marks a weaker value: ~ Estimated, * Listed (the maker's or shop's). */
+const MARKS: Partial<Record<Provenance, string>> = { estimated: "~", listed: "*" };
+
 function colorText(color: Color): string {
-  const tilde = color.provenance === "estimated" ? "~" : "";
+  const tilde = MARKS[color.provenance] ?? "";
   const maker = join(" ", [color.brand, color.code]);
   return `${tilde}${color.name}${maker ? ` (${maker})` : ""}${color.lrv !== undefined ? `, LRV ${color.lrv}` : ""}`;
 }

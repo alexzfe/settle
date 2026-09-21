@@ -70,9 +70,13 @@ export function decisionPath(home: string, decision: string): string {
   return `/homes/${home}/decisions/${decision}`;
 }
 
+export function itemPath(home: string, item: string): string {
+  return `/homes/${home}/items/${item}`;
+}
+
 /**
  * The page showing a record, by its kind (a Requirement reason's kinds) and slug: a Decision's
- * page; the Room's page for a Room or any part of it; the Items list for an Item; the Home page
+ * page; the Room's page for a Room or any part of it; an Item's page; the Home page
  * for the Home, a Constraint, or a Note. A Wall or Surface names its Room before a slash
  * ("living-room/wall-2"), but a Window, Door, or Feature only starts with it
  * ("living-room-window-2"), so it is found among the Home's `rooms`, the longest slug that starts
@@ -94,7 +98,7 @@ export function recordPath(
     case "note":
       return `${homePath}/about`;
     case "item":
-      return `${homePath}/items`;
+      return itemPath(home, slug);
     case "room":
       return roomPath(slug);
     case "wall":

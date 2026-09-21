@@ -45,3 +45,10 @@ a.blueprint:hover {
   border-color: var(--color-accent);
   color: var(--color-accent-strong);
 }
+
+/* Listed: a quiet chip, from the maker's or shop's Listing rather than the user's own measure. */
+.listed {
+  border: 1px dashed var(--color-stone);
+  color: var(--color-ink-muted);
+  cursor: help;
+}

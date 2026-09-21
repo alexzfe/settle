@@ -11,7 +11,7 @@ import {
 } from "./core.js";
 import { CoreError } from "./errors.js";
 import { FIXTURE_FILES } from "./fixture/fixture-home.js";
-import type { Measurement } from "./operations/schemas.js";
+import type { BuildingMeasurement } from "./operations/schemas.js";
 
 const web: CallContext = { caller: { kind: "web" } };
 const agent = (home: string, session?: string): CallContext => ({
@@ -29,13 +29,13 @@ async function refusal(promise: Promise<unknown>): Promise<CoreError> {
   throw new Error("Expected core to refuse, but it succeeded");
 }
 
-const measured = (mm: number): Measurement => ({ mm, provenance: "measured" });
-const blueprint = (mm: number): Measurement => ({
+const measured = (mm: number): BuildingMeasurement => ({ mm, provenance: "measured" });
+const blueprint = (mm: number): BuildingMeasurement => ({
   mm,
   provenance: "blueprint",
   source: { blueprint: "agent-plan", page: 1, printed: `${mm / 1000}` },
 });
-const estimated = (mm: number): Measurement => ({ mm, provenance: "estimated" });
+const estimated = (mm: number): BuildingMeasurement => ({ mm, provenance: "estimated" });
 
 let core: Core;
 beforeEach(() => {
@@ -93,7 +93,7 @@ describe("the Provenance rule", () => {
   it("orders Provenance measured > blueprint > estimated", async () => {
     const my = await setUp();
     await my.uploadAgentPlan();
-    const cases: [Measurement, Measurement, boolean][] = [
+    const cases: [BuildingMeasurement, BuildingMeasurement, boolean][] = [
       [estimated(3000), blueprint(3100), true],
       [blueprint(3000), measured(3100), true],
       [estimated(3000), measured(3100), true],

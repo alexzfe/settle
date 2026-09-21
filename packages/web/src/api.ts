@@ -6,6 +6,7 @@
 import type {
   OperationName as CoreOperationName,
   DecisionReceiptResult,
+  EditItemInput,
   ExportGuidesInput,
   ExportShoppingListInput,
   GetDecisionResult,
@@ -37,6 +38,7 @@ export type {
   DecisionSummary,
   Deviation,
   Door,
+  EditItemInput,
   EvidenceEntry,
   Feature,
   FindRow,
@@ -48,6 +50,7 @@ export type {
   HoldReason,
   Home,
   Item,
+  ItemPage,
   Level,
   ListDecisionsInput,
   Listing,
@@ -84,6 +87,10 @@ export interface Operations {
   list_sessions: Shapes<"list_sessions">;
   get_room: Shapes<"get_room">;
   list_items: Shapes<"list_items">;
+  /** One Item's page: its register, the Decisions tied to it, and its history. Web-only. */
+  get_item: Shapes<"get_item">;
+  /** The pencil: the first write to an Item from the web, logged with origin "web". */
+  edit_item: { input: EditItemInput; output: OperationOutput<"edit_item"> };
   list_constraints: Shapes<"list_constraints">;
   list_notes: Shapes<"list_notes">;
   get_change_log: Shapes<"get_change_log">;

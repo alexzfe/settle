@@ -36,6 +36,7 @@ import {
   listSessions,
   saveHome,
 } from "./operations/homes.js";
+import { editItem, getItem } from "./operations/item-page.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
 import {
@@ -72,6 +73,7 @@ const operations = {
   list_sessions: listSessions,
   get_room: getRoom,
   list_items: listItems,
+  get_item: getItem,
   list_constraints: listConstraints,
   list_notes: listNotes,
   get_change_log: getChangeLog,
@@ -90,6 +92,7 @@ const operations = {
   drop_listing: dropListing,
   hold_listing: holdListing,
   set_listing_photo: setListingPhoto,
+  edit_item: editItem,
   open_session: openSession,
   get_room_sheet: getRoomSheet,
   find_items: findItems,
@@ -197,11 +200,13 @@ export function createCore(options: CoreOptions = {}): Core {
     ...optional({ publicOrigin: options.publicOrigin, lanUrl: options.lanUrl }),
     write<T>(origin: string, fn: Parameters<OperationContext["write"]>[1]): T {
       const events: ChangeEvent[] = [];
+      // One moment per write, so a write's changes read as one event (the Item page's history).
+      const at = clock().toISOString();
       const result = store.transaction(() =>
         fn((change) => {
           store.appendChange({
             homeId: change.home.id,
-            at: clock().toISOString(),
+            at,
             origin,
             recordKind: change.recordKind,
             recordId: change.record.id,

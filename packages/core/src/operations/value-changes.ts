@@ -9,9 +9,27 @@ import type { Writer } from "./writer.js";
 // naming a field is flagged by a change to that field only; one naming none by any change to its
 // record. Archiving or restoring the record flags every reason on it, field or none. A Decision's
 // record changes, for a reason naming no field, when its title, statement, or content does: its
-// state changes already flag the Decisions resting on it.
+// state changes already flag the Decisions resting on it. Likewise an Item's changes, except its
+// register (docs/handoff/item-page.md): when and where it was bought, the price paid, its warranty,
+// serial number, and manual say nothing about the thing a Requirement rests on, so typing a
+// warranty date on the Item page doesn't flag every Purchase citing the Item. A reason naming one
+// of those fields is still flagged by it.
 
 const DECISION_FIELDS: ReadonlySet<string> = new Set(["title", "statement", "content"]);
+const ITEM_REGISTER_FIELDS: ReadonlySet<string> = new Set([
+  "boughtOn",
+  "boughtFrom",
+  "pricePaid",
+  "warrantyUntil",
+  "serialNumber",
+  "manualLink",
+]);
+
+/** Whether a change to `field` of a record of `kind` flags a reason naming no field. */
+const touchesRecord = (kind: string, field: string): boolean =>
+  kind === "decision"
+    ? DECISION_FIELDS.has(field)
+    : !(kind === "item" && ITEM_REGISTER_FIELDS.has(field));
 
 const isReasonKind = (kind: string): kind is RequirementReasonKind =>
   (REQUIREMENT_REASON_KINDS as readonly string[]).includes(kind);
@@ -52,7 +70,7 @@ export function flagValueChanges(writer: Writer, changes: Change[], now: string)
         (each.field === "archivedAt" ||
           (requirement.reasonField !== null
             ? each.field === requirement.reasonField
-            : each.recordKind !== "decision" || DECISION_FIELDS.has(each.field))),
+            : touchesRecord(each.recordKind, each.field))),
     );
     if (!change) continue;
     const own = flags.filter((each) => each.decisionId === decision.id);

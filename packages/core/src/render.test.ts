@@ -681,7 +681,7 @@ describe("Purchase receipts", () => {
           materials: ["wool"],
           brand: "Hay",
           model: "Plain",
-          price: "£495",
+          pricePaid: "£495",
         },
       }),
     );

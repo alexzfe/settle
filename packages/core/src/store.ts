@@ -20,6 +20,7 @@ import type {
   HoldReason,
   ItemCategory,
   Light,
+  ListedField,
   ListingDimensions,
   Material,
   Measurement,
@@ -184,12 +185,21 @@ export interface ItemRow {
   condition: Condition | null;
   brand: string | null;
   model: string | null;
-  price: string | null;
+  pricePaid: string | null;
   link: string | null;
   light: Light | null;
   archivedAt: string | null;
   archivedReason: string | null;
   replacedByItemId: number | null;
+  /** "2024", "2024-03", or "2024-03-14". */
+  boughtOn: string | null;
+  boughtFrom: string | null;
+  /** Like boughtOn. */
+  warrantyUntil: string | null;
+  serialNumber: string | null;
+  manualLink: string | null;
+  /** Which of boughtFrom, pricePaid, and link were copied from a Listing and not edited since. */
+  listedFields: ListedField[] | null;
 }
 
 export interface ConstraintRow {
@@ -533,6 +543,8 @@ export interface Store {
   appendChange(change: ChangeRow): void;
   /** Oldest first. */
   changes(homeId: number): ChangeRow[];
+  /** One record's changes, by its kind and id (its identity; a slug is only a label), oldest first. */
+  recordChanges(homeId: number, recordKind: string, recordId: number): ChangeRow[];
   /**
    * When each record of a Home last changed: the latest change-log time per kind and slug. A
    * Listing, logged on its Decision as field "listing <slug>" (or "listing <slug> held", say), also
@@ -545,6 +557,10 @@ export interface Store {
 
   close(): void;
 }
+
+const CHANGE_COLUMNS =
+  "home_id AS homeId, at, origin, record_kind AS recordKind, record_id AS recordId, " +
+  "record_slug AS recordSlug, field, old, new, reason";
 
 const SESSION_COLUMNS =
   "id, home_id AS homeId, slug, opened_at AS openedAt, closed_at AS closedAt, skills, " +
@@ -589,6 +605,7 @@ const JSON_KEYS = new Set([
   "fulfilment",
   "quickLines",
   "dimensions",
+  "listedFields",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 
@@ -802,15 +819,17 @@ export function openStore(path: string): Store {
     },
     changes: (homeId) =>
       all<RawChange>(
-        `SELECT home_id AS homeId, at, origin, record_kind AS recordKind, record_id AS recordId,
-           record_slug AS recordSlug, field, old, new, reason
-         FROM change_log WHERE home_id = ? ORDER BY id`,
+        `SELECT ${CHANGE_COLUMNS} FROM change_log WHERE home_id = ? ORDER BY id`,
         homeId,
-      ).map((row) => ({
-        ...row,
-        old: row.old === null ? undefined : JSON.parse(row.old),
-        new: row.new === null ? undefined : JSON.parse(row.new),
-      })),
+      ).map(parseChange),
+    recordChanges: (homeId, recordKind, recordId) =>
+      all<RawChange>(
+        `SELECT ${CHANGE_COLUMNS} FROM change_log
+         WHERE home_id = ? AND record_kind = ? AND record_id = ? ORDER BY id`,
+        homeId,
+        recordKind,
+        recordId,
+      ).map(parseChange),
 
     lastChanges: (homeId) =>
       all<LastChange>(
@@ -848,6 +867,14 @@ interface RawSession extends Omit<SessionRow, "skills" | "openingSent" | "summar
 interface RawChange extends Omit<ChangeRow, "old" | "new"> {
   old: string | null;
   new: string | null;
+}
+
+function parseChange(row: RawChange): ChangeRow {
+  return {
+    ...row,
+    old: row.old === null ? undefined : JSON.parse(row.old),
+    new: row.new === null ? undefined : JSON.parse(row.new),
+  };
 }
 
 function parseSession(row: RawSession): SessionRow {

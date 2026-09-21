@@ -5,11 +5,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
-import type { DecisionDetail, Measurement } from "./operations/schemas.js";
+import type { BuildingMeasurement, DecisionDetail } from "./operations/schemas.js";
 
 const web: CallContext = { caller: { kind: "web" } };
-const measured = (mm: number): Measurement => ({ mm, provenance: "measured" });
-const estimated = (mm: number): Measurement => ({ mm, provenance: "estimated" });
+const measured = (mm: number): BuildingMeasurement => ({ mm, provenance: "measured" });
+const estimated = (mm: number): BuildingMeasurement => ({ mm, provenance: "estimated" });
 
 let core: Core;
 let home: string;
@@ -377,7 +377,11 @@ describe("record_fulfilment of a Purchase", () => {
     expect(receipt).toContain("Old rug (old-rug): archived, replaced by Wool rug (wool-rug)");
 
     const { room, decisions } = await core.run("get_room", web, { home, room: "living-room" });
-    expect(room.items.map((item) => item.slug)).toEqual(["wool-rug"]);
+    // The Room page's live Items; the Archived one follows, for its Show Archived switch.
+    expect(room.items.map((item) => [item.slug, Boolean(item.archivedAt)])).toEqual([
+      ["wool-rug", false],
+      ["old-rug", true],
+    ]);
     expect(decisions).toEqual([]);
     const { items } = await core.run("list_items", web, { home, archived: true });
     expect(items.find((item) => item.slug === "old-rug")).toMatchObject({

@@ -48,6 +48,7 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     case "item":
       return [
         queryKeys.items(home),
+        queryKeys.itemPages(home),
         queryKeys.rooms(home),
         queryKeys.home(home),
         queryKeys.shopping(home),
@@ -66,12 +67,15 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     // Fulfilment, the Home page's flags and Conflicts), the Room pages, which list their Room's
     // Decisions, and the Shopping section. A state change may flag others, and a Decision's page
     // shows its Basis's states, so one change refetches them all. Listings and Guides are logged
-    // as their Decision's changes, so the find index refetches on those too.
+    // as their Decision's changes, so the find index refetches on those too. An Item's page
+    // shows the Decisions tied to it, the Requirements citing it, and its Listing's picture, all
+    // logged as Decision changes, so every Item page refetches as well.
     case "decision":
     case "flag":
     case "conflict":
       return [
         queryKeys.decisions(home),
+        queryKeys.itemPages(home),
         queryKeys.rooms(home),
         queryKeys.shopping(home),
         queryKeys.findIndex(home),
@@ -96,6 +100,7 @@ function queriesOfHome(home: string): QueryKey[] {
     queryKeys.sessions(home),
     queryKeys.rooms(home),
     queryKeys.items(home),
+    queryKeys.itemPages(home),
     queryKeys.constraints(home),
     queryKeys.notes(home),
     queryKeys.changeLog(home),

@@ -36,7 +36,7 @@
     {
       "name": "get_room_sheet",
       "title": "Get room sheet",
-      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; one line per Decision about it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked ~ are Estimated. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; one line per Decision about it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked ~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -69,7 +69,7 @@
     {
       "name": "find_items",
       "title": "Find items",
-      "description": "Lists Items of this Home, one line each: name and slug, category, where it is (its Room and Wall, or Unplaced), size, colors, materials, and condition. Values marked ~ are Estimated. Filter by Room, by Unplaced, by category, or by text; with no filter it lists the whole Inventory. Archived Items (sold, broken, replaced) are left out unless `archived` is true. Use it to find an Item outside the Room being worked on, instead of fetching more Room Sheets. Changes nothing.",
+      "description": "Lists Items of this Home, one line each: name and slug, category, where it is (its Room and Wall, or Unplaced), size, colors, materials, condition, and whatever of its register is recorded (when and where it was bought, the price paid, the warranty, serial number, manual). Values marked ~ are Estimated; values marked * are Listed, the maker's or shop's figures. Filter by Room, by Unplaced, by category, or by text; with no filter it lists the whole Inventory. Archived Items (sold, broken, replaced) are left out unless `archived` is true. Use it to find an Item outside the Room being worked on, instead of fetching more Room Sheets. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1689,7 +1689,7 @@
     {
       "name": "save_items",
       "title": "Save items",
-      "description": "Records several Items the user owns, or changes them, and returns a receipt with one line per change. An Item is something the user would take with them on moving out: furniture, decor, an appliance, a lamp, a rug, a plant. Parts of the building that stay (a radiator, a fitted wardrobe, a ceiling light point) are Features of a Room, saved with save_room. Save only Items the user has confirmed. To add an Item give its name and category; to change one give its slug in `item` (find_items and the Room Sheet list them) and only the fields that change. An Item with no Room is Unplaced (boxed, or in off-site storage). Identical pieces are one Item with a quantity (six dining chairs). An Item that is sold, broken, given away, or replaced is Archived with archive: true and a reason, never deleted. Sizes are whole millimetres with a Provenance: measured, blueprint, or estimated; colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Needs the open Session's id as `session`.",
+      "description": "Records several Items the user owns, or changes them, and returns a receipt with one line per change. An Item is something the user would take with them on moving out: furniture, decor, an appliance, a lamp, a rug, a plant. Parts of the building that stay (a radiator, a fitted wardrobe, a ceiling light point) are Features of a Room, saved with save_room. Save only Items the user has confirmed. To add an Item give its name and category; to change one give its slug in `item` (find_items and the Room Sheet list them) and only the fields that change. An Item with no Room is Unplaced (boxed, or in off-site storage). Identical pieces are one Item with a quantity (six dining chairs). An Item that is sold, broken, given away, or replaced is Archived with archive: true and a reason, never deleted. Sizes are whole millimetres with a Provenance: measured, blueprint, listed (the maker's or shop's figures), or estimated; colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > listed > estimated) unless the user says so: that part is refused, the receipt states both values, and only if the user agrees do you call again with overrideProvenance quoting their words. Record the register (boughtOn, boughtFrom, pricePaid, warrantyUntil, serialNumber, manualLink) when the user mentions it, and never ask for it. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1774,8 +1774,8 @@
                     },
                     "provenance": {
                       "type": "string",
-                      "enum": ["measured", "blueprint", "estimated"],
-                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                      "enum": ["measured", "blueprint", "listed", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                     },
                     "source": {
                       "description": "With blueprint Provenance only.",
@@ -1814,8 +1814,8 @@
                     },
                     "provenance": {
                       "type": "string",
-                      "enum": ["measured", "blueprint", "estimated"],
-                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                      "enum": ["measured", "blueprint", "listed", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                     },
                     "source": {
                       "description": "With blueprint Provenance only.",
@@ -1854,8 +1854,8 @@
                     },
                     "provenance": {
                       "type": "string",
-                      "enum": ["measured", "blueprint", "estimated"],
-                      "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                      "enum": ["measured", "blueprint", "listed", "estimated"],
+                      "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                     },
                     "source": {
                       "description": "With blueprint Provenance only.",
@@ -1917,8 +1917,8 @@
                       },
                       "provenance": {
                         "type": "string",
-                        "enum": ["measured", "blueprint", "estimated"],
-                        "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                        "enum": ["measured", "blueprint", "listed", "estimated"],
+                        "description": "measured (identified exactly, e.g. a code from the tin), listed (as the maker or shop names it), or estimated (judged by eye)."
                       }
                     },
                     "required": ["name", "provenance"]
@@ -1947,12 +1947,6 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 100
-                },
-                "price": {
-                  "description": "What it cost, with the currency, e.g. \"£450\".",
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 40
                 },
                 "link": {
                   "description": "A link to the product page.",
@@ -2000,6 +1994,38 @@
                       "maximum": 100
                     }
                   }
+                },
+                "boughtOn": {
+                  "description": "When it was bought: \"2024\", \"2024-03\", or \"2024-03-14\", as much as is known.",
+                  "type": "string",
+                  "pattern": "^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$"
+                },
+                "boughtFrom": {
+                  "description": "The shop it was bought from, e.g. \"Falabella\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "pricePaid": {
+                  "description": "What was paid, with the currency, e.g. \"£450\", \"S/ 1,299\".",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "warrantyUntil": {
+                  "description": "When its warranty ends, as precisely as known: \"2027\", \"2027-03\", \"2027-03-14\".",
+                  "type": "string",
+                  "pattern": "^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$"
+                },
+                "serialNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "manualLink": {
+                  "description": "The maker's manual, support, or warranty page.",
+                  "type": "string",
+                  "format": "uri"
                 },
                 "archive": {
                   "description": "true to Archive it: it leaves the Home's current state but is kept, so anything referring to it keeps working. Nothing is ever deleted. false restores an Archived one.",
@@ -2672,7 +2698,7 @@
     {
       "name": "record_fulfilment",
       "title": "Record fulfilment",
-      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. It takes Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each Requirement it differs from, by position, with the difference; `item` adds the Item bought to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and `replacesItem` Archives the Item it replaces; `feature` adds a part of the building bought (a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a must flags every Decision resting on the Purchase for review; one from a prefer flags nothing. It is refused while the Decision has an open flag or Conflict: ask the user, then keep, Reopen, or Reject it with set_decision_state first. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result, and are never Reopened or Rejected; find_decisions still lists them. Call it only when the user says it is done (bought, painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
+      "description": "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a state: it stays Locked), and changes the Home to match what was actually done. It takes Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the Decision's, or to roomFunctions when what the user actually did differs. Room color: it paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or one Wall's) with its Palette color, Measured when that color has a brand and code and Estimated otherwise, in the Decision's finish, or in `finish` when the user used another; the receipt gives the Surface's old and new color. A color that would replace one of stronger Provenance is refused and nothing is recorded: tell the user both colors in one line and ask; only if they say to replace it, call again with overrideProvenance quoting them. Purchase: `bought` says what was actually bought, in one line; `deviations` name each Requirement it differs from, by position, with the difference; `item` adds the Item bought to the Inventory, in the Purchase's Room unless `room` or unplaced says otherwise, and `replacesItem` Archives the Item it replaces; name the Listing bought as `listing`, and the new Item takes its link, price paid, and shop, tagged Listed, and today as bought on; give sizes from the Listing in `item` as listed; `feature` adds a part of the building bought (a radiator), and `replacesFeature` Archives the Feature it replaces. A Deviation from a must flags every Decision resting on the Purchase for review; one from a prefer flags nothing. It is refused while the Decision has an open flag or Conflict: ask the user, then keep, Reopen, or Reject it with set_decision_state first. Fulfilled Decisions drop out of the Room Sheet and the opening, since the Home now records the result, and are never Reopened or Rejected; find_decisions still lists them. Call it only when the user says it is done (bought, painted, not planned), and tell them what changed. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2720,6 +2746,11 @@
               },
               "required": ["requirement", "text"]
             }
+          },
+          "listing": {
+            "description": "Purchase: the slug of the Listing bought, one of this Purchase's. With `item`, the new Item's link, price paid, and shop are copied from it, tagged Listed, and it is bought today; anything given in `item` wins.",
+            "type": "string",
+            "minLength": 1
           },
           "item": {
             "description": "Purchase: the Item bought, added to the Inventory. Leave out when it is a Feature.",
@@ -2789,8 +2820,8 @@
                   },
                   "provenance": {
                     "type": "string",
-                    "enum": ["measured", "blueprint", "estimated"],
-                    "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    "enum": ["measured", "blueprint", "listed", "estimated"],
+                    "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                   },
                   "source": {
                     "description": "With blueprint Provenance only.",
@@ -2829,8 +2860,8 @@
                   },
                   "provenance": {
                     "type": "string",
-                    "enum": ["measured", "blueprint", "estimated"],
-                    "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    "enum": ["measured", "blueprint", "listed", "estimated"],
+                    "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                   },
                   "source": {
                     "description": "With blueprint Provenance only.",
@@ -2869,8 +2900,8 @@
                   },
                   "provenance": {
                     "type": "string",
-                    "enum": ["measured", "blueprint", "estimated"],
-                    "description": "measured (by the user), blueprint (printed on one), or estimated (by eye, guessed)."
+                    "enum": ["measured", "blueprint", "listed", "estimated"],
+                    "description": "measured (by the user), blueprint (printed on one), listed (the maker's or shop's figure), or estimated (by eye, guessed)."
                   },
                   "source": {
                     "description": "With blueprint Provenance only.",
@@ -2932,8 +2963,8 @@
                     },
                     "provenance": {
                       "type": "string",
-                      "enum": ["measured", "blueprint", "estimated"],
-                      "description": "measured (identified exactly, e.g. a code from the tin) or estimated (judged by eye)."
+                      "enum": ["measured", "blueprint", "listed", "estimated"],
+                      "description": "measured (identified exactly, e.g. a code from the tin), listed (as the maker or shop names it), or estimated (judged by eye)."
                     }
                   },
                   "required": ["name", "provenance"]
@@ -2962,12 +2993,6 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 100
-              },
-              "price": {
-                "description": "What it cost, with the currency, e.g. \"£450\".",
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 40
               },
               "link": {
                 "description": "A link to the product page.",
@@ -3015,6 +3040,38 @@
                     "maximum": 100
                   }
                 }
+              },
+              "boughtOn": {
+                "description": "When it was bought: \"2024\", \"2024-03\", or \"2024-03-14\", as much as is known.",
+                "type": "string",
+                "pattern": "^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$"
+              },
+              "boughtFrom": {
+                "description": "The shop it was bought from, e.g. \"Falabella\".",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "pricePaid": {
+                "description": "What was paid, with the currency, e.g. \"£450\", \"S/ 1,299\".",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "warrantyUntil": {
+                "description": "When its warranty ends, as precisely as known: \"2027\", \"2027-03\", \"2027-03-14\".",
+                "type": "string",
+                "pattern": "^(\\d{4})(?:-(\\d{2})(?:-(\\d{2}))?)?$"
+              },
+              "serialNumber": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "manualLink": {
+                "description": "The maker's manual, support, or warranty page.",
+                "type": "string",
+                "format": "uri"
               }
             },
             "required": ["name", "category"]
