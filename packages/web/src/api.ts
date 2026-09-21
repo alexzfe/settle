@@ -39,6 +39,7 @@ export type {
   Door,
   EvidenceEntry,
   Feature,
+  FindRow,
   Flag,
   FlagCause,
   FullGuide,
@@ -95,6 +96,8 @@ export interface Operations {
   resolve_flag: { input: ResolveFlagInput; output: DecisionReceiptResult };
   resolve_conflict: { input: ResolveConflictInput; output: DecisionReceiptResult };
   get_shopping: { input: GetShoppingInput; output: GetShoppingResult };
+  /** The find box's index: web-only, every findable record of the Home, matched in the browser. */
+  find_index: Shapes<"find_index">;
   // The board's own writes: the first Listings have ever had from the web.
   drop_listing: Shapes<"drop_listing">;
   hold_listing: Shapes<"hold_listing">;

@@ -29,6 +29,7 @@ export {
   PLUGIN_INSTALL,
 } from "./home-folder.js";
 export { migrate } from "./migrate.js";
+export type { FindRow } from "./operations/find-index.js";
 export type { Session } from "./operations/homes.js";
 export * from "./operations/schemas.js";
 export { SKILLS, type Skill } from "./operations/sessions.js";

@@ -1759,6 +1759,9 @@ export type GetListingPhotoInput = z.input<typeof getListingPhotoInput>;
 /** get_shopping: the Home's Shopping List and Considering. */
 export const getShoppingInput = z.object({ home: homeInput });
 
+/** find_index: the web's search index of the Home. */
+export const findIndexInput = z.object({ home: homeInput });
+
 export const EXPORT_SHOPPING_FORMATS = ["html", "csv"] as const;
 export const EXPORT_GUIDE_FORMATS = ["html", "markdown"] as const;
 
@@ -1788,6 +1791,7 @@ export const getGuidePageInput = z.object({
 });
 
 export type GetShoppingInput = z.input<typeof getShoppingInput>;
+export type FindIndexInput = z.input<typeof findIndexInput>;
 export type ExportShoppingListInput = z.input<typeof exportShoppingListInput>;
 export type ExportGuidesInput = z.input<typeof exportGuidesInput>;
 export type GetGuidePageInput = z.input<typeof getGuidePageInput>;

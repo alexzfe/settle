@@ -445,6 +445,12 @@ export interface ChangeRow {
   reason: string | null;
 }
 
+export interface LastChange {
+  recordKind: string;
+  recordSlug: string;
+  at: string;
+}
+
 /** The tables of the Home model, each row carrying home_id, by row type. */
 export interface HomeTables {
   levels: LevelRow;
@@ -527,6 +533,12 @@ export interface Store {
   appendChange(change: ChangeRow): void;
   /** Oldest first. */
   changes(homeId: number): ChangeRow[];
+  /**
+   * When each record of a Home last changed: the latest change-log time per kind and slug. A
+   * Listing, logged on its Decision as field "listing <slug>" (or "listing <slug> held", say), also
+   * counts as a listing of its own.
+   */
+  lastChanges(homeId: number): LastChange[];
 
   /** Whether a record in `table` has `slug`, within `homeId` for the Home-scoped tables. */
   slugTaken(table: SluggedTable, slug: string, homeId?: number): boolean;
@@ -799,6 +811,21 @@ export function openStore(path: string): Store {
         old: row.old === null ? undefined : JSON.parse(row.old),
         new: row.new === null ? undefined : JSON.parse(row.new),
       })),
+
+    lastChanges: (homeId) =>
+      all<LastChange>(
+        `SELECT record_kind AS recordKind, record_slug AS recordSlug, MAX(at) AS at
+         FROM change_log WHERE home_id = ? GROUP BY record_kind, record_slug
+         UNION ALL
+         SELECT 'listing', slug, MAX(at) FROM (
+           SELECT at, CASE WHEN instr(rest, ' ') > 0 THEN substr(rest, 1, instr(rest, ' ') - 1)
+                           ELSE rest END AS slug
+           FROM (SELECT at, substr(field, 9) AS rest FROM change_log
+                 WHERE home_id = ? AND record_kind = 'decision' AND field LIKE 'listing %'))
+         GROUP BY slug`,
+        homeId,
+        homeId,
+      ),
 
     slugTaken(table, slug, homeId) {
       const scoped = table !== "homes" && table !== "sessions";

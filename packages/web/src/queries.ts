@@ -23,6 +23,8 @@ export const queryKeys = {
   fullGuide: (home: string, decision: string) => ["decisions", home, decision, "full-guide"],
   /** The Shopping section: the Purchases, with Measure-first lines from recorded values. */
   shopping: (home: string) => ["shopping", home],
+  /** The find box's index: every findable record of the Home, fetched once and matched locally. */
+  findIndex: (home: string) => ["find-index", home],
 } as const;
 
 export function useHomes() {
@@ -114,6 +116,17 @@ export function useShopping(home: string) {
   return useQuery({
     queryKey: queryKeys.shopping(home),
     queryFn: () => call("get_shopping", { home }),
+  });
+}
+
+/**
+ * The find box's index, fetched once per Home and refetched only by live updates: the box matches
+ * it in the browser on every keystroke, never asking the server while the user types.
+ */
+export function useFindIndex(home: string) {
+  return useQuery({
+    queryKey: queryKeys.findIndex(home),
+    queryFn: () => call("find_index", { home }),
   });
 }
 

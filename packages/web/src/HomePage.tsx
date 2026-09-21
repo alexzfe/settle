@@ -7,6 +7,7 @@ import styles from "./App.module.css";
 import type { DecisionSummary, Home, Room, RoomDetail, Session } from "./api";
 import { decisionPath, paletteInForce } from "./decisions";
 import { openReviews, ReviewList } from "./Flags";
+import { FindBox } from "./find/Find";
 import { sentence } from "./format";
 import page from "./HomePage.module.css";
 import { useDecisions, useHome, useSessions } from "./queries";
@@ -64,6 +65,7 @@ export function HomePage() {
           {[facts.city, facts.tenure && sentence(facts.tenure)].filter(Boolean).join(" · ")}
         </p>
       </header>
+      <FindBox />
       <NeedsYou home={slug} rooms={rooms} details={details} />
       <LeftOff home={facts} />
       <PaletteSection home={slug} />

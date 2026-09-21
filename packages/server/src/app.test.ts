@@ -4,7 +4,9 @@ import { join } from "node:path";
 import {
   type Core,
   createCore,
+  createFixtureHome,
   FIXTURE_FILES,
+  type FindRow,
   type GetDecisionResult,
   type GetRoomResult,
   type ListDecisionsResult,
@@ -165,6 +167,41 @@ describe("the web API", () => {
       body: "{}",
     });
     expect([tool.status, unknown.status, form.status]).toEqual([404, 404, 415]);
+  });
+});
+
+describe("the search index", () => {
+  it("answers POST /api/find_index for the fixture Home, and is not an Agent tool", async () => {
+    const fixture = await createFixtureHome();
+    const withFixture = createApp({ core: fixture.core, port: PORT });
+    try {
+      const response = await withFixture.request("/api/find_index", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ home: fixture.home }),
+      });
+      expect(response.status).toBe(200);
+      const rows = (await response.json()) as FindRow[];
+      expect(new Set(rows.map((each) => each.kind))).toEqual(
+        new Set(["room", "decision", "item", "listing", "feature"]),
+      );
+      expect(rows.find((each) => each.slug === "wool-rug")).toMatchObject({
+        kind: "decision",
+        name: "Wool rug",
+        where: "Living room",
+        path: "/homes/fixture-home/decisions/wool-rug",
+        tier: 1,
+        label: "Decision",
+        retired: false,
+        also: { label: "Quick Guide", path: "/homes/fixture-home/decisions/wool-rug#quick-guide" },
+      });
+
+      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      expect(tools).toHaveLength(19);
+      expect(tools.map((tool) => tool.name)).not.toContain("find_index");
+    } finally {
+      fixture.core.close();
+    }
   });
 });
 

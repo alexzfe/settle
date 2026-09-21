@@ -13,7 +13,9 @@ export function queriesShowing(recordKind: string, home: string): QueryKey[] {
 }
 
 // The Shopping section names each Purchase's Room, and its Measure-first lines read values of the
-// Home, its Rooms and their parts, and its Items, so a change to any of them refetches it.
+// Home, its Rooms and their parts, and its Items, so a change to any of them refetches it. The find
+// box's index holds Rooms (named by their Level), Decisions with their Listings, Items, and
+// Features, so a change to any of those refetches it: that is all that keeps the box fresh.
 function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
   switch (recordKind) {
     case "home":
@@ -21,16 +23,27 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     // The Home page lists Levels and Rooms; a Room page names its Level and the Rooms beyond it.
     // Blueprint pages name the Level they show.
     case "level":
-      return [queryKeys.home(home), queryKeys.rooms(home), queryKeys.blueprints(home)];
+      return [
+        queryKeys.home(home),
+        queryKeys.rooms(home),
+        queryKeys.blueprints(home),
+        queryKeys.findIndex(home),
+      ];
     case "room":
-      return [queryKeys.home(home), queryKeys.rooms(home), queryKeys.shopping(home)];
+      return [
+        queryKeys.home(home),
+        queryKeys.rooms(home),
+        queryKeys.shopping(home),
+        queryKeys.findIndex(home),
+      ];
     // Parts of a Room show only on Room pages. A Door is on two, so every Room page refetches.
     case "wall":
     case "window":
     case "door":
     case "surface":
-    case "feature":
       return [queryKeys.rooms(home), queryKeys.shopping(home)];
+    case "feature":
+      return [queryKeys.rooms(home), queryKeys.shopping(home), queryKeys.findIndex(home)];
     // The Home page counts the Unplaced Items.
     case "item":
       return [
@@ -38,6 +51,7 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
         queryKeys.rooms(home),
         queryKeys.home(home),
         queryKeys.shopping(home),
+        queryKeys.findIndex(home),
       ];
     case "constraint":
       return [queryKeys.constraints(home)];
@@ -51,11 +65,17 @@ function showing(recordKind: RecordKind, home: string): QueryKey[] | undefined {
     // Every Decision query (the list, each Decision page with its Guides, Listings, and
     // Fulfilment, the Home page's flags and Conflicts), the Room pages, which list their Room's
     // Decisions, and the Shopping section. A state change may flag others, and a Decision's page
-    // shows its Basis's states, so one change refetches them all.
+    // shows its Basis's states, so one change refetches them all. Listings and Guides are logged
+    // as their Decision's changes, so the find index refetches on those too.
     case "decision":
     case "flag":
     case "conflict":
-      return [queryKeys.decisions(home), queryKeys.rooms(home), queryKeys.shopping(home)];
+      return [
+        queryKeys.decisions(home),
+        queryKeys.rooms(home),
+        queryKeys.shopping(home),
+        queryKeys.findIndex(home),
+      ];
     default:
       return unmapped(recordKind);
   }
@@ -82,6 +102,7 @@ function queriesOfHome(home: string): QueryKey[] {
     queryKeys.blueprints(home),
     queryKeys.decisions(home),
     queryKeys.shopping(home),
+    queryKeys.findIndex(home),
   ];
 }
 

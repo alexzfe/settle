@@ -14,6 +14,7 @@ import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
 import { DecisionPage } from "./DecisionPage";
 import { DecisionsPage } from "./DecisionsPage";
+import { FindButton, FindProvider } from "./find/Find";
 import { HomeListPage } from "./HomeListPage";
 import { HomePage } from "./HomePage";
 import { ItemsPage } from "./ItemsPage";
@@ -23,6 +24,7 @@ import { RoomPage } from "./RoomPage";
 import { RoomsPage } from "./RoomsPage";
 import { SessionPage } from "./SessionPage";
 import { ShoppingPage } from "./ShoppingPage";
+import { useScrollToHash } from "./scrollToHash";
 import { documentTitle, HomeNameContext } from "./ui/documentTitle";
 import { LivePill } from "./ui/LivePill";
 import { ThemeToggle } from "./ui/ThemeToggle";
@@ -61,19 +63,23 @@ export const routes: RouteObject[] = [
 ];
 
 function Layout() {
+  const home = useMatch({ path: "/homes/:home", end: false })?.params.home;
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link to="/" className={styles.wordmark}>
-          Settle
-        </Link>
-        <HomeSwitcher />
-        <ThemeToggle />
-      </header>
-      <main className={styles.main}>
-        <Outlet />
-      </main>
-    </div>
+    <FindProvider home={home}>
+      <div className={styles.page}>
+        <header className={styles.header}>
+          <Link to="/" className={styles.wordmark}>
+            Settle
+          </Link>
+          <FindButton />
+          <HomeSwitcher />
+          <ThemeToggle />
+        </header>
+        <main className={styles.main}>
+          <Outlet />
+        </main>
+      </div>
+    </FindProvider>
   );
 }
 
@@ -113,6 +119,7 @@ function sectionOf(path: string): string {
 /** The pages of one Home, kept live while any of them is open. */
 function HomeScope({ home }: { home: string }) {
   const live = useLiveUpdates(home);
+  useScrollToHash();
   const homes = useHomes();
   const name = homes.data?.homes.find((each) => each.slug === home)?.name ?? home;
   const { pathname } = useLocation();

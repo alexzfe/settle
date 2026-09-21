@@ -27,6 +27,7 @@ import {
   saveDecision,
   setDecisionState,
 } from "./operations/decisions.js";
+import { findIndex } from "./operations/find-index.js";
 import {
   createHome,
   getHome,
@@ -79,6 +80,7 @@ const operations = {
   upload_blueprint: uploadBlueprint,
   list_decisions: listDecisions,
   get_shopping: getShopping,
+  find_index: findIndex,
   export_shopping_list: exportShoppingList,
   export_guides: exportGuides,
   get_guide_page: getGuidePage,
