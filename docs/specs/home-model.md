@@ -12,10 +12,11 @@
 ## Conventions
 
 - **Units:** every length is stored in millimetres. The user picks metric or imperial once for the whole app, and that setting only changes how values are shown.
-- **Provenance:** every length and every color carries a Provenance: Measured, Blueprint, or Estimated.
+- **Provenance:** every length and every color carries a Provenance: Measured, Blueprint, Listed, or Estimated.
   - **Measured** means the user measured it. For a color, it means the color was identified exactly (a paint code from the tin, or a match against the paint maker's card).
   - **Blueprint** means the figure was *printed* on a Blueprint. The value also stores which Blueprint, the page, and the text exactly as printed (e.g. `12'6"`).
-  - **Estimated** means judged by eye: by the AI from a Photo, scaled off a drawing, or guessed by the user. Confirming an Estimated value does not make it Measured.
+  - **Listed** means taken from the product's Listing: the maker's or shop's figures. Only an Item's sizes and colors can be Listed, plus the three register facts a Fulfilment copies from the Listing bought (see [Item](#item)); a Room, Wall, Window, Door, Feature, or Surface never is, and the server refuses it there.
+  - **Estimated** means judged by eye: by the AI from a Photo, scaled off a drawing, or guessed by the user. Confirming an Estimated or Listed value does not make it Measured.
 - **Identifiers:** every record the AI or the web UI can name (a Level, Room, Wall, Window, Door, Feature, Item, Constraint, Note, Blueprint, Photo, Session, or Decision) has a slug, unique within its Home, that the platform derives from its name when it is created ("living-room", "sofa", "sofa-2"). A slug never changes afterwards, even if the name does, and the user never edits it. Slugs are the identifiers in tool calls and renderings; database ids stay internal. Walls are named by their Room and position ("living-room/wall-1").
 - **The Source column** in the tables below says who supplies each field:
   - *User*: stated by the user, through the AI or a UI form.
@@ -166,10 +167,18 @@ A color value has one shape everywhere: in Surfaces, Palette colors, and Items.
 | colors | | Color values | Provenance | Opt |
 | materials | | text list | User / AI | Opt |
 | condition | | good / worn / damaged | User | Opt |
-| brand, model, price, link | Filled in when its Purchase Decision is Fulfilled, or stated by the user | text / money / URL | User / AI | Opt |
+| brand, model, link | Stated by the user, or the link copied from the Listing bought at Fulfilment | text / URL | User / AI | Opt |
+| bought on | The day of Fulfilment, or when the user says it was bought | `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`, shown at that precision | User / Platform | Opt |
+| bought from | The shop. At Fulfilment, the Listing URL's host without `www.`, unless the AI gives a nicer name | text | User / AI | Opt |
+| price paid | Free text, as the user says it ("S/ 1,299", "about 400 soles"). At Fulfilment, the Listing's price | text | User / AI | Opt |
+| warranty until | The web form also takes a length ("2 years"), counted from *bought on* at its precision | same as *bought on* | User | Opt |
+| serial number, manual link | The link can hold the maker's warranty or registration page | text / URL | User | Opt |
 | light | [Light attributes](#light-attributes), for an Item that gives light | | | Opt |
 | archived | When and why: replaced by another Item, sold, given away, or broken | date + reason + optional replacing Item | Platform / User | Opt |
 
+- **The register** is *bought on*, *bought from*, *price paid*, *warranty until*, *serial number*, and *manual link*. The AI records these when the user mentions them and never asks for them. `find_items` prints them when filled; the Room Sheet leaves them out.
+- **Listed register facts.** When a Fulfilment names the Listing bought, *bought from*, *price paid*, and *link* are copied from it and tagged Listed; anything the AI gives explicitly wins untagged. Editing one of them removes its tag. *Bought on* is never tagged. Sizes are never parsed from a Listing's free-text dimensions: the AI gives them, as Listed.
+- **The web can edit an Item** through the edit pencil on its page: the register, sizes (Measured or Estimated only), brand, model, link, condition, colors, materials, and position note. Name, category, quantity, Room, Wall, archiving, and replacing are Session work. A web edit is the same write as the AI's, logged with origin `web`, and always overrides Provenance, since the pencil is the user saying so.
 - There is no "keep or replace" field: replacing an Item is a Purchase Decision.
 - An attachment like "it's my grandmother's, it stays" is a Constraint.
 - Archived Items stay out of the Inventory and out of the AI's context, but anything that references them keeps working.
@@ -217,9 +226,9 @@ No scale is stored, because values are never measured off the drawing: a value s
 
 ## Rules the Home model owns
 
-- **No weaker overwrites.** A value is never replaced by one with weaker Provenance (Measured > Blueprint > Estimated) unless the user explicitly says so. The server refuses such a write and says why. The weaker value is not stored. The user's say-so travels as an optional `overrideProvenance` reason on the write: the server then accepts the weaker value, requires the reason to be non-empty (the Skill quotes the user), and logs the override. The override exists because the stronger value can be wrong: a mis-typed measurement, a wall that has since changed, or a guess once recorded as Measured.
+- **No weaker overwrites.** A value is never replaced by one with weaker Provenance (Measured > Blueprint > Listed > Estimated) unless the user explicitly says so. The server refuses such a write and says why. The weaker value is not stored. The user's say-so travels as an optional `overrideProvenance` reason on the write: the server then accepts the weaker value, requires the reason to be non-empty (the Skill quotes the user), and logs the override. The override exists because the stronger value can be wrong: a mis-typed measurement, a wall that has since changed, or a guess once recorded as Measured.
 - **Change log.** Every change to a Home record is logged with what changed, when, and whether it came from the web UI or from which Session. The log exists for undo and audit, and it is never loaded into the AI's context. The Home itself holds only current state. Earlier states survive in Fulfilled Decisions, Deviations, and dated Photos.
-- **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item, and optionally one field of it ("living-room/wall-2, length"). When a field is named, only a change to that field flags the Purchase Decision, and so does Archiving or restoring the record; when none is named, any change to the record does. A field must be one the record's receipts name (`length` of a Wall, `room` of an Item), and the server lists them when it refuses one. The platform detects the change and raises the flag.
+- **Requirement reasons can point at any recorded part:** a Room, Wall, Window, Door, Feature, Surface, or Item, and optionally one field of it ("living-room/wall-2, length"). When a field is named, only a change to that field flags the Purchase Decision, and so does Archiving or restoring the record; when none is named, any change to the record does, except a change to an Item's register (*bought on*, *bought from*, *price paid*, *warranty until*, *serial number*, *manual link*), which flags only a reason that names that field. A field must be one the record's receipts name (`length` of a Wall, `room` of an Item), and the server lists them when it refuses one. The platform detects the change and raises the flag.
 - **Archiving, not deleting.** Anything a Requirement's reason can point at (a Room, Wall, Window, Door, Feature, or Item, as well as a Constraint) is Archived rather than deleted, so every reference keeps working. Removing a Room or a Constraint Archives it. Archived records leave the Home's current state.
 - **windowless is cleared by a daylight opening.** Recording a Window, or a glazed Door leading outside or onto an outdoor Room, makes the flag false by definition, so `save_room` clears it and says so in the receipt. Where a row written before this rule still carries a stale flag, the Room Sheet and the Overview render the contradiction rather than hiding it behind the Daylight line: a flag nobody can see is one nobody can correct.
 - **Gaps.** A Room's Gaps are worked out against the "enough for advice" list:
