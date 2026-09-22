@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The assistant is choosing colors for a home whose overall design direction is locked (warm, low contrast, oak, linen, limewash, brass) and which has no palette yet. The user has just asked to start on the colors. The home's records say the living room has oak boards, terracotta floor tiles at the dining end, walls in Setting Plaster and white gloss woodwork; the kitchen has oak units and a white metro splashback; the living room's windows face south and west and it is used in the evening; the kitchen faces east. Grade the assistant's final reply.
+The assistant is choosing colors for a home whose overall design direction is settled (warm, low contrast, oak, linen, limewash, brass) and which has no palette yet. The user has just asked to start on the colors. The home's records say the living room has oak boards, terracotta floor tiles at the dining end, walls in Setting Plaster and white gloss woodwork; the kitchen has oak units and a white metro splashback; the living room's windows face south and west and it is used in the evening; the kitchen faces east. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

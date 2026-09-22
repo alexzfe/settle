@@ -251,8 +251,8 @@ Revised in the [Agent-context grilling](../handoff/agent-context.md) of 2026-09-
 | Tier | What | When |
 |---|---|---|
 | Home Overview | The Home's facts (location, Tenure, planned stay, access, Levels), Constraints, a count of Unplaced Items, and one line per Room: name, Level, functions, size, ceiling height, window facings, times of use, Item count, and Gaps | Session start, for every Skill, together with open Flags and Conflicts |
-| Home-wide Decisions in force | The Design Direction and the Palette in full. For each, whichever one is furthest along (Locked or Leaning), marked with its state, or a count of Candidates when none is chosen. Every other Home-wide Decision that is Locked and not Fulfilled, one line each | Session start, for every Skill except Home Intake, which makes no design Decisions |
-| Room Sheet | Everything about one Room: Walls, Windows, Doors, Features, Surfaces, lights, one line per Item, and one line per Decision scoped to the Room that is Candidate, Leaning, or Locked but not yet Fulfilled | Fetched the first time a Session's work touches that Room |
+| Home-wide Decisions in force | The Design Direction and the Palette in full. For each, whichever one is furthest along (Settled or Leaning), marked with its state, or a count of Candidates when none is chosen. Every other Home-wide Decision that is Settled and not Fulfilled, one line each | Session start, for every Skill except Home Intake, which makes no design Decisions |
+| Room Sheet | Everything about one Room: Walls, Windows, Doors, Features, Surfaces, lights, one line per Item, and one line per Decision scoped to the Room that is Candidate, Leaning, or Settled but not yet Fulfilled | Fetched the first time a Session's work touches that Room |
 | On request | Blueprint pages as images; the printed text behind Blueprint values; Items anywhere in the Home, Unplaced, or Archived; Decisions in any state, Fulfilled and Rejected ones included; one Decision in full, with its Full Guide only when asked for; Notes | When a question needs them |
 | Never | The change log. Session records, except as Evidence lines inside a Decision. Photos, in the PoC | |
 

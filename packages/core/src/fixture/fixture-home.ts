@@ -28,13 +28,13 @@ export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
  * Blueprint, "Agent plan" (the A3 fixture PDF, copied into the core's data dir on upload), whose
  * page 1 shows Ground, and two living-room Wall lengths printed on it. The printed strings are the
  * fixture's own: the A3 drawing stands in for the plan. Slice 4 adds, from a Design Direction
- * Session, Decisions in every state: a Locked Design Direction "Warm minimalism"; a Locked
- * Home-wide "Keep the original floors" with an open Conflict; a Locked living-room Room Direction
+ * Session, Decisions in every state: a Settled Design Direction "Warm minimalism"; a Settled
+ * Home-wide "Keep the original floors" with an open Conflict; a Settled living-room Room Direction
  * "Calm evenings" resting on both; a Candidate Room use for the Hallway; a Rejected hallway paint
  * idea; and a Leaning "Wool rug" Purchase with two Requirements and Evidence, resting on the Room
- * Direction and flagged because it was reopened (and then Locked again). Slice 5 adds, from a
- * Color Session, a Locked Palette "Warm clay" of four colors (one Estimated, without a code or
- * hex) resting on the Design Direction, and a Locked Room color painting the living-room walls
+ * Direction and flagged because it was reopened (and then Settled again). Slice 5 adds, from a
+ * Color Session, a Settled Palette "Warm clay" of four colors (one Estimated, without a code or
+ * hex) resting on the Design Direction, and a Settled Room color painting the living-room walls
  * in its Jitney, not yet Fulfilled. Slice 6 adds, from a Purchase Session, two more Requirements
  * for the Wool rug (a must resting on the Estimated west wall, so its Quick Guide starts with a
  * Measure first line, and a prefer resting on the Palette, which joins its Basis), both its
@@ -403,13 +403,13 @@ export async function createFixtureHome(
     ],
   });
   await move("warm-minimalism", "leaning", 'The user: "that sounds like us"');
-  await move("warm-minimalism", "locked", 'The user: "yes, lock it"');
+  await move("warm-minimalism", "settled", 'The user: "yes, settle it"');
   await decide({
     kind: "other",
     title: "Keep the original floors",
     statement: "The oak boards and terracotta tiles stay.",
   });
-  await move("keep-the-original-floors", "locked", 'The user: "the floors stay, full stop"');
+  await move("keep-the-original-floors", "settled", 'The user: "the floors stay, full stop"');
   await decide({
     kind: "room-direction",
     room: "living-room",
@@ -423,7 +423,7 @@ export async function createFixtureHome(
     },
     basis: ["keep-the-original-floors"],
   });
-  await move("calm-evenings", "locked", 'The user: "perfect, lock the living room"');
+  await move("calm-evenings", "settled", 'The user: "perfect, settle the living room"');
   await decide({
     kind: "room-use",
     room: "hallway",
@@ -471,9 +471,9 @@ export async function createFixtureHome(
   });
   await move("wool-rug", "leaning", 'The user: "I like the idea of wool"');
   // Rethinking the living room flags the rug, which rests on its direction; the flag stays open
-  // after the direction is Locked again.
+  // after the direction is Settled again.
   await move("calm-evenings", "leaning", `The user: "let's rethink the living room"`);
-  await move("calm-evenings", "locked", 'The user: "no, it was right; lock it again"');
+  await move("calm-evenings", "settled", 'The user: "no, it was right; settle it again"');
   await core.run("flag_conflict", withDesign, {
     session: design,
     decision: "keep-the-original-floors",
@@ -483,7 +483,7 @@ export async function createFixtureHome(
     session: design,
     summary: {
       changed:
-        "Locked the Design Direction Warm minimalism, keeping the original floors, and the " +
+        "Settled the Design Direction Warm minimalism, keeping the original floors, and the " +
         "living room's Calm evenings.",
       open: "Storage in the hallway; the wool rug; a Conflict over the terracotta tiles.",
       next: "Color: a Palette for Warm minimalism.",
@@ -548,7 +548,7 @@ export async function createFixtureHome(
   const colorMove = (decision: string, to: DecisionState, reason: string) =>
     core.run("set_decision_state", withColor, { session: color, decision, to, reason });
   await colorMove("warm-clay", "leaning", 'The user: "I like these together"');
-  await colorMove("warm-clay", "locked", 'The user: "lock the palette"');
+  await colorMove("warm-clay", "settled", 'The user: "settle the palette"');
   await core.run("save_decision", withColor, {
     session: color,
     kind: "room-color",
@@ -558,11 +558,11 @@ export async function createFixtureHome(
     content: { surface: "walls", color: "Jitney", finish: "matt" },
     basis: ["calm-evenings"],
   });
-  await colorMove("living-room-walls-in-jitney", "locked", 'The user: "Jitney it is, lock it"');
+  await colorMove("living-room-walls-in-jitney", "settled", 'The user: "Jitney it is, settle it"');
   await core.run("close_session", withColor, {
     session: color,
     summary: {
-      changed: "Locked the Palette Warm clay and Jitney for the living room walls.",
+      changed: "Settled the Palette Warm clay and Jitney for the living room walls.",
       open: "Painting the living room.",
       next: "Color again once the living room is painted, to record it.",
     },
@@ -691,7 +691,7 @@ export async function createFixtureHome(
       { requirement: 3, result: "fail", note: "open shelves to the floor" },
     ],
   });
-  await purchaseMove("oak-bookcase", "locked", `The user: "that's the one, lock it"`);
+  await purchaseMove("oak-bookcase", "settled", `The user: "that's the one, settle it"`);
   await core.run("save_decision", withPurchase, {
     session: purchase,
     kind: "other",

@@ -18,7 +18,7 @@ As in the Skill's frontmatter:
 | 4 | Is Japandi right for us as a direction for the house, or is it just a trend? | A style reference for the whole Home, weighed |
 | 5 | Everything I buy looks nice on its own, but nothing goes together. Help me pick a direction. | The problem a Design Direction solves |
 | 6 | Which materials should run through the whole house: oak, linen, brass? | Key materials, Home-wide |
-| 7 | Let's rethink the direction we settled on. It feels too cold now. | Reopening a Locked Design Direction, asked outright |
+| 7 | Let's rethink the direction we settled on. It feels too cold now. | Reopening a Settled Design Direction, asked outright |
 | 8 | We've just moved in and recorded the rooms. What's the next step before we choose colours or buy anything? | The Home has no Direction yet, and the user asks what comes first |
 
 ## Near misses (should not fire)
@@ -40,7 +40,7 @@ As in the Skill's frontmatter:
 
 ## Notes for the revision
 
-- The trigger description was tightened after the first full run (2026-09-14): a look, a style reference, a set of materials, or inspiration images for the whole house now count as asking about the overall style, because prompts 2, 4, and 6 did not fire before that. The should-fire set covers the two firing cases only: no Design Direction yet (prompts 1 to 6 and 8) and an outright request to rethink the overall style (prompt 7). Prompt 7 fires only if the Home has a Locked Direction; as a trigger case it still tests that the request reaches the Skill. Prompt 8 depends on the opening telling the Agent there is no Direction, which a trigger eval cannot see; it may be better tested as a behaviour case.
+- The trigger description was tightened after the first full run (2026-09-14): a look, a style reference, a set of materials, or inspiration images for the whole house now count as asking about the overall style, because prompts 2, 4, and 6 did not fire before that. The should-fire set covers the two firing cases only: no Design Direction yet (prompts 1 to 6 and 8) and an outright request to rethink the overall style (prompt 7). Prompt 7 fires only if the Home has a Settled Direction; as a trigger case it still tests that the request reaches the Skill. Prompt 8 depends on the opening telling the Agent there is no Direction, which a trigger eval cannot see; it may be better tested as a behaviour case.
 - Near misses 2 to 4 were should-fire prompts before the narrowing. They now test that a single Room's feel or use does not fire the Skill on its own. Until Color and Purchase exist, the Agent has no other Skill to hand them to, so they may fire anyway in the first run; that is worth seeing, not a reason to drop them. When the user asks the same thing by name ("use design direction for the spare room"), the Skill handles it.
 - The other near misses cover each "Not for" clause (colors, things to buy, app, web and brand design), Home Intake's two nearest uses, property, and "mood" and "style" outside a Home.
 - **Open after the second run (2026-09-14):** should-fire 8 passed once and missed once (the Agent opened a Session without the Skill; it cannot see that no Direction exists), and near miss 4 fired the Skill, because "clash with the rest of the house" reads as a whole-Home question. The user decides whether to reword them, move near miss 4 to should-fire, or accept them as flaky.

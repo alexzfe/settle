@@ -1,6 +1,6 @@
 // The find box: type, the results narrow on every keystroke, Enter jumps there. It only jumps; it
-// changes nothing. One overlay serves the whole Home, opened by / or Ctrl-K, the header's icon,
-// and the box on the Home page. It has no URL of its own, but opening it adds a history entry to
+// changes nothing. One overlay serves the whole Home, opened by / or Ctrl-K (⌘K on a Mac), the
+// Find row in the sidebar or its icon in the phone's top bar, and the box on the Home page. It has no URL of its own, but opening it adds a history entry to
 // the page it covers, so the browser's back button (or a phone's swipe back) closes it rather than
 // leaving the page.
 
@@ -95,19 +95,51 @@ function typingIn(target: EventTarget | null): boolean {
   );
 }
 
-/** The header's search icon, for a phone, which has no Ctrl-K. Nothing outside a Home. */
-export function FindButton() {
+/** The shortcut as this computer writes it: ⌘K on a Mac or an iPad, Ctrl K elsewhere. */
+export function shortcutLabel(platform = navigatorPlatform()): string {
+  return /Mac|iPhone|iPad|iPod/i.test(platform) ? "⌘K" : "Ctrl K";
+}
+
+function navigatorPlatform(): string {
+  if (typeof navigator === "undefined") return "";
+  const data = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData;
+  return data?.platform || navigator.platform || navigator.userAgent;
+}
+
+/**
+ * The way into the find box: the sidebar's Find row with its shortcuts, or, `compact`, the phone's
+ * top-bar icon, since a phone has no keyboard shortcut. Nothing outside a Home.
+ */
+export function FindButton({ compact = false }: { compact?: boolean }) {
   const finder = useContext(FinderContext);
   if (!finder) return null;
+  const shortcut = shortcutLabel();
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className={`secondary ${styles.iconButton}`}
+        aria-label="Find in this Home"
+        onClick={finder.open}
+      >
+        <SearchIcon />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
-      className={`secondary ${styles.headerButton}`}
+      className={styles.row}
       aria-label="Find in this Home"
-      title="Find in this Home ( / or Ctrl-K )"
+      title={`Find in this Home (${shortcut} or /)`}
       onClick={finder.open}
     >
       <SearchIcon />
+      <span className={styles.rowText}>Find</span>
+      <span className={styles.keys} aria-hidden="true">
+        <kbd className={styles.kbd}>{shortcut}</kbd>
+        <kbd className={styles.kbd}>/</kbd>
+      </span>
     </button>
   );
 }

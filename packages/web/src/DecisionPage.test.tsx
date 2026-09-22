@@ -35,7 +35,7 @@ const blank = {
 };
 
 /** A Room Direction resting on the Design Direction, flagged when the Direction was reopened. */
-function calm(state: DecisionState = "locked"): DecisionDetail {
+function calm(state: DecisionState = "settled"): DecisionDetail {
   const flag: Flag = {
     slug: "living-room-direction/flag-1",
     decision: { slug: "living-room-direction", title: "Calm and low" },
@@ -155,7 +155,7 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   expect(inputsTo(fetch, "get_decision")).toEqual([
     { home: "flat", decision: "living-room-direction" },
   ]);
-  expect(header()).toEqual({ scope: "Room Direction · Living room", state: "●Locked" });
+  expect(header()).toEqual({ scope: "Room Direction · Living room", state: "●Settled" });
   expect(screen.getByRole("link", { name: "Needs review" }).getAttribute("href")).toBe("#flags");
   expect(screen.getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/living-room",
@@ -206,7 +206,7 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
 });
 
 it("says what each state change does beside its button", async () => {
-  stubDecision(() => calm("locked"));
+  stubDecision(() => calm("settled"));
   renderRoutes("/homes/flat/decisions/living-room-direction");
   await screen.findByRole("heading", { name: "Change its state" });
   const reopen = within(stateForm()).getByRole("button", { name: "Reopen" });
@@ -217,9 +217,9 @@ it("says what each state change does beside its button", async () => {
 });
 
 it.each<[DecisionState, string[]]>([
-  ["candidate", ["Move to Leaning", "Lock", "Reject"]],
-  ["leaning", ["Move to Candidate", "Lock", "Reject"]],
-  ["locked", ["Reopen", "Reject"]],
+  ["candidate", ["Move to Leaning", "Settle", "Reject"]],
+  ["leaning", ["Move to Candidate", "Settle", "Reject"]],
+  ["settled", ["Reopen", "Reject"]],
   ["rejected", ["Revive"]],
 ])("offers only the legal state changes from %s", async (state, labels) => {
   stubDecision(() => calm(state));
@@ -229,7 +229,7 @@ it.each<[DecisionState, string[]]>([
 });
 
 it("posts the state change with the reason, then shows the new state and its moves", async () => {
-  let decision = calm("locked");
+  let decision = calm("settled");
   const fetch = stubDecision(() => decision, {
     set_decision_state: (input) => {
       decision = { ...decision, state: input.to };
@@ -243,11 +243,11 @@ it("posts the state change with the reason, then shows the new state and its mov
     target: { value: "  we want it brighter  " },
   });
   fireEvent.click(within(stateForm()).getByRole("button", { name: "Reopen" }));
-  await waitFor(() => expect(moves()).toEqual(["Move to Candidate", "Lock", "Reject"]));
+  await waitFor(() => expect(moves()).toEqual(["Move to Candidate", "Settle", "Reject"]));
   expect(header().state).toBe("◐Leaning");
 
   // Without a reason, none is sent.
-  fireEvent.click(within(stateForm()).getByRole("button", { name: "Lock" }));
+  fireEvent.click(within(stateForm()).getByRole("button", { name: "Settle" }));
   await waitFor(() => expect(moves()).toEqual(["Reopen", "Reject"]));
   expect(inputsTo(fetch, "set_decision_state")).toEqual([
     {
@@ -256,12 +256,12 @@ it("posts the state change with the reason, then shows the new state and its mov
       to: "leaning",
       reason: "we want it brighter",
     },
-    { home: "flat", decision: "living-room-direction", to: "locked" },
+    { home: "flat", decision: "living-room-direction", to: "settled" },
   ]);
 });
 
 it("shows a refusal inline and leaves the state as it was", async () => {
-  const message = "Calm and low is Rejected. Revive it to Candidate before locking it.";
+  const message = "Calm and low is Rejected. Revive it to Candidate before settling it.";
   stubDecision(() => calm("leaning"), {
     set_decision_state: () =>
       Response.json({ error: { code: "illegal_transition", message } }, { status: 409 }),
@@ -269,11 +269,11 @@ it("shows a refusal inline and leaves the state as it was", async () => {
   renderRoutes("/homes/flat/decisions/living-room-direction");
   await screen.findByRole("heading", { name: "Change its state" });
 
-  fireEvent.click(screen.getByRole("button", { name: "Lock" }));
+  fireEvent.click(screen.getByRole("button", { name: "Settle" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe(message);
   expect(header().state).toBe("◐Leaning");
-  expect(moves()).toEqual(["Move to Candidate", "Lock", "Reject"]);
+  expect(moves()).toEqual(["Move to Candidate", "Settle", "Reject"]);
 });
 
 it("renders each kind's content", async () => {
@@ -282,7 +282,7 @@ it("renders each kind's content", async () => {
       ...blank,
       slug: "design-direction",
       title: "Warm minimalism",
-      state: "locked",
+      state: "settled",
       kind: "design-direction",
       content: {
         mood: "calm",
@@ -297,7 +297,7 @@ it("renders each kind's content", async () => {
       ...blank,
       slug: "palette",
       title: "Earthy palette",
-      state: "locked",
+      state: "settled",
       kind: "palette",
       content: {
         colors: [
@@ -442,13 +442,13 @@ const settingPlaster: PaletteColor = {
   note: "walls throughout",
 };
 
-/** A Locked Palette resting on the Design Direction: one color identified exactly, one by eye. */
+/** A Settled Palette resting on the Design Direction: one color identified exactly, one by eye. */
 const earthy: DecisionDetail = {
   ...blank,
   slug: "earthy-palette",
   title: "Earthy palette",
   kind: "palette",
-  state: "locked",
+  state: "settled",
   statement: "Warm plaster with olive accents.",
   basis: [direction],
   content: {
@@ -477,7 +477,7 @@ function windowWall(color = settingPlaster.name): DecisionDetail {
         slug: "earthy-palette",
         title: "Earthy palette",
         kind: "palette",
-        state: "locked",
+        state: "settled",
         automatic: true,
       },
     ],
@@ -530,7 +530,7 @@ it("shows a Room color's Surface, Wall, and finish, with its color from the Pale
   // The Palette is marked automatic, as the Design Direction is.
   expect(listAfter("Basis")).toEqual([
     "◐Warm minimalismDesign Direction, Leaning, in every Basis",
-    "●Earthy palettePalette, Locked, in every Basis using its colors",
+    "●Earthy palettePalette, Settled, in every Basis using its colors",
   ]);
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/earthy-palette",
@@ -553,7 +553,7 @@ it("keeps the placeholder for a Room color the Palette in its Basis does not hav
 it("shows the color and finish a Fulfilled Room color left on its Surface", async () => {
   stubDecision(() => ({
     ...windowWall(),
-    state: "locked",
+    state: "settled",
     fulfilledAt: "2026-09-14T15:00:00Z",
     fulfilment: {
       surface: "living-room/wall-1/surface",

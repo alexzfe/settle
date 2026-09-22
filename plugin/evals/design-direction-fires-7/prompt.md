@@ -1,5 +1,5 @@
 ---
-description: "Should fire. Reopening a Locked Design Direction, asked outright."
+description: "Should fire. Reopening a Settled Design Direction, asked outright."
 tags: [trigger, design-direction]
 max_turns: 12
 timeout_seconds: 300

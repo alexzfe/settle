@@ -11,13 +11,13 @@ it("pairs each state with a symbol and its name", () => {
     <>
       <StatePill state="candidate" />
       <StatePill state="leaning" />
-      <StatePill state="locked" />
+      <StatePill state="settled" />
       <StatePill state="rejected" />
     </>,
   );
   expect(screen.getByText("Candidate").parentElement?.textContent).toBe("○Candidate");
   expect(screen.getByText("Leaning").parentElement?.textContent).toBe("◐Leaning");
-  expect(screen.getByText("Locked").parentElement?.textContent).toBe("●Locked");
+  expect(screen.getByText("Settled").parentElement?.textContent).toBe("●Settled");
   expect(screen.getByText("Rejected")).toBeTruthy();
 });
 

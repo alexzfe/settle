@@ -1,5 +1,5 @@
 ---
-description: "The Design Direction is Locked, low contrast and calm. Invoked by name for the bedroom, the user wants it more enveloping than the rest. The reply gives the Room that emphasis, says which Home line it carries through, and calls no contradiction."
+description: "The Design Direction is Settled, low contrast and calm. Invoked by name for the bedroom, the user wants it more enveloping than the rest. The reply gives the Room that emphasis, says which Home line it carries through, and calls no contradiction."
 tags: [behaviour, design-direction]
 max_turns: 16
 timeout_seconds: 300

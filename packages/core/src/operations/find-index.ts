@@ -28,7 +28,7 @@ export interface FindRow {
   tier: 1 | 2;
   /** The row's type label: "Room", "Decision", "Item", "Listing", "Feature". */
   label: string;
-  /** A state pill when one applies: "Rejected", "Archived", "Locked", "Fulfilled", "Held". */
+  /** A state pill when one applies: "Rejected", "Archived", "Settled", "Fulfilled", "Held". */
   state?: string;
   /** Archived or Rejected: always ranked last, always greyed. */
   retired: boolean;
@@ -190,7 +190,7 @@ const archived = (row: { archivedAt: string | null }): string | undefined =>
 function decisionState(decision: DecisionRow): string | undefined {
   if (decision.state === "rejected") return "Rejected";
   if (decision.fulfilledAt !== null) return "Fulfilled";
-  if (decision.state === "locked") return "Locked";
+  if (decision.state === "settled") return "Settled";
   return undefined;
 }
 

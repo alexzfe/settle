@@ -1,1 +1,1 @@
-Warm minimalism (warm-minimalism): Locked, was Leaning
+Warm minimalism (warm-minimalism): Settled, was Leaning

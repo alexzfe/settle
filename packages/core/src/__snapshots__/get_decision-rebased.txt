@@ -1,17 +1,17 @@
 # set_decision_state: the Palette Rejected, flagging the Room color resting on it
-Warm clay (warm-clay): Rejected, was Locked
+Warm clay (warm-clay): Rejected, was Settled
 Flagged for review: Wool rug (wool-rug), which rests on Warm clay (warm-clay), now rejected
 Flagged for review: Living room walls in Jitney (living-room-walls-in-jitney), which rests on Warm clay (warm-clay), now rejected
 
 # set_decision_state: the Room color kept, so it now rests on the Palette in force
-Living room walls in Jitney (living-room-walls-in-jitney): kept as Locked; cleared living-room-walls-in-jitney/flag-1
+Living room walls in Jitney (living-room-walls-in-jitney): kept as Settled; cleared living-room-walls-in-jitney/flag-1
 Living room walls in Jitney (living-room-walls-in-jitney): now rests on Cool stone (cool-stone), the Palette
 
 # get_decision: the re-based Room color
 Decision: Living room walls in Jitney (living-room-walls-in-jitney)
 Kind: Room color
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Statement: The living room walls in Jitney, matt, for a warmer glow in the evenings.
 
 Content:
@@ -20,6 +20,6 @@ Content:
 - Finish: matt
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Cool stone (cool-stone): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Cool stone (cool-stone): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled

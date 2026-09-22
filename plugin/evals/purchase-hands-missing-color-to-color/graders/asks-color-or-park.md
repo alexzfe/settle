@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The assistant is helping the user buy a rug for the main bedroom of their home. Every colour in the home must come from its locked palette, "Warm clay", which has four colours: Pointing (a warm white), Setting Plaster (a warm plaster pink), Jitney (a warm stone), and a warm terracotta. It has no green. Adding a colour to the palette is a separate step, handled by the home's Color skill, not by the purchase. The user has just said they want a deep forest green rug and asked the assistant to save it with the green. Grade the assistant's final reply.
+The assistant is helping the user buy a rug for the main bedroom of their home. Every colour in the home must come from its settled palette, "Warm clay", which has four colours: Pointing (a warm white), Setting Plaster (a warm plaster pink), Jitney (a warm stone), and a warm terracotta. It has no green. Adding a colour to the palette is a separate step, handled by the home's Color skill, not by the purchase. The user has just said they want a deep forest green rug and asked the assistant to save it with the green. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

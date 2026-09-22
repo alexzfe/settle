@@ -1,5 +1,5 @@
 ---
-description: "The first reply. The Home has no Design Direction and nothing Rejected. The user doesn't know their style. The reply proposes two or three whole directions, recommends one with a reason from this Home, and saves and Locks nothing."
+description: "The first reply. The Home has no Design Direction and nothing Rejected. The user doesn't know their style. The reply proposes two or three whole directions, recommends one with a reason from this Home, and saves and Settles nothing."
 tags: [behaviour, design-direction]
 max_turns: 16
 timeout_seconds: 300

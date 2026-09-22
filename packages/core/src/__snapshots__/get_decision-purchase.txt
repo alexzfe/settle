@@ -32,9 +32,9 @@ Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled
 
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
@@ -90,9 +90,9 @@ Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled
 
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
@@ -101,7 +101,7 @@ Evidence:
 Decision: Oak bookcase (oak-bookcase)
 Kind: Purchase
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Fulfilled: 2026-09-14; bought Oak bookcase, 85 cm wide, open shelves to the floor, £620; added Item oak-bookcase, replacing bookcase
 Statement: A solid oak bookcase in place of the Billy.
 
@@ -118,4 +118,4 @@ Deviations:
 - Requirement 3, prefer (Closed cupboards at the bottom, out of the cats' reach): open shelves to the floor, no cupboards
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction

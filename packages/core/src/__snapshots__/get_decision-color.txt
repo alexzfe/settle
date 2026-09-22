@@ -1,7 +1,7 @@
 Decision: Warm clay (warm-clay)
 Kind: Palette
 Scope: the whole Home
-State: Locked
+State: Settled
 Statement: Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
 
 Content:
@@ -12,7 +12,7 @@ Content:
   - accent: ~warm terracotta; cushions and a rug, echoing the dining-end tiles
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
 
 Evidence:
 - supports: Session color-jkmn, 2026-09-14, color: The user held the samples up to the bay window at dusk.
@@ -20,7 +20,7 @@ Evidence:
 Decision: Living room walls in Jitney (living-room-walls-in-jitney)
 Kind: Room color
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Statement: The living room walls in Jitney, matt, for a warmer glow in the evenings.
 
 Content:
@@ -29,6 +29,6 @@ Content:
 - Finish: matt
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled

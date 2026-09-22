@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user is working out the overall style of their home, which has none yet. The record says: a rented 1930s London semi, two cats, and a locked decision that keeps the original floors, which are oak boards at the living end of the living room and terracotta tiles at the dining end. The living room also has a cast-iron fireplace, a teal leaf-print wallpapered chimney wall, plaster walls, and deciduous trees blocking some sky at the south window; it is used in the evening and at night. The user owns a worn linen sofa, six oak dining chairs, an IKEA Billy bookcase and a pendant lamp. A note says the cats scratch fabric furniture. Nothing records whether the sofa is being kept. Grade the assistant's final reply.
+The user is working out the overall style of their home, which has none yet. The record says: a rented 1930s London semi, two cats, and a settled decision that keeps the original floors, which are oak boards at the living end of the living room and terracotta tiles at the dining end. The living room also has a cast-iron fireplace, a teal leaf-print wallpapered chimney wall, plaster walls, and deciduous trees blocking some sky at the south window; it is used in the evening and at night. The user owns a worn linen sofa, six oak dining chairs, an IKEA Billy bookcase and a pendant lamp. A note says the cats scratch fabric furniture. Nothing records whether the sofa is being kept. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

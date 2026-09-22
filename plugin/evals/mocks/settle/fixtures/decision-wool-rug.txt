@@ -31,9 +31,9 @@ Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled
 
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.

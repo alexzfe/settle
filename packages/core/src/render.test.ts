@@ -53,7 +53,7 @@ it("renders the opening for Design Direction: the Home-wide Decisions after the 
   await expect(result.opening).toMatchFileSnapshot(snapshot("opening-design-direction"));
 });
 
-it("renders the opening for Color: the Locked Palette in full, every color with its role and note", async () => {
+it("renders the opening for Color: the Settled Palette in full, every color with its role and note", async () => {
   const result = await fixture.core.run("open_session", agent(), { skill: "color" });
   await expect(result.opening).toMatchFileSnapshot(snapshot("opening-color"));
 });
@@ -360,7 +360,7 @@ describe("Decision receipts", () => {
     const keep = await own.core.run("set_decision_state", ownAgent(session), {
       session,
       decision: "calm-evenings",
-      to: "locked",
+      to: "settled",
       reason: 'The user: "the living room stays as it is"',
     });
     await expect([reopen.receipt, keep.receipt].join("\n\n")).toMatchFileSnapshot(
@@ -419,14 +419,14 @@ describe("Decision receipts", () => {
     await own.core.run("set_decision_state", ownAgent(session), {
       session,
       decision: "storage-in-the-hallway",
-      to: "locked",
+      to: "settled",
       reason: 'The user: "yes, storage it is"',
     });
     // The Reopen above flagged it, and a flagged Decision is Fulfilled only once it is kept.
     await own.core.run("set_decision_state", ownAgent(session), {
       session,
       decision: "storage-in-the-hallway",
-      to: "locked",
+      to: "settled",
       reason: 'The user: "the hallway still holds the coats"',
     });
     receipts.push(
@@ -526,7 +526,7 @@ describe("Color receipts", () => {
     });
     await run("set_decision_state", {
       decision: "kitchen-woodwork-in-pointing",
-      to: "locked",
+      to: "settled",
       reason: 'The user: "yes, Pointing for the woodwork"',
     });
     add(
@@ -648,8 +648,8 @@ describe("Purchase receipts", () => {
     });
     await run("set_decision_state", {
       decision: "wool-rug",
-      to: "locked",
-      reason: 'The user: "the Hay rug, lock it"',
+      to: "settled",
+      reason: 'The user: "the Hay rug, settle it"',
     });
     add(
       "record_fulfilment: refused while the rug is flagged",
@@ -659,7 +659,7 @@ describe("Purchase receipts", () => {
       "set_decision_state: the rug kept, clearing its flags",
       await run("set_decision_state", {
         decision: "wool-rug",
-        to: "locked",
+        to: "settled",
         reason: 'The user: "the wall is fine and so is the room; keep it"',
       }),
     );
@@ -752,14 +752,14 @@ describe("A re-based Decision", () => {
     });
     await run("set_decision_state", {
       decision: "cool-stone",
-      to: "locked",
-      reason: 'The user: "lock the stone palette"',
+      to: "settled",
+      reason: 'The user: "settle the stone palette"',
     });
     add(
       "set_decision_state: the Room color kept, so it now rests on the Palette in force",
       await run("set_decision_state", {
         decision: "living-room-walls-in-jitney",
-        to: "locked",
+        to: "settled",
         reason: 'The user: "keep Jitney for the living room"',
       }),
     );
@@ -772,7 +772,7 @@ describe("A re-based Decision", () => {
 });
 
 describe("The Shopping exports and the phone page", () => {
-  // Their own fixture Home, since the Wool rug is Locked here to put it on the Shopping List.
+  // Their own fixture Home, since the Wool rug is Settled here to put it on the Shopping List.
   let own: FixtureHome;
   const web: CallContext = { caller: { kind: "web" } };
   beforeAll(async () => {
@@ -784,7 +784,7 @@ describe("The Shopping exports and the phone page", () => {
     await own.core.run("set_decision_state", web, {
       home: own.home,
       decision: "wool-rug",
-      to: "locked",
+      to: "settled",
     });
   });
   afterAll(() => own.core.close());

@@ -50,7 +50,7 @@ beforeEach(async () => {
     items: [{ name: "Old lamp", category: "lighting", room: "living-room" }],
   });
 
-  // The Shopping List: a Locked rug with both Guides and a Listing.
+  // The Shopping List: a Settled rug with both Guides and a Listing.
   await call("save_decision", {
     kind: "purchase",
     room: "living-room",
@@ -90,7 +90,11 @@ beforeEach(async () => {
       { requirement: 3, result: "unknown" },
     ],
   });
-  await call("set_decision_state", { decision: "wool-rug", to: "locked", reason: "The user: yes" });
+  await call("set_decision_state", {
+    decision: "wool-rug",
+    to: "settled",
+    reason: "The user: yes",
+  });
 
   // Considering: a Leaning lamp in the living room, and a Home-wide Candidate without Guides.
   await call("save_decision", {
@@ -113,7 +117,7 @@ beforeEach(async () => {
     statement: "=A coir mat for the front door.",
   });
 
-  // Never listed: a Rejected Purchase with Guides, a Fulfilled one, and a Locked non-Purchase.
+  // Never listed: a Rejected Purchase with Guides, a Fulfilled one, and a Settled non-Purchase.
   await call("save_decision", {
     kind: "purchase",
     room: "living-room",
@@ -131,7 +135,7 @@ beforeEach(async () => {
     title: "Table lamp",
     statement: "A small lamp.",
   });
-  await call("set_decision_state", { decision: "table-lamp", to: "locked", reason: "The user" });
+  await call("set_decision_state", { decision: "table-lamp", to: "settled", reason: "The user" });
   await call("record_fulfilment", {
     decision: "table-lamp",
     bought: "A brass table lamp",
@@ -143,7 +147,7 @@ beforeEach(async () => {
     title: "Books by color",
     statement: "Books by the color of their spines.",
   });
-  await call("set_decision_state", { decision: "books-by-color", to: "locked", reason: "Yes" });
+  await call("set_decision_state", { decision: "books-by-color", to: "settled", reason: "Yes" });
 });
 afterEach(() => core.close());
 
@@ -173,7 +177,7 @@ async function rugToken(): Promise<string> {
 }
 
 describe("get_shopping", () => {
-  it("lists Locked Purchases not Fulfilled on the Shopping List, and Candidate and Leaning ones under Considering, Home-wide first", async () => {
+  it("lists Settled Purchases not Fulfilled on the Shopping List, and Candidate and Leaning ones under Considering, Home-wide first", async () => {
     const { shoppingList, considering } = await core.run("get_shopping", web, { home });
     expect(shoppingList.map((each) => each.slug)).toEqual(["wool-rug"]);
     expect(considering.map((each) => each.slug)).toEqual(["door-mat", "floor-lamp"]);
@@ -185,7 +189,7 @@ describe("get_shopping", () => {
       slug: "wool-rug",
       title: "Wool rug",
       statement: "A large wool rug, <b>under</b> the sofa.",
-      state: "locked",
+      state: "settled",
       room: { slug: "living-room", name: "Living room" },
       requirements: { must: 2, prefer: 1 },
       hasGuides: true,
@@ -240,7 +244,7 @@ describe("export_shopping_list", () => {
   });
 
   it("keeps a spreadsheet from reading a cell as a formula", async () => {
-    await call("set_decision_state", { decision: "door-mat", to: "locked", reason: "The user" });
+    await call("set_decision_state", { decision: "door-mat", to: "settled", reason: "The user" });
     const text = await exportText("export_shopping_list", { format: "csv" });
     expect(text).toContain("Door mat,door-mat,Home-wide,'=A coir mat for the front door.,");
   });

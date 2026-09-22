@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user is working out the overall style of their home, which has none yet, and has said they like a lot going on: pattern, collected things, pictures everywhere, nothing bare. The record says a rented 1930s London semi with two cats, a living room facing south and west used in the evening, oak dining chairs, a worn linen sofa, and a locked decision keeping the original oak boards and terracotta tiles. Grade the assistant's final reply.
+The user is working out the overall style of their home, which has none yet, and has said they like a lot going on: pattern, collected things, pictures everywhere, nothing bare. The record says a rented 1930s London semi with two cats, a living room facing south and west used in the evening, oak dining chairs, a worn linen sofa, and a settled decision keeping the original oak boards and terracotta tiles. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

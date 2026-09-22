@@ -412,11 +412,11 @@ it("says what is not recorded when the Room has nothing yet", async () => {
 });
 
 it("lists the Room's open Decisions that get_room answers with, each linking to its page", async () => {
-  // get_room gives the Candidate, Leaning, and Locked-but-not-Fulfilled ones only.
+  // get_room gives the Candidate, Leaning, and Settled-but-not-Fulfilled ones only.
   stubRoom(livingRoom, () => [
     roomDecision("reading-corner", "A reading corner", "room-use", "candidate"),
     roomDecision("low-sofa", "A low sofa", "purchase", "leaning"),
-    roomDecision("calm", "Calm and low", "room-direction", "locked", {
+    roomDecision("calm", "Calm and low", "room-direction", "settled", {
       openFlags: [
         {
           slug: "calm/flag-1",
@@ -433,7 +433,7 @@ it("lists the Room's open Decisions that get_room answers with, each linking to 
   expect(listIn("Decisions")).toEqual([
     "○CandidateA reading cornerRoom use",
     "◐LeaningA low sofaPurchase",
-    "●LockedCalm and lowRoom Direction⚑",
+    "●SettledCalm and lowRoom Direction⚑",
   ]);
   expect(screen.getByRole("link", { name: "Calm and low" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/calm",
@@ -512,7 +512,7 @@ it("shows each Surface color as a swatch, with a placeholder when it has no hex"
 it("shows the new Surface color when a Room color is Fulfilled while the page is open", async () => {
   let room = livingRoom();
   let decisions = [
-    roomDecision("olive-walls", "Olive walls", "room-color", "locked"),
+    roomDecision("olive-walls", "Olive walls", "room-color", "settled"),
     roomDecision("low-sofa", "A low sofa", "purchase", "leaning"),
   ];
   stubRoom(
@@ -523,7 +523,7 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
   await screen.findByText("Olive walls");
   // A Room color is listed with the Room's other open Decisions.
   expect(listIn("Decisions")).toEqual([
-    "●LockedOlive wallsRoom color",
+    "●SettledOlive wallsRoom color",
     "◐LeaningA low sofaPurchase",
   ]);
 

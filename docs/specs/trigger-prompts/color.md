@@ -20,7 +20,7 @@ As in the Skill's frontmatter, unchanged from the draft in [skill-set.md](../ski
 | 6 | We'd love a dark green feature wall behind the bed. Would that work? | One Wall's color, and possibly a Palette change |
 | 7 | Gloss or satin for the skirting boards and door frames? | A woodwork finish |
 | 8 | The kitchen only gets morning sun. What wall colours would suit it? | Daylight-led wall colors, without the word "paint" |
-| 9 | Our palette feels too beige now. Can we add an accent colour? | Changing a Locked Palette |
+| 9 | Our palette feels too beige now. Can we add an accent colour? | Changing a Settled Palette |
 | 10 | We painted the living room walls at the weekend, in the colour we picked. | Fulfilling a Room color |
 
 ## Near misses (should not fire)

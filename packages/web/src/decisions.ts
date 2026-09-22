@@ -26,7 +26,7 @@ export const KIND_LABEL: Record<DecisionKind, string> = {
 export const STATE_LABEL: Record<DecisionState, string> = {
   candidate: "Candidate",
   leaning: "Leaning",
-  locked: "Locked",
+  settled: "Settled",
   rejected: "Rejected",
 };
 
@@ -51,15 +51,15 @@ export const MOVES: Record<DecisionState, readonly Move[]> = {
       label: "Move to Leaning",
       consequence: "Say you favour it, still uncommitted.",
     },
-    { to: "locked", label: "Lock", consequence: "Commit to it; other Decisions can rest on it." },
+    { to: "settled", label: "Settle", consequence: "Commit to it; later Decisions build on it." },
     { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
   leaning: [
     { to: "candidate", label: "Move to Candidate", consequence: "Back to under consideration." },
-    { to: "locked", label: "Lock", consequence: "Commit to it; other Decisions can rest on it." },
+    { to: "settled", label: "Settle", consequence: "Commit to it; later Decisions build on it." },
     { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
-  locked: [
+  settled: [
     { to: "leaning", label: "Reopen", consequence: `Back to Leaning. ${FLAGS_DEPENDENTS}` },
     { to: "rejected", label: "Reject", consequence: `Set it aside. ${FLAGS_DEPENDENTS}` },
   ],
@@ -183,13 +183,13 @@ export function automaticBasisNote(kind: DecisionKind): string {
 }
 
 /**
- * The Palette in force, as core picks it: the Locked one, else the latest Leaning one. The list is
+ * The Palette in force, as core picks it: the Settled one, else the latest Leaning one. The list is
  * in the order the Decisions were created, so the latest is the last.
  */
 export function paletteInForce(decisions: readonly DecisionSummary[]): DecisionSummary | undefined {
   const palettes = decisions.filter((decision) => decision.kind === "palette");
   return (
-    palettes.find((decision) => decision.state === "locked") ??
+    palettes.find((decision) => decision.state === "settled") ??
     palettes.filter((decision) => decision.state === "leaning").at(-1)
   );
 }

@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user's home has a locked overall design direction, "Warm minimalism", whose lines include a calm, grounded mood and low contrast. A room direction may narrow or shift emphasis within the home's direction, but never go against one of its lines; when the user wants something that contradicts it, the assistant is to say which line it goes against and offer two ways on: a version of the room that fits, or rethinking the home's direction, which needs the user's explicit permission first. The user has asked for a sharp, graphic, strong-contrast bedroom, the opposite of the rest of the house. Grade the assistant's final reply.
+The user's home has a settled overall design direction, "Warm minimalism", whose lines include a calm, grounded mood and low contrast. A room direction may narrow or shift emphasis within the home's direction, but never go against one of its lines; when the user wants something that contradicts it, the assistant is to say which line it goes against and offer two ways on: a version of the room that fits, or rethinking the home's direction, which needs the user's explicit permission first. The user has asked for a sharp, graphic, strong-contrast bedroom, the opposite of the rest of the house. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

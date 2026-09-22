@@ -38,10 +38,10 @@ const RESOLUTION_EFFECT: Record<Resolution, string> = {
   reject: "Reject retires it.",
 };
 
-/** The resolutions a Decision allows: Keep always, Reopen only Locked, Reject unless Rejected. */
+/** The resolutions a Decision allows: Keep always, Reopen only Settled, Reject unless Rejected. */
 function allowedResolutions(decision: { state: DecisionState }): [Resolution, string][] {
   const allowed: [Resolution, string][] = [["keep", "Keep"]];
-  if (decision.state === "locked") allowed.push(["reopen", "Reopen"]);
+  if (decision.state === "settled") allowed.push(["reopen", "Reopen"]);
   if (decision.state !== "rejected") allowed.push(["reject", "Reject"]);
   return allowed;
 }
@@ -202,7 +202,7 @@ function ConflictQuestion({
   );
 }
 
-/** "Conflict · Room Direction · ● Locked · raised 14 Sep". */
+/** "Conflict · Room Direction · ● Settled · raised 14 Sep". */
 function ReviewMeta({
   decision,
   raisedAt,

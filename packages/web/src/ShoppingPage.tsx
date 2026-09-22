@@ -1,4 +1,4 @@
-// The Shopping section as a calm checklist: the Shopping List (Locked Purchases not yet Fulfilled)
+// The Shopping section as a calm checklist: the Shopping List (Settled Purchases not yet Fulfilled)
 // and Considering (Candidate and Leaning ones), each row with its Purchase Decision, Room, what to
 // measure first, any flag, its Listings with the best Rating among the ones it could actually buy
 // and that Listing's picture, and a link to its Quick Guide; and the exports the server renders
@@ -35,7 +35,7 @@ export function ShoppingPage() {
             <Entries
               home={home}
               entries={shopping.data.shoppingList}
-              none="Nothing to buy: no Locked Purchase is waiting to be Fulfilled."
+              none="Nothing to buy: no Settled Purchase is waiting to be Fulfilled."
             />
           </Section>
           <Section title="Considering" id="considering">
@@ -136,7 +136,7 @@ const MEASURE_FIRST = /^Measure first:\s*/i;
 
 /**
  * A checklist row: a quiet box, its title (linking to its Decision page) with its state when not
- * Locked and what it has so far, its Room, what to measure first (the phrase for one, a count
+ * Settled and what it has so far, its Room, what to measure first (the phrase for one, a count
  * with the list for more), any flag, its Listings, and a link to its Quick Guide.
  */
 function Entry({ home, entry }: { home: string; entry: ShoppingEntry }) {
@@ -150,7 +150,7 @@ function Entry({ home, entry }: { home: string; entry: ShoppingEntry }) {
         <div className={page.words}>
           <p className={page.title}>
             <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
-            {entry.state !== "locked" && <StatePill state={entry.state} />}
+            {entry.state !== "settled" && <StatePill state={entry.state} />}
           </p>
           <p className={page.statement}>{entry.statement}</p>
           <p className={page.so}>

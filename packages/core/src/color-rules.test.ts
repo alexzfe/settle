@@ -1,8 +1,8 @@
 // The server-enforced Color rules of slice 5, written before their implementation: a Room color
 // names a color of the Palette in force; the Palette in force enters the Basis of the Decisions
 // using its colors, and only theirs; its Reopen and Reject flag those Decisions and no others;
-// Fulfilling a Locked Room color paints its Surface with the right Provenance and finish; and one
-// Palette is Locked at a time (docs/specs/skill-set.md#decision-kinds and #rule-enforcement).
+// Fulfilling a Settled Room color paints its Surface with the right Provenance and finish; and one
+// Palette is Settled at a time (docs/specs/skill-set.md#decision-kinds and #rule-enforcement).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -135,12 +135,12 @@ const roomColor = (
   content: { finish: "eggshell", ...content },
 });
 
-/** A Locked Design Direction and a Locked Palette "Warm clay". */
+/** A Settled Design Direction and a Settled Palette "Warm clay". */
 async function settled(colors = [SETTING_PLASTER, POINTING, TERRACOTTA]): Promise<void> {
   await save(direction);
-  await setState("warm-minimalism", "locked");
+  await setState("warm-minimalism", "settled");
   await save(palette("Warm clay", colors));
-  await setState("warm-clay", "locked");
+  await setState("warm-clay", "settled");
 }
 
 describe("a Room color's color", () => {
@@ -174,18 +174,18 @@ describe("a Room color's color", () => {
     expect(error.message).toContain("Candidate");
   });
 
-  it("is checked against the Locked Palette, else the latest Leaning one", async () => {
+  it("is checked against the Settled Palette, else the latest Leaning one", async () => {
     await settled();
     await save(palette("Deep blues", [HAGUE_BLUE]));
     await setState("deep-blues", "leaning");
 
-    const whileLocked = await refusal(
+    const whileSettled = await refusal(
       save(roomColor("Blue walls", { surface: "walls", color: "Hague Blue" })),
     );
     await setState("warm-clay", "rejected");
     await save(roomColor("Blue walls", { surface: "walls", color: "Hague Blue" }));
 
-    expect(whileLocked.code).toBe("validation");
+    expect(whileSettled.code).toBe("validation");
     expect((await detail("blue-walls")).content).toMatchObject({ color: "Hague Blue" });
   });
 
@@ -210,7 +210,7 @@ describe("a Room color's color", () => {
       reason: 'The user: "scrap that palette"',
     });
     await save(palette("Deep blues", [HAGUE_BLUE]));
-    await setState("deep-blues", "locked");
+    await setState("deep-blues", "settled");
 
     const changed = await refusal(
       save({
@@ -338,10 +338,10 @@ describe("Reopen and Reject of the Palette", () => {
   async function decisions(): Promise<void> {
     await settled();
     await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await save(roomColor("Pointing ceiling", { surface: "ceiling", color: "Pointing" }));
     await save(roomColor("Done woodwork", { surface: "woodwork", color: "Pointing" }));
-    await setState("done-woodwork", "locked");
+    await setState("done-woodwork", "settled");
     await fulfil("done-woodwork");
     await save(roomColor("Dropped floor", { surface: "floor", color: "warm terracotta" }));
     await setState("dropped-floor", "rejected");
@@ -366,7 +366,7 @@ describe("Reopen and Reject of the Palette", () => {
       statement: "A low, warm room.",
       content: { direction: "Lamplight and wool." },
     });
-    await setState("calm-evenings", "locked");
+    await setState("calm-evenings", "settled");
   }
 
   const flagged = async () => {
@@ -389,7 +389,7 @@ describe("Reopen and Reject of the Palette", () => {
         source: expect.objectContaining({ kind: "decision", slug: "warm-clay" }),
       }),
     ]);
-    expect((await detail("plaster-walls")).state).toBe("locked");
+    expect((await detail("plaster-walls")).state).toBe("settled");
     expect(receipt).toContain("Plaster walls (plaster-walls)");
     expect(receipt).not.toContain("knock-through");
     expect(receipt).not.toContain("done-woodwork");
@@ -410,7 +410,7 @@ describe("record_fulfilment on a Room color", () => {
   it("paints the Surface with the Palette color, Measured when it has a brand and code, and marks the Decision Fulfilled", async () => {
     await settled();
     await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
 
     const { receipt } = await fulfil("plaster-walls");
 
@@ -427,7 +427,7 @@ describe("record_fulfilment on a Room color", () => {
     expect(walls).toMatchObject({ slug: "living-room/walls", color, finish: "eggshell" });
     expect(decisions.map((each) => each.slug)).not.toContain("plaster-walls");
     const decision = await detail("plaster-walls");
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.fulfilledAt).toEqual(expect.any(String));
     expect(decision.fulfilment).toEqual({
       surface: "living-room/walls",
@@ -442,7 +442,7 @@ describe("record_fulfilment on a Room color", () => {
   it("gives a color without a brand and code Estimated Provenance, and records the finish actually applied", async () => {
     await settled();
     await save(roomColor("Terracotta floor", { surface: "floor", color: "warm terracotta" }));
-    await setState("terracotta-floor", "locked");
+    await setState("terracotta-floor", "settled");
 
     const { receipt } = await fulfil("terracotta-floor", { finish: "oiled" });
 
@@ -459,7 +459,7 @@ describe("record_fulfilment on a Room color", () => {
   it("paints only one Wall's Surface when the Room color names a Wall", async () => {
     await settled();
     await save(roomColor("Feature wall", { surface: "walls", wall: 2, color: "warm terracotta" }));
-    await setState("feature-wall", "locked");
+    await setState("feature-wall", "settled");
 
     await fulfil("feature-wall");
 
@@ -484,7 +484,7 @@ describe("record_fulfilment on a Room color", () => {
 
       const error = await refusal(fulfil("plaster-walls"));
 
-      expect(error.code).toBe("not_locked");
+      expect(error.code).toBe("not_settled");
       const walls = (await livingRoom()).room.surfaces.find((surface) => surface.part === "walls");
       expect(walls?.color?.name).toBe("cream");
       expect((await detail("plaster-walls")).fulfilledAt).toBeUndefined();
@@ -500,7 +500,7 @@ describe("record_fulfilment on a Room color", () => {
       surfaces: { walls: { color: { ...POINTING, role: undefined } as never } },
     });
     await save(roomColor("Terracotta walls", { surface: "walls", color: "warm terracotta" }));
-    await setState("terracotta-walls", "locked");
+    await setState("terracotta-walls", "settled");
 
     const error = await refusal(fulfil("terracotta-walls"));
 
@@ -525,7 +525,7 @@ describe("record_fulfilment on a Room color", () => {
   it("is refused a second time", async () => {
     await settled();
     await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await fulfil("plaster-walls");
 
     const error = await refusal(fulfil("plaster-walls"));
@@ -537,7 +537,7 @@ describe("record_fulfilment on a Room color", () => {
   it("takes finish only for a Room color and roomFunctions only for a Room use", async () => {
     await settled();
     await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await save({
       kind: "room-use",
       room: "spare-room",
@@ -545,7 +545,7 @@ describe("record_fulfilment on a Room color", () => {
       statement: "An office.",
       content: { functions: ["office"] },
     });
-    await setState("office", "locked");
+    await setState("office", "settled");
 
     const functions = await refusal(
       core.run("record_fulfilment", agent(session), {
@@ -564,7 +564,7 @@ describe("record_fulfilment on a Room color", () => {
   it("publishes the Decision and the Surface on the event bus", async () => {
     await settled();
     await save(roomColor("Plaster walls", { surface: "walls", color: "Setting Plaster" }));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     const events: ChangeEvent[] = [];
     const stop = core.subscribe((event) => events.push(event));
 
@@ -581,16 +581,16 @@ describe("record_fulfilment on a Room color", () => {
 });
 
 describe("Palettes", () => {
-  it("are one Locked at a time, while a second one can be a Candidate", async () => {
+  it("are one Settled at a time, while a second one can be a Candidate", async () => {
     await settled();
     await save(palette("Deep blues", [HAGUE_BLUE]));
 
-    const error = await refusal(setState("deep-blues", "locked"));
+    const error = await refusal(setState("deep-blues", "settled"));
 
     expect(error.code).toBe("illegal_transition");
     expect(error.message).toContain("warm-clay");
     expect((await detail("deep-blues")).state).toBe("candidate");
-    expect((await detail("warm-clay")).state).toBe("locked");
+    expect((await detail("warm-clay")).state).toBe("settled");
   });
 
   it("carry their colors in list_decisions, for swatches", async () => {

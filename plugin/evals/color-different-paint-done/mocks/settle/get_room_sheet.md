@@ -40,6 +40,6 @@ Items:
 - Bookcase (bookcase): storage; against living-room/wall-4; ~0.80 × ~0.30 × ~1.80 m (W × D × H); IKEA Billy
 
 Decisions:
-- Living room walls in Jitney (living-room-walls-in-jitney): Room color, Locked. The living room walls in Jitney, matt.
+- Living room walls in Jitney (living-room-walls-in-jitney): Room color, Settled. The living room walls in Jitney, matt.
 
 Gaps: none

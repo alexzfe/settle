@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user's home has a locked overall design direction, "Warm minimalism": calm and grounded, warm, low contrast, key materials oak, linen, limewash and unlacquered brass. The living room is one room with two uses, living and dining: oak boards at the living end, terracotta tiles at the dining end, a south-facing bay with trees outside and a west window, a cast-iron fireplace, a worn linen sofa and six oak dining chairs. It is used in the evening and at night. The user says the two ends never feel like one room. Grade the assistant's final reply.
+The user's home has a settled overall design direction, "Warm minimalism": calm and grounded, warm, low contrast, key materials oak, linen, limewash and unlacquered brass. The living room is one room with two uses, living and dining: oak boards at the living end, terracotta tiles at the dining end, a south-facing bay with trees outside and a west window, a cast-iron fireplace, a worn linen sofa and six oak dining chairs. It is used in the evening and at night. The user says the two ends never feel like one room. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

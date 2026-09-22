@@ -1178,7 +1178,7 @@ export const DECISION_KINDS = [
   "purchase",
   "other",
 ] as const;
-export const DECISION_STATES = ["candidate", "leaning", "locked", "rejected"] as const;
+export const DECISION_STATES = ["candidate", "leaning", "settled", "rejected"] as const;
 export const CONTRASTS = ["low", "medium", "high"] as const;
 export const PALETTE_ROLES = ["base", "secondary", "accent"] as const;
 export const EVIDENCE_KINDS = ["note", "session", "decision"] as const;
@@ -1214,13 +1214,13 @@ export type FlagCause = (typeof FLAG_CAUSES)[number];
 export type Resolution = (typeof RESOLUTIONS)[number];
 
 /**
- * The legal state transitions; the server refuses any other. Locked to leaning is a Reopen, and
+ * The legal state transitions; the server refuses any other. Settled to leaning is a Reopen, and
  * rejected to candidate a revival.
  */
 export const LEGAL_TRANSITIONS: Record<DecisionState, readonly DecisionState[]> = {
-  candidate: ["leaning", "locked", "rejected"],
-  leaning: ["candidate", "locked", "rejected"],
-  locked: ["leaning", "rejected"],
+  candidate: ["leaning", "settled", "rejected"],
+  leaning: ["candidate", "settled", "rejected"],
+  settled: ["leaning", "rejected"],
   rejected: ["candidate"],
 };
 
@@ -1382,7 +1382,7 @@ export const decisionContentInput = z
       .max(100)
       .optional()
       .describe(
-        "room-color, required: the name of a color of the Palette in force (the Locked one, else " +
+        "room-color, required: the name of a color of the Palette in force (the Settled one, else " +
           "the Leaning one); any other is refused.",
       ),
     finish: text.max(60).optional().describe('room-color, required: e.g. "matt", "eggshell".'),
@@ -1508,7 +1508,7 @@ export const setDecisionStateInput = z.object({
   to: z
     .enum(DECISION_STATES)
     .describe(
-      "candidate, leaning, locked, or rejected; or its current state, to keep a flagged Decision " +
+      "candidate, leaning, settled, or rejected; or its current state, to keep a flagged Decision " +
         "as it is.",
     ),
   reason: z
@@ -1530,7 +1530,7 @@ export const setDecisionStateWebInput = z.object({
 
 export const flagConflictInput = z.object({
   session: sessionInput,
-  decision: decisionSlugInput.describe("The slug of the Locked Decision it contradicts."),
+  decision: decisionSlugInput.describe("The slug of the Settled Decision it contradicts."),
   description: text
     .max(500)
     .describe("What contradicts it, in a sentence or two, e.g. what the user now says."),
@@ -1584,7 +1584,7 @@ export const fulfilmentFeatureInput = featureInput
 
 export const recordFulfilmentInput = z.object({
   session: sessionInput,
-  decision: decisionSlugInput.describe("The slug of the Locked Decision that was carried out."),
+  decision: decisionSlugInput.describe("The slug of the Settled Decision that was carried out."),
   bought: line
     .optional()
     .describe(
@@ -1935,7 +1935,7 @@ export const resolveFlagInput = z.object({
   flag: slugInput.describe('The flag\'s slug, "<decision slug>/flag-<n>".'),
   resolution: z
     .enum(RESOLUTIONS)
-    .describe("keep the Decision as it is, reopen it (Locked only), or reject it."),
+    .describe("keep the Decision as it is, reopen it (Settled only), or reject it."),
   reason: webReason,
 });
 
@@ -1982,7 +1982,7 @@ export const flagSchema = z.object({
   reason: z.string().optional(),
 });
 
-/** New Evidence contradicting a Locked Decision; only the user resolves it. */
+/** New Evidence contradicting a Settled Decision; only the user resolves it. */
 export const conflictSchema = z.object({
   /** "<decision slug>/conflict-<n>". */
   slug: z.string(),
@@ -2006,7 +2006,7 @@ export const decisionSummarySchema = z.object({
   /** The Room it is about; absent for a Home-wide Decision. */
   room: namedRefSchema.optional(),
   createdAt: z.string(),
-  /** When its action was carried out. Fulfilled is not a state: the Decision stays Locked. */
+  /** When its action was carried out. Fulfilled is not a state: the Decision stays Settled. */
   fulfilledAt: z.string().optional(),
   openFlags: z.array(flagSchema),
   openConflicts: z.array(conflictSchema),
@@ -2307,7 +2307,7 @@ export const decisionReceiptResult = z.object({
   decision: decisionSummarySchema,
 });
 
-/** get_room: the Room, and its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions. */
+/** get_room: the Room, and its Candidate, Leaning, and Settled-but-not-Fulfilled Decisions. */
 export const getRoomResult = z.object({
   room: roomDetailSchema,
   decisions: z.array(decisionSummarySchema),
@@ -2375,7 +2375,7 @@ export type ListingResult = z.infer<typeof listingResult>;
 export type GetListingPhotoResult = z.infer<typeof getListingPhotoResult>;
 
 /**
- * get_shopping: the Shopping List (Locked Purchases not yet Fulfilled) and Considering (Candidate
+ * get_shopping: the Shopping List (Settled Purchases not yet Fulfilled) and Considering (Candidate
  * and Leaning ones), each Home-wide first and then by Room, in the order they were created.
  */
 export const getShoppingResult = z.object({

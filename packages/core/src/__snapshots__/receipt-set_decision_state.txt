@@ -1,4 +1,4 @@
-Warm minimalism (warm-minimalism): Reopened to Leaning, was Locked
+Warm minimalism (warm-minimalism): Reopened to Leaning, was Settled
 Flagged for review: Keep the original floors (keep-the-original-floors), which rests on Warm minimalism (warm-minimalism), now reopened
 Flagged for review: Calm evenings (calm-evenings), which rests on Warm minimalism (warm-minimalism), now reopened
 Flagged for review: Storage in the hallway (storage-in-the-hallway), which rests on Warm minimalism (warm-minimalism), now reopened
@@ -7,4 +7,4 @@ Flagged for review: Warm clay (warm-clay), which rests on Warm minimalism (warm-
 Flagged for review: Living room walls in Jitney (living-room-walls-in-jitney), which rests on Warm minimalism (warm-minimalism), now reopened
 Flagged for review: Books by color (books-by-color), which rests on Warm minimalism (warm-minimalism), now reopened
 
-Calm evenings (calm-evenings): kept as Locked; cleared calm-evenings/flag-1
+Calm evenings (calm-evenings): kept as Settled; cleared calm-evenings/flag-1

@@ -167,27 +167,27 @@ const inTerracotta = {
   reason: { kind: "decision" as const, id: "warm-clay" },
 };
 
-/** A Locked Design Direction "Warm minimalism" and a Locked Palette "Warm clay". */
+/** A Settled Design Direction "Warm minimalism" and a Settled Palette "Warm clay". */
 async function settled(colors = [SETTING_PLASTER, POINTING, TERRACOTTA]): Promise<void> {
   await save(direction("Warm minimalism"));
-  await setState("warm-minimalism", "locked");
+  await setState("warm-minimalism", "settled");
   await save(palette("Warm clay", colors));
-  await setState("warm-clay", "locked");
+  await setState("warm-clay", "settled");
 }
 
 describe("two Design Directions in sequence", () => {
   it("leaves the dependents on the first until each is kept or Reopened, then rests them on the second", async () => {
     await save(direction("Warm minimalism"));
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await save(other("Knock through"));
-    await setState("knock-through", "locked");
+    await setState("knock-through", "settled");
     await save(other("New skirting"));
 
     await setState("warm-minimalism", "rejected");
     await save(direction("Industrial"));
-    await setState("industrial", "locked");
+    await setState("industrial", "settled");
     await save(other("Paint the doors"));
 
     for (const slug of ["keep-the-floors", "knock-through", "new-skirting"]) {
@@ -198,7 +198,7 @@ describe("two Design Directions in sequence", () => {
     expect(await basis("industrial")).toEqual([]);
     expect(await flagged()).toEqual(["keep-the-floors", "knock-through", "new-skirting"]);
 
-    const kept = await setState("keep-the-floors", "locked");
+    const kept = await setState("keep-the-floors", "settled");
     const reopened = await resolveFlag("knock-through", "reopen");
     const keptOnWeb = await resolveFlag("new-skirting", "keep");
 
@@ -233,15 +233,15 @@ describe("two Palettes in sequence", () => {
   it("leaves the Room colors on the first until kept or Reopened, then rests them on the second; Reject leaves it", async () => {
     await settled([SETTING_PLASTER, POINTING]);
     await save(roomColor("Plaster walls", "walls", "Setting Plaster"));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await save(roomColor("Pointing ceiling", "ceiling", "Pointing"));
-    await setState("pointing-ceiling", "locked");
+    await setState("pointing-ceiling", "settled");
     await save(roomColor("Pointing woodwork", "woodwork", "Pointing"));
 
     await setState("warm-clay", "rejected");
     const everyWall = { ...SETTING_PLASTER, note: "every wall" };
     await save(palette("Cool stone", [everyWall, HAGUE_BLUE]));
-    await setState("cool-stone", "locked");
+    await setState("cool-stone", "settled");
 
     for (const slug of ["plaster-walls", "pointing-ceiling", "pointing-woodwork"]) {
       expect(await basis(slug)).toEqual([
@@ -251,7 +251,7 @@ describe("two Palettes in sequence", () => {
     }
     expect((await detail("plaster-walls")).paletteColor).toEqual(SETTING_PLASTER);
 
-    const kept = await setState("plaster-walls", "locked");
+    const kept = await setState("plaster-walls", "settled");
     await resolveFlag("pointing-ceiling", "reopen");
     await setState("pointing-woodwork", "rejected");
 
@@ -276,7 +276,7 @@ describe("two Palettes in sequence", () => {
     await save(roomColor("Plaster walls", "walls", "Setting Plaster"));
     await setState("warm-clay", "rejected");
     await save(palette("Cool stone", [SETTING_PLASTER, HAGUE_BLUE]));
-    await setState("cool-stone", "locked");
+    await setState("cool-stone", "settled");
 
     const receipt = await save({
       ...roomColor("Plaster walls", "walls", "Hague Blue"),
@@ -296,16 +296,16 @@ describe("a Fulfilled Room color", () => {
   it("keeps its Palette through a new Palette and a new Design Direction, and is never flagged", async () => {
     await settled();
     await save(roomColor("Pointing ceiling", "ceiling", "Pointing"));
-    await setState("pointing-ceiling", "locked");
+    await setState("pointing-ceiling", "settled");
     await fulfil("pointing-ceiling");
     const before = await detail("pointing-ceiling");
 
     await setState("warm-clay", "rejected");
     await save(palette("Cool stone", [HAGUE_BLUE]));
-    await setState("cool-stone", "locked");
+    await setState("cool-stone", "settled");
     await setState("warm-minimalism", "rejected");
     await save(direction("Industrial"));
-    await setState("industrial", "locked");
+    await setState("industrial", "settled");
     await save({
       ...roomColor("Pointing ceiling", "ceiling", "Pointing"),
       decision: "pointing-ceiling",
@@ -327,12 +327,12 @@ describe("record_fulfilment against the stored Palette", () => {
   it("is refused with illegal_transition once the Palette lost the color, changing nothing", async () => {
     await settled([SETTING_PLASTER, POINTING]);
     await save(roomColor("Pointing ceiling", "ceiling", "Pointing"));
-    await setState("pointing-ceiling", "locked");
+    await setState("pointing-ceiling", "settled");
     await setState("warm-clay", "leaning");
     await save({ ...palette("Warm clay", [SETTING_PLASTER]), decision: "warm-clay" });
-    await setState("warm-clay", "locked");
+    await setState("warm-clay", "settled");
     // Fulfilment waits for the flag the Reopen raised to be settled: the user keeps it.
-    await setState("pointing-ceiling", "locked");
+    await setState("pointing-ceiling", "settled");
 
     const error = await refusal(fulfil("pointing-ceiling"));
 
@@ -344,17 +344,17 @@ describe("record_fulfilment against the stored Palette", () => {
     expect((await detail("pointing-ceiling")).fulfilledAt).toBeUndefined();
   });
 
-  it("succeeds after the Palette was Reopened and Locked again with the color unchanged", async () => {
+  it("succeeds after the Palette was Reopened and Settled again with the color unchanged", async () => {
     await settled();
     await save(roomColor("Plaster walls", "walls", "Setting Plaster"));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await setState("warm-clay", "leaning");
     await save({
       ...palette("Warm clay", [SETTING_PLASTER, POINTING, { ...TERRACOTTA, note: "cushions" }]),
       decision: "warm-clay",
     });
-    await setState("warm-clay", "locked");
-    await setState("plaster-walls", "locked");
+    await setState("warm-clay", "settled");
+    await setState("plaster-walls", "settled");
 
     await fulfil("plaster-walls");
 
@@ -400,7 +400,7 @@ describe("a Decision a Requirement's reason names", () => {
   it("joins the Purchase's Basis as a given entry, with a receipt line, so its Reject flags the Purchase", async () => {
     await settled();
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     const oakTones = {
       text: "Oak tones",
       strength: "must" as const,
@@ -432,13 +432,13 @@ describe("a Decision created before any Design Direction", () => {
     await save(other("Keep the floors"));
     await save(other("Knock through"));
     await save(direction("Warm minimalism"));
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
 
     expect(await basis("keep-the-floors")).toEqual([]);
     expect(await rendered("keep-the-floors")).toContain("no Design Direction in its Basis");
     await setState("warm-minimalism", "leaning");
     expect(await flagged()).toEqual([]);
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
 
     const saved = await save({ ...other("Keep the floors"), statement: "The floors stay." });
     const moved = await setState("knock-through", "leaning");
@@ -469,7 +469,7 @@ describe("the flag cascade from the stored Basis", () => {
     await save(roomColor("Dropped floor", "floor", "warm terracotta"));
     await setState("dropped-floor", "rejected");
     await save(roomColor("Done woodwork", "woodwork", "Pointing"));
-    await setState("done-woodwork", "locked");
+    await setState("done-woodwork", "settled");
     await fulfil("done-woodwork");
 
     const { receipt } = await core.run("set_decision_state", web, {
@@ -496,11 +496,11 @@ describe("re-basing", () => {
     await settled();
     await save(palette("Deep blues", [HAGUE_BLUE]));
     await save(other("Blue study", ["deep-blues"]));
-    await setState("blue-study", "locked");
+    await setState("blue-study", "settled");
     await setState("deep-blues", "rejected");
     await setState("warm-minimalism", "rejected");
     await save(direction("Industrial"));
-    await setState("industrial", "locked");
+    await setState("industrial", "settled");
     const [fromGiven, fromDirection] = (await detail("blue-study")).openFlags;
 
     const keptGiven = await core.run("resolve_flag", web, {
@@ -530,10 +530,10 @@ describe("re-basing", () => {
   it("with nothing of the kind in force leaves a gap, which get_decision shows and Fulfilment refuses until one joins", async () => {
     await settled();
     await save(roomColor("Plaster walls", "walls", "Setting Plaster"));
-    await setState("plaster-walls", "locked");
+    await setState("plaster-walls", "settled");
     await setState("warm-clay", "rejected");
 
-    const kept = await setState("plaster-walls", "locked");
+    const kept = await setState("plaster-walls", "settled");
     const error = await refusal(fulfil("plaster-walls"));
 
     expect(kept).toContain(
@@ -546,7 +546,7 @@ describe("re-basing", () => {
     expect(error.message).toContain("no Palette in its Basis");
 
     await save(palette("Cool stone", [SETTING_PLASTER]));
-    await setState("cool-stone", "locked");
+    await setState("cool-stone", "settled");
     const joined = await save({
       ...roomColor("Plaster walls", "walls", "Setting Plaster"),
       decision: "plaster-walls",

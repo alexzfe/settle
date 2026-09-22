@@ -6,11 +6,11 @@ import type { DecisionState } from "../api";
 import { STATE_LABEL } from "../decisions";
 import styles from "./ui.module.css";
 
-/** Each state's symbol: ○ Candidate, ◐ Leaning, ● Locked, ✕ Rejected (struck through and faded). */
+/** Each state's symbol: ○ Candidate, ◐ Leaning, ● Settled, ✕ Rejected (struck through and faded). */
 export const STATE_SYMBOL: Record<DecisionState, string> = {
   candidate: "○",
   leaning: "◐",
-  locked: "●",
+  settled: "●",
   rejected: "✕",
 };
 
@@ -24,7 +24,7 @@ export function StatePill({ state }: { state: DecisionState }) {
   );
 }
 
-/** "✓ Fulfilled", a small note beside a Locked Decision's state (Fulfilled is not a state). */
+/** "✓ Fulfilled", a small note beside a Settled Decision's state (Fulfilled is not a state). */
 export function FulfilledNote({ children = "Fulfilled" }: { children?: ReactNode }) {
   return (
     <span className={styles.fulfilled}>

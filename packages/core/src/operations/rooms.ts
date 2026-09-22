@@ -120,7 +120,7 @@ export const getRoomSheet = defineOperation({
     "ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, " +
     "and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, " +
     "woodwork); its Features; its lights; one line per Item in it; one line per Decision about " +
-    "it that is Candidate, Leaning, or Locked but not yet Fulfilled; and its Gaps. Values marked " +
+    "it that is Candidate, Leaning, or Settled but not yet Fulfilled; and its Gaps. Values marked " +
     "~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: " +
     "the receipts of later writes keep your picture current. Don't fetch every Room up front; " +
     "the opening lists them all, and find_items finds an Item elsewhere. Values printed on a " +
@@ -148,7 +148,7 @@ export const getRoom = defineOperation({
   name: "get_room",
   description:
     "One Room with everything on its Room Sheet, for the Room page: its Candidate, Leaning, and " +
-    "Locked-but-not-Fulfilled Decisions too, and its Archived Items after the live ones, marked " +
+    "Settled-but-not-Fulfilled Decisions too, and its Archived Items after the live ones, marked " +
     "archivedAt, for the page's Show Archived switch.",
   input: getRoomInput,
   readOnly: true,

@@ -132,7 +132,7 @@ it("sends decision, flag, and conflict events when a Reopen flags a Decision", a
     title: "Warm minimalism",
     statement: "Calm, warm rooms.",
   });
-  await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+  await tool("set_decision_state", { decision: "warm-minimalism", to: "settled", reason });
   await tool("save_decision", {
     kind: "room-direction",
     room: "living-room",
@@ -140,7 +140,7 @@ it("sends decision, flag, and conflict events when a Reopen flags a Decision", a
     statement: "Low and warm.",
     content: { direction: "Lamplight and wool." },
   });
-  await tool("set_decision_state", { decision: "calm-evenings", to: "locked", reason });
+  await tool("set_decision_state", { decision: "calm-evenings", to: "settled", reason });
 
   const controller = new AbortController();
   const response = await fetch(`${server.url}/events?home=${home}`, {

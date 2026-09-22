@@ -36,7 +36,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
 
 ### Design Direction
 
-- **Purpose:** grills and Locks the Home's Design Direction, each Room Direction, and the use of any undecided Room (for example, is the spare room an office or storage?). A Room's use and its Room Direction are decided together ("a calm office").
+- **Purpose:** grills and Settles the Home's Design Direction, each Room Direction, and the use of any undecided Room (for example, is the spare room an office or storage?). A Room's use and its Room Direction are decided together ("a calm office").
 - **Boundaries:**
   - It owns temperature, mood, contrast level, key materials, style references, and guiding principles. It never names specific colors; those belong to Color.
   - It owns every Room Direction and checks that each one refines the Design Direction without contradicting it. Other Skills may suggest that a Room needs a Room Direction, but never write one.
@@ -50,7 +50,7 @@ There are four Skills: Home Intake, Design Direction, Color, and Purchase. Each 
 
 ### Color
 
-- **Purpose:** grills and Locks the Palette, then per-Room color Decisions (for example, the living room walls in the Palette's base color, eggshell). Those Decisions rest on the Palette and on the Room's light, and they change a Surface when Fulfilled.
+- **Purpose:** grills and Settles the Palette, then per-Room color Decisions (for example, the living room walls in the Palette's base color, eggshell). Those Decisions rest on the Palette and on the Room's light, and they change a Surface when Fulfilled.
 - **Boundaries:**
   - The Palette is the only source of color. Adding or changing a Palette color is always a Color question, even when a Purchase raises it (for example, a rug that needs an accent the Palette lacks).
   - The Palette enters the Basis only of Decisions that use one of its colors.
@@ -159,24 +159,24 @@ the chair"). Not for property.
 - **Round format.**
   - The Agent brings a view (the user's note of 2026-09-15: "follow the user's idea just a little bit less; be willing to give pushback and ideas"). When work starts from nothing, the Skill opens with a proposal to react to: two or three Design Directions, or two or three Palettes.
   - A round asks every question that is ready now, numbered, at most five, each with a recommended answer the Agent commits to and its reason from the Home, in plain words. Recorded facts come from the read tools, never from the user; a fact nothing records is asked. For a measurement or a color, the Agent may recommend a value it can justify, saying it is a guess, and saves it as Estimated only with the user's yes; a fact that carries no Provenance is never guessed. The user can accept them all, or answer some and skip the rest.
-  - Pushing back: once, plainly, with a reason from the Home and what the Agent would do instead; then the user decides and it is not raised again in that Session. Accepting recommendations or picking a proposal is never a commitment to Lock.
+  - Pushing back: once, plainly, with a reason from the Home and what the Agent would do instead; then the user decides and it is not raised again in that Session. Accepting recommendations or picking a proposal is never a commitment to Settle.
   - Writes happen after every round, so quitting mid-Session loses nothing.
   - Depth varies by Skill: Design Direction brings ideas first and then digs into the chosen one, while a lamp Purchase takes one or two rounds.
-  - Once the current Decision could be Locked, every round offers to stop there.
+  - Once the current Decision could be Settled, every round offers to stop there.
   - A Session should take roughly 15–40 minutes.
 - **Opening.** The first Skill calls `open_session`, which returns:
   - the Home's name
   - the Home Overview
   - open flags and Conflicts
-  - for every Skill except Home Intake, the Home-wide Decisions in force: the Design Direction and Palette in full, each marked Locked or Leaning (or a count of Candidates when none is chosen), and every other Home-wide Locked Decision that isn't Fulfilled, one line each
+  - for every Skill except Home Intake, the Home-wide Decisions in force: the Design Direction and Palette in full, each marked Settled or Leaning (or a count of Candidates when none is chosen), and every other Home-wide Settled Decision that isn't Fulfilled, one line each
 
   Home Intake makes no design Decisions, so for it the design block would only be text to ignore. A Skill that joins later calls `open_session` with the Session id and gets only what the Session hasn't been sent yet. So when Home Intake hands off to Color, Color's join brings in the design block. What loads where, and why, is in the home-model spec's [Context tiers](home-model.md#context-tiers).
 
-  The Skill names the Home, and every Skill except Home Intake warns if the Design Direction isn't Locked. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't stop to resolve them. Any Skill may resolve a flag later, when the user works on that Decision, and so can the web UI.
-- **Saying what changed.** Whenever the AI changes a Decision's state or the Home record, it says so plainly in the conversation ("Locked: Palette 'Warm Clay'").
+  The Skill names the Home, and every Skill except Home Intake warns if the Design Direction isn't Settled. It mentions flags and Conflicts in one line, giving a count plus any in its own scope, and doesn't stop to resolve them. Any Skill may resolve a flag later, when the user works on that Decision, and so can the web UI.
+- **Saying what changed.** Whenever the AI changes a Decision's state or the Home record, it says so plainly in the conversation ("Settled: Palette 'Warm Clay'").
 - **Asking first.** Before these moves, the AI asks the user in the conversation and waits for a yes. The recorded reason quotes the user's permission.
   - Reopen
-  - Rejecting a Locked Decision
+  - Rejecting a Settled Decision
   - Reviving a Rejected Decision
   - Adding or removing a Constraint (it reads the exact wording back)
 - **Refused writes.** When the server refuses to replace a value with a weaker-Provenance one, the Skill states both values and their Provenance in one line ("You measured 3.62 m; the Blueprint prints 3.5 m. I kept yours. Replace it?"). It overrides only if the user says yes.
@@ -215,8 +215,8 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 
 | Server enforces (refuses the write) | Server supplies, the Skill says it | Skill instructions only |
 |---|---|---|
-| Agent writes need an open (not closed) Session belonging to the Home Folder's Home | Home name, and whether the Design Direction is Locked, at Session open | Lock only on clear commitment, then say so |
-| Every Agent state change carries its Session and a non-empty reason | Notes stay out of the Home Overview; `search_notes` finds them | Ask first before a Reopen, Rejecting a Locked Decision, or reviving a Rejected one; the reason quotes the user's permission |
+| Agent writes need an open (not closed) Session belonging to the Home Folder's Home | Home name, and whether the Design Direction is Settled, at Session open | Settle only on clear commitment, then say so |
+| Every Agent state change carries its Session and a non-empty reason | Notes stay out of the Home Overview; `search_notes` finds them | Ask first before a Reopen, Rejecting a Settled Decision, or reviving a Rejected one; the reason quotes the user's permission |
 | Only legal transitions (see below) | Open flags and Conflicts at Session open | Constraints: only from a fact the user states, read back, and added or removed only once the user agrees |
 | The Design Direction is automatically in every Basis; every Basis and Evidence entry must exist in this Home | | Never re-propose a Rejected Decision (use `find_decisions` to look up the Rejected ones in scope first) |
 | Nothing referenced is deleted; it is Archived instead | | A Note alone never changes a Decision's state |
@@ -227,14 +227,14 @@ Decided in [ADR 0004](../adr/0004-server-enforces-data-rules-skills-own-judgment
 
 | From | To |
 |---|---|
-| Candidate | Leaning, Locked, Rejected |
-| Leaning | Candidate, Locked, Rejected |
-| Locked | Leaning (Reopen), Rejected |
+| Candidate | Leaning, Settled, Rejected |
+| Leaning | Candidate, Settled, Rejected |
+| Settled | Leaning (Reopen), Rejected |
 | Rejected | Candidate (revive) |
 
 **Server `instructions`** repeat the core rules as a backstop in case compaction drops Skill text. They stay under 512 characters. Draft:
 
-> Interior design platform for one Home. Call open_session first and pass its session id on every write. Say plainly what you changed. Before a Reopen, rejecting a Locked Decision, reviving a Rejected one, or adding or removing a Constraint, ask the user and quote their permission as the reason. Never re-propose a Rejected Decision. A Note alone never changes a Decision. A refused write says what to fix.
+> Interior design platform for one Home. Call open_session first and pass its session id on every write. Say plainly what you changed. Before a Reopen, rejecting a Settled Decision, reviving a Rejected one, or adding or removing a Constraint, ask the user and quote their permission as the reason. Never re-propose a Rejected Decision. A Note alone never changes a Decision. A refused write says what to fix.
 
 ## Auto-selection and hand-off
 
@@ -267,7 +267,7 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | **Session** (a write: it records the Session, never the Home, and returns no receipt) | | |
 | `open_session` | Opens a Session, or joins one by id and records the joining Skill. Returns the opening (see Opening above): the Home Overview, open flags and Conflicts, and, for every Skill except Home Intake, the Home-wide Decisions in force. A join returns only what the Session hasn't been sent yet; `resend` returns the whole opening again, for use after compaction | All |
 | **Read** | | |
-| `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Locked-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `withSources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
+| `get_room_sheet` | One Room's Room Sheet, including its Candidate, Leaning, and Settled-but-not-Fulfilled Decisions, fetched the first time the Session's work touches that Room. `withSources` adds, for each Blueprint value, its Blueprint, page, and the text exactly as printed | All |
 | `find_items` | One line per Item, filtered by Room, Unplaced, category, or text. `archived` includes Archived Items | All |
 | `find_decisions` | One line per Decision, filtered by Room or Home-wide scope, kind, and state. Covers every state, including Fulfilled and Rejected ones | All |
 | `get_decision` | One Decision: its content, its Requirements in full, the Quick Guide's AI-written lines, and flags, plus one line per Basis, Evidence, and Listing entry. A Listing's line gives its name, price, Rating with its reason, pass/fail/unknown counts, any *must* it fails, and any hold with its date and reason. The Full Guide appears as one line (when it was written, and whether it is out of date) unless `includeFullGuide` is set | All |
@@ -280,11 +280,11 @@ There are nineteen tools, shaped around tasks. Read tools and write tools are se
 | `set_constraints` | Adds or removes (Archives) a batch of Constraints | All |
 | `save_note` | One Note | All |
 | `save_decision` | Creates or edits a Decision: content (including Design Direction and Palette content), scope, kind, Basis, Evidence, and Requirements for a Purchase. New Decisions start as Candidate | Design Direction, Color, Purchase |
-| `set_decision_state` | Lean, Lock, Reject, Reopen, or revive (to Candidate), with a reason, within the legal transitions. The server cascades flags | Design Direction, Color, Purchase |
+| `set_decision_state` | Lean, Settle, Reject, Reopen, or revive (to Candidate), with a reason, within the legal transitions. The server cascades flags | Design Direction, Color, Purchase |
 | `save_guides` | The Quick Guide's AI-written lines and the Full Guide | Purchase |
 | `record_listing` | A Listing, with pass, fail, or unknown for each Requirement, its Rating and the reason for it (a Rating without a reason is refused), a link to its picture, which the platform fetches and stores without ever failing the call, and rarely a hold | Purchase |
 | `record_fulfilment` | What was actually done, any Deviations, and the resulting Home changes: a new Item, an Archived Item, a changed Surface, a Room's changed functions, or a replaced (Archived) Feature | Purchase; Color (for painting); Design Direction (Room use) |
-| `flag_conflict` | Raises a Conflict against a Locked Decision | All |
+| `flag_conflict` | Raises a Conflict against a Settled Decision | All |
 | `close_session` | The three-part summary | All |
 
 Every write tool that carries a value with Provenance also takes an optional `overrideProvenance` reason, for the one case where the user has said to replace a stronger value with a weaker one ([home-model.md](home-model.md#rules-the-home-model-owns)).
@@ -330,7 +330,7 @@ The AI's picture of a Room is the Room Sheet it fetched plus the receipts since.
 
 1. **Trigger evals per Skill.** About 10 prompts that should fire the Skill and 10 near misses (a CSS palette, a real-estate listing, "what goes with navy?"), graded on whether the Skill fired. **The user reviews and revises every prompt set before it is committed.**
 2. **Behaviour evals.**
-   - Each case replays a saved transcript up to one user turn, with the MCP tools mocked, and grades the next turn. Examples: "no Lock call without commitment", "asks before adding a Constraint", "says what it changed".
+   - Each case replays a saved transcript up to one user turn, with the MCP tools mocked, and grades the next turn. Examples: "no Settle call without commitment", "asks before adding a Constraint", "says what it changed".
    - A rubric grader checks that Requirements trace back to their sources and that the Guides are good.
    - Every rule that lives only in Skill instructions gets at least one case.
 3. **Server tests.** Ordinary TypeScript tests cover every server-enforced rule, with no model involved.

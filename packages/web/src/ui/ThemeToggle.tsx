@@ -1,4 +1,4 @@
-// The theme picker in the header: follow the system, or always light, or always dark. A pick is
+// The theme picker in the sidebar's footer: follow the system, or always light, or always dark. A pick is
 // saved in this browser and set as data-theme on <html>, which tokens.css reads. index.html applies
 // the saved pick before the first paint, with the same storage key, so the page never flashes.
 

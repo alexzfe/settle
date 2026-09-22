@@ -1,7 +1,7 @@
 Decision: Warm minimalism (warm-minimalism)
 Kind: Design Direction
 Scope: the whole Home
-State: Locked
+State: Settled
 Statement: Calm, warm rooms of natural materials that age well.
 
 Content:

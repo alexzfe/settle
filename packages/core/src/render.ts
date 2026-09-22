@@ -62,8 +62,8 @@ export interface OverviewView {
 
 /**
  * The Home-wide Decisions in force: the Design Direction and Palette in full, whichever of each is
- * furthest along (Locked, else Leaning), or how many Candidates there are when none is; then every
- * other Home-wide Decision that is Locked and not Fulfilled.
+ * furthest along (Settled, else Leaning), or how many Candidates there are when none is; then every
+ * other Home-wide Decision that is Settled and not Fulfilled.
  */
 export interface HomeDecisionsView {
   designDirection?: DecisionDetail;
@@ -227,7 +227,7 @@ function openingText(opening: DaylightOpening): string {
 
 /**
  * Everything recorded about one Room: its facts, Walls, Windows, Doors, Surfaces, Features,
- * lights, one line per Item, one line per Decision (those given: Candidate, Leaning, and Locked
+ * lights, one line per Item, one line per Decision (those given: Candidate, Leaning, and Settled
  * but not Fulfilled), and its Gaps. With `sources`, every value printed on a Blueprint is
  * followed by its Blueprint, page, and the text as printed: 1.80 m [agent-plan p.1: 5'11"].
  */
@@ -467,7 +467,7 @@ export const DECISION_KIND_LABELS: Record<DecisionKind, string> = {
 export const DECISION_STATE_LABELS: Record<DecisionState, string> = {
   candidate: "Candidate",
   leaning: "Leaning",
-  locked: "Locked",
+  settled: "Settled",
   rejected: "Rejected",
 };
 
@@ -501,7 +501,7 @@ export function renderDecisions(decisions: DecisionSummary[]): string {
 
 /**
  * The opening's Home-wide Decisions: the Design Direction and the Palette in full, each marked
- * with its state (or a count of Candidates when none is chosen), then the other Home-wide Locked
+ * with its state (or a count of Candidates when none is chosen), then the other Home-wide Settled
  * Decisions not yet Fulfilled, one line each.
  */
 export function renderHomeDecisions(view: HomeDecisionsView): string {
@@ -513,7 +513,7 @@ export function renderHomeDecisions(view: HomeDecisionsView): string {
     ...inFull("Palette", view.palette, view.paletteCandidates),
   ];
   if (view.others.length > 0) {
-    lines.push("", "Other Home-wide Decisions, Locked:");
+    lines.push("", "Other Home-wide Decisions, Settled:");
     for (const decision of view.others) lines.push(`- ${decisionLine(decision, false)}`);
   }
   return lines.join("\n");

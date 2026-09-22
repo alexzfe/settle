@@ -3,7 +3,7 @@ Pass session "home-intake-4567" on every write in this conversation.
 
 Home-wide Decisions in force:
 
-Design Direction: Warm minimalism (warm-minimalism), Locked
+Design Direction: Warm minimalism (warm-minimalism), Settled
 Calm, warm rooms of natural materials that age well.
 - Mood: calm, grounded
 - Color temperature: warm
@@ -15,7 +15,7 @@ Calm, warm rooms of natural materials that age well.
   - Daylight first, then low warm lamps
   - Nothing the cats can shred
 
-Palette: Warm clay (warm-clay), Locked
+Palette: Warm clay (warm-clay), Settled
 Soft plaster and clay tones, a warm stone for the living room, a terracotta accent.
 - Colors:
   - base: Pointing (Farrow & Ball No. 2003); ceilings and woodwork throughout
@@ -23,8 +23,8 @@ Soft plaster and clay tones, a warm stone for the living room, a terracotta acce
   - secondary: Jitney (Farrow & Ball No. 293); living room walls, warm under lamplight
   - accent: ~warm terracotta; cushions and a rug, echoing the dining-end tiles
 
-Other Home-wide Decisions, Locked:
-- Keep the original floors (keep-the-original-floors): Other, Locked; 1 open Conflict. The oak boards and terracotta tiles stay.
+Other Home-wide Decisions, Settled:
+- Keep the original floors (keep-the-original-floors): Other, Settled; 1 open Conflict. The oak boards and terracotta tiles stay.
 
 Session: home-intake-4567
 Pass session "home-intake-4567" on every write in this conversation.

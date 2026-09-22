@@ -57,9 +57,9 @@ function summary(
   };
 }
 
-const calm = summary("living-room-direction", "Calm and low", "room-direction", "locked");
+const calm = summary("living-room-direction", "Calm and low", "room-direction", "settled");
 const nook = summary("hallway-use", "Reading nook", "room-use", "candidate");
-const sofa = summary("sofa", "A low sofa", "purchase", "locked");
+const sofa = summary("sofa", "A low sofa", "purchase", "settled");
 
 /** A flag raised on `decision` when the Design Direction was reopened. */
 function flagOn(decision: DecisionSummary): Flag {
@@ -111,7 +111,7 @@ it("asks about each open flag and Conflict in plain words, linking to its Decisi
       decide: ["Keep", "Reopen", "Reject"],
     },
     {
-      // Only a Locked Decision can be reopened.
+      // Only a Settled Decision can be reopened.
       question:
         "⚑ Something under Reading nook changed: Warm minimalism was reopened. " +
         "Is Reading nook still right?",
@@ -342,7 +342,7 @@ it("shows each Room as a tile with its wall color, functions, Gaps, open Decisio
       decisions: [
         onLiving("rug", "Wool rug", "candidate"),
         { ...onLiving("lamp", "Floor lamp", "leaning"), openFlags: [flagOn(calm)] },
-        onLiving("sofa", "A low sofa", "locked"),
+        onLiving("sofa", "A low sofa", "settled"),
       ],
     }),
   });
@@ -452,9 +452,11 @@ it("picks up where the newest summarised Session left off, settling the Design D
   expect(within(card).getByText("Its ceiling height.")).toBeDefined();
   const steps = () =>
     [...card.querySelectorAll("ol > li > span:first-child")].map((s) => s.textContent);
-  expect(steps()).toEqual(["Settle the Design Direction", "Measure the Kitchen"]);
+  await waitFor(() =>
+    expect(steps()).toEqual(["Settle the Design Direction", "Measure the Kitchen"]),
+  );
 
-  decisions = [summary("design-direction", "Warm minimalism", "design-direction", "locked")];
+  decisions = [summary("design-direction", "Warm minimalism", "design-direction", "settled")];
   act(() =>
     FakeEventSource.open().emit("change", {
       home: "flat",
@@ -517,12 +519,12 @@ function paletteSection(): { line: string | null | undefined; colors: (string | 
   };
 }
 
-it("shows the Locked Palette as chips linking to its Decision", async () => {
+it("shows the Settled Palette as chips linking to its Decision", async () => {
   const fetch = stubHomePage({
     list_decisions: () => ({
       decisions: [
         palette("sunny-palette", "Sunny palette", "leaning"),
-        palette("earthy-palette", "Earthy palette", "locked"),
+        palette("earthy-palette", "Earthy palette", "settled"),
         palette("cool-palette", "Cool palette", "candidate"),
       ],
     }),
@@ -530,7 +532,7 @@ it("shows the Locked Palette as chips linking to its Decision", async () => {
   renderRoutes("/homes/flat");
   await screen.findByText(/Setting Plaster/);
   expect(paletteSection()).toEqual({
-    line: "Earthy palette●Locked",
+    line: "Earthy palette●Settled",
     colors: ["Setting Plaster", "Olive"],
   });
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
@@ -542,11 +544,11 @@ it("shows the Locked Palette as chips linking to its Decision", async () => {
   expect(inputsTo(fetch, "get_decision")).toEqual([]);
 });
 
-it("shows the latest Leaning Palette when none is Locked, under the Design Direction", async () => {
+it("shows the latest Leaning Palette when none is Settled, under the Design Direction", async () => {
   stubHomePage({
     list_decisions: () => ({
       decisions: [
-        summary("design-direction", "Warm minimalism", "design-direction", "locked"),
+        summary("design-direction", "Warm minimalism", "design-direction", "settled"),
         palette("sunny-palette", "Sunny palette", "leaning"),
         palette("earthy-palette", "Earthy palette", "leaning"),
       ],
@@ -556,10 +558,10 @@ it("shows the latest Leaning Palette when none is Locked, under the Design Direc
   await screen.findByText(/Setting Plaster/);
   expect(paletteSection().line).toBe("Earthy palette◐Leaning");
   const direction = screen.getByText("Design Direction").parentElement;
-  expect(direction?.textContent).toBe("Design Direction Warm minimalism ●Locked");
+  expect(direction?.textContent).toBe("Design Direction Warm minimalism ●Settled");
 });
 
-it("says there is no Palette yet, and shows one the Agent Locks", async () => {
+it("says there is no Palette yet, and shows one the Agent Settles", async () => {
   let decisions = [
     palette("earthy-palette", "Earthy palette", "candidate"),
     palette("pastel-palette", "Pastels", "rejected"),
@@ -568,7 +570,7 @@ it("says there is no Palette yet, and shows one the Agent Locks", async () => {
   renderRoutes("/homes/flat");
   expect(await screen.findByText("No Palette yet")).toBeDefined();
 
-  decisions = [palette("earthy-palette", "Earthy palette", "locked")];
+  decisions = [palette("earthy-palette", "Earthy palette", "settled")];
   act(() =>
     FakeEventSource.open().emit("change", {
       home: "flat",
@@ -577,5 +579,5 @@ it("says there is no Palette yet, and shows one the Agent Locks", async () => {
     }),
   );
   await screen.findByText(/Setting Plaster/);
-  expect(paletteSection().line).toBe("Earthy palette●Locked");
+  expect(paletteSection().line).toBe("Earthy palette●Settled");
 });

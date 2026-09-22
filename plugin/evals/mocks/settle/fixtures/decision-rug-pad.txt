@@ -13,5 +13,5 @@ Open flags:
 - rug-pad/flag-1: Wool rug (wool-rug) was Fulfilled with a Deviation from a must Requirement on 2026-09-14
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Wool rug (wool-rug): Purchase, Locked, Fulfilled 2026-09-14
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Wool rug (wool-rug): Purchase, Settled, Fulfilled 2026-09-14

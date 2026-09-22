@@ -132,7 +132,7 @@ a.chip:hover {
   color: var(--color-attention);
 }
 
-.state-locked .dot {
+.state-settled .dot {
   color: var(--color-accent);
 }
 

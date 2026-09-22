@@ -135,7 +135,7 @@ function isColor(value: unknown): value is Parameters<typeof formatColor>[0] {
   return typeof name === "string" && isProvenance(provenance);
 }
 
-const DECISION_STATES = new Set<unknown>(["candidate", "leaning", "locked", "rejected"]);
+const DECISION_STATES = new Set<unknown>(["candidate", "leaning", "settled", "rejected"]);
 
 /** Longest value a sentence quotes; longer ones read "updated". */
 const SHORT = 48;

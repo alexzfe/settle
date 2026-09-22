@@ -27,7 +27,7 @@ Rooms:
 
 Home-wide Decisions in force:
 
-Design Direction: Warm minimalism (warm-minimalism), Locked
+Design Direction: Warm minimalism (warm-minimalism), Settled
 Calm, warm rooms of natural materials that age well.
 - Mood: calm, grounded
 - Color temperature: warm
@@ -41,8 +41,8 @@ Calm, warm rooms of natural materials that age well.
 
 Palette: none chosen yet
 
-Other Home-wide Decisions, Locked:
-- Keep the original floors (keep-the-original-floors): Other, Locked; 1 open Conflict. The oak boards and terracotta tiles stay.
+Other Home-wide Decisions, Settled:
+- Keep the original floors (keep-the-original-floors): Other, Settled; 1 open Conflict. The oak boards and terracotta tiles stay.
 
 Open flags and Conflicts:
 - Keep the original floors (keep-the-original-floors), Home-wide: Conflict raised on 2026-09-14: The user now says the terracotta tiles crack every winter and wants them gone.

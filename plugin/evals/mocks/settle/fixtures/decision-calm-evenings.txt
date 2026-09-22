@@ -1,5 +1,5 @@
 Decision: Calm evenings (calm-evenings)
 Kind: Room Direction
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Statement: A low, warm room for long evenings.

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { type AnyOperation, type Core, CoreError } from "@settle/core";
+import type { AgentActivity } from "./agent-activity.js";
 
 /**
  * The backstop from docs/specs/skill-set.md#rule-enforcement, in case compaction drops the Skill
@@ -8,7 +9,7 @@ import { type AnyOperation, type Core, CoreError } from "@settle/core";
  */
 export const SERVER_INSTRUCTIONS =
   "Interior design platform for one Home. Call open_session first and pass its session id on " +
-  "every write. Say plainly what you changed. Before a Reopen, rejecting a Locked Decision, " +
+  "every write. Say plainly what you changed. Before a Reopen, rejecting a Settled Decision, " +
   "reviving a Rejected one, or adding or removing a Constraint, ask the user and quote their " +
   "permission as the reason. Never re-propose a Rejected Decision. A Note alone never changes a " +
   "Decision. A refused write says what to fix.";
@@ -38,15 +39,23 @@ export async function handleMcpRequest(
     core,
     tools,
     home,
+    activity,
     port,
     publicOrigin,
-  }: { core: Core; tools: AnyOperation[]; home: string; port: number; publicOrigin?: string },
+  }: {
+    core: Core;
+    tools: AnyOperation[];
+    home: string;
+    activity: AgentActivity;
+    port: number;
+    publicOrigin?: string;
+  },
 ): Promise<Response> {
   if (request.method !== "POST") {
     // Stateless: there is no standalone SSE stream to open and no MCP session to delete.
     return new Response(null, { status: 405, headers: { Allow: "POST" } });
   }
-  const server = buildServer(core, tools, home);
+  const server = buildServer(core, tools, home, activity);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
@@ -70,7 +79,12 @@ export async function handleMcpRequest(
   }
 }
 
-function buildServer(core: Core, tools: AnyOperation[], home: string): McpServer {
+function buildServer(
+  core: Core,
+  tools: AnyOperation[],
+  home: string,
+  activity: AgentActivity,
+): McpServer {
   const server = new McpServer(
     { name: "settle", version: "0.0.1" },
     { instructions: SERVER_INSTRUCTIONS },
@@ -85,6 +99,8 @@ function buildServer(core: Core, tools: AnyOperation[], home: string): McpServer
         annotations: { readOnlyHint: tool.readOnly, openWorldHint: false },
       },
       async (args) => {
+        // The SDK calls this only once the tool is found and its input is valid.
+        activity.record(home, tool.name);
         try {
           // Core reads the Session from the tool's `session` argument.
           const output = await core.run(tool.name, { caller: { kind: "session" }, home }, args);

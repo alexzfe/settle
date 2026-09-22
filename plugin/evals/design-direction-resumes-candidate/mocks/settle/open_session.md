@@ -30,5 +30,5 @@ Design Direction: none chosen yet; 1 Candidate (find_decisions lists them)
 
 Palette: none chosen yet
 
-Other Home-wide Decisions, Locked:
-- Keep the original floors (keep-the-original-floors): Other, Locked. The oak boards and terracotta tiles stay.
+Other Home-wide Decisions, Settled:
+- Keep the original floors (keep-the-original-floors): Other, Settled. The oak boards and terracotta tiles stay.

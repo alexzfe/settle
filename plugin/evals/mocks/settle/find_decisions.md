@@ -1,6 +1,6 @@
-- Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide. Calm, warm rooms of natural materials that age well.
-- Keep the original floors (keep-the-original-floors): Other, Locked; Home-wide; 1 open Conflict. The oak boards and terracotta tiles stay.
-- Calm evenings (calm-evenings): Room Direction, Locked; Living room (living-room). A low, warm room for long evenings.
+- Warm minimalism (warm-minimalism): Design Direction, Settled; Home-wide. Calm, warm rooms of natural materials that age well.
+- Keep the original floors (keep-the-original-floors): Other, Settled; Home-wide; 1 open Conflict. The oak boards and terracotta tiles stay.
+- Calm evenings (calm-evenings): Room Direction, Settled; Living room (living-room). A low, warm room for long evenings.
 - Wool rug (wool-rug): Purchase, Leaning; Living room (living-room); 1 open flag. A large wool rug under the sofa.
 - Storage in the hallway (storage-in-the-hallway): Room use, Candidate; Hallway (hallway). The hallway also holds coats, shoes, and the vacuum.
 - Paint the hallway dark green (paint-the-hallway-dark-green): Other, Rejected; Hallway (hallway). A dark green hallway.

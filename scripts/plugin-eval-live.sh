@@ -74,11 +74,11 @@ blueprint="$(node -e '
 [[ "${blueprint}" == "${BLUEPRINT_SLUG} 1" ]] ||
   fail "upload_blueprint should have made the one-page Blueprint ${BLUEPRINT_SLUG}; it answered: ${response}"
 
-# The Color case's Home: a second Home with a Locked Design Direction, which the case picks with
-# EVAL_SETTLE_HOME. A Locked Direction on the fixture Home would change what the Design Direction case
+# The Color case's Home: a second Home with a Settled Design Direction, which the case picks with
+# EVAL_SETTLE_HOME. A Settled Direction on the fixture Home would change what the Design Direction case
 # sees, since that case saves the Home's first Direction.
 COLOR_HOME_SLUG=fixture-flat
-echo "Creating ${COLOR_HOME_SLUG} with a Locked Design Direction..."
+echo "Creating ${COLOR_HOME_SLUG} with a Settled Design Direction..."
 response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
   -d '{"name":"Fixture Flat","country":"GB","city":"London"}')"
 slug="$(node -e '
@@ -89,11 +89,11 @@ slug="$(node -e '
 node scripts/seed-live-direction.mjs "${BASE}/mcp/homes/${COLOR_HOME_SLUG}" ||
   fail "Seeding the Design Direction of ${COLOR_HOME_SLUG} failed."
 
-# The Purchase case's Home: a third Home with a Locked Design Direction and a Locked Palette, which
-# the case picks with EVAL_SETTLE_HOME. A Locked Palette on Fixture Flat would change what the Color
+# The Purchase case's Home: a third Home with a Settled Design Direction and a Settled Palette, which
+# the case picks with EVAL_SETTLE_HOME. A Settled Palette on Fixture Flat would change what the Color
 # case sees, since that case saves the Home's first Palette.
 PURCHASE_HOME_SLUG=fixture-loft
-echo "Creating ${PURCHASE_HOME_SLUG} with a Locked Design Direction and Palette..."
+echo "Creating ${PURCHASE_HOME_SLUG} with a Settled Design Direction and Palette..."
 response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
   -d '{"name":"Fixture Loft","country":"GB","city":"London"}')"
 slug="$(node -e '

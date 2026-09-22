@@ -81,7 +81,7 @@ export function renderShoppingListPage(
   ];
   if (purchases.length === 0) {
     body.push(
-      "<p>Nothing is on the Shopping List yet: no Purchase is Locked and waiting to be bought.</p>",
+      "<p>Nothing is on the Shopping List yet: no Purchase is Settled and waiting to be bought.</p>",
     );
   }
   for (const purchase of purchases) {
@@ -354,7 +354,7 @@ function place(purchase: DecisionDetail): string {
   return purchase.room?.name ?? "Home-wide";
 }
 
-/** "Living room, Locked". */
+/** "Living room, Settled". */
 function about(purchase: DecisionDetail): string {
   return `${place(purchase)}, ${STATES[purchase.state]}`;
 }
@@ -379,7 +379,7 @@ function longDay(timestamp: string): string {
 const SYMBOLS: Record<DecisionDetail["state"], string> = {
   candidate: "○",
   leaning: "◐",
-  locked: "●",
+  settled: "●",
   rejected: "✕",
 };
 
@@ -390,7 +390,7 @@ function purchaseClass(purchase: DecisionDetail): string {
   return `purchase${considering(purchase) ? " considering" : ""}`;
 }
 
-/** "● Locked", or "◐ Leaning · Considering: not committed to yet". */
+/** "● Settled", or "◐ Leaning · Considering: not committed to yet". */
 function stateHtml(purchase: DecisionDetail): string {
   const state = `<span class="state ${purchase.state}">${SYMBOLS[purchase.state]} ${STATES[purchase.state]}</span>`;
   return considering(purchase)
@@ -567,7 +567,7 @@ a { color: var(--accent); text-underline-offset: 0.18em; }
 .considering { border-style: dashed; border-color: var(--muted); }
 .state { font-weight: 600; color: var(--ink); }
 .state.leaning, .tag { color: var(--mark-ink); }
-.state.locked { color: var(--accent); }
+.state.settled { color: var(--accent); }
 .tag { font-weight: 600; }
 .box { display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid var(--ink);
   border-radius: 2px; margin-right: 0.5em; vertical-align: -0.02em; }

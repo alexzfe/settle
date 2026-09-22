@@ -13,4 +13,4 @@ Requirements:
 Guides: none saved yet
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction

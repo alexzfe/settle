@@ -1,2 +1,2 @@
-- Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide. Calm, warm rooms of natural materials that age well.
-- Keep the original floors (keep-the-original-floors): Other, Locked; Home-wide. The oak boards and terracotta tiles stay.
+- Warm minimalism (warm-minimalism): Design Direction, Settled; Home-wide. Calm, warm rooms of natural materials that age well.
+- Keep the original floors (keep-the-original-floors): Other, Settled; Home-wide. The oak boards and terracotta tiles stay.

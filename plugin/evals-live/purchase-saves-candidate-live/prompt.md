@@ -1,11 +1,11 @@
 ---
-description: Live smoke. Purchase opens a Session on the real server, on a third fixture Home whose Design Direction and Palette 'Warm clay' are Locked, and saves a Candidate Purchase with a Requirement whose reason is the Palette.
+description: Live smoke. Purchase opens a Session on the real server, on a third fixture Home whose Design Direction and Palette 'Warm clay' are Settled, and saves a Candidate Purchase with a Requirement whose reason is the Palette.
 tags: [live, purchase]
 max_turns: 24
 timeout_seconds: 400
 allowed_tools: [Read, Glob, Grep, Skill]
 plugins: ["../..", "../../test-support/live-server"]
-# scripts/plugin-eval-live.sh seeds this Home's Locked Design Direction and Palette. It is neither
+# scripts/plugin-eval-live.sh seeds this Home's Settled Design Direction and Palette. It is neither
 # the fixture Home (the Design Direction case saves its first Direction) nor Fixture Flat (the Color
 # case saves its first Palette).
 env:

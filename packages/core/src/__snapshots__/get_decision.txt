@@ -1,7 +1,7 @@
 Decision: Calm evenings (calm-evenings)
 Kind: Room Direction
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Statement: A low, warm room for long evenings.
 
 Content:
@@ -9,8 +9,8 @@ Content:
 - Contrast, overriding the Design Direction's: medium
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Keep the original floors (keep-the-original-floors): Other, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Keep the original floors (keep-the-original-floors): Other, Settled
 
 Decision: Wool rug (wool-rug)
 Kind: Purchase
@@ -45,9 +45,9 @@ Open flags:
 - wool-rug/flag-1: Calm evenings (calm-evenings) was reopened on 2026-09-14
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled
 
 Evidence:
 - supports: Note "The cats scratch fabric furniture" (the-cats-scratch-fabric-furniture): Wool stands up to claws better than linen.
@@ -55,11 +55,11 @@ Evidence:
 Decision: Keep the original floors (keep-the-original-floors)
 Kind: Other
 Scope: the whole Home
-State: Locked
+State: Settled
 Statement: The oak boards and terracotta tiles stay.
 
 Open Conflicts:
 - keep-the-original-floors/conflict-1: The user now says the terracotta tiles crack every winter and wants them gone. (raised 2026-09-14)
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction

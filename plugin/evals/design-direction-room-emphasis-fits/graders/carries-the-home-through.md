@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user's home has a locked overall design direction, "Warm minimalism": calm and grounded, warm, low contrast, key materials oak, linen, limewash and unlacquered brass, principles "fewer, better things", "daylight first, then low warm lamps", "nothing the cats can shred". A room direction may narrow or shift emphasis within that, but never go against one of its lines. The main bedroom is west-facing, used at night, and has a blocked-up chimney breast. The user has asked for the bedroom to feel more enveloping than the rest of the house. Grade the assistant's final reply.
+The user's home has a settled overall design direction, "Warm minimalism": calm and grounded, warm, low contrast, key materials oak, linen, limewash and unlacquered brass, principles "fewer, better things", "daylight first, then low warm lamps", "nothing the cats can shred". A room direction may narrow or shift emphasis within that, but never go against one of its lines. The main bedroom is west-facing, used at night, and has a blocked-up chimney breast. The user has asked for the bedroom to feel more enveloping than the rest of the house. Grade the assistant's final reply.
 
 PASS only if all of these hold:
 

@@ -6,7 +6,7 @@ Hallway bench (hallway-bench): created as a Candidate Purchase for Hallway (hall
 Requirement 1 of Hallway bench (hallway-bench): added: must, At most 35 cm deep (reason: Door hallway-outside-door)
 Requirement 2 of Hallway bench (hallway-bench): added: prefer, Oak (reason: Decision Warm minimalism (warm-minimalism))
 
-Calm evenings (calm-evenings): Conflict raised (calm-evenings/conflict-1); it stays Locked until the user keeps, Reopens, or Rejects it: The user now wants a bright reading corner by the bay window.
+Calm evenings (calm-evenings): Conflict raised (calm-evenings/conflict-1); it stays Settled until the user keeps, Reopens, or Rejects it: The user now wants a bright reading corner by the bay window.
 
 Storage in the hallway (storage-in-the-hallway): Fulfilled, differently from what was decided (hallway, storage)
 Hallway (hallway): functions hallway, storage, utility

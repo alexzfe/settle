@@ -1,4 +1,4 @@
-// Seeds a Locked Design Direction into one Home through its MCP endpoint, as a Design Direction
+// Seeds a Settled Design Direction into one Home through its MCP endpoint, as a Design Direction
 // Session would leave it, for the live smoke suite's Color case (scripts/plugin-eval-live.sh).
 // Usage: node scripts/seed-live-direction.mjs http://127.0.0.1:4390/mcp/homes/<home slug>
 const [url] = process.argv.slice(2);
@@ -48,15 +48,15 @@ await call("save_decision", {
 await call("set_decision_state", {
   session,
   decision: "warm-minimalism",
-  to: "locked",
-  reason: 'The user: "yes, lock it in"',
+  to: "settled",
+  reason: 'The user: "yes, settle it"',
 });
 await call("close_session", {
   session,
   summary: {
-    changed: "Locked the Design Direction 'Warm minimalism'.",
+    changed: "Settled the Design Direction 'Warm minimalism'.",
     open: "The Palette.",
     next: "Choose the Palette in Color.",
   },
 });
-console.log(`Locked the Design Direction 'Warm minimalism' in Session ${session}.`);
+console.log(`Settled the Design Direction 'Warm minimalism' in Session ${session}.`);

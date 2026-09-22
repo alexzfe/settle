@@ -3,7 +3,7 @@ type: llm
 focus: trace
 ---
 
-The trace is one turn of a conversation. The assistant is helping the user with the paint colours of their home. The decision for the kitchen walls, Setting Plaster (a Farrow & Ball paint) in an eggshell finish, was locked earlier; the walls are cream today. The user has just said they have bought the paint and will paint the walls next weekend. The painting should be recorded in the home's record only once it is actually done. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
+The trace is one turn of a conversation. The assistant is helping the user with the paint colours of their home. The decision for the kitchen walls, Setting Plaster (a Farrow & Ball paint) in an eggshell finish, was settled earlier; the walls are cream today. The user has just said they have bought the paint and will paint the walls next weekend. The painting should be recorded in the home's record only once it is actually done. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
 
 PASS only if both of these hold:
 

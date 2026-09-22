@@ -220,14 +220,14 @@ describe("Requirements", () => {
     await core.run("set_decision_state", agent(session), {
       session,
       decision: "wool-rug",
-      to: "locked",
-      reason: 'The user: "lock it"',
+      to: "settled",
+      reason: 'The user: "settle it"',
     });
-    const locked = await save(rug([must("Wool", cats)]));
+    const settled = await save(rug([must("Wool", cats)]));
 
     expect(again).toContain("Wool rug (wool-rug): already recorded like this, nothing changed");
     expect(differs).toContain("Requirement 3 of Wool rug (wool-rug): added: prefer, Wool");
-    expect(locked).toContain("Wool rug (wool-rug): already recorded like this, nothing changed");
+    expect(settled).toContain("Wool rug (wool-rug): already recorded like this, nothing changed");
     const { requirements } = await detail();
     expect(requirements.map((each) => [each.position, each.strength, each.text])).toEqual([
       [1, "must", "Wool"],

@@ -2,7 +2,7 @@
 
 ## Wool rug
 
-Living room, Locked
+Living room, Settled
 
 A large wool rug under the sofa.
 

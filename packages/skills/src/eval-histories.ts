@@ -282,7 +282,7 @@ function throughDimensions(context: HistoryContext): Turn[] {
 // ─── Design Direction cases ─────────────────────────────────────────────────────────────────
 // The Fixture Home at different points in settling its Design Direction. A case whose own
 // open_session mock sets that point (no Direction yet, a Rejected one, a Leaning one) says so;
-// the others use the suite's opening, whose Direction is Locked.
+// the others use the suite's opening, whose Direction is Settled.
 
 /** A Design Direction Session's start: the opening, then the Rejected Directions looked up. */
 function directionStart(
@@ -351,7 +351,7 @@ ${DIRECTION_PROPOSALS}
 2. **Coming home.** How should the house feel when you walk in? *(If you skip it, I'll take "relaxed and welcoming".)*
 3. **The cats.** I'd rule out loose weaves and loop pile throughout. *(Recommended: yes.)*`;
 
-const LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked:
+const SETTLE_OFFER = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Settled:
 
 - **Mood:** calm, uncluttered, unhurried
 - **Temperature:** warm
@@ -360,11 +360,11 @@ const LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction, *
 - **Style references:** Japandi; a Copenhagen hotel's pale wood and linen; a Provence farmhouse's terracotta and plaster
 - **Principles:** fewer, better things; washable covers and tight weaves, which the cats are less likely to snag; the oak dining chairs stay
 
-Every line is filled in, they agree with each other, and the practical things you told me are covered: washable covers the cats can't snag, and pieces that move with you at the end of the lease. Nothing is left open that would change it, so it could be Locked now. Once it is, the Palette and each Room's direction rest on it, and changing it later means reopening it.
+Every line is filled in, they agree with each other, and the practical things you told me are covered: washable covers the cats can't snag, and pieces that move with you at the end of the lease. Nothing is left open that would change it, so it could be Settled now. Once it is, the Palette and each Room's direction rest on it, and changing it later means reopening it.
 
-Shall I Lock it as it stands? *(Recommended: yes.)*`;
+Shall I Settle it as it stands? *(Recommended: yes.)*`;
 
-const WHERE_WE_ARE = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked: calm and grounded, warm, low contrast, in oak, linen, limewash, and unlacquered brass. Two things are waiting for you, which we can take up when we reach them: a Conflict on *Keep the original floors* (the terracotta tiles), and a flag on the *Wool rug*.
+const WHERE_WE_ARE = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Settled: calm and grounded, warm, low contrast, in oak, linen, limewash, and unlacquered brass. Two things are waiting for you, which we can take up when we reach them: a Conflict on *Keep the original floors* (the terracotta tiles), and a flag on the *Wool rug*.
 
 Where next? *(Recommended: 1.)*
 
@@ -374,8 +374,8 @@ Where next? *(Recommended: 1.)*
 
 // ─── Color cases ────────────────────────────────────────────────────────────────────────────
 // The Fixture Home at different points in settling its colors. The suite's color opening has the
-// Design Direction Locked and no Palette yet; each case's own opening sets its point instead (a
-// Locked Palette "Warm clay", or a Leaning Direction) and says so.
+// Design Direction Settled and no Palette yet; each case's own opening sets its point instead (a
+// Settled Palette "Warm clay", or a Leaning Direction) and says so.
 
 /** A Color Session's start on one Room: the opening, the Room's Sheet, then its Rejected ones. */
 function colorRoomStart(
@@ -396,7 +396,7 @@ function colorRoomStart(
   };
 }
 
-const BEDROOM_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the Main bedroom's colours come from Warm clay's four: Pointing, Setting Plaster, Jitney, and warm terracotta.
+const BEDROOM_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled, so the Main bedroom's colours come from Warm clay's four: Pointing, Setting Plaster, Jitney, and warm terracotta.
 
 The Main bedroom faces west over the balcony and you use it at night, so it is mostly seen under lamps, with the warmest daylight late in the day. None of its Surfaces is recorded yet. Here is the scheme I would give it:
 
@@ -408,9 +408,9 @@ The Main bedroom faces west over the balcony and you use it at night, so it is m
 2. **The bed and bedding.** What colours are they, so I can check the walls sit beside them? *(If you skip it, I will work from the oak bed that is recorded and assume pale bedding.)*
 3. **Anything in here staying off the Palette?** *(Recommended: nothing.)*`;
 
-const DIRECTION_LEANING = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Locked, and the Palette rests on it: its warm temperature, its low contrast, and its oak, linen, plaster, and terracotta are what the colours have to suit.
+const DIRECTION_LEANING = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Leaning, not yet Settled, and the Palette rests on it: its warm temperature, its low contrast, and its oak, linen, plaster, and terracotta are what the colours have to suit.
 
-I'd recommend settling the direction first in Design Direction, which can take over right here; then we come back to colours. If we start on colours anyway, the Palette can go as far as Leaning, and it waits to be Locked until the direction is.
+I'd recommend settling the direction first in Design Direction, which can take over right here; then we come back to colours. If we start on colours anyway, the Palette can go as far as Leaning, and it waits to be Settled until the direction is.
 
 Settle the direction in Design Direction now, or start on colours anyway? *(Recommended: the direction first.)*`;
 
@@ -427,13 +427,13 @@ Two Palettes that suit the direction and what is already there:
 2. **The accent.** The front door and the dining-end wall, or textiles only? *(Recommended: the door and that wall.)*
 3. **Anything you can't live with?** *(If you skip it, I will take A's three colours as they stand.)*`;
 
-const KITCHEN_LOCK_OFFER = `Working on Fixture Home, in London. Your Design Direction and your Palette, **Warm clay**, are both Locked.
+const KITCHEN_SETTLE_OFFER = `Working on Fixture Home, in London. Your Design Direction and your Palette, **Warm clay**, are both Settled.
 
 The Kitchen's walls are Leaning towards **Setting Plaster in eggshell** (*Kitchen walls in Setting Plaster*): the Palette's warm plaster pink stays soft in the Kitchen's east-facing morning light and sits well with the oak units and the white metro splashback, and eggshell takes wiping better than matt near the cooker, though the tin's own cleaning advice is what settles that. It would replace today's cream.
 
-It's ready to Lock. Shall I Lock it? *(Recommended: yes.)*`;
+It's ready to Settle. Shall I Settle it? *(Recommended: yes.)*`;
 
-const KITCHEN_LOCKED = `Locked: Room color 'Kitchen walls in Setting Plaster', in eggshell.
+const KITCHEN_SETTLED = `Settled: Room color 'Kitchen walls in Setting Plaster', in eggshell.
 
 Next, the Kitchen's woodwork, which has nothing recorded yet:
 
@@ -441,7 +441,7 @@ Next, the Kitchen's woodwork, which has nothing recorded yet:
 2. **Finish.** *(Recommended: satin, which takes wiping better than matt on woodwork; check the tin for what it will stand.)*`;
 
 // ─── Purchase cases ─────────────────────────────────────────────────────────────────────────
-// The Fixture Home with its Design Direction and its Palette "Warm clay" both Locked, as the
+// The Fixture Home with its Design Direction and its Palette "Warm clay" both Settled, as the
 // suite's purchase opening has them. Each case's own find_decisions mock finds no Rejected
 // Purchase.
 
@@ -470,7 +470,7 @@ function purchaseRoomStart(
   };
 }
 
-const SOFA_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the sofa's materials and colours come from them. There's also a flag on the *Wool rug* and a Conflict on *Keep the original floors*, which can wait.
+const SOFA_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled, so the sofa's materials and colours come from them. There's also a flag on the *Wool rug* and a Conflict on *Keep the original floors*, which can wait.
 
 Here's what the living room gives us. The sofa stands on Wall 6, which is 3.90 m and also holds the door in from the hallway. The one there now is 2.10 m wide, 0.95 m deep, and 0.85 m tall, in a worn warm-grey linen. The way in is tight: the front door is the narrowest point, at 0.76 m, and the living room door is 0.76 m too. And you have two cats, which you've noted scratch fabric furniture.
 
@@ -509,7 +509,7 @@ function sofaHistory(context: HistoryContext): { turns: Turn[]; session: string 
   return { session, turns: [...turns, { assistant: SOFA_ROUND }] };
 }
 
-const ALCOVE_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked.
+const ALCOVE_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled.
 
 The alcove by the stairs is the Hallway's Wall 4, next to the understairs cupboard on Wall 3, and it is recorded as 1.20 m wide. The Hallway is windowless and narrow, with encaustic tiles underfoot, so a cabinet there should be slim and light-looking. First round:
 
@@ -519,7 +519,7 @@ The alcove by the stairs is the Hallway's Wall 4, next to the understairs cupboa
 4. **Material.** *(Recommended: oak, one of the Direction's key materials.)*
 5. **Finish.** Bare oak, or painted? *(Recommended: bare oak; if painted, Pointing, the Palette's warm white, as for the woodwork.)*`;
 
-const BEDROOM_RUG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked, so the rug's colour comes from Warm clay: Pointing, Setting Plaster, Jitney, or the warm terracotta accent.
+const BEDROOM_RUG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled, so the rug's colour comes from Warm clay: Pointing, Setting Plaster, Jitney, or the warm terracotta accent.
 
 The Main bedroom has the double bed against Wall 2 (1.60 × 2.10 m), a west window onto the balcony, and you use it at night. None of its floor is recorded yet, and you have two cats, which scratch fabric. First round:
 
@@ -528,7 +528,7 @@ The Main bedroom has the double bed against Wall 2 (1.60 × 2.10 m), a west wind
 3. **Pile.** *(Recommended: a flat, tightly woven wool: claws don't catch in it.)*
 4. **Colour.** *(Recommended: warm terracotta, the Palette's accent, which warms a room used at night.)*`;
 
-const RUG_FLAG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Locked.
+const RUG_FLAG_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled.
 
 The *Wool rug* for the living room is Leaning, with four Requirements and three Listings already checked against them:
 
@@ -578,7 +578,7 @@ function rugListingStart(
   };
 }
 
-const BED_FRAME_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Locked, and the bed frame rests on it.
+const BED_FRAME_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Settled, and the bed frame rests on it.
 
 The *Bed frame* for the Main bedroom is Leaning, with four Requirements and nothing checked against them yet:
 
@@ -677,9 +677,9 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   "home-intake-asks-north": throughDimensions,
 
   // Graded turn: after the proposals round and a Candidate from the user's pick, the user is still
-  // weighing two moods. Nothing is Locked, and the reply asks.
+  // weighing two moods. Nothing is Settled, and the reply asks.
   // The case's own opening has no Design Direction yet.
-  "design-direction-no-lock-without-commitment": (context) => {
+  "design-direction-no-settle-without-commitment": (context) => {
     const { turns, session } = directionRead(
       context,
       "I don't know what style I like. Can you help me work it out?",
@@ -728,8 +728,8 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     { assistant: CHARACTER_ROUND },
   ],
 
-  // Graded turn: the user wants to rethink the Locked Direction. The reply asks before Reopening,
-  // and no state changes. The suite's opening has Warm minimalism Locked.
+  // Graded turn: the user wants to rethink the Settled Direction. The reply asks before Reopening,
+  // and no state changes. The suite's opening has Warm minimalism Settled.
   "design-direction-asks-before-reopen": (context) => {
     const { turns, session } = opening(
       context,
@@ -748,25 +748,25 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     ];
   },
 
-  // Graded turn: the user commits to the Leaning Direction. It is Locked with a reason, and the
+  // Graded turn: the user commits to the Leaning Direction. It is Settled with a reason, and the
   // reply says so. The case's own opening has the Direction Leaning.
   "design-direction-says-what-changed": (context) => [
     ...directionStart(context, "Can we finish off our style? I think we're nearly there.").turns,
-    { assistant: LOCK_OFFER },
+    { assistant: SETTLE_OFFER },
   ],
 
   // Graded turn: the user asks which color the Main bedroom's walls should be, and to save it.
-  // The case's own opening has the Palette "Warm clay" Locked; the Room color names one of its
+  // The case's own opening has the Palette "Warm clay" Settled; the Room color names one of its
   // colors, and no other color is offered.
   "color-rests-on-palette": (context) => [
     ...colorRoomStart(context, "Let's do the colours for the main bedroom.", "main-bedroom").turns,
     { assistant: BEDROOM_ROUND },
   ],
 
-  // Graded turn: after the first Palette round, the user commits and asks to Lock the Palette.
-  // The case's own opening has the Design Direction Leaning, so nothing is Locked, and the reply
+  // Graded turn: after the first Palette round, the user commits and asks to Settle the Palette.
+  // The case's own opening has the Design Direction Leaning, so nothing is Settled, and the reply
   // says why.
-  "color-no-palette-without-locked-direction": (context) => {
+  "color-no-palette-without-settled-direction": (context) => {
     const { turns, session } = opening(
       context,
       "Can we choose our colours? We'd like to start painting soon.",
@@ -783,33 +783,33 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   },
 
   // Graded turn: the user says they will paint the Kitchen's walls next weekend. Their Room color
-  // has just been Locked; record_fulfilment waits for the painting. The case's own opening has
-  // the Palette Locked, and its own record_fulfilment answers the call it should never make.
+  // has just been Settled; record_fulfilment waits for the painting. The case's own opening has
+  // the Palette Settled, and its own record_fulfilment answers the call it should never make.
   "color-fulfils-only-when-done": (context) => {
     const { turns, session } = colorRoomStart(
       context,
       "Let's finish off the kitchen colours.",
       "kitchen",
     );
-    const lock = {
+    const settle = {
       session,
       decision: "kitchen-walls-in-setting-plaster",
-      to: "locked",
-      reason: 'The user: "Yes, lock it in."',
+      to: "settled",
+      reason: 'The user: "Yes, settle it."',
     };
     return [
       ...turns,
-      { assistant: KITCHEN_LOCK_OFFER },
-      { user: "Yes, lock it in." },
-      // The case has no set_decision_state mock of its own, so the Lock gets its receipt in core's
+      { assistant: KITCHEN_SETTLE_OFFER },
+      { user: "Yes, settle it." },
+      // The case has no set_decision_state mock of its own, so the Settle gets its receipt in core's
       // wording here.
       {
         tool: "set_decision_state",
-        input: lock,
+        input: settle,
         result:
-          "Kitchen walls in Setting Plaster (kitchen-walls-in-setting-plaster): Locked, was Leaning",
+          "Kitchen walls in Setting Plaster (kitchen-walls-in-setting-plaster): Settled, was Leaning",
       },
-      { assistant: KITCHEN_LOCKED },
+      { assistant: KITCHEN_SETTLED },
     ];
   },
 
@@ -890,7 +890,7 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
     { assistant: ALCOVE_ROUND },
   ],
 
-  // Graded turn: the user wants a deep forest green rug, which the Locked Palette lacks, and asks
+  // Graded turn: the user wants a deep forest green rug, which the Settled Palette lacks, and asks
   // to save it with the green. No Palette change is saved, and the reply asks "settle this in
   // Color now, or park it?"
   "purchase-hands-missing-color-to-color": (context) => [

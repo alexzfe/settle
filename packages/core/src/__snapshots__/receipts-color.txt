@@ -5,7 +5,7 @@ Cool linen (cool-linen): created as a Candidate Palette, Home-wide; Basis: Warm 
 Kitchen woodwork in Pointing (kitchen-woodwork-in-pointing): created as a Candidate Room color for Kitchen (kitchen); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Warm clay (warm-clay), the Palette, automatically
 
 # save_decision: a Room color naming a color the Palette lacks, refused
-"Hague Blue" is not a color of the Palette in force, Warm clay (warm-clay), Locked. Its colors are Pointing (base), Setting Plaster (base), Jitney (secondary), warm terracotta (accent): name one of them. A color the Palette lacks is a change to the Palette first: Reopen it with the user's yes, add the color, and Lock it again.
+"Hague Blue" is not a color of the Palette in force, Warm clay (warm-clay), Settled. Its colors are Pointing (base), Setting Plaster (base), Jitney (secondary), warm terracotta (accent): name one of them. A color the Palette lacks is a change to the Palette first: Reopen it with the user's yes, add the color, and Settle it again.
 
 # record_fulfilment: the living room walls painted
 Living room walls in Jitney (living-room-walls-in-jitney): Fulfilled
@@ -21,7 +21,7 @@ Kitchen (kitchen): no Gaps left
 Decision: Living room walls in Jitney (living-room-walls-in-jitney)
 Kind: Room color
 Scope: Living room (living-room)
-State: Locked
+State: Settled
 Fulfilled: 2026-09-14; living-room/walls painted Jitney (Farrow & Ball No. 293) (Measured), matt finish
 Statement: The living room walls in Jitney, matt, for a warmer glow in the evenings.
 
@@ -31,11 +31,11 @@ Content:
 - Finish: matt
 
 Basis:
-- Warm minimalism (warm-minimalism): Design Direction, Locked; in every Basis as the Design Direction
-- Warm clay (warm-clay): Palette, Locked; in the Basis as the Palette whose colors it uses
-- Calm evenings (calm-evenings): Room Direction, Locked
+- Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
+- Warm clay (warm-clay): Palette, Settled; in the Basis as the Palette whose colors it uses
+- Calm evenings (calm-evenings): Room Direction, Settled
 
 # set_decision_state: the Palette Reopened, flagging only the Room color still open
-Warm clay (warm-clay): Reopened to Leaning, was Locked
+Warm clay (warm-clay): Reopened to Leaning, was Settled
 Flagged for review: Wool rug (wool-rug), which rests on Warm clay (warm-clay), now reopened
 Flagged for review: Bedroom walls in Setting Plaster (bedroom-walls-in-setting-plaster), which rests on Warm clay (warm-clay), now reopened

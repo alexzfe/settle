@@ -113,19 +113,19 @@ export const saveDecision = defineOperation({
   description:
     "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice " +
     "about the whole Home or one Room, always in one state: candidate (under consideration), " +
-    "leaning (favoured), locked (committed), or rejected. A new one starts as a Candidate; " +
+    "leaning (favoured), settled (committed), or rejected. A new one starts as a Candidate; " +
     "change its state only with set_decision_state. Its kind says what the app does with it: " +
     "design-direction (the Home's style, Home-wide; it names no colors), room-direction (how " +
     "one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), " +
-    "palette (the Home's named colors, each with a role; one Locked at a time), room-color (a " +
+    "palette (the Home's named colors, each with a role; one Settled at a time), room-color (a " +
     "Surface's color and finish: its color must name a color of the Palette in force, the " +
-    "Locked Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with " +
+    "Settled Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with " +
     "Requirements), or other. content holds the kind's own fields; each field says which kinds " +
     "take it. Pass `decision` (its slug) to change one: title and statement are always given, " +
     "content replaces what is recorded, basis replaces the Basis, and evidence entries are " +
     "added. Without it, one of the same kind, scope, and title that is neither Rejected nor " +
     "Fulfilled is changed. A Requirement given without a position that matches an active one " +
-    "(text, strength, and reason) is left as it is. A Locked or Rejected Decision takes new " +
+    "(text, strength, and reason) is left as it is. A Settled or Rejected Decision takes new " +
     "Evidence only: to change it, Reopen or revive it first, with the user's yes; a Fulfilled " +
     "one is never Reopened. Basis: the Decisions it rests on (the Design Direction is in every " +
     "Basis automatically, the Palette in force in the Basis of every Decision using its colors, " +
@@ -153,16 +153,16 @@ export const setDecisionState = defineOperation({
   name: "set_decision_state",
   description:
     "Moves one Decision to another state and returns a receipt, including every Decision the " +
-    "move flagged. Only these moves: candidate to leaning, locked, or rejected; leaning to " +
-    "candidate, locked, or rejected; locked to leaning (a Reopen) or rejected; rejected to " +
-    "candidate (a revival). A Fulfilled Decision stays Locked for good: it can only be kept. " +
-    "Lock only when the user clearly commits. Before a Reopen, rejecting " +
-    "a Locked Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is " +
+    "move flagged. Only these moves: candidate to leaning, settled, or rejected; leaning to " +
+    "candidate, settled, or rejected; settled to leaning (a Reopen) or rejected; rejected to " +
+    "candidate (a revival). A Fulfilled Decision stays Settled for good: it can only be kept. " +
+    "Settle only when the user clearly commits. Before a Reopen, rejecting " +
+    "a Settled Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is " +
     "required: why, quoting the user's words when they gave permission. A Reopen or Reject " +
     "flags, but never changes, every Decision resting on this one; each flag stays until the " +
     "user keeps, Reopens, or Rejects that Decision, which also clears its own flags and " +
     "Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting " +
-    "the user. Then say plainly what changed, e.g. \"Locked: Design Direction 'Warm " +
+    "the user. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm " +
     "minimalism'\". Needs the open Session's id as `session`.",
   input: setDecisionStateInput,
   webInput: setDecisionStateWebInput,
@@ -177,7 +177,7 @@ export const setDecisionState = defineOperation({
       throw new CoreError(
         "reason_required",
         "A state change from a Session needs a reason: why, in a sentence, quoting the user's " +
-          'words when they gave permission (The user: "yes, lock it"). Call again with `reason`.',
+          'words when they gave permission (The user: "yes, settle it"). Call again with `reason`.',
       );
     }
     return context.write(session?.slug ?? "web", (log) => {
@@ -248,10 +248,10 @@ export const flagConflict = defineOperation({
   name: "flag_conflict",
   description:
     "Raises a Conflict: something new (what the user now says, shows, or wants) contradicts a " +
-    "Locked Decision of this Home. Only a Locked Decision not yet Fulfilled can have a Conflict; " +
+    "Settled Decision of this Home. Only a Settled Decision not yet Fulfilled can have a Conflict; " +
     "for one still " +
     "open, add the Evidence with save_decision (stance undermines) instead. Raising it changes " +
-    "nothing else: the Decision stays Locked, and only the user resolves the Conflict, by " +
+    "nothing else: the Decision stays Settled, and only the user resolves the Conflict, by " +
     "keeping, Reopening, or Rejecting the Decision (with set_decision_state once they say which, " +
     "or in the app). Describe the contradiction in a sentence or two, then tell the user. Needs " +
     "the open Session's id as `session`.",
@@ -264,11 +264,11 @@ export const flagConflict = defineOperation({
     const receipt = context.write(session.slug, (log) => {
       const { model, writer } = begin(context, home, log, session);
       const decision = requireDecision(model, input.decision);
-      if (decision.state !== "locked") {
+      if (decision.state !== "settled") {
         throw new CoreError(
-          "not_locked",
-          `${titled(decision)} is ${STATES[decision.state]}, not Locked: a Conflict is raised only ` +
-            "against a Locked Decision. For one still open, add the new Evidence with " +
+          "not_settled",
+          `${titled(decision)} is ${STATES[decision.state]}, not Settled: a Conflict is raised only ` +
+            "against a Settled Decision. For one still open, add the new Evidence with " +
             "save_decision (stance undermines) instead.",
         );
       }
@@ -298,7 +298,7 @@ export const flagConflict = defineOperation({
       );
       writer.line(
         titled(decision),
-        `Conflict raised (${conflict.slug}); it stays Locked until the user keeps, Reopens, or ` +
+        `Conflict raised (${conflict.slug}); it stays Settled until the user keeps, Reopens, or ` +
           `Rejects it: ${input.description}`,
       );
       return writer.receipt();
@@ -311,8 +311,8 @@ export const flagConflict = defineOperation({
 export const recordFulfilment = defineOperation({
   name: "record_fulfilment",
   description:
-    "Records that a Locked Decision's action was carried out, which makes it Fulfilled (not a " +
-    "state: it stays Locked), and changes the Home to match what was actually done. It takes " +
+    "Records that a Settled Decision's action was carried out, which makes it Fulfilled (not a " +
+    "state: it stays Settled), and changes the Home to match what was actually done. It takes " +
     "Room use, Room color, and Purchase Decisions. Room use: it sets the Room's functions to the " +
     "Decision's, or to roomFunctions when what the user actually did differs. Room color: it " +
     "paints the Surface the Decision names (the Room's walls, ceiling, floor, or woodwork, or " +
@@ -369,11 +369,11 @@ export const recordFulfilment = defineOperation({
           `${misplaced}, and ${subject} is a ${KINDS[decision.kind]}: leave it out.`,
         );
       }
-      if (decision.state !== "locked") {
+      if (decision.state !== "settled") {
         throw new CoreError(
-          "not_locked",
-          `${subject} is ${STATES[decision.state]}, not Locked: only a Locked Decision is ` +
-            "Fulfilled. Lock it first, once the user commits.",
+          "not_settled",
+          `${subject} is ${STATES[decision.state]}, not Settled: only a Settled Decision is ` +
+            "Fulfilled. Settle it first, once the user commits.",
         );
       }
       if (decision.fulfilledAt !== null) {
@@ -389,7 +389,7 @@ export const recordFulfilment = defineOperation({
           `${subject} can't be Fulfilled while it has an open flag or Conflict ` +
             `(${open.map((each) => each.slug).join(", ")}): the user settles it first.\n` +
             `${renderFlagged([toSummary(model, decision)])}\nAsk the user whether it still ` +
-            "holds, then keep it with set_decision_state (to locked, quoting them) and Fulfil " +
+            "holds, then keep it with set_decision_state (to settled, quoting them) and Fulfil " +
             "it; or Reopen or Reject it with set_decision_state, if that is what they say. " +
             "Nothing was recorded.",
         );
@@ -740,11 +740,11 @@ function fulfilRoomColor(
       "illegal_transition",
       (palette
         ? `${subject} names the color ${content.color}, which its Palette, ${titled(palette)}, ` +
-          `no longer has: the Palette changed after ${subject} was Locked.`
+          `no longer has: the Palette changed after ${subject} was Settled.`
         : `${subject} has no Palette in its Basis, so its color ${content.color} can't be ` +
           "resolved.") +
         " It needs Reopening with the user's yes, saving with a color of the Palette in force, " +
-        "and Locking again; then Fulfil it.",
+        "and Settling again; then Fulfil it.",
     );
   }
   const { role: _role, note: _note, ...value } = color;
@@ -945,11 +945,11 @@ function decisionById(model: DecisionModel, id: number): DecisionRow {
   return decision;
 }
 
-/** The Design Direction or Palette in force: the Locked one, else the latest Leaning one. */
+/** The Design Direction or Palette in force: the Settled one, else the latest Leaning one. */
 function inForce(model: DecisionModel, kind: "design-direction" | "palette") {
   const rows = model.decisions.filter((each) => active(each) && each.kind === kind);
   return (
-    rows.find((each) => each.state === "locked") ??
+    rows.find((each) => each.state === "settled") ??
     rows.filter((each) => each.state === "leaning").at(-1)
   );
 }
@@ -1092,7 +1092,7 @@ function filterDecisions(
   return sorted(model, rows).map((each) => toSummary(model, each));
 }
 
-/** The Room Sheet's Decisions: the Room's Candidate, Leaning, and Locked-not-Fulfilled ones. */
+/** The Room Sheet's Decisions: the Room's Candidate, Leaning, and Settled-not-Fulfilled ones. */
 export function roomDecisions(model: DecisionModel, room: RoomRow): DecisionSummary[] {
   return model.decisions
     .filter(
@@ -1130,7 +1130,7 @@ function homeDecisionsView(model: DecisionModel): HomeDecisionsView {
     (each) =>
       active(each) &&
       each.scopeRoomId === null &&
-      each.state === "locked" &&
+      each.state === "settled" &&
       each.fulfilledAt === null &&
       each.kind !== "design-direction" &&
       each.kind !== "palette",
@@ -1343,8 +1343,8 @@ const day = (timestamp: string) => timestamp.slice(0, 10);
 
 // ─── Writing Decisions ──────────────────────────────────────────────────────────────────────
 
-/** Kinds of which only one is Locked at a time: in the Home, or in each Room. */
-const ONE_LOCKED: Partial<Record<DecisionKind, "home" | "room">> = {
+/** Kinds of which only one is Settled at a time: in the Home, or in each Room. */
+const ONE_SETTLED: Partial<Record<DecisionKind, "home" | "room">> = {
   "design-direction": "home",
   palette: "home",
   "room-direction": "room",
@@ -1354,7 +1354,7 @@ const ONE_LOCKED: Partial<Record<DecisionKind, "home" | "room">> = {
 const TRANSITION_HINTS: Record<DecisionState, string> = {
   candidate: "",
   leaning: "",
-  locked: " Reopening it (to leaning) or rejecting it needs the user's yes first.",
+  settled: " Reopening it (to leaning) or rejecting it needs the user's yes first.",
   rejected: " Reviving it (to candidate) needs the user's explicit instruction.",
 };
 
@@ -1496,13 +1496,13 @@ class DecisionWrites {
       );
       throw new CoreError(
         "validation",
-        "A Room color's color comes from the Palette in force (the Locked Palette, else the " +
+        "A Room color's color comes from the Palette in force (the Settled Palette, else the " +
           "Leaning one), and this Home has none yet" +
           (candidates.length > 0
             ? ` (only Candidates: ${candidates.map(titled).join(", ")})`
             : "") +
           ". Settle the Palette with the user first (save_decision with kind palette, then lean " +
-          "or Lock it), then save the Room color.",
+          "or Settle it), then save the Room color.",
       );
     }
     const color = colorOf(palette, content.color);
@@ -1515,8 +1515,8 @@ class DecisionWrites {
         `"${content.color}" is not a color of the Palette in force, ${titled(palette)}, ` +
           `${STATES[palette.state]}. Its colors are ${colors.join(", ")}: name one of them. A ` +
           "color the Palette lacks is a change to the Palette first" +
-          (palette.state === "locked"
-            ? ": Reopen it with the user's yes, add the color, and Lock it again."
+          (palette.state === "settled"
+            ? ": Reopen it with the user's yes, add the color, and Settle it again."
             : ": add it to the Palette, with the user."),
       );
     }
@@ -1539,7 +1539,7 @@ class DecisionWrites {
     if (decision.fulfilledAt !== null) {
       throw new CoreError(
         "illegal_transition",
-        `${fulfilledOn(decision)}, so it stays Locked and can only be kept. For something new, ` +
+        `${fulfilledOn(decision)}, so it stays Settled and can only be kept. For something new, ` +
           "save a new Decision.",
       );
     }
@@ -1551,7 +1551,7 @@ class DecisionWrites {
           `${legal.join(" or ")}.${TRANSITION_HINTS[from]}`,
       );
     }
-    if (to === "locked") this.#requireOneLocked(decision);
+    if (to === "settled") this.#requireOneSettled(decision);
     const model = this.#model;
     const { store } = this.#context;
     store.update("decisions", decision.id, { state: to });
@@ -1576,7 +1576,7 @@ class DecisionWrites {
       }),
     );
     decision.state = to;
-    const reopened = from === "locked" && to === "leaning";
+    const reopened = from === "settled" && to === "leaning";
     const rejected = to === "rejected";
     const cleared =
       reopened || rejected
@@ -1610,10 +1610,10 @@ class DecisionWrites {
       this.#rebase(decision, "flag" in target ? [target.flag] : [], reason);
       return;
     }
-    if (resolution === "reopen" && decision.state !== "locked") {
+    if (resolution === "reopen" && decision.state !== "settled") {
       throw new CoreError(
         "illegal_transition",
-        `${titled(decision)} is ${STATES[decision.state]}, not Locked, so it can't be Reopened. ` +
+        `${titled(decision)} is ${STATES[decision.state]}, not Settled, so it can't be Reopened. ` +
           "Keep it or reject it.",
       );
     }
@@ -1729,16 +1729,16 @@ class DecisionWrites {
     });
   }
 
-  /** One Design Direction and one Palette Locked in the Home; one Room Direction and use per Room. */
-  #requireOneLocked(decision: DecisionRow): void {
-    const per = ONE_LOCKED[decision.kind];
+  /** One Design Direction and one Palette Settled in the Home; one Room Direction and use per Room. */
+  #requireOneSettled(decision: DecisionRow): void {
+    const per = ONE_SETTLED[decision.kind];
     if (!per) return;
     const other = this.#model.decisions.find(
       (each) =>
         each.id !== decision.id &&
         active(each) &&
         each.kind === decision.kind &&
-        each.state === "locked" &&
+        each.state === "settled" &&
         each.fulfilledAt === null &&
         (per === "home" || each.scopeRoomId === decision.scopeRoomId),
     );
@@ -1749,8 +1749,8 @@ class DecisionWrites {
         : "";
     throw new CoreError(
       "illegal_transition",
-      `The ${KINDS[decision.kind]} ${titled(other)} is already Locked${where}, and only one is ` +
-        `Locked at a time. Reopen or reject it first (asking the user), then Lock ` +
+      `The ${KINDS[decision.kind]} ${titled(other)} is already Settled${where}, and only one is ` +
+        `Settled at a time. Reopen or reject it first (asking the user), then Settle ` +
         `${titled(decision)}.`,
     );
   }
@@ -1981,10 +1981,10 @@ class DecisionWrites {
       (step) => !step.row || step.changed.length > 0 || step.archive !== undefined,
     );
     const changing = scopeChanged || fieldsChanged || basisChanged || requirementsChanged;
-    if (changing && decision.state === "locked") {
+    if (changing && decision.state === "settled") {
       throw new CoreError(
         "illegal_transition",
-        `${subject} is Locked, so it takes new Evidence only. To change it, ask the user, ` +
+        `${subject} is Settled, so it takes new Evidence only. To change it, ask the user, ` +
           "Reopen it with set_decision_state (to leaning), then save it again.",
       );
     }
@@ -2386,7 +2386,7 @@ class DecisionWrites {
 }
 
 function transitionText(from: DecisionState, to: DecisionState): string {
-  if (from === "locked" && to === "leaning") return "Reopened to Leaning, was Locked";
+  if (from === "settled" && to === "leaning") return "Reopened to Leaning, was Settled";
   if (from === "rejected") return "revived to Candidate, was Rejected";
   return `${STATES[to]}, was ${STATES[from]}`;
 }

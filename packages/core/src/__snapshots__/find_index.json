@@ -62,7 +62,7 @@
     "path": "/homes/fixture-home/decisions/warm-minimalism",
     "tier": 1,
     "label": "Decision",
-    "state": "Locked",
+    "state": "Settled",
     "retired": false,
     "changedAt": "2026-09-14T10:00:45.000Z"
   },
@@ -74,7 +74,7 @@
     "path": "/homes/fixture-home/decisions/keep-the-original-floors",
     "tier": 1,
     "label": "Decision",
-    "state": "Locked",
+    "state": "Settled",
     "retired": false,
     "changedAt": "2026-09-14T10:00:51.000Z"
   },
@@ -86,7 +86,7 @@
     "path": "/homes/fixture-home/decisions/calm-evenings",
     "tier": 1,
     "label": "Decision",
-    "state": "Locked",
+    "state": "Settled",
     "retired": false,
     "changedAt": "2026-09-14T10:01:19.000Z"
   },
@@ -136,7 +136,7 @@
     "path": "/homes/fixture-home/decisions/warm-clay",
     "tier": 1,
     "label": "Decision",
-    "state": "Locked",
+    "state": "Settled",
     "retired": false,
     "changedAt": "2026-09-14T10:01:35.000Z"
   },
@@ -148,7 +148,7 @@
     "path": "/homes/fixture-home/decisions/living-room-walls-in-jitney",
     "tier": 1,
     "label": "Decision",
-    "state": "Locked",
+    "state": "Settled",
     "retired": false,
     "changedAt": "2026-09-14T10:01:41.000Z"
   },

@@ -235,7 +235,7 @@ it("does nothing on Right for a row without a side link", async () => {
   expect(active()?.getAttribute("href")).toBe("/homes/flat/listings/oak-bed-frame-160");
 });
 
-it("opens with / and Ctrl-K on any page of the Home, and from the header's icon", async () => {
+it("opens with / and Ctrl-K on any page of the Home, and from the Find row", async () => {
   stub();
   const { router } = renderRoutes("/homes/flat/decisions/main-bedroom-bed-frame");
   fireEvent.keyDown(document.body, { key: "k", ctrlKey: true });
@@ -247,7 +247,7 @@ it("opens with / and Ctrl-K on any page of the Home, and from the header's icon"
   expect(dialog()).toBeTruthy();
   press("Escape");
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: "Find in this Home" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Find in this Home" })[0] as HTMLElement);
   expect(dialog()).toBeTruthy();
   expect(router.state.location.pathname).toBe("/homes/flat/decisions/main-bedroom-bed-frame");
 });

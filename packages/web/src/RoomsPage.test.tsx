@@ -88,7 +88,7 @@ it("shows every Room by Level under a summary line, titled for the Home", async 
       decisions: [
         openDecision("rug", living, "candidate"),
         openDecision("lamp", bedroom, "leaning"),
-        openDecision("sofa", living, "locked"),
+        openDecision("sofa", living, "settled"),
       ],
     }),
   });

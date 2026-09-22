@@ -95,7 +95,7 @@ describe("find_index", () => {
       name: "Warm minimalism",
       where: "Home-wide",
       path: "/homes/fixture-home/decisions/warm-minimalism",
-      state: "Locked",
+      state: "Settled",
     });
     expect((await row("decision", "calm-evenings")).where).toBe("Living room");
   });

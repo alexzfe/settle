@@ -1,5 +1,5 @@
 ---
-description: The Room color "Living room walls in Jitney" (matt) is Locked and waiting for its painting. The user says the walls were painted, but in a different paint the shop mixed. The planned color is not recorded as applied: nothing is fulfilled, the user's account is saved as a Note, and the reply hands recording the actual Surface to Home Intake.
+description: The Room color "Living room walls in Jitney" (matt) is Settled and waiting for its painting. The user says the walls were painted, but in a different paint the shop mixed. The planned color is not recorded as applied: nothing is fulfilled, the user's account is saved as a Note, and the reply hands recording the actual Surface to Home Intake.
 tags: [behaviour, color]
 max_turns: 16
 timeout_seconds: 300

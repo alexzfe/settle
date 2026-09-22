@@ -335,7 +335,7 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
       await core.run("set_decision_state", agent(), {
         session,
         decision: "bed-frame",
-        to: "locked",
+        to: "settled",
         reason: 'The user: "bought it"',
       });
     });
@@ -442,7 +442,7 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
         relation: "relies-on",
         slug: "oak-bookcase",
         title: "Oak bookcase",
-        state: "locked",
+        state: "settled",
         fulfilled: true,
         archived: false,
         requirements: [
@@ -458,7 +458,7 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
         relation: "replaced-by",
         slug: "oak-bookcase",
         title: "Oak bookcase",
-        state: "locked",
+        state: "settled",
         fulfilled: true,
         archived: false,
       },

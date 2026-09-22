@@ -78,7 +78,7 @@ const rich: ItemPage = {
       relation: "bought-by",
       slug: "mattress",
       title: "A new mattress",
-      state: "locked",
+      state: "settled",
       fulfilled: true,
       archived: false,
     },
@@ -86,7 +86,7 @@ const rich: ItemPage = {
       relation: "replaced-by",
       slug: "better-mattress",
       title: "A better mattress",
-      state: "locked",
+      state: "settled",
       fulfilled: true,
       archived: false,
     },
@@ -239,8 +239,8 @@ describe("a rich Item", () => {
     expect(rows).toEqual([
       "relies on itMain bedroom bed frame ◐Leaning" +
         "Fits a 153 × 203 cm mattress (must)Slats ≤ 7 cm apart (must)",
-      "bought byA new mattress ●Locked✓ Fulfilled",
-      "replaced byA better mattress ●Locked✓ Fulfilled",
+      "bought byA new mattress ●Settled✓ Fulfilled",
+      "replaced byA better mattress ●Settled✓ Fulfilled",
     ]);
     expect(screen.getByRole("link", { name: "Main bedroom bed frame" }).getAttribute("href")).toBe(
       "/homes/flat/decisions/bed-frame",

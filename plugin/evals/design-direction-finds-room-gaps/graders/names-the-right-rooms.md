@@ -2,7 +2,7 @@
 type: llm
 ---
 
-The user's home has a locked overall design direction and five rooms: the living room, the kitchen, the hallway, the balcony and the main bedroom. The record shows one room direction, "Calm evenings", locked for the living room; the other four rooms have none. Every room already has a use. The user has asked what to do next. Grade the assistant's final reply.
+The user's home has a settled overall design direction and five rooms: the living room, the kitchen, the hallway, the balcony and the main bedroom. The record shows one room direction, "Calm evenings", settled for the living room; the other four rooms have none. Every room already has a use. The user has asked what to do next. Grade the assistant's final reply.
 
 PASS only if both of these hold:
 

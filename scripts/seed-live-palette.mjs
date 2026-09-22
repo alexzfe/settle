@@ -1,6 +1,6 @@
 // Seeds one Home through its MCP endpoint as a Design Direction and a Color Session would leave
-// it, for the live smoke suite's Purchase case (scripts/plugin-eval-live.sh): a Locked Design
-// Direction, a Locked Palette "Warm clay", a measured Living room, and the Home's narrowest access.
+// it, for the live smoke suite's Purchase case (scripts/plugin-eval-live.sh): a Settled Design
+// Direction, a Settled Palette "Warm clay", a measured Living room, and the Home's narrowest access.
 // Usage: node scripts/seed-live-palette.mjs http://127.0.0.1:4390/mcp/homes/<home slug>
 const [url] = process.argv.slice(2);
 if (!url) throw new Error("Usage: node scripts/seed-live-palette.mjs <MCP endpoint URL>");
@@ -69,8 +69,8 @@ await call("save_decision", {
 await call("set_decision_state", {
   session,
   decision: "warm-minimalism",
-  to: "locked",
-  reason: 'The user: "yes, lock it in"',
+  to: "settled",
+  reason: 'The user: "yes, settle it"',
 });
 
 await call("save_decision", {
@@ -120,16 +120,16 @@ await call("save_decision", {
 await call("set_decision_state", {
   session,
   decision: "warm-clay",
-  to: "locked",
+  to: "settled",
   reason: 'The user: "yes, those are our colours"',
 });
 
 await call("close_session", {
   session,
   summary: {
-    changed: "Locked the Design Direction 'Warm minimalism' and the Palette 'Warm clay'.",
+    changed: "Settled the Design Direction 'Warm minimalism' and the Palette 'Warm clay'.",
     open: "Nothing bought yet.",
     next: "Buy for the living room in Purchase.",
   },
 });
-console.log(`Locked 'Warm minimalism' and the Palette 'Warm clay' in Session ${session}.`);
+console.log(`Settled 'Warm minimalism' and the Palette 'Warm clay' in Session ${session}.`);

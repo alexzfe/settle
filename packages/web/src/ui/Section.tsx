@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import styles from "./ui.module.css";
 
-/** A section with an h2 title; `id` makes it a link target,. */
+/** A section with an h2 title in the serif; `id` makes it a link target. */
 export function Section({
   title,
   action,

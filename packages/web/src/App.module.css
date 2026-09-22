@@ -1,75 +1,223 @@
 /* The app shell and the classes pages share. Values come from tokens.css. */
 
-/* The header and the Home's nav bar run the window's full width; what a page shows is centered
-   in .content, wide enough for boards, while running text keeps to .reading. */
-.page {
-  padding: 0 var(--space-4) var(--space-12);
+/* The shell: a 216px sidebar beside a main column of at most 1080px. Below about 760px the
+   sidebar folds into a slim top bar whose menu opens the same sidebar as a sheet. */
+.shell {
+  display: grid;
+  grid-template-columns: var(--width-sidebar) minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-@media (min-width: 48rem) {
-  .page {
-    padding-inline: var(--space-8);
-  }
+.topBar {
+  display: none;
 }
 
-.content {
-  max-width: var(--width-page);
-  margin-inline: auto;
-}
-
-.header {
+.sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  align-items: center;
-  justify-content: space-between;
-  padding-block: var(--space-4) var(--space-3);
-}
-
-/** A quiet wordmark: small serif, ink rather than the link color. */
-.wordmark {
-  margin-right: auto;
-  color: var(--color-ink);
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-}
-
-.wordmark:hover {
-  color: var(--color-ink);
-}
-
-.switcher {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  color: var(--color-ink-muted);
-}
-
-.switcher select {
-  padding-block: var(--space-1);
+  flex-direction: column;
+  gap: var(--space-5);
+  height: 100dvh;
+  padding: var(--space-5) var(--space-4);
+  overflow-y: auto;
+  border-right: 1px solid var(--color-hairline);
 }
 
 .main {
-  padding-top: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  max-width: var(--width-main);
+  padding: 28px 32px 64px;
 }
 
-.content > h1:first-child {
-  margin-top: var(--space-6);
+.main > h1:first-child,
+.main > :first-child > h1:first-child {
+  margin-top: 0;
 }
 
-/** The Home's nav as a light bar, with the live pill at its end. */
-.navBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
+/* The lockup: the mark and a lowercase "settle" in Inter 500, the gap 45% of the mark. */
+.lockup {
+  display: inline-flex;
+  gap: 10px;
   align-items: center;
-  justify-content: space-between;
-  border-block: 1px solid var(--color-hairline);
+  align-self: flex-start;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-decoration: none;
 }
 
+.lockup:hover {
+  color: var(--color-ink);
+}
+
+.lockupMark {
+  display: inline-flex;
+}
+
+.switcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.switcher select {
+  width: 100%;
+  padding-block: var(--space-1);
+}
+
+/* The nav: ink rows, the current one in the accent, counts in muted tabular figures. */
+.sideNav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-inline: calc(-1 * var(--space-2));
+}
+
+.sideNav a {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  padding: 0.3rem var(--space-2);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.sideNav a:hover {
+  background: var(--color-hairline-soft);
+  color: var(--color-ink);
+}
+
+.sideNav a.current {
+  border-left-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.count {
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+/* The state key: the four marks and their names. */
+.stateKey .label {
+  margin: 0 0 var(--space-2);
+}
+
+.stateKey ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.stateKey li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.menuIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+@media (max-width: 759.98px) {
+  .shell {
+    display: block;
+  }
+
+  .topBar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    min-height: 3.25rem;
+    padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+    border-bottom: 1px solid var(--color-hairline);
+    background: var(--color-ground);
+  }
+
+  .topMark {
+    display: inline-flex;
+    color: var(--color-ink);
+  }
+
+  .topName {
+    display: -webkit-box;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  button.menuButton {
+    min-height: 2.75rem;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-ink);
+  }
+
+  button.menuButton:hover {
+    border-color: var(--color-hairline);
+    background: transparent;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .sidebar[data-open] {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    display: flex;
+    width: min(18rem, 85vw);
+    background: var(--color-ground);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    background: rgb(28 26 23 / 0.35);
+  }
+
+  .main {
+    padding: 20px var(--space-4) 48px;
+  }
+}
+
+/* A page's own nav as a light row of links, e.g. a Blueprint's pages. */
 .nav {
   display: flex;
   flex-wrap: wrap;
@@ -86,12 +234,6 @@
 
 .nav a:hover {
   color: var(--color-ink);
-}
-
-.nav a.current {
-  border-bottom-color: var(--color-accent);
-  color: var(--color-ink);
-  font-weight: 500;
 }
 
 /** Running text kept to about 40rem. */
@@ -153,12 +295,12 @@
 }
 
 a.tag {
-  color: var(--color-accent);
+  color: var(--color-ink);
   text-decoration: none;
 }
 
 a.tag:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-ink-muted);
 }
 
 /** A Flag: ochre, with the ⚑ beside it. */

@@ -18,7 +18,7 @@ const color: Session = {
   openedAt: "2026-09-15T19:51:29Z",
   closedAt: "2026-09-15T22:08:51Z",
   summary: {
-    changed: "Locked the Palette 'Washi and Sumi'.",
+    changed: "Settled the Palette 'Washi and Sumi'.",
     open: "The lamps.",
     next: "Purchase: the sofa.",
   },
@@ -34,7 +34,7 @@ const palette: DecisionSummary = {
   kind: "palette",
   title: "Washi and Sumi",
   statement: "A tonal palette.",
-  state: "locked",
+  state: "settled",
   createdAt: "2026-09-15T20:01:03Z",
   openFlags: [],
   openConflicts: [],
@@ -65,8 +65,8 @@ const log: ChangeEntry[] = [
     record: "washi-and-sumi",
     field: "state",
     old: "leaning",
-    new: "locked",
-    reason: 'User: "lock the palette"',
+    new: "settled",
+    reason: 'User: "settle the palette"',
   },
   {
     at: "2026-09-15T21:30:00Z",
@@ -134,7 +134,7 @@ it("shows the Session's Skills, times, and the summary the Agent wrote", async (
   );
   const summary = screen.getByText("Changed").closest("dl");
   expect(summary?.textContent).toBe(
-    "ChangedLocked the Palette 'Washi and Sumi'." +
+    "ChangedSettled the Palette 'Washi and Sumi'." +
       "Still openThe lamps." +
       "NextPurchase: the sofa.",
   );
@@ -151,7 +151,7 @@ it("reads the Session's changes as sentences grouped by record, oldest first", a
     .filter((li) => li.parentElement?.parentElement?.tagName === "SECTION")
     .map((li) => li.textContent);
   expect(records).toEqual([
-    'Washi and Sumi○Candidate → ◐Leaning◐Leaning → ●LockedUser: "lock the palette"',
+    'Washi and Sumi○Candidate → ◐Leaning◐Leaning → ●SettledUser: "settle the palette"',
     "Living room · Wall 5 length ~3.70 → 3.62 m (Measured)",
   ]);
   expect(section.getByRole("link", { name: "Washi and Sumi" }).getAttribute("href")).toBe(

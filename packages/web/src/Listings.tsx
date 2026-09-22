@@ -677,7 +677,7 @@ function HoldControl({ home, listing }: { home: string; listing: Listing }) {
 
 /**
  * Drops a Listing. No reason is asked for: a reason field belongs to a decision with consequences
- * — Reopen, Reject, Lock — and asking for one here would only teach the user to ignore it. It is
+ * — Reopen, Reject, Settle — and asking for one here would only teach the user to ignore it. It is
  * permanent and takes the picture with it, so it asks once, in the page.
  */
 function DropControl({ home, listing }: { home: string; listing: Listing }) {

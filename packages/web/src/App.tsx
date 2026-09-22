@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useState } from "react";
 import {
   Link,
   Outlet,
@@ -14,20 +14,23 @@ import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
 import { DecisionPage } from "./DecisionPage";
 import { DecisionsPage } from "./DecisionsPage";
+import { DECISION_STATES, STATE_LABEL } from "./decisions";
 import { FindButton, FindProvider } from "./find/Find";
 import { HomeListPage } from "./HomeListPage";
 import { HomePage } from "./HomePage";
 import { ItemPage } from "./ItemPage";
 import { ItemsPage } from "./ItemsPage";
-import { useLiveUpdates } from "./liveUpdates";
-import { useHomes } from "./queries";
+import { type LiveState, useLiveUpdates } from "./liveUpdates";
+import { useDecisions, useHomes, useItems, useShopping } from "./queries";
 import { RoomPage } from "./RoomPage";
 import { RoomsPage } from "./RoomsPage";
 import { SessionPage } from "./SessionPage";
 import { ShoppingPage } from "./ShoppingPage";
 import { useScrollToHash } from "./scrollToHash";
+import { AgentStatus } from "./ui/AgentStatus";
 import { documentTitle, HomeNameContext } from "./ui/documentTitle";
-import { LivePill } from "./ui/LivePill";
+import { SettleMark } from "./ui/SettleIcon";
+import { StateMark } from "./ui/StateMark";
 import { ThemeToggle } from "./ui/ThemeToggle";
 
 export const routes: RouteObject[] = [
@@ -37,9 +40,9 @@ export const routes: RouteObject[] = [
       {
         path: "/",
         element: (
-          <div className={styles.content}>
+          <Shell>
             <HomeListPage />
-          </div>
+          </Shell>
         ),
       },
       {
@@ -68,20 +71,192 @@ function Layout() {
   const home = useMatch({ path: "/homes/:home", end: false })?.params.home;
   return (
     <FindProvider home={home}>
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <Link to="/" className={styles.wordmark}>
-            Settle
-          </Link>
-          <FindButton />
-          <HomeSwitcher />
-          <ThemeToggle />
-        </header>
-        <main className={styles.main}>
-          <Outlet />
-        </main>
-      </div>
+      <Outlet />
     </FindProvider>
+  );
+}
+
+/** What the sidebar shows of the Home on screen: its sections, counts, and live connection. */
+interface ShellHome {
+  slug: string;
+  name: string;
+  section: string;
+  live: LiveState;
+}
+
+/**
+ * The app's frame: a sidebar beside the page, which below about 760px folds into a slim top bar
+ * whose menu button opens the same sidebar as a sheet. Outside a Home (the Home list) the sidebar
+ * has only the mark and the theme switch.
+ */
+function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
+  const narrow = useNarrow();
+  const [open, setOpen] = useState(false);
+  const sheet = useId();
+  const { pathname } = useLocation();
+  // Following a link in the sheet closes it.
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <div className={styles.shell}>
+      {narrow && (
+        <header className={styles.topBar}>
+          <Link to="/" className={styles.topMark} aria-label="All Homes">
+            <span aria-hidden="true" className={styles.lockupMark}>
+              <SettleMark size={22} />
+            </span>
+          </Link>
+          <span className={styles.topName}>{home?.name}</span>
+          <FindButton compact />
+          <button
+            type="button"
+            className={`secondary ${styles.menuButton}`}
+            aria-expanded={open}
+            aria-controls={sheet}
+            onClick={() => setOpen(!open)}
+          >
+            <MenuIcon />
+            Menu
+          </button>
+        </header>
+      )}
+      {narrow && open && (
+        // A pointer convenience: Escape and the menu button close the sheet for the keyboard.
+        // biome-ignore lint/a11y/noStaticElementInteractions: see above.
+        // biome-ignore lint/a11y/useKeyWithClickEvents: see above.
+        <div className={styles.scrim} onClick={() => setOpen(false)} />
+      )}
+      <aside id={sheet} className={styles.sidebar} data-open={(narrow && open) || undefined}>
+        <Link to="/" className={styles.lockup}>
+          <span aria-hidden="true" className={styles.lockupMark}>
+            <SettleMark size={22} />
+          </span>
+          settle
+        </Link>
+        {home && <HomeSidebar home={home} />}
+        <div className={styles.footer}>
+          <ThemeToggle />
+          {home && <AgentStatus home={home.slug} live={home.live} />}
+        </div>
+      </aside>
+      <main className={styles.main}>{children}</main>
+    </div>
+  );
+}
+
+/** Below this width the sidebar folds into the top bar; App.module.css uses the same one. */
+export const NARROW_QUERY = "(max-width: 759.98px)";
+
+/** Whether the window is phone-narrow, following resizes. False where matchMedia is missing. */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => mediaQuery()?.matches ?? false);
+  useEffect(() => {
+    const query = mediaQuery();
+    if (!query) return;
+    const onChange = () => setNarrow(query.matches);
+    onChange();
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return narrow;
+}
+
+function mediaQuery(): MediaQueryList | undefined {
+  return typeof window.matchMedia === "function" ? window.matchMedia(NARROW_QUERY) : undefined;
+}
+
+function MenuIcon() {
+  return (
+    <svg className={styles.menuIcon} viewBox="0 0 20 20" aria-hidden="true">
+      <path
+        d="M3 5.5h14M3 10h14M3 14.5h14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * How many of each thing wants the user, as the nav shows them: undefined until loaded. The
+ * Decisions are asked for as the Decisions list asks (Archived included), so the two share one
+ * request, and Archived ones are left out here.
+ */
+function useNavCounts(home: string): Record<string, number | undefined> {
+  const decisions = useDecisions(home, { archived: true });
+  const shopping = useShopping(home);
+  const items = useItems(home, false);
+  return {
+    Decisions: decisions.data?.decisions.filter(
+      (decision) =>
+        !decision.archivedAt && (decision.state === "candidate" || decision.state === "leaning"),
+    ).length,
+    Shopping: shopping.data?.shoppingList.length,
+    Inventory: items.data?.items.length,
+  };
+}
+
+/** The sidebar's part for one Home: the switcher, Find, the nav, and the state key. */
+function HomeSidebar({ home }: { home: ShellHome }) {
+  const base = `/homes/${home.slug}`;
+  const counts = useNavCounts(home.slug);
+  const links: [string, string][] = [
+    ["Overview", base],
+    ["Rooms", `${base}/rooms`],
+    ["Decisions", `${base}/decisions`],
+    ["Shopping", `${base}/shopping`],
+    ["Inventory", `${base}/items`],
+    ["Change log", `${base}/log`],
+    ["About", `${base}/about`],
+  ];
+  return (
+    <>
+      <HomeSwitcher />
+      <FindButton />
+      <nav className={styles.sideNav} aria-label="Home">
+        {links.map(([label, to]) => {
+          const current = home.section === label;
+          const count = counts[label];
+          return (
+            <Link
+              key={label}
+              to={to}
+              className={current ? styles.current : undefined}
+              aria-current={current ? "page" : undefined}
+            >
+              <span>{label}</span>
+              {/* Shown, not spoken: the link keeps the section's name. */}
+              {count !== undefined && (
+                <span className={styles.count} aria-hidden="true">
+                  {count}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className={styles.stateKey}>
+        <p className="label">States</p>
+        <ul>
+          {DECISION_STATES.map((state) => (
+            <li key={state}>
+              <span aria-hidden="true">
+                <StateMark state={state} />
+              </span>
+              {STATE_LABEL[state]}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }
 
@@ -105,7 +280,7 @@ function sectionOf(path: string): string {
     case "shopping":
       return "Shopping";
     case "items":
-      return "Items";
+      return "Inventory";
     case "log":
     case "sessions":
       return "Change log";
@@ -130,36 +305,11 @@ function HomeScope({ home }: { home: string }) {
   useLayoutEffect(() => {
     document.title = documentTitle(section === "Overview" ? undefined : section, name);
   }, [section, name]);
-  const base = `/homes/${home}`;
-  const links: [string, string][] = [
-    ["Overview", base],
-    ["Rooms", `${base}/rooms`],
-    ["Decisions", `${base}/decisions`],
-    ["Shopping", `${base}/shopping`],
-    ["Items", `${base}/items`],
-    ["Change log", `${base}/log`],
-    ["About", `${base}/about`],
-  ];
   return (
     <HomeNameContext.Provider value={name}>
-      <div className={styles.navBar}>
-        <nav className={styles.nav} aria-label="Home">
-          {links.map(([label, to]) => (
-            <Link
-              key={label}
-              to={to}
-              className={section === label ? styles.current : undefined}
-              aria-current={section === label ? "page" : undefined}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <LivePill state={live} />
-      </div>
-      <div className={styles.content}>
+      <Shell home={{ slug: home, name, section, live }}>
         <Outlet />
-      </div>
+      </Shell>
     </HomeNameContext.Provider>
   );
 }
@@ -171,7 +321,7 @@ function HomeSwitcher() {
   const navigate = useNavigate();
   return (
     <label className={styles.switcher}>
-      Home{" "}
+      <span className="label">Home</span>
       <select
         value={shown}
         onChange={(event) => {

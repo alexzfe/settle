@@ -1,5 +1,5 @@
 ---
-description: Replay. The Home's Design Direction is Locked. The user says "let's rethink the direction". The reply asks before Reopening, and no state changes in that turn.
+description: Replay. The Home's Design Direction is Settled. The user says "let's rethink the direction". The reply asks before Reopening, and no state changes in that turn.
 tags: [behaviour, design-direction, replay]
 max_turns: 16
 timeout_seconds: 300

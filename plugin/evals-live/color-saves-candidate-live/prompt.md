@@ -1,12 +1,12 @@
 ---
-description: Live smoke. Color opens a Session on the real server, on a second fixture Home whose Design Direction is Locked, and saves a first Candidate Palette from what the user says.
+description: Live smoke. Color opens a Session on the real server, on a second fixture Home whose Design Direction is Settled, and saves a first Candidate Palette from what the user says.
 tags: [live, color]
 max_turns: 20
 timeout_seconds: 400
 allowed_tools: [Read, Glob, Grep, Skill]
 plugins: ["../..", "../../test-support/live-server"]
-# scripts/plugin-eval-live.sh seeds this Home's Locked Design Direction. It is not the fixture
-# Home, where a Locked Direction would change what design-direction-saves-candidate-live sees.
+# scripts/plugin-eval-live.sh seeds this Home's Settled Design Direction. It is not the fixture
+# Home, where a Settled Direction would change what design-direction-saves-candidate-live sees.
 env:
   EVAL_SETTLE_HOME: fixture-flat
 ---

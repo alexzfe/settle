@@ -1,7 +1,7 @@
 // The server-enforced Decision rules of slice 4, written before their implementation: one test
 // per row of the transitions table and per illegal transition, the Session and reason rule, Basis
 // and Evidence existence, the automatic Design Direction, the flag cascade, clearing a flag, and
-// Conflicts only against Locked Decisions (docs/specs/skill-set.md#rule-enforcement).
+// Conflicts only against Settled Decisions (docs/specs/skill-set.md#rule-enforcement).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -90,23 +90,23 @@ const roomDirection = (basis?: string[]): SaveInput => ({
 
 const LEGAL: [DecisionState, DecisionState][] = [
   ["candidate", "leaning"],
-  ["candidate", "locked"],
+  ["candidate", "settled"],
   ["candidate", "rejected"],
   ["leaning", "candidate"],
-  ["leaning", "locked"],
+  ["leaning", "settled"],
   ["leaning", "rejected"],
-  ["locked", "leaning"],
-  ["locked", "rejected"],
+  ["settled", "leaning"],
+  ["settled", "rejected"],
   ["rejected", "candidate"],
 ];
 
 const ILLEGAL: [DecisionState, DecisionState][] = [
   ["candidate", "candidate"],
   ["leaning", "leaning"],
-  ["locked", "locked"],
-  ["locked", "candidate"],
+  ["settled", "settled"],
+  ["settled", "candidate"],
   ["rejected", "leaning"],
-  ["rejected", "locked"],
+  ["rejected", "settled"],
   ["rejected", "rejected"],
 ];
 
@@ -181,13 +181,13 @@ describe("a state change from the web UI", () => {
   it("needs neither a Session nor a reason, and is logged as from the web", async () => {
     await save(other("Knock through"));
 
-    await core.run("set_decision_state", web, { home, decision: "knock-through", to: "locked" });
+    await core.run("set_decision_state", web, { home, decision: "knock-through", to: "settled" });
 
     const decision = await detail("knock-through");
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.stateChanges.at(-1)).toEqual({
       from: "candidate",
-      to: "locked",
+      to: "settled",
       origin: "web",
       at: expect.any(String),
     });
@@ -199,7 +199,7 @@ describe("a state change from the web UI", () => {
     await save(other("Knock through"));
     await setState("knock-through", "rejected");
     const error = await refusal(
-      core.run("set_decision_state", web, { home, decision: "knock-through", to: "locked" }),
+      core.run("set_decision_state", web, { home, decision: "knock-through", to: "settled" }),
     );
     expect(error.code).toBe("illegal_transition");
   });
@@ -285,7 +285,7 @@ describe("Basis and Evidence", () => {
 describe("the Design Direction in every Basis", () => {
   it("is in every other Decision's Basis automatically, and never listed twice", async () => {
     await save(direction());
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
     await save(other("Keep the floors"));
 
     await save(roomDirection(["warm-minimalism", "keep-the-floors"]));
@@ -302,9 +302,9 @@ describe("the Design Direction in every Basis", () => {
 describe("the flag cascade", () => {
   it("flags, but never changes, every Decision resting on a reopened one", async () => {
     await save(direction());
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
     await save(roomDirection());
-    await setState("calm-evenings", "locked");
+    await setState("calm-evenings", "settled");
     await save({
       kind: "room-use",
       room: "spare-room",
@@ -318,7 +318,7 @@ describe("the flag cascade", () => {
     const { receipt } = await setState("warm-minimalism", "leaning");
 
     const room = await detail("calm-evenings");
-    expect(room.state).toBe("locked");
+    expect(room.state).toBe("settled");
     expect(room.openFlags).toEqual([
       expect.objectContaining({
         cause: "reopened",
@@ -335,7 +335,7 @@ describe("the flag cascade", () => {
 
   it("flags every Decision with a rejected one in its Basis, and no other", async () => {
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await save(other("Oil the boards", ["keep-the-floors"]));
     await setState("oil-the-boards", "leaning");
     await save(other("New skirting"));
@@ -349,11 +349,11 @@ describe("the flag cascade", () => {
     expect((await detail("new-skirting")).openFlags).toEqual([]);
   });
 
-  it("flags nothing on a Lock, a lean, or a revival", async () => {
+  it("flags nothing on a Settle, a lean, or a revival", async () => {
     await save(other("Keep the floors"));
     await save(other("Oil the boards", ["keep-the-floors"]));
     await setState("keep-the-floors", "leaning");
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await setState("oil-the-boards", "rejected");
     await setState("oil-the-boards", "candidate");
     expect((await detail("oil-the-boards")).openFlags).toEqual([]);
@@ -361,12 +361,12 @@ describe("the flag cascade", () => {
 });
 
 describe("clearing a flag", () => {
-  /** A Locked Decision flagged because the one it rests on was reopened. */
+  /** A Settled Decision flagged because the one it rests on was reopened. */
   async function flagged(): Promise<string> {
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await save(other("Oil the boards", ["keep-the-floors"]));
-    await setState("oil-the-boards", "locked");
+    await setState("oil-the-boards", "settled");
     await setState("keep-the-floors", "leaning");
     return (await detail("oil-the-boards")).openFlags[0]?.slug ?? "";
   }
@@ -375,7 +375,7 @@ describe("clearing a flag", () => {
     const flag = await flagged();
     await core.run("resolve_flag", web, { home, flag, resolution: "keep", reason: "Still right." });
     const decision = await detail("oil-the-boards");
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.openFlags).toEqual([]);
     expect(decision.flags).toEqual([
       expect.objectContaining({ slug: flag, resolution: "keep", clearedAt: expect.any(String) }),
@@ -423,12 +423,12 @@ describe("clearing a flag", () => {
 
   it("the Agent clears it by Reopening, Rejecting, or keeping the Decision's state", async () => {
     await flagged();
-    const { receipt } = await setState("oil-the-boards", "locked", 'The user: "keep it"');
+    const { receipt } = await setState("oil-the-boards", "settled", 'The user: "keep it"');
     expect((await detail("oil-the-boards")).openFlags).toEqual([]);
     expect((await detail("oil-the-boards")).flags[0]).toMatchObject({ resolution: "keep" });
     expect(receipt).toContain("oil-the-boards/flag-1");
 
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await setState("keep-the-floors", "rejected");
     expect((await detail("oil-the-boards")).openFlags).toHaveLength(1);
     await setState("oil-the-boards", "rejected");
@@ -437,7 +437,7 @@ describe("clearing a flag", () => {
 });
 
 describe("Conflicts", () => {
-  it("can be raised only against a Locked Decision", async () => {
+  it("can be raised only against a Settled Decision", async () => {
     await save(other("Keep the floors"));
     await setState("keep-the-floors", "leaning");
     const error = await refusal(
@@ -447,20 +447,20 @@ describe("Conflicts", () => {
         description: "The user now says the tiles crack.",
       }),
     );
-    expect(error.code).toBe("not_locked");
+    expect(error.code).toBe("not_settled");
     expect((await detail("keep-the-floors")).conflicts).toEqual([]);
   });
 
-  it("stays open against a Locked Decision until the user keeps, Reopens, or Rejects it", async () => {
+  it("stays open against a Settled Decision until the user keeps, Reopens, or Rejects it", async () => {
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
     await core.run("flag_conflict", agent(session), {
       session,
       decision: "keep-the-floors",
       description: "The user now says the tiles crack.",
     });
     const raised = await detail("keep-the-floors");
-    expect(raised.state).toBe("locked");
+    expect(raised.state).toBe("settled");
     expect(raised.openConflicts).toEqual([
       expect.objectContaining({ slug: "keep-the-floors/conflict-1", session }),
     ]);
@@ -530,10 +530,10 @@ describe("content, scope, and Requirements by kind", () => {
   });
 });
 
-describe("Locked Decisions", () => {
+describe("Settled Decisions", () => {
   it("refuse any change but new Evidence until they are Reopened", async () => {
     await save(other("Keep the floors"));
-    await setState("keep-the-floors", "locked");
+    await setState("keep-the-floors", "settled");
 
     const changed = await refusal(
       save({ ...other("Keep the floors"), decision: "keep-the-floors", statement: "Rip them up." }),
@@ -553,9 +553,9 @@ describe("Locked Decisions", () => {
 
   it("are one Design Direction at a time", async () => {
     await save(direction());
-    await setState("warm-minimalism", "locked");
+    await setState("warm-minimalism", "settled");
     await save(direction("Industrial"));
-    const error = await refusal(setState("industrial", "locked"));
+    const error = await refusal(setState("industrial", "settled"));
     expect(error.code).toBe("illegal_transition");
     expect(error.message).toContain("warm-minimalism");
   });
@@ -570,9 +570,9 @@ describe("record_fulfilment", () => {
     content: { functions: ["office"] },
   };
 
-  it("sets a Locked Room use's functions on its Room and marks it Fulfilled", async () => {
+  it("sets a Settled Room use's functions on its Room and marks it Fulfilled", async () => {
     await save(office);
-    await setState("office", "locked");
+    await setState("office", "settled");
 
     await core.run("record_fulfilment", agent(session), {
       session,
@@ -584,14 +584,14 @@ describe("record_fulfilment", () => {
     expect(room.functions).toEqual(["office", "storage"]);
     expect(decisions).toEqual([]);
     const decision = await detail("office");
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.fulfilledAt).toEqual(expect.any(String));
     expect(decision.fulfilment).toEqual({ roomFunctions: ["office", "storage"] });
   });
 
-  it("leaves a Fulfilled Decision Locked for good: no Reopen or Reject, from the Agent or the web, and no Conflict", async () => {
+  it("leaves a Fulfilled Decision Settled for good: no Reopen or Reject, from the Agent or the web, and no Conflict", async () => {
     await save(office);
-    await setState("office", "locked");
+    await setState("office", "settled");
     await core.run("record_fulfilment", agent(session), { session, decision: "office" });
 
     const reopen = await refusal(setState("office", "leaning"));
@@ -613,17 +613,17 @@ describe("record_fulfilment", () => {
     ]);
     expect(reopen.message).toContain("Office (office) was Fulfilled on");
     const decision = await detail("office");
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.conflicts).toEqual([]);
   });
 
-  it("refuses a Decision that is not Locked with not_locked", async () => {
+  it("refuses a Decision that is not Settled with not_settled", async () => {
     await save(office);
     await setState("office", "leaning");
     const error = await refusal(
       core.run("record_fulfilment", agent(session), { session, decision: "office" }),
     );
-    expect(error.code).toBe("not_locked");
+    expect(error.code).toBe("not_settled");
     expect((await core.run("get_room", web, { home, room: "spare-room" })).room.functions).toEqual(
       [],
     );

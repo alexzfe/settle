@@ -1,1 +1,1 @@
-{{input.decision}}: Locked, was Candidate
+{{input.decision}}: Settled, was Candidate

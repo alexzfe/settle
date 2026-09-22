@@ -36,7 +36,7 @@ function summary(
 /** The fixture's Decisions, listed out of scope order to show the page groups them itself. */
 const decisions: DecisionSummary[] = [
   summary("hallway-use", "Reading nook", "room-use", "candidate", { room: hallway }),
-  summary("living-room-direction", "Calm and low", "room-direction", "locked", {
+  summary("living-room-direction", "Calm and low", "room-direction", "settled", {
     room: livingRoom,
     openFlags: [
       {
@@ -48,8 +48,8 @@ const decisions: DecisionSummary[] = [
       },
     ],
   }),
-  summary("design-direction", "Warm minimalism", "design-direction", "locked"),
-  summary("palette", "Earthy palette", "palette", "locked", {
+  summary("design-direction", "Warm minimalism", "design-direction", "settled"),
+  summary("palette", "Earthy palette", "palette", "settled", {
     openConflicts: [
       {
         slug: "palette/conflict-1",
@@ -60,7 +60,7 @@ const decisions: DecisionSummary[] = [
     ],
   }),
   summary("old-sofa", "Keep the old sofa", "purchase", "rejected", { room: livingRoom }),
-  summary("old-rug", "A jute rug", "purchase", "locked", {
+  summary("old-rug", "A jute rug", "purchase", "settled", {
     room: livingRoom,
     archivedAt: "2026-09-10T12:00:00Z",
   }),
@@ -115,11 +115,11 @@ it("lists every Decision by scope: Home-wide first, then each Room in the Home's
     [
       "Home-wide",
       [
-        "Warm minimalism | Design Direction | ●Locked | ",
-        "Earthy palette | Palette | ●Locked | Conflict: The new rug's red clashes with the accent.",
+        "Warm minimalism | Design Direction | ●Settled | ",
+        "Earthy palette | Palette | ●Settled | Conflict: The new rug's red clashes with the accent.",
       ],
     ],
-    ["Living room", ["Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened"]],
+    ["Living room", ["Calm and low | Room Direction | ●Settled | ⚑ Warm minimalism was reopened"]],
     ["Hallway", ["Reading nook | Room use | ○Candidate | "]],
   ]);
   // A flag says it is one to screen readers, not by its color alone.
@@ -143,9 +143,9 @@ it("hides Rejected and Archived Decisions behind one switch, which it remembers"
   expect(groups()[1]).toEqual([
     "Living room",
     [
-      "Calm and low | Room Direction | ●Locked | ⚑ Warm minimalism was reopened",
+      "Calm and low | Room Direction | ●Settled | ⚑ Warm minimalism was reopened",
       "Keep the old sofa | Purchase | ✕Rejected | ",
-      "A jute rug | Purchase | ●LockedArchived | ",
+      "A jute rug | Purchase | ●SettledArchived | ",
     ],
   ]);
   expect(inputsTo(fetch, "list_decisions")).toEqual([{ home: "flat", archived: true }]);
@@ -183,25 +183,25 @@ it("filters by state and by kind with plain links, each keeping the other", asyn
   await screen.findByText("Reading nook");
   expect(within(filters("State")).queryByRole("link", { name: "All" })).toBeNull();
 
-  fireEvent.click(within(filters("State")).getByRole("link", { name: "Locked" }));
+  fireEvent.click(within(filters("State")).getByRole("link", { name: "Settled" }));
   await waitFor(() => expect(screen.queryByText("Reading nook")).toBeNull());
-  expect(router.state.location.search).toBe("?state=locked");
+  expect(router.state.location.search).toBe("?state=settled");
 
   fireEvent.click(within(filters("Kind")).getByRole("link", { name: "Palette" }));
   await waitFor(() => expect(screen.queryByText("Warm minimalism")).toBeNull());
-  expect(router.state.location.search).toBe("?state=locked&kind=palette");
+  expect(router.state.location.search).toBe("?state=settled&kind=palette");
   expect(groups().map(([title, rows]) => [title, rows.length])).toEqual([["Home-wide", 1]]);
   expect(screen.getByRole("link", { name: "Earthy palette" })).toBeDefined();
   // The filters in force read as plain text, and All clears one.
-  expect(within(filters("State")).queryByRole("link", { name: "Locked" })).toBeNull();
+  expect(within(filters("State")).queryByRole("link", { name: "Settled" })).toBeNull();
   expect(within(filters("Kind")).queryByRole("link", { name: "Palette" })).toBeNull();
 
   fireEvent.click(within(filters("State")).getByRole("link", { name: "All" }));
   await waitFor(() => expect(router.state.location.search).toBe("?kind=palette"));
   expect(inputsTo(fetch, "list_decisions")).toEqual([
     { home: "flat", archived: true },
-    { home: "flat", state: "locked", archived: true },
-    { home: "flat", state: "locked", kind: "palette", archived: true },
+    { home: "flat", state: "settled", archived: true },
+    { home: "flat", state: "settled", kind: "palette", archived: true },
     { home: "flat", kind: "palette", archived: true },
   ]);
 });
@@ -263,17 +263,17 @@ it("shows the Decisions needing review, the Leaning ones, or those whose title m
 
 it("shows a Palette's colors as small swatches in its row, and a Fulfilled note", async () => {
   stubList(() => [
-    summary("palette", "Earthy palette", "palette", "locked", {
+    summary("palette", "Earthy palette", "palette", "settled", {
       colors: [
         { name: "Setting Plaster", hex: "#e3c9b6", provenance: "estimated", role: "base" },
         { name: "Olive", provenance: "estimated", role: "accent" },
       ],
     }),
-    summary("rug", "Wool rug", "purchase", "locked", { fulfilledAt: raised }),
+    summary("rug", "Wool rug", "purchase", "settled", { fulfilledAt: raised }),
   ]);
   renderRoutes("/homes/flat/decisions");
   await screen.findByText("Earthy palette");
   expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
   expect(screen.getByTitle("No screen color recorded")).toBeDefined();
-  expect(groups()[0]?.[1][1]).toBe("Wool rug | Purchase | ●Locked✓ Fulfilled | ");
+  expect(groups()[0]?.[1][1]).toBe("Wool rug | Purchase | ●Settled✓ Fulfilled | ");
 });

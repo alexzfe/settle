@@ -46,7 +46,7 @@ const MARKDOWN = "text/markdown; charset=utf-8";
 export const getShopping = defineOperation({
   name: "get_shopping",
   description:
-    "The Shopping section: the Shopping List (Locked Purchases not yet Fulfilled) and " +
+    "The Shopping section: the Shopping List (Settled Purchases not yet Fulfilled) and " +
     "Considering (Candidate and Leaning ones), each with its Room, Requirement counts, whether " +
     "it has Guides and Listings, and its Measure-first lines.",
   input: getShoppingInput,
@@ -66,7 +66,7 @@ export const exportShoppingList = defineOperation({
   name: "export_shopping_list",
   description:
     "The Shopping List as a file: a printable HTML page (format html) or CSV (format csv), " +
-    "each Locked Purchase not yet Fulfilled with its Room, Requirements, and Measure-first lines.",
+    "each Settled Purchase not yet Fulfilled with its Room, Requirements, and Measure-first lines.",
   input: exportShoppingListInput,
   readOnly: true,
   surface: "web",
@@ -190,7 +190,7 @@ function byToken(
 }
 
 /**
- * The Purchases to shop for: Locked ones not yet Fulfilled on the Shopping List, Candidate and
+ * The Purchases to shop for: Settled ones not yet Fulfilled on the Shopping List, Candidate and
  * Leaning ones under Considering, each Home-wide first and then by Room, in creation order.
  */
 function shoppingGroups(model: DecisionModel): {
@@ -208,8 +208,8 @@ function shoppingGroups(model: DecisionModel): {
     ),
   );
   return {
-    shoppingList: purchases.filter((each) => each.state === "locked"),
-    considering: purchases.filter((each) => each.state !== "locked"),
+    shoppingList: purchases.filter((each) => each.state === "settled"),
+    considering: purchases.filter((each) => each.state !== "settled"),
   };
 }
 

@@ -1,5 +1,6 @@
 import type { Core } from "@settle/core";
 import { Hono, type MiddlewareHandler } from "hono";
+import { AgentActivity } from "./agent-activity.js";
 import {
   handleApi,
   handleBlueprintPage,
@@ -25,6 +26,8 @@ export interface AppOptions {
 
 export function createApp({ core, port, webDist, publicOrigin }: AppOptions): Hono {
   const tools = mcpTools(core);
+  // The Agent's last tool call per Home, which /events passes on. The web's /api calls don't count.
+  const activity = new AgentActivity();
   const app = new Hono();
   app.use("*", frontDoor(publicOrigin));
   app.get("/health", (c) => c.json({ status: "ok" }));
@@ -42,12 +45,13 @@ export function createApp({ core, port, webDist, publicOrigin }: AppOptions): Ho
   app.post("/api/:operation", (c) => handleApi(core, c));
   // The Quick Guide's phone page. In LAN mode the LAN listener serves it by token (lan.ts).
   app.get("/guide/:slug", (c) => handleGuidePage(core, c));
-  app.get("/events", (c) => streamChanges(core, c));
+  app.get("/events", (c) => streamChanges(core, activity, c));
   app.all("/mcp/homes/:home", (c) =>
     handleMcpRequest(c.req.raw, {
       core,
       tools,
       home: c.req.param("home"),
+      activity,
       port,
       ...(publicOrigin ? { publicOrigin } : {}),
     }),

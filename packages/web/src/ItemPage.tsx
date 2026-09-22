@@ -280,7 +280,7 @@ const RELATION_LABEL: Record<Relation["relation"], string> = {
   "replaced-by": "replaced by",
 };
 
-/** "relies on it  Main bedroom bed frame ● Locked", with the Requirements citing the Item. */
+/** "relies on it  Main bedroom bed frame ● Settled", with the Requirements citing the Item. */
 function RelationLine({ home, decision }: { home: string; decision: Relation }) {
   return (
     <>

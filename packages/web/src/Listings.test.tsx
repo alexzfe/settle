@@ -111,7 +111,7 @@ function rug(listings: Listing[]): DecisionDetail {
     slug: "wool-rug",
     title: "Wool rug",
     kind: "purchase",
-    state: "locked",
+    state: "settled",
     room: { slug: "living-room", name: "Living room" },
     statement: "A large wool rug under the sofa.",
     createdAt,

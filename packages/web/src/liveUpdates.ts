@@ -1,5 +1,5 @@
 import type { ChangeEvent, RecordKind } from "@settle/core";
-import { type QueryKey, useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { queryKeys } from "./queries";
 
@@ -118,6 +118,27 @@ function queriesOfHome(home: string): QueryKey[] {
  */
 export type LiveState = "connecting" | "live" | "reconnecting" | "stopped";
 
+/** What an "agent" event carries: the time of the Agent's last MCP tool call for the Home. */
+export interface AgentEvent {
+  home: string;
+  at: string;
+}
+
+/**
+ * Where the last Agent call is kept: in the query cache, never fetched, only set by the events.
+ * Kept out of queriesOfHome, so a refetch-everything leaves it be; the server resends it on
+ * reconnect anyway.
+ */
+export const agentCallKey = (home: string): QueryKey => ["agent-call", home];
+
+/**
+ * When the Agent last made an MCP tool call for the Home, as an ISO timestamp, while
+ * useLiveUpdates keeps the Home live; undefined when none since the server started.
+ */
+export function useLastAgentCall(home: string): string | undefined {
+  return useQuery<string>({ queryKey: agentCallKey(home), queryFn: skipToken }).data;
+}
+
 // EventSource.CLOSED, spelled out so a stand-in EventSource without the constants still works.
 const CLOSED = 2;
 
@@ -125,7 +146,7 @@ const CLOSED = 2;
  * Keeps one Home's queries fresh while its pages are open: each change event invalidates the
  * queries showing that record kind, and after a dropped connection comes back (the browser
  * retries on its own) everything for the Home is refetched, since changes may have been missed.
- * Returns how the connection stands.
+ * Each agent event is kept for useLastAgentCall. Returns how the connection stands.
  */
 export function useLiveUpdates(home: string): LiveState {
   const queryClient = useQueryClient();
@@ -140,6 +161,10 @@ export function useLiveUpdates(home: string): LiveState {
     events.addEventListener("change", (event: MessageEvent<string>) => {
       const change = JSON.parse(event.data) as ChangeEvent;
       invalidate(queriesShowing(change.recordKind, change.home));
+    });
+    events.addEventListener("agent", (event: MessageEvent<string>) => {
+      const agent = JSON.parse(event.data) as AgentEvent;
+      queryClient.setQueryData(agentCallKey(agent.home), agent.at);
     });
     events.addEventListener("error", () => {
       dropped = true;

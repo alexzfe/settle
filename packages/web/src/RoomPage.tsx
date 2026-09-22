@@ -957,7 +957,7 @@ function FeatureLine({ feature }: { feature: Feature }) {
   );
 }
 
-/** The Room's open Decisions, as get_room gives them: Candidate, Leaning, and Locked not Fulfilled. */
+/** The Room's open Decisions, as get_room gives them: Candidate, Leaning, and Settled not Fulfilled. */
 function RoomDecisions({ decisions }: { decisions: DecisionSummary[] }) {
   const { home = "" } = useParams();
   if (decisions.length === 0) return <p className={styles.muted}>No open Decisions.</p>;

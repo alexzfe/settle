@@ -20,8 +20,8 @@ export type CoreErrorCode =
   | "illegal_transition"
   /** An Agent state change without a reason. */
   | "reason_required"
-  /** A Conflict raised, or a Fulfilment recorded, on a Decision that is not Locked. */
-  | "not_locked"
+  /** A Conflict raised, or a Fulfilment recorded, on a Decision that is not Settled. */
+  | "not_settled"
   | "city_not_found";
 
 export class CoreError extends Error {

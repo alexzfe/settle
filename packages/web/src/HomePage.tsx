@@ -36,13 +36,13 @@ function newestFirst(sessions: readonly Session[]): Session[] {
   return sessions.toSorted((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt));
 }
 
-/** The Design Direction in force: the Locked one, else the latest Leaning, else latest Candidate. */
+/** The Design Direction in force: the Settled one, else the latest Leaning, else latest Candidate. */
 export function designDirectionInForce(
   decisions: readonly DecisionSummary[],
 ): DecisionSummary | undefined {
   const directions = decisions.filter((decision) => decision.kind === "design-direction");
   return (
-    directions.find((decision) => decision.state === "locked") ??
+    directions.find((decision) => decision.state === "settled") ??
     directions.filter((decision) => decision.state === "leaning").at(-1) ??
     directions.filter((decision) => decision.state === "candidate").at(-1)
   );
@@ -171,7 +171,7 @@ function LeftOff({ home }: { home: Home }) {
             </AgentWritten>
             <p className={page.nextLabel}>Next</p>
             <ol className={page.nextSteps}>
-              {decisions.data && direction?.state !== "locked" && (
+              {decisions.data && direction?.state !== "settled" && (
                 <li>
                   <span className={page.next}>Settle the Design Direction</span>
                   <AskAgent

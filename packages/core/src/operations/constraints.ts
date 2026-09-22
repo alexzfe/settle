@@ -18,7 +18,7 @@ export const setConstraints = defineOperation({
   description:
     "Adds or removes a batch of Constraints and returns a receipt with one line per change. A " +
     "Constraint is a fact about the user's situation that every Skill must obey as strictly as " +
-    'a Locked Decision, though it is not a design choice: "Rented: no painting or drilling", ' +
+    'a Settled Decision, though it is not a design choice: "Rented: no painting or drilling", ' +
     '"Two cats", "Grandmother\'s dresser stays". Add or remove one only once the user has ' +
     "agreed: read the exact wording back first, and pass `reason` quoting their permission; " +
     "a removal without one is refused. A softer fact that should not bind every " +

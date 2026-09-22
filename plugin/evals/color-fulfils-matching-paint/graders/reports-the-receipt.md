@@ -4,7 +4,7 @@ type: llm
 focus: trace
 ---
 
-The trace is one turn of a conversation. The assistant is helping the user with the paint colours of their home. The decision for the living room walls, Jitney (a Farrow & Ball paint) in a matt finish, was locked earlier; the walls were Setting Plaster before. The user has just said the walls were painted at the weekend in exactly that paint and finish. The write's receipt came back saying: the decision is fulfilled, and the living room walls surface is now Jitney, was Setting Plaster. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
+The trace is one turn of a conversation. The assistant is helping the user with the paint colours of their home. The decision for the living room walls, Jitney (a Farrow & Ball paint) in a matt finish, was settled earlier; the walls were Setting Plaster before. The user has just said the walls were painted at the weekend in exactly that paint and finish. The write's receipt came back saying: the decision is fulfilled, and the living room walls surface is now Jitney, was Setting Plaster. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
 
 PASS only if both of these hold:
 

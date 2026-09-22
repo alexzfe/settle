@@ -11,7 +11,7 @@ function entry(slug: string, title: string, rest: Partial<ShoppingEntry> = {}): 
     slug,
     title,
     statement: `${title}.`,
-    state: "locked",
+    state: "settled",
     requirements: { must: 0, prefer: 0 },
     hasGuides: false,
     fullGuideOutOfDate: false,
@@ -22,7 +22,7 @@ function entry(slug: string, title: string, rest: Partial<ShoppingEntry> = {}): 
   };
 }
 
-/** A Locked rug with everything so far, and a Home-wide lamp with nothing yet. */
+/** A Settled rug with everything so far, and a Home-wide lamp with nothing yet. */
 const rug = entry("wool-rug", "Wool rug", {
   statement: "A large wool rug under the sofa.",
   room: livingRoom,
@@ -269,7 +269,7 @@ it("says when there is nothing to buy or consider, and is linked from every page
   renderRoutes("/homes/flat/shopping");
   await screen.findByRole("heading", { name: "Shopping List" });
   expect(after("Shopping List")).toBe(
-    "Nothing to buy: no Locked Purchase is waiting to be Fulfilled.",
+    "Nothing to buy: no Settled Purchase is waiting to be Fulfilled.",
   );
   expect(after("Considering")).toBe("Nothing under consideration.");
   expect(screen.getByRole("link", { name: "Shopping" }).getAttribute("href")).toBe(
@@ -284,8 +284,8 @@ it("moves an entry to the Shopping List when a Decision change event arrives", a
   await screen.findByRole("link", { name: "Low sofa" });
   expect(entriesAfter("Considering")).toHaveLength(1);
 
-  // The Agent Locks the sofa.
-  shopping = { shoppingList: [rug, { ...sofa, state: "locked" }], considering: [] };
+  // The Agent Settles the sofa.
+  shopping = { shoppingList: [rug, { ...sofa, state: "settled" }], considering: [] };
   act(() =>
     FakeEventSource.open().emit("change", {
       home: "flat",

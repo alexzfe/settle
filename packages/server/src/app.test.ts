@@ -409,12 +409,12 @@ describe("Decisions", () => {
     const saved = await tool("save_decision", direction);
     const noReason = await tool("set_decision_state", {
       decision: "warm-minimalism",
-      to: "locked",
+      to: "settled",
       reason: " ",
     });
-    const locked = await tool("set_decision_state", {
+    const settled = await tool("set_decision_state", {
       decision: "warm-minimalism",
-      to: "locked",
+      to: "settled",
       reason,
     });
     await tool("save_decision", {
@@ -424,7 +424,7 @@ describe("Decisions", () => {
       statement: "One room for both.",
       content: { functions: ["living", "dining"] },
     });
-    await tool("set_decision_state", { decision: "living-and-dining", to: "locked", reason });
+    await tool("set_decision_state", { decision: "living-and-dining", to: "settled", reason });
     const fulfilled = await tool("record_fulfilment", { decision: "living-and-dining" });
     const conflict = await tool("flag_conflict", {
       decision: "warm-minimalism",
@@ -437,17 +437,17 @@ describe("Decisions", () => {
     expect(saved.content[0]?.text).toContain("created as a Candidate Design Direction");
     expect(noReason.isError).toBe(true);
     expect(noReason.content[0]?.text).toContain("reason");
-    expect(locked.content[0]?.text).toBe(
-      "Warm minimalism (warm-minimalism): Locked, was Candidate",
+    expect(settled.content[0]?.text).toBe(
+      "Warm minimalism (warm-minimalism): Settled, was Candidate",
     );
     expect(fulfilled.content[0]?.text).toContain("Living room (living-room): functions living");
     expect(conflict.content[0]?.text).toContain("warm-minimalism/conflict-1");
     expect(found.content[0]?.text).toContain(
-      "Warm minimalism (warm-minimalism): Design Direction, Locked; Home-wide; 1 open Conflict",
+      "Warm minimalism (warm-minimalism): Design Direction, Settled; Home-wide; 1 open Conflict",
     );
     expect(detail.content[0]?.text).toContain("- Mood: calm");
     expect(opening.content[0]?.text).toContain(
-      "Design Direction: Warm minimalism (warm-minimalism), Locked",
+      "Design Direction: Warm minimalism (warm-minimalism), Settled",
     );
     expect(opening.content[0]?.text).toContain("Open flags and Conflicts:");
     expect(session).toMatch(/^design-direction-/);
@@ -456,7 +456,7 @@ describe("Decisions", () => {
   it("offers the web list_decisions, get_decision, set_decision_state without a Session, and resolve_flag", async () => {
     const { tool } = await setUp();
     await tool("save_decision", direction);
-    await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+    await tool("set_decision_state", { decision: "warm-minimalism", to: "settled", reason });
     await tool("save_decision", {
       kind: "room-direction",
       room: "living-room",
@@ -464,7 +464,7 @@ describe("Decisions", () => {
       statement: "Low and warm.",
       content: { direction: "Lamplight and wool." },
     });
-    await tool("set_decision_state", { decision: "calm-evenings", to: "locked", reason });
+    await tool("set_decision_state", { decision: "calm-evenings", to: "settled", reason });
 
     const reopen = await api("set_decision_state", {
       home: "my-flat",
@@ -496,13 +496,13 @@ describe("Decisions", () => {
     expect(flag).toBe("calm-evenings/flag-1");
     expect(illegal.status).toBe(409);
     expect(await illegal.json()).toEqual({
-      error: { code: "illegal_transition", message: expect.stringContaining("Locked") },
+      error: { code: "illegal_transition", message: expect.stringContaining("Settled") },
     });
     expect(kept.status).toBe(200);
     expect(await detail.json()).toMatchObject({
       decision: {
         kind: "room-direction",
-        state: "locked",
+        state: "settled",
         content: { direction: "Lamplight and wool." },
         basis: [{ slug: "warm-minimalism", state: "leaning", automatic: true }],
         openFlags: [],
@@ -522,14 +522,14 @@ describe("Decisions", () => {
       provenance: "measured",
     };
     await tool("save_decision", direction);
-    await tool("set_decision_state", { decision: "warm-minimalism", to: "locked", reason });
+    await tool("set_decision_state", { decision: "warm-minimalism", to: "settled", reason });
     await tool("save_decision", {
       kind: "palette",
       title: "Warm clay",
       statement: "Clay tones.",
       content: { colors: [{ ...jitney, role: "base" }] },
     });
-    await tool("set_decision_state", { decision: "warm-clay", to: "locked", reason });
+    await tool("set_decision_state", { decision: "warm-clay", to: "settled", reason });
     const wall = { kind: "room-color", room: "living-room", statement: "Matt walls." };
     const refused = await tool("save_decision", {
       ...wall,
@@ -541,7 +541,7 @@ describe("Decisions", () => {
       title: "Jitney walls",
       content: { surface: "walls", color: "Jitney", finish: "matt" },
     });
-    await tool("set_decision_state", { decision: "jitney-walls", to: "locked", reason });
+    await tool("set_decision_state", { decision: "jitney-walls", to: "settled", reason });
     const fulfilled = await tool("record_fulfilment", {
       decision: "jitney-walls",
       finish: "eggshell",

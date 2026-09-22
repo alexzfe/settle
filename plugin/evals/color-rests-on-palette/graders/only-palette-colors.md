@@ -4,7 +4,7 @@ type: llm
 focus: trace
 ---
 
-The trace is one turn of a conversation. The assistant is helping the user choose paint colours for the main bedroom of their home. The home has a locked palette of exactly four colours, and every colour in the home must come from it: Pointing (Farrow & Ball No. 2003), a warm white; Setting Plaster (Farrow & Ball No. 231), a warm plaster pink; Jitney (Farrow & Ball No. 293), a warm stone; and a warm terracotta. The user has agreed to Pointing for the ceiling and woodwork, asked which colour the assistant would paint the bedroom walls, and asked it to save its pick. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
+The trace is one turn of a conversation. The assistant is helping the user choose paint colours for the main bedroom of their home. The home has a settled palette of exactly four colours, and every colour in the home must come from it: Pointing (Farrow & Ball No. 2003), a warm white; Setting Plaster (Farrow & Ball No. 231), a warm plaster pink; Jitney (Farrow & Ball No. 293), a warm stone; and a warm terracotta. The user has agreed to Pointing for the ceiling and woodwork, asked which colour the assistant would paint the bedroom walls, and asked it to save its pick. Grade only the assistant's own text replies in this turn, not the tool calls or tool results.
 
 PASS only if both of these hold:
 

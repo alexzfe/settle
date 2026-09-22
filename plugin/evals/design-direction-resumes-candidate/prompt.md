@@ -1,5 +1,5 @@
 ---
-description: "The Home has one Candidate Design Direction and no Locked one. The user picks up where they left off and adds a material. The reply retrieves the Candidate and updates that same Decision instead of starting over or saving a second one."
+description: "The Home has one Candidate Design Direction and no Settled one. The user picks up where they left off and adds a material. The reply retrieves the Candidate and updates that same Decision instead of starting over or saving a second one."
 tags: [behaviour, design-direction]
 max_turns: 16
 timeout_seconds: 300

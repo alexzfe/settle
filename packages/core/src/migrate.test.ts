@@ -34,6 +34,7 @@ describe("migrate", () => {
       { id: 10 },
       { id: 11 },
       { id: 12 },
+      { id: 13 },
     ]);
     db.close();
   });
@@ -42,7 +43,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 13 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 14 });
     db.close();
   });
 
@@ -176,6 +177,79 @@ describe("migrate", () => {
     expect(() => listing(6, null)).toThrow(/CHECK/);
     expect(() => listing(0, null)).toThrow(/CHECK/);
     expect(() => listing(null, "paused")).toThrow(/CHECK/);
+    db.close();
+  });
+
+  it("renames every stored Locked to Settled, keeping each Decision's id and what refers to it", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = ON");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0013")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude) VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4);
+      INSERT INTO decisions (id, home_id, slug, kind, title, statement, state, created_at) VALUES
+        (3, 1, 'calm', 'design-direction', 'Calm', 'Calm.', 'candidate', ''),
+        (5, 1, 'warm', 'design-direction', 'Warm', 'Warm.', 'leaning', ''),
+        (8, 1, 'clay', 'palette', 'Clay', 'Clay.', 'locked', ''),
+        (9, 1, 'cold', 'design-direction', 'Cold', 'Cold.', 'rejected', '');
+      INSERT INTO decision_basis (home_id, decision_id, basis_decision_id) VALUES (1, 8, 5);
+      INSERT INTO state_changes (home_id, decision_id, from_state, to_state, origin, at) VALUES
+        (1, 8, 'leaning', 'locked', 'web', ''),
+        (1, 8, 'locked', 'leaning', 'web', ''),
+        (1, 9, 'candidate', 'rejected', 'web', '');
+      INSERT INTO change_log (home_id, at, origin, record_kind, record_id, record_slug, field, old, new)
+      VALUES
+        (1, '', 'web', 'decision', 8, 'clay', 'state', '"leaning"', '"locked"'),
+        (1, '', 'web', 'decision', 8, 'clay', 'state', '"locked"', '"leaning"'),
+        (1, '', 'web', 'decision', 8, 'clay', 'summary', NULL, '"Locked the Palette"');
+    `);
+    early.close();
+
+    const db = migrate(path);
+    expect(db.prepare("SELECT id, state FROM decisions ORDER BY id").all()).toEqual([
+      { id: 3, state: "candidate" },
+      { id: 5, state: "leaning" },
+      { id: 8, state: "settled" },
+      { id: 9, state: "rejected" },
+    ]);
+    expect(
+      db.prepare("SELECT decision_id, from_state, to_state FROM state_changes ORDER BY id").all(),
+    ).toEqual([
+      { decision_id: 8, from_state: "leaning", to_state: "settled" },
+      { decision_id: 8, from_state: "settled", to_state: "leaning" },
+      { decision_id: 9, from_state: "candidate", to_state: "rejected" },
+    ]);
+    expect(db.prepare("SELECT field, old, new FROM change_log ORDER BY id").all()).toEqual([
+      { field: "state", old: '"leaning"', new: '"settled"' },
+      { field: "state", old: '"settled"', new: '"leaning"' },
+      { field: "summary", old: null, new: '"Locked the Palette"' },
+    ]);
+    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(db.prepare("SELECT name FROM sqlite_schema WHERE sql LIKE '%locked%'").all()).toEqual(
+      [],
+    );
+    expect(
+      db
+        .prepare("SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name IN (?, ?)")
+        .all("decisions", "state_changes")
+        .map((row) => row.name)
+        .sort(),
+    ).toEqual(["decisions_home", "sqlite_autoindex_decisions_1", "state_changes_decision"]);
+    expect(() =>
+      db
+        .prepare(
+          `INSERT INTO decisions (home_id, slug, kind, title, statement, state, created_at)
+           VALUES (1, 'old', 'other', 'Old', 'Old.', 'locked', '')`,
+        )
+        .run(),
+    ).toThrow(/CHECK/);
     db.close();
   });
 

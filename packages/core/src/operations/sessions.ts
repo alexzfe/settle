@@ -39,8 +39,8 @@ export const openSession = defineOperation({
     "Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many " +
     "Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item " +
     "count, and Gaps: the facts advice still needs); for every Skill but home-intake, the " +
-    "Home-wide Decisions in force (the Design Direction and Palette in full, marked Locked or " +
-    "Leaning, then the other Home-wide Locked Decisions); and the open flags and Conflicts, one " +
+    "Home-wide Decisions in force (the Design Direction and Palette in full, marked Settled or " +
+    "Leaning, then the other Home-wide Settled Decisions); and the open flags and Conflicts, one " +
     "line each. Call it first, when a Skill starts, before any other tool of this server, and pass " +
     "the returned Session id as `session` on every later call in the conversation. A Session is " +
     "one interview with the user; the app keeps its record (Skills used and a summary), not the " +

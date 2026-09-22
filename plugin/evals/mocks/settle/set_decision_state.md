@@ -1,4 +1,4 @@
-Warm minimalism (warm-minimalism): Reopened to Leaning, was Locked
+Warm minimalism (warm-minimalism): Reopened to Leaning, was Settled
 Flagged for review: Keep the original floors (keep-the-original-floors), which rests on Warm minimalism (warm-minimalism), now reopened
 Flagged for review: Calm evenings (calm-evenings), which rests on Warm minimalism (warm-minimalism), now reopened
 Flagged for review: Storage in the hallway (storage-in-the-hallway), which rests on Warm minimalism (warm-minimalism), now reopened

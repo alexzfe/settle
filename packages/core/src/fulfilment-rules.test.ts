@@ -70,7 +70,7 @@ async function saveRoom(input: Omit<OperationInput<"save_room">, "session">): Pr
   return (await core.run("save_room", agent(session), { session, ...input })).receipt;
 }
 
-async function setState(decision: string, to: "candidate" | "leaning" | "locked" | "rejected") {
+async function setState(decision: string, to: "candidate" | "leaning" | "settled" | "rejected") {
   return core.run("set_decision_state", agent(session), {
     session,
     decision,
@@ -361,7 +361,7 @@ describe("record_listing", () => {
 describe("record_fulfilment of a Purchase", () => {
   beforeEach(async () => {
     await save(rug([must("At least 2.0 m wide", wall2), prefer("Low pile", cats)]));
-    await setState("wool-rug", "locked");
+    await setState("wool-rug", "settled");
   });
 
   const wool = { name: "Wool rug", category: "rugs" as const, width: measured(2000) };
@@ -410,7 +410,7 @@ describe("record_fulfilment of a Purchase", () => {
       title: "New radiator",
       statement: "A column radiator under the window.",
     });
-    await setState("new-radiator", "locked");
+    await setState("new-radiator", "settled");
     const receipt = await fulfil({
       decision: "new-radiator",
       bought: "A four-column radiator, 1.2 m",
@@ -516,7 +516,7 @@ describe("record_fulfilment of a Purchase", () => {
     const { items } = await core.run("list_items", web, { home });
     expect(items.map((item) => item.slug)).toEqual(["old-rug"]);
 
-    await setState("wool-rug", "locked");
+    await setState("wool-rug", "settled");
     await fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool });
     expect((await detail()).fulfilledAt).toEqual(expect.any(String));
   });
@@ -533,7 +533,7 @@ describe("record_fulfilment of a Purchase", () => {
     expect((await detail()).fulfilledAt).toBeUndefined();
   });
 
-  it("leaves a Fulfilled Purchase Locked for good, so what its Deviations differ from never changes", async () => {
+  it("leaves a Fulfilled Purchase Settled for good, so what its Deviations differ from never changes", async () => {
     await fulfil({
       decision: "wool-rug",
       bought: "A wool rug, 1.9 m wide",
@@ -555,7 +555,7 @@ describe("record_fulfilment of a Purchase", () => {
     expect(reopen.message).toContain("Wool rug (wool-rug) was Fulfilled on");
     expect(reopen.message).toContain("save a new Decision");
     const decision = await detail();
-    expect(decision.state).toBe("locked");
+    expect(decision.state).toBe("settled");
     expect(decision.deviations[0]).toMatchObject({ requirementText: "At least 2.0 m wide" });
   });
 
@@ -570,12 +570,12 @@ describe("record_fulfilment of a Purchase", () => {
     expect((await detail("wool-rug-2")).requirements.map((each) => each.text)).toEqual(["Wool"]);
   });
 
-  it("refuses a Purchase that is not Locked, changing nothing", async () => {
+  it("refuses a Purchase that is not Settled, changing nothing", async () => {
     await save({ ...rug([must("Wool", cats)]), title: "Hall runner", statement: "A runner." });
     const error = await refusal(
       fulfil({ decision: "hall-runner", bought: "A runner", item: { ...wool, name: "Runner" } }),
     );
-    expect(error.code).toBe("not_locked");
+    expect(error.code).toBe("not_settled");
     const { items } = await core.run("list_items", web, { home });
     expect(items.map((item) => item.slug)).toEqual(["old-rug"]);
     expect((await detail("hall-runner")).fulfilledAt).toBeUndefined();
@@ -602,7 +602,7 @@ describe("record_fulfilment of a Purchase", () => {
       statement: "Coats in the hall.",
       content: { functions: ["hallway", "storage"] },
     });
-    await setState("storage-too", "locked");
+    await setState("storage-too", "settled");
     const onRoomUse = await refusal(fulfil({ decision: "storage-too", bought: "Hooks" }));
     const onPurchase = await refusal(
       fulfil({ decision: "wool-rug", bought: "A rug", roomFunctions: ["living"] }),
