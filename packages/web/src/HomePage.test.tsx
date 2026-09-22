@@ -102,6 +102,7 @@ function shoppingEntry(slug: string): ShoppingEntry {
     hasGuides: false,
     fullGuideOutOfDate: false,
     listings: 0,
+    held: 0,
     measureFirst: [],
     openFlags: 0,
   };

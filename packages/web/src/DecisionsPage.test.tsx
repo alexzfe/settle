@@ -102,6 +102,7 @@ function stubList(listed: () => DecisionSummary[] = () => decisions) {
           hasGuides: false,
           fullGuideOutOfDate: false,
           listings: 4,
+          held: 1,
           measureFirst: [],
           openFlags: 0,
         },
@@ -222,14 +223,15 @@ it("shows only the flagged Decisions when the Flags strip sends the user here", 
   expect(titles()).toContain("Reading nook");
 });
 
-it("shows a Purchase's Listing count, and its Fulfilment, as neutral facts", async () => {
+it("shows a Purchase's Listing and Held counts, and its Fulfilment, as neutral facts", async () => {
   stubList(() => [
     summary("old-sofa", "Keep the old sofa", "purchase", "candidate", { room: livingRoom }),
     summary("rug", "Wool rug", "purchase", "settled", { fulfilledAt: raised }),
   ]);
   renderRoutes("/homes/flat/decisions");
   await screen.findByText("Wool rug");
-  expect(screen.getByText("4 Listings")).toBeDefined();
+  // Held is stock a shop is keeping for you: a neutral fact, beside the Listing count.
+  expect(screen.getByText("4 Listings · 1 Held")).toBeDefined();
   expect(screen.getByText("✓ Fulfilled 14 Sep")).toBeDefined();
 });
 

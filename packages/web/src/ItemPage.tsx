@@ -314,7 +314,11 @@ function RelationLine({ home, decision }: { home: string; decision: Relation }) 
           >
             {decision.title}
           </Link>
-          {decision.fulfilled && <FulfilledNote />}
+          {decision.fulfilled && (
+            <FulfilledNote>
+              {decision.fulfilledAt ? `Fulfilled ${shortDate(decision.fulfilledAt)}` : "Fulfilled"}
+            </FulfilledNote>
+          )}
           {decision.archived && <span className={styles.muted}>Archived</span>}
         </span>
         {decision.requirements && decision.requirements.length > 0 && (

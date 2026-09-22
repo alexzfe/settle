@@ -17,6 +17,7 @@ function entry(slug: string, title: string, rest: Partial<ShoppingEntry> = {}): 
     hasGuides: false,
     fullGuideOutOfDate: false,
     listings: 0,
+    held: 0,
     measureFirst: [],
     openFlags: 0,
     ...rest,

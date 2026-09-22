@@ -152,12 +152,12 @@ export function DecisionsPage() {
   // switch below keeps them out of sight.
   const decisions = useDecisions(home, { archived: true });
   const homeQuery = useHome(home);
-  // The Listing counts, from the Shopping List the sidebar already asks for.
+  // The Listing and Held counts, from the Shopping List the sidebar already asks for.
   const shopping = useShopping(home);
-  const listings = new Map(
+  const counts = new Map(
     [...(shopping.data?.shoppingList ?? []), ...(shopping.data?.considering ?? [])].map((entry) => [
       entry.slug,
-      entry.listings,
+      { listings: entry.listings, held: entry.held },
     ]),
   );
   const error = decisions.error ?? homeQuery.error;
@@ -259,7 +259,7 @@ export function DecisionsPage() {
                       home={home}
                       decision={decision}
                       grouping={grouping}
-                      listings={listings.get(decision.slug)}
+                      counts={counts.get(decision.slug)}
                     />
                   </li>
                 ))}
@@ -309,12 +309,12 @@ function DecisionRow({
   home,
   decision,
   grouping,
-  listings,
+  counts,
 }: {
   home: string;
   decision: DecisionSummary;
   grouping: Grouping;
-  listings: number | undefined;
+  counts: PurchaseCounts | undefined;
 }) {
   const rejected = decision.state === "rejected";
   const faded = rejected || decision.archivedAt !== undefined;
@@ -335,7 +335,7 @@ function DecisionRow({
             </span>
           )}
         </span>
-        <SecondLine decision={decision} listings={listings} />
+        <SecondLine decision={decision} counts={counts} />
       </div>
       <span className={page.facts}>
         <span className={page.kind}>{KIND_LABEL[decision.kind]}</span>
@@ -348,16 +348,22 @@ function DecisionRow({
   );
 }
 
+/** A Purchase's neutral counts, from the Shopping List: how many Listings, how many Held. */
+interface PurchaseCounts {
+  listings: number;
+  held: number;
+}
+
 /**
  * Under the title: its open Flags and Conflicts in the attention color, then neutral facts in
  * muted ink (a Purchase's Listing count, its Fulfilment, Archived). Nothing else goes here.
  */
 function SecondLine({
   decision,
-  listings,
+  counts,
 }: {
   decision: DecisionSummary;
-  listings: number | undefined;
+  counts: PurchaseCounts | undefined;
 }) {
   const [flag, ...moreFlags] = decision.openFlags;
   const conflicts = decision.openConflicts.length;
@@ -379,7 +385,10 @@ function SecondLine({
   }
   const fulfilled = decision.fulfilledAt && shortDate(decision.fulfilledAt);
   const neutral = [
-    listings !== undefined && listings > 0 && `${listings} Listing${listings === 1 ? "" : "s"}`,
+    counts &&
+      counts.listings > 0 &&
+      `${counts.listings} Listing${counts.listings === 1 ? "" : "s"}`,
+    counts && counts.held > 0 && `${counts.held} Held`,
     fulfilled && `✓ Fulfilled ${fulfilled}`,
     decision.archivedAt && "Archived",
   ].filter(Boolean);

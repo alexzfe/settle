@@ -1,3 +1,4 @@
+import { optional } from "../optional.js";
 import { defineOperation } from "../registry.js";
 import { named } from "../render.js";
 import type { ChangeRow, DecisionRow, ItemRow, ListingRow, RequirementRow } from "../store.js";
@@ -97,6 +98,7 @@ function related(relation: ItemDecision["relation"], decision: DecisionRow): Ite
     title: decision.title,
     state: decision.state,
     fulfilled: decision.fulfilledAt !== null,
+    ...optional({ fulfilledAt: decision.fulfilledAt }),
     archived: decision.archivedAt !== null,
   };
 }

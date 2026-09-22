@@ -35,6 +35,7 @@ import { LrvBar } from "./Swatch";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { useDocumentTitle } from "./ui/documentTitle";
+import { Section } from "./ui/Section";
 import { ShowSwitch, useRememberedSwitch } from "./ui/ShowArchived";
 import { FlagMark, FulfilledNote, StateMark } from "./ui/StateMark";
 import {
@@ -134,7 +135,7 @@ function RoomSheet({
         <Fact term="Times of use">{room.timesOfUse.join(", ")}</Fact>
       </dl>
 
-      <Part title="Walls" id="walls">
+      <Section heading="label" title="Walls" id="walls">
         {walls.length === 0 ? (
           <p className={styles.muted}>No Walls recorded.</p>
         ) : (
@@ -152,18 +153,18 @@ function RoomSheet({
             <OpeningList windows={windowsOffWall} doors={doorsOffWall} compact />
           </section>
         )}
-      </Part>
+      </Section>
 
       <div className={page.pair}>
         <DaylightCard room={room} latitude={home?.latitude} />
         <GapsCard room={room} />
       </div>
 
-      <Part title="Surfaces" id="surfaces">
+      <Section heading="label" title="Surfaces" id="surfaces">
         <Surfaces surfaces={room.surfaces} walls={walls} />
-      </Part>
+      </Section>
 
-      <Part title="Features">
+      <Section heading="label" title="Features">
         {room.features.length === 0 ? (
           <p className={styles.muted}>No Features recorded.</p>
         ) : (
@@ -175,9 +176,9 @@ function RoomSheet({
             ))}
           </ul>
         )}
-      </Part>
+      </Section>
 
-      <Part title="Lights">
+      <Section heading="label" title="Lights">
         {room.lights.length === 0 ? (
           <p className={styles.muted}>No lights recorded, so how the Room is lit is unknown.</p>
         ) : (
@@ -199,13 +200,13 @@ function RoomSheet({
             ))}
           </ul>
         )}
-      </Part>
+      </Section>
 
       <RoomItems items={room.items} />
 
-      <Part title="Decisions">
+      <Section heading="label" title="Decisions">
         <RoomDecisions decisions={decisions} />
-      </Part>
+      </Section>
 
       <RoomNav room={room} rooms={rooms} />
     </>
@@ -216,28 +217,6 @@ function RoomSheet({
  * A part of the Room Sheet under a small-caps label ("Walls", "Items"): these name what follows
  * rather than head a section of prose, so they take the sans. The serif stays for the Room's name.
  */
-function Part({
-  title,
-  action,
-  id,
-  children,
-}: {
-  title: ReactNode;
-  action?: ReactNode;
-  id?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <section className={page.part} id={id}>
-      <div className={page.partHeader}>
-        <h2 className={`label ${page.partTitle}`}>{title}</h2>
-        {action && <div className={page.partAction}>{action}</div>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 // ─── Header ────────────────────────────────────────────────────────────────────────────────
 
 /** Whether dark ink reads on a hex ground (relative luminance above about the middle). */
@@ -309,7 +288,8 @@ function RoomItems({ items }: { items: RoomDetail["items"] }) {
   const archived = items.filter((item) => item.archivedAt).length;
   const shown = showArchived ? items : items.filter((item) => !item.archivedAt);
   return (
-    <Part
+    <Section
+      heading="label"
       title="Items"
       action={
         <ShowSwitch
@@ -325,7 +305,7 @@ function RoomItems({ items }: { items: RoomDetail["items"] }) {
       ) : (
         <ItemList home={home} items={shown} />
       )}
-    </Part>
+    </Section>
   );
 }
 

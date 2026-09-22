@@ -58,30 +58,6 @@
   text-transform: uppercase;
 }
 
-/* A part of the Room Sheet: a small-caps label over a hairline, then its contents. */
-.part {
-  margin-block: var(--space-8);
-}
-
-.partHeader {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.partTitle {
-  margin: 0;
-}
-
-.partAction {
-  font-size: var(--text-sm);
-}
-
 .note {
   margin-top: 0;
   color: var(--color-ink-muted);

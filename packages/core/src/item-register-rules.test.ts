@@ -444,6 +444,7 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
         title: "Oak bookcase",
         state: "settled",
         fulfilled: true,
+        fulfilledAt: "2026-09-14T10:02:15.000Z",
         archived: false,
         requirements: [
           {
@@ -460,6 +461,7 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
         title: "Oak bookcase",
         state: "settled",
         fulfilled: true,
+        fulfilledAt: "2026-09-14T10:02:15.000Z",
         archived: false,
       },
     ]);

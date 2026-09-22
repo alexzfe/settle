@@ -2334,6 +2334,8 @@ export const shoppingEntrySchema = z.object({
   hasGuides: z.boolean(),
   fullGuideOutOfDate: z.boolean(),
   listings: z.number(),
+  /** How many of those Listings the shop is holding: stock someone is waiting on. */
+  held: z.number(),
   /**
    * The highest Rating among its Listings that fail no must and are not Held: the line that says
    * a Purchase is nearly decided. Absent when none of them qualifies.
@@ -2466,6 +2468,8 @@ export const itemDecisionSchema = z.object({
   title: z.string(),
   state: z.enum(DECISION_STATES),
   fulfilled: z.boolean(),
+  /** When it was Fulfilled, as an ISO timestamp; absent unless `fulfilled`. */
+  fulfilledAt: z.string().optional(),
   archived: z.boolean(),
   /** relies-on only: the Requirements whose reason is this Item. */
   requirements: z

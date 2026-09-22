@@ -229,6 +229,7 @@ function toEntry(model: DecisionModel, row: DecisionRow): ShoppingEntry {
     hasGuides: hasGuides(guide),
     fullGuideOutOfDate: outOfDate(guide),
     listings: model.listings.filter((each) => each.decisionId === row.id).length,
+    held: toListings(model, row).filter((each) => each.held !== undefined).length,
     ...best(toListings(model, row)),
     measureFirst: measureFirst(model, row),
     openFlags: openFlags(model, row).length,

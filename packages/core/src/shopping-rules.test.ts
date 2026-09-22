@@ -195,6 +195,7 @@ describe("get_shopping", () => {
       hasGuides: true,
       fullGuideOutOfDate: false,
       listings: 1,
+      held: 0,
       measureFirst: ["Measure first: living-room/wall-2 length (~3.00 m)"],
       openFlags: 0,
     });

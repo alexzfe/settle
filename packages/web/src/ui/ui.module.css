@@ -102,6 +102,11 @@
   font-weight: 500;
 }
 
+/* A utility part's heading: the small-caps label, not the serif. */
+.sectionLabel {
+  margin: 0;
+}
+
 .sectionAction {
   font-size: var(--text-sm);
 }
