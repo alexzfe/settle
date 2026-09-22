@@ -308,41 +308,6 @@ a.tag:hover {
   color: var(--color-attention);
 }
 
-.swatchText {
-  font-variant-numeric: tabular-nums;
-}
-
-.swatch {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  margin-right: 0.35em;
-  border: 1px solid var(--color-edge);
-  border-radius: 3px;
-  vertical-align: -0.12em;
-}
-
-/** A color with no approximate hex recorded: outlined only, never a guessed fill. */
-.swatchPlaceholder {
-  border: 1px dashed var(--color-stone);
-  background: transparent;
-}
-
-/** A Palette as a row of swatches. */
-.swatchRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  padding: 0;
-  list-style: none;
-}
-
-.swatchRow .swatch {
-  width: 1.5em;
-  height: 1.5em;
-  vertical-align: middle;
-}
-
 .muted {
   color: var(--color-ink-muted);
 }

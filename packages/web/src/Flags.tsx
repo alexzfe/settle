@@ -2,6 +2,7 @@
 // Agent, and the actions that clear it behind "Decide here instead"; and a flag's cause with its
 // source named, which the Decision page shows too.
 
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { type Action, Actions } from "./Actions";
 import {
@@ -13,12 +14,25 @@ import {
   type Flag,
   type Resolution,
 } from "./api";
-import { decisionPath, flagCauseText, KIND_LABEL, recordPath } from "./decisions";
+import { decisionPath, flagCauseText, KIND_LABEL, recordPath, STATE_LABEL } from "./decisions";
 import flagStyles from "./Flags.module.css";
 import { useHome } from "./queries";
 import { shortDate } from "./ui/AgentWritten";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
-import { FlagMark, StatePill } from "./ui/StatePill";
+import { StateMark } from "./ui/StateMark";
+
+/**
+ * A Decision that needs the user, marked as the second line of a list row is: a 4px dot in the
+ * attention color, with what is wrong beside it.
+ */
+export function FlagDot({ children }: { children?: ReactNode }) {
+  return (
+    <span className={flagStyles.flagDot}>
+      <span className={flagStyles.dot} role="img" aria-label="Flagged" title="Flagged for review" />
+      {children && <span>{children}</span>}
+    </span>
+  );
+}
 
 /** The Skill that owns a Decision of each kind, named in a prompt; none for Other. */
 export const SKILL_OF_KIND: Record<DecisionKind, string | undefined> = {
@@ -148,7 +162,7 @@ function FlagQuestion({
   return (
     <li className={flagStyles.review}>
       <p className={flagStyles.question}>
-        <FlagMark /> Something under <DecisionName home={home} decision={decision} /> changed:{" "}
+        <FlagDot /> Something under <DecisionName home={home} decision={decision} /> changed:{" "}
         <FlagCause home={home} flag={flag} />. Is <em>{decision.title}</em> still right?
       </p>
       <ReviewMeta decision={decision} raisedAt={flag.raisedAt} />
@@ -181,7 +195,7 @@ function ConflictQuestion({
   return (
     <li className={flagStyles.review}>
       <p className={flagStyles.question}>
-        <FlagMark /> Something new goes against <DecisionName home={home} decision={decision} />:{" "}
+        <FlagDot /> Something new goes against <DecisionName home={home} decision={decision} />:{" "}
         {conflict.description} Does <em>{decision.title}</em> still hold?
       </p>
       <ReviewMeta decision={decision} raisedAt={conflict.raisedAt} conflict />
@@ -202,7 +216,7 @@ function ConflictQuestion({
   );
 }
 
-/** "Conflict · Room Direction · ● Settled · raised 14 Sep". */
+/** "Conflict · Room Direction · ◐ Leaning · raised 14 Sep". */
 function ReviewMeta({
   decision,
   raisedAt,
@@ -215,7 +229,11 @@ function ReviewMeta({
   return (
     <p className={flagStyles.meta}>
       {conflict ? "Conflict" : "Flag"} · {KIND_LABEL[decision.kind]} ·{" "}
-      <StatePill state={decision.state} /> · raised {shortDate(raisedAt) ?? raisedAt}
+      <span className={flagStyles.state}>
+        <StateMark state={decision.state} />
+        {STATE_LABEL[decision.state]}
+      </span>{" "}
+      · raised {shortDate(raisedAt) ?? raisedAt}
     </p>
   );
 }

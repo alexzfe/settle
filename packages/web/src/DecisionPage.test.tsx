@@ -104,15 +104,24 @@ function stubDecision(decision: () => DecisionDetail, handlers: ApiHandlers = {}
   });
 }
 
-/** The form of state-change buttons, apart from the actions on each open flag. */
-function stateForm(): HTMLElement {
-  return screen.getByRole("heading", { name: "Change its state" })
-    .nextElementSibling as HTMLElement;
+/** The state ladder in the rail. */
+function ladder(): HTMLElement {
+  return screen.getByRole("list", { name: "State" });
 }
 
-/** The labels of the state-change buttons on offer. */
+/** Every rung of the ladder, in order, marked "(now)" for the current state and "·" when greyed. */
+function rungs(): string[] {
+  return [...ladder().querySelectorAll(":scope > li")].map((li) => {
+    const rung = li.firstElementChild as HTMLElement;
+    const name = rung.textContent ?? "";
+    if (li.getAttribute("aria-current") === "step") return `${name} (now)`;
+    return rung.tagName === "BUTTON" ? name : `· ${name}`;
+  });
+}
+
+/** The states the ladder offers a move to. */
 function moves(): (string | null)[] {
-  return [...stateForm().querySelectorAll("button")].map((button) => button.textContent);
+  return [...ladder().querySelectorAll("button")].map((button) => button.textContent);
 }
 
 /** The section a heading titles. */
@@ -155,7 +164,7 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   expect(inputsTo(fetch, "get_decision")).toEqual([
     { home: "flat", decision: "living-room-direction" },
   ]);
-  expect(header()).toEqual({ scope: "Room Direction · Living room", state: "●Settled" });
+  expect(header()).toEqual({ scope: "Room Direction · Living room", state: "Settled" });
   expect(screen.getByRole("link", { name: "Needs review" }).getAttribute("href")).toBe("#flags");
   expect(screen.getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/living-room",
@@ -168,7 +177,7 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   expect(after("Direction")).toBe(
     "Low seating, warm lamps, and nothing on the walls above eye level." + "ContrastLow",
   );
-  expect(listAfter("Basis")).toEqual(["◐Warm minimalismDesign Direction, Leaning, in every Basis"]);
+  expect(listAfter("Basis")).toEqual(["Warm minimalismDesign Direction, Leaning, in every Basis"]);
   expect(
     within(listElement("Basis"))
       .getByRole("link", { name: "Warm minimalism" })
@@ -184,7 +193,7 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
     "/homes/flat/decisions/palette",
   );
   expect(listAfter("Flags")).toEqual([
-    `⚑ Warm minimalism was reopened, raised ${formatDate(raised)}: open`,
+    ` Warm minimalism was reopened, raised ${formatDate(raised)}: open`,
   ]);
   // The open flag's source links to it, and it offers the actions that clear it.
   const flags = listElement("Flags");
@@ -205,11 +214,13 @@ it("shows the Decision with its content, Basis, Evidence, and flags", async () =
   );
 });
 
-it("says what each state change does beside its button", async () => {
+it("says what each reachable state does under its rung, and greys the rest", async () => {
   stubDecision(() => calm("settled"));
   renderRoutes("/homes/flat/decisions/living-room-direction");
-  await screen.findByRole("heading", { name: "Change its state" });
-  const reopen = within(stateForm()).getByRole("button", { name: "Reopen" });
+  await screen.findByRole("heading", { name: "State" });
+  // Candidate is out of reach from Settled, and is greyed with no explanation.
+  expect(rungs()).toEqual(["· Candidate", "Leaning", "Settled (now)", "Rejected"]);
+  const reopen = within(ladder()).getByRole("button", { name: "Leaning" });
   const described = document.getElementById(reopen.getAttribute("aria-describedby") ?? "");
   expect(described?.textContent).toBe(
     "Back to Leaning. Every Decision resting on it is flagged for review.",
@@ -217,18 +228,18 @@ it("says what each state change does beside its button", async () => {
 });
 
 it.each<[DecisionState, string[]]>([
-  ["candidate", ["Move to Leaning", "Settle", "Reject"]],
-  ["leaning", ["Move to Candidate", "Settle", "Reject"]],
-  ["settled", ["Reopen", "Reject"]],
-  ["rejected", ["Revive"]],
+  ["candidate", ["Leaning", "Settled", "Rejected"]],
+  ["leaning", ["Candidate", "Settled", "Rejected"]],
+  ["settled", ["Leaning", "Rejected"]],
+  ["rejected", ["Candidate"]],
 ])("offers only the legal state changes from %s", async (state, labels) => {
   stubDecision(() => calm(state));
   renderRoutes("/homes/flat/decisions/living-room-direction");
-  await screen.findByRole("heading", { name: "Change its state" });
+  await screen.findByRole("heading", { name: "State" });
   expect(moves()).toEqual(labels);
 });
 
-it("posts the state change with the reason, then shows the new state and its moves", async () => {
+it("moves the Decision at once on a click, with no reason asked for", async () => {
   let decision = calm("settled");
   const fetch = stubDecision(() => decision, {
     set_decision_state: (input) => {
@@ -237,25 +248,17 @@ it("posts the state change with the reason, then shows the new state and its mov
     },
   });
   renderRoutes("/homes/flat/decisions/living-room-direction");
-  await screen.findByRole("heading", { name: "Change its state" });
+  await screen.findByRole("heading", { name: "State" });
+  expect(within(ladder()).queryByLabelText("Reason (optional)")).toBeNull();
 
-  fireEvent.change(within(stateForm()).getByLabelText("Reason (optional)"), {
-    target: { value: "  we want it brighter  " },
-  });
-  fireEvent.click(within(stateForm()).getByRole("button", { name: "Reopen" }));
-  await waitFor(() => expect(moves()).toEqual(["Move to Candidate", "Settle", "Reject"]));
-  expect(header().state).toBe("◐Leaning");
+  fireEvent.click(within(ladder()).getByRole("button", { name: "Leaning" }));
+  await waitFor(() => expect(moves()).toEqual(["Candidate", "Settled", "Rejected"]));
+  expect(header().state).toBe("Leaning");
 
-  // Without a reason, none is sent.
-  fireEvent.click(within(stateForm()).getByRole("button", { name: "Settle" }));
-  await waitFor(() => expect(moves()).toEqual(["Reopen", "Reject"]));
+  fireEvent.click(within(ladder()).getByRole("button", { name: "Settled" }));
+  await waitFor(() => expect(moves()).toEqual(["Leaning", "Rejected"]));
   expect(inputsTo(fetch, "set_decision_state")).toEqual([
-    {
-      home: "flat",
-      decision: "living-room-direction",
-      to: "leaning",
-      reason: "we want it brighter",
-    },
+    { home: "flat", decision: "living-room-direction", to: "leaning" },
     { home: "flat", decision: "living-room-direction", to: "settled" },
   ]);
 });
@@ -267,13 +270,13 @@ it("shows a refusal inline and leaves the state as it was", async () => {
       Response.json({ error: { code: "illegal_transition", message } }, { status: 409 }),
   });
   renderRoutes("/homes/flat/decisions/living-room-direction");
-  await screen.findByRole("heading", { name: "Change its state" });
+  await screen.findByRole("heading", { name: "State" });
 
-  fireEvent.click(screen.getByRole("button", { name: "Settle" }));
+  fireEvent.click(within(ladder()).getByRole("button", { name: "Settled" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe(message);
-  expect(header().state).toBe("◐Leaning");
-  expect(moves()).toEqual(["Move to Candidate", "Settle", "Reject"]);
+  expect(header().state).toBe("Leaning");
+  expect(moves()).toEqual(["Candidate", "Settled", "Rejected"]);
 });
 
 it("renders each kind's content", async () => {
@@ -529,8 +532,8 @@ it("shows a Room color's Surface, Wall, and finish, with its color from the Pale
   ]);
   // The Palette is marked automatic, as the Design Direction is.
   expect(listAfter("Basis")).toEqual([
-    "◐Warm minimalismDesign Direction, Leaning, in every Basis",
-    "●Earthy palettePalette, Settled, in every Basis using its colors",
+    "Warm minimalismDesign Direction, Leaning, in every Basis",
+    "Earthy palettePalette, Settled, in every Basis using its colors",
   ]);
   expect(screen.getByRole("link", { name: "Earthy palette" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/earthy-palette",

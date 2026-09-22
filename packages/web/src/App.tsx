@@ -233,8 +233,9 @@ function HomeSidebar({ home }: { home: ShellHome }) {
               aria-current={current ? "page" : undefined}
             >
               <span>{label}</span>
-              {/* Shown, not spoken: the link keeps the section's name. */}
-              {count !== undefined && (
+              {/* Shown, not spoken: the link keeps the section's name. A zero is not
+                  actionable (Q7), so it is left off. */}
+              {count !== undefined && count > 0 && (
                 <span className={styles.count} aria-hidden="true">
                   {count}
                 </span>

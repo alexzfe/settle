@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ChangeEntry, Home, Session } from "./api";
+import { formatTime } from "./format";
 import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -63,9 +64,14 @@ function stubLog(changes: () => ChangeEntry[]) {
   });
 }
 
+/** The timeline itself, apart from the shell's own marks. */
+function timelineList(): HTMLElement {
+  return screen.getByRole("list", { name: "Changes by Session" }) as HTMLElement;
+}
+
 /** The timeline's groups: each heading, then its sentences. */
 function timeline(): string[][] {
-  const list = screen.getByRole("list", { name: "Changes by Session" }) as HTMLElement;
+  const list = timelineList();
   return [...list.querySelectorAll(":scope > li")].map((group) => [
     group.querySelector("h2")?.textContent ?? "",
     ...[...group.querySelectorAll("ul > li")].map((li) => li.textContent ?? ""),
@@ -112,7 +118,7 @@ it("reads the log as sentences grouped by Session, newest first, with a link to 
   expect(timeline()[0]?.[1]).toBe("Cat added");
 });
 
-it("shows a Session's first few changes and links the rest, and a Decision's state as pills", async () => {
+it("shows a Session's first few changes and links the rest, and a Decision's state as its marks", async () => {
   const measured = (record: string, at: string): ChangeEntry => ({
     at,
     origin: "home-intake-k3pz",
@@ -139,7 +145,13 @@ it("shows a Session's first few changes and links the rest, and a Decision's sta
   renderRoutes("/homes/flat/log");
   await screen.findByText("+1 more");
   const group = timeline()[0];
-  expect(group?.[1]).toBe("Low sofa ○Candidate → ◐LeaningUser: I like the low one.");
+  expect(group?.[1]).toBe("Low sofa Candidate → LeaningUser: I like the low one.");
+  // The marks sit before the names, which already say the state to a screen reader.
+  expect(
+    [...timelineList().querySelectorAll('[role="img"]')].map((mark) =>
+      mark.getAttribute("aria-label"),
+    ),
+  ).toEqual(["Candidate", "Leaning"]);
   expect(screen.getByRole("blockquote")).toBeDefined();
   expect(group?.slice(2)).toEqual([
     "Living room · Wall 1 length set to 3.00 m (Measured)",
@@ -169,7 +181,7 @@ it("keeps every field of every change behind a toggle", async () => {
   ]);
   expect(rows()).toEqual([
     [
-      new Date(overridden.at).toLocaleString(),
+      formatTime(overridden.at),
       "home-intake-k3pz",
       "Wall living-room/wall-2",
       "length",
@@ -177,15 +189,7 @@ it("keeps every field of every change behind a toggle", async () => {
       "~3.50 m (Estimated)",
       '"The old measurement was wrong, use 3.5"',
     ],
-    [
-      new Date(created.at).toLocaleString(),
-      "Web UI",
-      "Home flat",
-      "created",
-      "",
-      "name: Flat; city: Madrid",
-      "",
-    ],
+    [formatTime(created.at), "Web UI", "Home flat", "created", "", "name: Flat; city: Madrid", ""],
   ]);
 });
 

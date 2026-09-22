@@ -101,12 +101,13 @@ function active(): HTMLElement | null {
 
 async function openFromHomePage() {
   const view = renderRoutes("/homes/flat");
-  fireEvent.click(await screen.findByRole("button", { name: /Find a Room, Decision, Item/ }));
+  // The Overview's own box went with Q20; the sidebar's Find row is the way in.
+  fireEvent.click(await screen.findByRole("button", { name: "Find in this Home" }));
   await waitFor(() => expect(within(dialog()).queryByText("Loading…")).toBeNull());
   return view;
 }
 
-it("opens from the Home page's box and lists the Rooms before anything is typed", async () => {
+it("opens from the sidebar's Find row and lists the Rooms before anything is typed", async () => {
   const fetch = stub();
   await openFromHomePage();
   expect(names()).toEqual(["Main bedroom", "Baño", "Living room"]);

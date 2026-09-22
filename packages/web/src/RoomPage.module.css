@@ -48,6 +48,40 @@
   margin-top: var(--space-4);
 }
 
+/* Fact names read as small-caps labels, the values in the sans beside them. */
+.roomFacts dt,
+.wallDetail dt {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  line-height: 2.1;
+  text-transform: uppercase;
+}
+
+/* A part of the Room Sheet: a small-caps label over a hairline, then its contents. */
+.part {
+  margin-block: var(--space-8);
+}
+
+.partHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.partTitle {
+  margin: 0;
+}
+
+.partAction {
+  font-size: var(--text-sm);
+}
+
 .note {
   margin-top: 0;
   color: var(--color-ink-muted);
@@ -56,7 +90,9 @@
 
 .subsection h3 {
   margin-top: var(--space-5);
-  font-size: var(--text-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 /* Walls strip: one drawing per Wall, scrolling sideways when there are many. */
@@ -107,15 +143,14 @@
 }
 
 .wallName {
-  font-family: var(--font-serif);
-  font-size: var(--text-md);
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
+/* The open Wall: underlined in ink. Olive is kept for Settled. */
 .wallButton[aria-expanded="true"] .wallName {
-  color: var(--color-accent-strong);
   text-decoration: underline;
-  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 0.25em;
 }
 
@@ -145,7 +180,7 @@
 }
 
 .wallButton:hover .wallShape {
-  stroke: var(--color-accent);
+  stroke: var(--color-ink);
 }
 
 .window,
@@ -197,6 +232,9 @@
 
 .wallDetail h3 {
   margin-top: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 600;
 }
 
 /* Daylight and Gaps side by side on a wide screen. */
@@ -208,14 +246,13 @@
 
 @media (min-width: 48rem) {
   .pair {
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     align-items: start;
   }
 }
 
 .cardTitle {
   margin: 0 0 var(--space-3);
-  font-size: var(--text-lg);
 }
 
 .daylight {
@@ -335,14 +372,14 @@
 
 .noGaps {
   margin: 0;
-  color: var(--color-accent-strong);
+  color: var(--color-ink-muted);
   font-size: var(--text-sm);
 }
 
 /* Surfaces as swatches. */
 .surfaces {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -366,11 +403,13 @@
   box-shadow: inset 0 0 0 1px var(--color-edge);
 }
 
+/* No screen color: an unfilled stone outline, as Inventory shows one. */
 .surfacePlaceholder {
   margin: var(--space-2);
   height: calc(5.5rem - 2 * var(--space-2));
-  border: 1px dashed var(--color-stone);
+  border: 1px solid var(--color-stone);
   border-radius: var(--radius-sm);
+  box-shadow: none;
 }
 
 .surfaceText {
@@ -379,7 +418,9 @@
 
 .surfaceName {
   margin: 0;
-  font-size: var(--text-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .surfaceLine {
@@ -396,7 +437,7 @@
 
 .compact li {
   padding-block: var(--space-1);
-  border-bottom: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
 }
 
@@ -410,18 +451,53 @@
   list-style: none;
 }
 
-.decisions li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  align-items: baseline;
+/* One row per Decision: the mark, then the title (the row's one link) over its kind and notes. */
+.decision {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
   padding-block: var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
 }
 
-.decisions li:last-child {
+.decision:last-child {
   border-bottom: 0;
+}
+
+.decision:hover {
+  background: var(--color-card);
+}
+
+.decisionText {
+  min-width: 0;
+}
+
+.decisionLink {
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.decisionLink:hover {
+  text-decoration: underline;
+}
+
+/* The whole row follows the title's link. */
+.decisionLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.decisionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  align-items: baseline;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
 }
 
 /* Previous and next Room. */
@@ -431,8 +507,7 @@
   margin-top: var(--space-10);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-hairline);
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
 }
 
 .roomNav a {

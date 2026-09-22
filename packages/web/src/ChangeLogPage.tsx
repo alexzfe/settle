@@ -7,7 +7,7 @@ import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import type { ChangeEntry, DecisionState, Session } from "./api";
 import page from "./ChangeLogPage.module.css";
-import { recordPath } from "./decisions";
+import { recordPath, STATE_LABEL } from "./decisions";
 import {
   formatColor,
   formatLength,
@@ -23,7 +23,7 @@ import {
 import { useChangeLog, useDecisions, useHome, useSessions } from "./queries";
 import { shortDate } from "./ui/AgentWritten";
 import { useDocumentTitle } from "./ui/documentTitle";
-import { StatePill } from "./ui/StatePill";
+import { StateMark } from "./ui/StateMark";
 
 /** How many changes get_change_log answers with by default: the newest ones. */
 export const LOADED_CHANGES = 200;
@@ -160,8 +160,8 @@ export function changeText(change: ChangeEntry): ReactNode {
   if (field === "state" && DECISION_STATES.has(old) && DECISION_STATES.has(next)) {
     return (
       <span className={page.stateChange}>
-        <StatePill state={old as DecisionState} /> <span>→</span>{" "}
-        <StatePill state={next as DecisionState} />
+        <StateName state={old as DecisionState} /> <span>→</span>{" "}
+        <StateName state={next as DecisionState} />
       </span>
     );
   }
@@ -181,6 +181,18 @@ export function changeText(change: ChangeEntry): ReactNode {
     return `${label} ${before || "none"} → ${after || "none"}${provenance}`;
   }
   return `${label} updated`;
+}
+
+/** A state in a sentence: its mark, then its name, which already says it to a screen reader. */
+function StateName({ state }: { state: DecisionState }) {
+  return (
+    <span className={page.state}>
+      <span aria-hidden>
+        <StateMark state={state} />
+      </span>
+      {STATE_LABEL[state]}
+    </span>
+  );
 }
 
 /** The names a page needs to read changes as sentences, from reads it already makes. */

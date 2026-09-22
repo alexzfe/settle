@@ -526,7 +526,7 @@ it("names the changed record and field of a value_changed flag, and clears it wi
     }));
   expect(lines()).toEqual([
     {
-      text: `⚑ Living room, Wall 2's length changed, raised ${formatDate(raised)}: open`,
+      text: ` Living room, Wall 2's length changed, raised ${formatDate(raised)}: open`,
       buttons: ["Keep", "Reopen", "Reject"],
     },
   ]);

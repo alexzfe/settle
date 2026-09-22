@@ -43,7 +43,7 @@ function HomeList() {
         const rooms = details[index]?.data?.rooms.length;
         return (
           <li key={home.slug} className={list.card}>
-            <Link to={`/homes/${home.slug}`} className={list.name}>
+            <Link to={`/homes/${home.slug}`} className={`clamp ${list.name}`}>
               {home.name}
             </Link>
             <span className={list.place}>

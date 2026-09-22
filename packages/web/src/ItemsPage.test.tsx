@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Home, Item, Level, Room } from "./api";
 import { groupItems } from "./ItemsPage";
@@ -79,19 +79,32 @@ function stubItems(list: (archived: boolean) => Item[]) {
   });
 }
 
+/** Each Item's row as [name and kind, colors and materials, size]. */
 function rows(): string[][] {
-  return screen
-    .getAllByRole("row")
-    .slice(1)
-    .map((row) => [...row.querySelectorAll("td")].map((cell) => cell.textContent ?? ""));
+  return [...document.querySelectorAll("li[class*='row']")].map((row) =>
+    [...row.children].map((cell) => cell.textContent ?? ""),
+  );
 }
 
-it("lists the Inventory in a table in Room order, and includes Archived Items on request", async () => {
+/** Each group's heading. */
+function groups(): string[] {
+  return screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent ?? "");
+}
+
+/** The header stats, as they read. */
+function stats(): string[] {
+  return within(screen.getByRole("list", { name: "Show" }))
+    .getAllByRole("button")
+    .map((stat) => stat.textContent ?? "");
+}
+
+it("lists the Inventory by Room, with Unplaced last, and includes Archived Items on request", async () => {
   const inventory = [
     item("sofa", "Sofa", "living-room", {
       category: "seating",
       width: { mm: 2100, provenance: "measured" },
       depth: { mm: 950, provenance: "estimated" },
+      height: { mm: 800, provenance: "measured" },
       colors: [{ name: "Oatmeal", hex: "#d8cbb4", provenance: "estimated" }],
       materials: ["linen"],
       condition: "worn",
@@ -111,33 +124,22 @@ it("lists the Inventory in a table in Room order, and includes Archived Items on
   renderRoutes("/homes/flat/items");
 
   await screen.findByText("Sofa");
-  expect(screen.getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
-    "Item",
-    "Room",
-    "Dimensions W×D×H",
-    "Color and material",
-    "Condition",
-  ]);
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Inventory");
+  expect(groups()).toEqual(["Living room 1", "Kitchen 1", "Unplaced 1needs a room"]);
+  // Item sizes read in centimetres, and only an Estimated one is marked, with "~".
   expect(rows()).toEqual([
-    [
-      "Sofa" + "Seating",
-      "Living room",
-      "W 2.10 m × D ~0.95 m estimate",
-      "~Oatmeal estimatelinen",
-      "Worn",
-    ],
-    ["Dining chair ×6" + "Seating", "Kitchen", "", "", ""],
-    ["Boxed lamp" + "Lighting", "Unplaced", "", "", ""],
+    ["Sofa" + "Seating · Worn", "~Oatmeallinen", "210 × ~95 × 80 cm"],
+    ["Dining chair" + "Seating · ×6", "", ""],
+    ["Boxed lamp" + "Lighting", "", ""],
   ]);
   expect(screen.getByRole("link", { name: "Kitchen" }).getAttribute("href")).toBe(
     "/homes/flat/rooms/kitchen",
   );
 
-  // A row opens the Item's page; it no longer expands in place.
-  expect(screen.getByRole("link", { name: "Sofa" }).getAttribute("href")).toBe(
-    "/homes/flat/items/sofa",
-  );
-  expect(screen.queryByRole("button", { expanded: false })).toBeNull();
+  // The name is the row's only link, and it opens the Item's page.
+  const sofa = screen.getByRole("link", { name: "Sofa" });
+  expect(sofa.getAttribute("href")).toBe("/homes/flat/items/sofa");
+  expect(within(sofa.closest("li") as HTMLElement).getAllByRole("link")).toHaveLength(1);
   expect(screen.queryByText("Muji")).toBeNull();
   expect(screen.queryByText("Old rug")).toBeNull();
 
@@ -151,7 +153,45 @@ it("lists the Inventory in a table in Room order, and includes Archived Items on
   ]);
 });
 
-it("finds Items by name, and shows only the Unplaced ones on request", async () => {
+it("opens an Item's page from anywhere in its row", async () => {
+  stubItems(() => [item("sofa", "Sofa", "living-room")]);
+  const { router } = renderRoutes("/homes/flat/items");
+  fireEvent.click(await screen.findByText("Decor"));
+  await waitFor(() => expect(router.state.location.pathname).toBe("/homes/flat/items/sofa"));
+});
+
+it("counts what is missing in plain words, and a stat filters the list", async () => {
+  stubItems(() => [
+    item("sofa", "Sofa", "living-room", {
+      width: { mm: 2100, provenance: "measured" },
+      colors: [{ name: "Oatmeal", provenance: "estimated" }],
+    }),
+    item("dining-chair", "Dining chair", "kitchen"),
+    item("boxed-lamp", "Boxed lamp"),
+  ]);
+  const { router } = renderRoutes("/homes/flat/items");
+  await screen.findByText("Sofa");
+  expect(stats()).toEqual(["3 Items", "2 No dimensions", "2 No colors", "1 Unplaced"]);
+  expect(document.body.textContent).not.toMatch(/Gap/);
+
+  fireEvent.click(screen.getByRole("button", { name: "2 No colors" }));
+  expect(router.state.location.search).toBe("?show=no-colors");
+  expect(rows().map((row) => row[0])).toEqual(["Dining chair" + "Decor", "Boxed lamp" + "Decor"]);
+
+  // The same stat again shows everything.
+  fireEvent.click(screen.getByRole("button", { name: "2 No colors" }));
+  expect(rows()).toHaveLength(3);
+});
+
+it("shows the Items a stat names when the page is opened on one", async () => {
+  stubItems(() => [item("sofa", "Sofa", "living-room"), item("boxed-lamp", "Boxed lamp")]);
+  renderRoutes("/homes/flat/items?show=unplaced");
+  await screen.findByText("Boxed lamp");
+  expect(rows()).toHaveLength(1);
+  expect(groups()).toEqual(["Unplaced 1needs a room"]);
+});
+
+it("finds Items by name", async () => {
   stubItems(() => [
     item("sofa", "Sofa", "living-room"),
     item("sofa-cushions", "Sofa cushions"),
@@ -162,9 +202,6 @@ it("finds Items by name, and shows only the Unplaced ones on request", async () 
 
   fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "sofa" } });
   expect(rows().map((row) => row[0])).toEqual(["SofaDecor", "Sofa cushionsDecor"]);
-
-  fireEvent.click(screen.getByLabelText("Unplaced only"));
-  expect(rows().map((row) => row[0])).toEqual(["Sofa cushionsDecor"]);
 
   fireEvent.change(screen.getByLabelText("Search by name"), { target: { value: "lamp" } });
   expect(screen.getByText("No Items match.")).toBeDefined();

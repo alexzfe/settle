@@ -1,28 +1,32 @@
-// A color as the pages show it, wherever a Palette, Surface, or Item color appears: a small square
-// filled from its approximate hex, or an outlined placeholder when none is recorded (never a
-// guessed fill), then its name with maker and code, LRV, Provenance, and a Palette color's role.
+// A color as the pages show it, wherever a Palette, Surface, or Item color appears: an 18px square
+// filled from its approximate hex, or an empty stone outline when none is recorded (never a
+// guessed fill, never a dashed box), then its name with maker and code, LRV, Provenance, and a
+// Palette color's role.
 // A Palette shows as PaletteChips, large chips sized by role, and an LRV as an LrvBar.
 
 import type { Color, PaletteRole } from "@settle/core";
-import styles from "./App.module.css";
 import { formatColor } from "./format";
 import chips from "./Swatch.module.css";
-import { ProvenanceTag } from "./Values";
+import { ESTIMATE_NOTE, ProvenanceTag } from "./Values";
 
-/** The square alone. Decorative: the name beside it says the color; its title gives the hex. */
-export function SwatchSquare({ hex }: { hex?: string | undefined }) {
+/**
+ * The square alone, 18px. Decorative: the name beside it says the color; its title gives the hex.
+ * With no hex recorded it is an empty outline in stone.
+ */
+export function SwatchSquare({
+  hex,
+  title = "No screen color recorded",
+}: {
+  hex?: string | undefined;
+  /** What an empty outline's tooltip says. */
+  title?: string;
+}) {
   if (!hex) {
-    return (
-      <span
-        className={`${styles.swatch} ${styles.swatchPlaceholder}`}
-        title="No screen color recorded"
-        aria-hidden
-      />
-    );
+    return <span className={`${chips.swatch} ${chips.unrecorded}`} title={title} aria-hidden />;
   }
   return (
     <span
-      className={styles.swatch}
+      className={chips.swatch}
       style={{ backgroundColor: hex }}
       title={`Approximately ${hex}`}
       aria-hidden
@@ -31,25 +35,32 @@ export function SwatchSquare({ hex }: { hex?: string | undefined }) {
 }
 
 /**
- * "■ ~Setting Plaster (Farrow & Ball 231), LRV 62 Estimated, base": the square, the color, its
+ * "■ ~Setting Plaster (Farrow & Ball 231), LRV 62 estimate, base": the square, the color, its
  * Provenance unless `provenance` is false (as in a row of swatches), and its role when it has one.
+ * `compact` gives the list form: an Estimated color keeps only the "~" beside its name, and no
+ * Provenance is named ("■ ~Oatmeal"); `named` writes out a Measured one too.
  */
 export function Swatch({
   color,
   provenance = true,
+  compact = false,
+  named = false,
 }: {
   color: Color & { role?: PaletteRole };
   provenance?: boolean;
+  compact?: boolean;
+  named?: boolean;
 }) {
+  const estimated = color.provenance === "estimated";
   return (
-    <span className={styles.swatchText}>
+    <span className={chips.swatchText}>
       <SwatchSquare hex={color.hex} />
-      {formatColor(color)}
+      <span title={compact && estimated ? ESTIMATE_NOTE : undefined}>{formatColor(color)}</span>
       {color.lrv !== undefined && `, LRV ${color.lrv}`}
-      {provenance && (
+      {provenance && !compact && (
         <>
           {" "}
-          <ProvenanceTag provenance={color.provenance} />
+          <ProvenanceTag provenance={color.provenance} named={named} />
         </>
       )}
       {color.role && `, ${color.role}`}
@@ -67,8 +78,8 @@ export function chipSize(role: string | undefined): ChipSize {
 }
 
 /**
- * A Palette as a row of large chips, sized by role, each filled from its hex (a dashed placeholder
- * without one) over a label: the name, maker and code, then role, LRV, and Provenance.
+ * A Palette as a row of large chips, sized by role, each filled from its hex (an empty stone
+ * outline without one) over a label: the name, maker and code, then role, LRV, and Provenance.
  */
 export function PaletteChips({ colors }: { colors: readonly (Color & { role?: PaletteRole })[] }) {
   return (

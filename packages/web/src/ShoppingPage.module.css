@@ -1,4 +1,4 @@
-/* The Shopping section as a calm checklist. */
+/* The Shopping section: rows in the Decisions-list style, readable on a phone in a shop. */
 
 .entries {
   margin: 0;
@@ -6,13 +6,20 @@
   list-style: none;
 }
 
+/* The whole row leads to the Purchase; the title is its one link. */
 .entry {
+  position: relative;
   display: grid;
-  grid-template-columns: 1.25rem minmax(14rem, 3fr) minmax(6rem, 1fr) minmax(9rem, 1.6fr) 5.5rem 10rem 6rem;
+  /* The picture's track is auto, so a row without one gives the words its width. */
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 11rem) auto;
+  grid-template-areas:
+    "mark head room thumb"
+    ".    body room thumb";
   gap: var(--space-1) var(--space-4);
-  align-items: baseline;
+  align-items: start;
+  min-height: 44px;
   padding: var(--space-3) var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
 }
 
@@ -20,36 +27,100 @@
   border-bottom: 0;
 }
 
-/* A quiet, empty checkbox: decorative, since buying is recorded through the Agent. */
-.box {
-  align-self: start;
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.3rem;
-  border: 1.5px solid var(--color-stone);
-  border-radius: var(--radius-sm);
+.entry:hover {
+  background: var(--color-card);
 }
 
-.what {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  min-width: 0;
-}
-
-/* The row's other cells line up with the title, not with the foot of the picture beside it. */
-.words {
-  align-self: baseline;
-  min-width: 0;
-}
-
-.what p {
+.entry p {
   margin: 0;
+}
+
+.mark {
+  grid-area: mark;
+  margin-top: 3px;
+}
+
+.head {
+  grid-area: head;
+  min-width: 0;
+}
+
+.body {
+  grid-area: body;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.room {
+  grid-area: room;
+  color: var(--color-ink-muted);
+}
+
+.title {
+  font-size: var(--text-md);
+  line-height: 1.35;
+}
+
+.link {
+  color: var(--color-ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.link::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.statement,
+.so {
+  color: var(--color-ink-muted);
+}
+
+.so {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An open Flag: attention colour with its 4px dot, as on the Decisions list. */
+.flagged {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--color-attention);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.flagged::before {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.measure {
+  margin-top: var(--space-1);
+}
+
+.measure ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  color: var(--color-ink);
 }
 
 /* The best Listing's picture: small, whole (never cropped), on a quiet ground in either theme. */
 .thumb {
-  flex: none;
+  grid-area: thumb;
   display: block;
   width: 4.5rem;
   height: 4.5rem;
@@ -66,107 +137,41 @@
   object-fit: contain;
 }
 
-.title {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  align-items: center;
-  font-size: var(--text-md);
-}
-
-.title a {
-  color: var(--color-ink);
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  text-decoration: none;
-}
-
-.title a:hover {
-  color: var(--color-accent);
-  text-decoration: underline;
-}
-
-.statement,
-.so {
-  color: var(--color-ink-muted);
-}
-
-.so {
-  font-size: var(--text-xs);
-}
-
-.room a {
-  color: var(--color-ink);
-}
-
-.measure details ul {
-  margin: var(--space-1) 0 0;
-  padding-inline-start: var(--space-4);
-}
-
-.measureLabel {
-  color: var(--color-attention);
-}
-
-.measure summary {
-  cursor: pointer;
-}
-
-.listings {
-  color: var(--color-ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.guide {
-  text-align: right;
-}
-
-.downloads {
-  margin-top: var(--space-8);
-}
-
-.downloadsTitle {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-lg);
-}
-
+/* Take it with you. */
 .downloadLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 0 var(--space-5);
   font-size: var(--text-sm);
 }
 
+.downloadLinks a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
 .downloadsNote {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-3) 0 0;
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
 }
 
-@media (max-width: 52rem) {
+/* Phone: the Room drops under the title, the picture keeps its corner. */
+@media (max-width: 40rem) {
   .entry {
-    grid-template-columns: 1.25rem 1fr auto;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "mark head thumb"
+      ".    room thumb"
+      ".    body body";
+    gap: var(--space-1) var(--space-3);
+    padding-inline: 0;
   }
 
-  .what {
-    grid-column: 2 / -1;
-  }
-
-  .room,
-  .measure,
-  .listings {
-    grid-column: 2 / 3;
-  }
-
-  .flag,
-  .guide {
-    grid-column: 3 / 4;
-    text-align: right;
-  }
-
-  .measure:empty,
-  .flag:empty,
-  .guide:empty {
-    display: none;
+  .thumb {
+    width: 3.5rem;
+    height: 3.5rem;
   }
 }

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ChangeEntry, DecisionSummary, Home, Session } from "./api";
+import { formatTime } from "./format";
 import { groupByRecord } from "./SessionPage";
 import { FakeEventSource, renderRoutes, stubApi } from "./testSupport";
 
@@ -125,9 +126,7 @@ it("shows the Session's Skills, times, and the summary the Agent wrote", async (
   renderRoutes("/homes/flat/sessions/color-6d8j");
   expect(await screen.findByRole("heading", { name: "Color Session", level: 1 })).toBeDefined();
   expect(screen.getByText(/^Skill: Color/).textContent).toBe(
-    `Skill: Color · ${new Date(color.openedAt).toLocaleString()} – ${new Date(
-      color.closedAt ?? "",
-    ).toLocaleString()}`,
+    `Skill: Color · ${formatTime(color.openedAt)} – ${formatTime(color.closedAt ?? "")}`,
   );
   expect(screen.getByText(/Written by the Agent/).textContent).toMatch(
     /^Written by the Agent · Session summary · 1[56] Sep$/,
@@ -151,7 +150,7 @@ it("reads the Session's changes as sentences grouped by record, oldest first", a
     .filter((li) => li.parentElement?.parentElement?.tagName === "SECTION")
     .map((li) => li.textContent);
   expect(records).toEqual([
-    'Washi and Sumi○Candidate → ◐Leaning◐Leaning → ●SettledUser: "settle the palette"',
+    'Washi and SumiCandidate → LeaningLeaning → SettledUser: "settle the palette"',
     "Living room · Wall 5 length ~3.70 → 3.62 m (Measured)",
   ]);
   expect(section.getByRole("link", { name: "Washi and Sumi" }).getAttribute("href")).toBe(

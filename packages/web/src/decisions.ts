@@ -30,6 +30,25 @@ export const STATE_LABEL: Record<DecisionState, string> = {
   rejected: "Rejected",
 };
 
+/** What each state means, from the glossary, under its group's heading. */
+export const STATE_GLOSS: Record<DecisionState, string> = {
+  candidate: "being considered, no commitment",
+  leaning: "favoured, not committed yet",
+  settled: "committed, and later Decisions build on it",
+  rejected: "ruled out, won't be proposed again",
+};
+
+/** The states as a Decision moves through them, for the Decision page's ladder. */
+export const LADDER: readonly DecisionState[] = ["candidate", "leaning", "settled", "rejected"];
+
+/** The order of the Decisions list's state groups: what needs the user first. */
+export const GROUP_ORDER: readonly DecisionState[] = [
+  "leaning",
+  "candidate",
+  "settled",
+  "rejected",
+];
+
 export const DECISION_KINDS = Object.keys(KIND_LABEL) as DecisionKind[];
 export const DECISION_STATES = Object.keys(STATE_LABEL) as DecisionState[];
 

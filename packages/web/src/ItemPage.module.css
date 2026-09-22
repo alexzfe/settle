@@ -1,15 +1,25 @@
-/* An Item's page: the Decision page's header, then the register (the Listing's picture beside the
-   fact card), the Decisions tied to it, and its history. The pencil's form takes the card's place. */
+/* An Item's page: its header, then the register (the Listing's picture beside the fact card), the
+   Decisions tied to it, and its history. The pencil sits in the card's header ("Details ✎") and its
+   form takes the card's place. */
 
 .header {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-  justify-content: space-between;
+  margin-block: var(--space-6) var(--space-4);
 }
 
 .heading {
   min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+}
+
+.title {
+  margin-block: var(--space-1) var(--space-2);
+  font-size: clamp(var(--text-xl), 5vw, 2.75rem);
 }
 
 .kind {
@@ -17,14 +27,33 @@
   color: var(--color-ink-muted);
 }
 
-/* Thumb-sized: 44 px square. */
+/* The card's header: the label, and the pencil thumb-sized at 44 px. */
+.cardHeader {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
 .pencil {
   flex: none;
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;
+  border-color: transparent;
+  background: none;
   font-size: var(--text-lg);
+}
+
+.pencil:hover {
+  border-color: var(--color-hairline);
+}
+
+/* An Item with nothing but a name: one muted line, pointing at the pencil. */
+.onlyName {
+  margin: 0;
+  color: var(--color-ink-muted);
 }
 
 .replaces {
@@ -122,6 +151,10 @@
 .relation {
   color: var(--color-ink-muted);
   font-size: var(--text-sm);
+}
+
+.rejected {
+  text-decoration-line: line-through underline;
 }
 
 .relationHead {
@@ -283,13 +316,14 @@
 }
 
 .switch label:has(input:checked) {
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-  font-weight: 500;
+  background: var(--color-hairline-soft);
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
 .switch label:has(input:focus-visible) {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-ink);
   outline-offset: -2px;
 }
 

@@ -1,7 +1,7 @@
 import type { DesignDirectionContent } from "@settle/core";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { Actions } from "./Actions";
+import { Actions, StateLadder } from "./Actions";
 import styles from "./App.module.css";
 import {
   type BasisEntry,
@@ -21,10 +21,10 @@ import {
   RESOLUTION_LABEL,
   STATE_LABEL,
 } from "./decisions";
-import { FlagCause, flagActions } from "./Flags";
+import { FlagCause, FlagDot, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
 import { isSafeLink } from "./Markdown";
-import { PurchaseBoard, PurchaseParts } from "./Purchase";
+import { PurchaseBoard, PurchaseParts, QuickGuideSection } from "./Purchase";
 import { useDecision } from "./queries";
 import { LrvBar, PaletteChips, Swatch, SwatchSquare } from "./Swatch";
 import { AgentWritten } from "./ui/AgentWritten";
@@ -32,7 +32,7 @@ import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { useDocumentTitle } from "./ui/documentTitle";
 import { Section } from "./ui/Section";
-import { FlagMark, FulfilledNote, STATE_SYMBOL, StatePill } from "./ui/StatePill";
+import { StateMark } from "./ui/StateMark";
 import { Fact, Parts } from "./Values";
 
 const EVIDENCE_KIND: Record<EvidenceEntry["kind"], string> = {
@@ -53,19 +53,10 @@ export function DecisionPage() {
 
 function DecisionSheet({ home, decision }: { home: string; decision: DecisionDetail }) {
   const skill = KIND_SKILL[decision.kind];
-  const moves = MOVES[decision.state].map((move) => ({
-    label: move.label,
-    consequence: move.consequence,
-    post: (reason: string | undefined) =>
-      call("set_decision_state", {
-        home,
-        decision: decision.slug,
-        to: move.to,
-        ...(reason ? { reason } : {}),
-      }),
-  }));
   const openFlags = decision.flags.filter((flag) => !flag.clearedAt).length;
   const purchase = decision.kind === "purchase";
+  // A Settled Purchase still to be bought leads with its Quick Guide: in a shop that is the page.
+  const guideFirst = purchase && decision.state === "settled" && !decision.fulfilledAt;
   // What it rests on and what is wrong with it: under the Content, or for a Purchase, under its
   // Listing board.
   const records = (
@@ -140,34 +131,46 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
         </p>
         <h1 className={page.title}>{decision.title}</h1>
         <p className={page.marks}>
-          <StatePill state={decision.state} />
+          <span className={page.stateName}>
+            <StateMark state={decision.state} />
+            {STATE_LABEL[decision.state]}
+          </span>
           {decision.fulfilledAt && (
-            <FulfilledNote>Fulfilled {formatDate(decision.fulfilledAt)}</FulfilledNote>
+            <span className={page.fulfilled}>
+              <span aria-hidden>✓</span> Fulfilled {formatDate(decision.fulfilledAt)}
+            </span>
           )}
           {openFlags > 0 && (
-            <FlagMark>
+            <FlagDot>
               <a href="#flags">
                 {openFlags === 1 ? "Needs review" : `${openFlags} flags need review`}
               </a>
-            </FlagMark>
+            </FlagDot>
           )}
         </p>
       </header>
       <div className={page.layout}>
         <div className={page.main}>
+          {guideFirst && <QuickGuideSection home={home} decision={decision} />}
           {decision.statement && (
             <AgentWritten source={skill && `${skill} Session`} date={decision.createdAt}>
-              <p className={page.statement}>{decision.statement}</p>
+              <p>{decision.statement}</p>
             </AgentWritten>
           )}
-          <Content home={home} decision={decision} />
+          <Content home={home} decision={decision} withQuickGuide={!guideFirst} />
           {!purchase && records}
         </div>
         <aside className={page.side} aria-label="Change it">
           <Card>
-            <h2 className={page.sideTitle}>Change its state</h2>
+            <h2 className={page.sideTitle}>State</h2>
             {/* Keyed by state, so a refusal from before the change does not linger after it. */}
-            <Actions key={decision.state} home={home} actions={moves} />
+            <StateLadder
+              key={decision.state}
+              home={home}
+              state={decision.state}
+              moves={MOVES[decision.state]}
+              post={(to) => call("set_decision_state", { home, decision: decision.slug, to })}
+            />
           </Card>
           <Card className={page.ask}>
             <p className={page.askText}>Not sure? Talk it over with the Agent.</p>
@@ -193,7 +196,15 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
 }
 
 /** What the Decision decides, as its kind records it; an Other Decision has only its statement. */
-function Content({ home, decision }: { home: string; decision: DecisionDetail }) {
+function Content({
+  home,
+  decision,
+  withQuickGuide,
+}: {
+  home: string;
+  decision: DecisionDetail;
+  withQuickGuide: boolean;
+}) {
   switch (decision.kind) {
     case "design-direction":
       return (
@@ -205,7 +216,8 @@ function Content({ home, decision }: { home: string; decision: DecisionDetail })
       const { content } = decision;
       return (
         <Section title="Direction">
-          <p className={`${page.direction} ${styles.reading}`}>{content.direction}</p>
+          {/* The Agent's prose: the serif at reading size, under the statement's one label. */}
+          <p className="agentProse">{content.direction}</p>
           {(content.mood || content.contrast) && (
             <dl className={styles.facts}>
               <Fact term="Mood">{content.mood}</Fact>
@@ -288,7 +300,7 @@ function Content({ home, decision }: { home: string; decision: DecisionDetail })
       );
     }
     case "purchase":
-      return <PurchaseParts home={home} decision={decision} />;
+      return <PurchaseParts home={home} decision={decision} withQuickGuide={withQuickGuide} />;
     case "other":
       return null;
   }
@@ -426,13 +438,11 @@ function Tile({ title, wide, children }: { title: string; wide?: boolean; childr
   );
 }
 
-/** A Decision of the Basis as a chip: its state's symbol, its title, kind, and why it is there. */
+/** A Decision of the Basis as a chip: its state's mark, its title, kind, and why it is there. */
 function BasisChip({ home, entry }: { home: string; entry: BasisEntry }) {
   return (
     <span className={`${page.chip} ${page[`state-${entry.state}`]}`}>
-      <span className={page.dot} title={STATE_LABEL[entry.state]} aria-hidden>
-        {STATE_SYMBOL[entry.state]}
-      </span>
+      <StateMark state={entry.state} className={page.chipMark} />
       <Link to={decisionPath(home, entry.slug)}>{entry.title}</Link>
       <span className={page.chipMeta}>
         <Parts>
@@ -497,7 +507,7 @@ function FlagState({ home, flag }: { home: string; flag: Flag }) {
     <p className={page.markLine}>
       {!flag.clearedAt && (
         <>
-          <FlagMark />{" "}
+          <FlagDot />{" "}
         </>
       )}
       <FlagCause home={home} flag={flag} />, raised {formatDate(flag.raisedAt)}:{" "}

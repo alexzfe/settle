@@ -40,35 +40,57 @@ function byStrength(a: Pick<Requirement, "strength">, b: Pick<Requirement, "stre
 /** A Full Guide with at least this many headings (more than 3) gets a table of contents. */
 const CONTENTS_FROM = 4;
 
+/**
+ * The Quick Guide as core assembles it, and how to take it shopping. A Settled Purchase not yet
+ * Fulfilled shows it above everything else (handoff Q22); the rest keep it in its usual place.
+ */
+export function QuickGuideSection({ home, decision }: { home: string; decision: DecisionDetail }) {
+  const quickLines = decision.quickGuide?.lines ?? [];
+  return (
+    <Section title="Quick Guide" id="quick-guide">
+      {quickLines.length > 0 ? (
+        <QuickGuideBlocks
+          lookingFor={decision.quickGuide?.lookingFor ?? decision.statement}
+          lines={quickLines}
+        />
+      ) : (
+        <p className={styles.muted}>None yet: the Agent writes the Guides in a Purchase Session.</p>
+      )}
+      {/* Core serves no phone page, export, or phone address for a Rejected Purchase. */}
+      {quickLines.length > 0 &&
+        (decision.state === "rejected" ? (
+          <p className={styles.muted}>
+            Rejected, so it has no Guides to open, print, or take shopping.
+          </p>
+        ) : (
+          <TakeItShopping home={home} decision={decision} />
+        ))}
+    </Section>
+  );
+}
+
 /** The Guides and the Requirements: what is read beside the Decision's side panel. */
-export function PurchaseParts({ home, decision }: { home: string; decision: DecisionDetail }) {
+export function PurchaseParts({
+  home,
+  decision,
+  withQuickGuide,
+}: {
+  home: string;
+  decision: DecisionDetail;
+  /** False once the page has led with the Quick Guide. */
+  withQuickGuide: boolean;
+}) {
   // A Window, Door, or Feature is found in its Room through the Home's Rooms.
   const rooms = useHome(home).data?.rooms;
-  const quickLines = decision.quickGuide?.lines ?? [];
   const fullGuide = decision.guides?.fullGuide;
-  return (
+  const requirements = (
+    <Section title="Requirements" id="requirements">
+      <Requirements home={home} rooms={rooms} requirements={decision.requirements} />
+    </Section>
+  );
+  const guides = (
     <>
-      <Section title="Quick Guide" id="quick-guide">
-        {quickLines.length > 0 ? (
-          <QuickGuideBlocks
-            lookingFor={decision.quickGuide?.lookingFor ?? decision.statement}
-            lines={quickLines}
-          />
-        ) : (
-          <p className={styles.muted}>
-            None yet: the Agent writes the Guides in a Purchase Session.
-          </p>
-        )}
-        {/* Core serves no phone page, export, or phone address for a Rejected Purchase. */}
-        {quickLines.length > 0 &&
-          (decision.state === "rejected" ? (
-            <p className={styles.muted}>
-              Rejected, so it has no Guides to open, print, or take shopping.
-            </p>
-          ) : (
-            <TakeItShopping home={home} decision={decision} />
-          ))}
-      </Section>
+      {withQuickGuide && <QuickGuideSection home={home} decision={decision} />}
       <Section title="Full Guide" id="full-guide">
         {fullGuide ? (
           <FullGuideSection home={home} decision={decision.slug} fullGuide={fullGuide} />
@@ -76,9 +98,19 @@ export function PurchaseParts({ home, decision }: { home: string; decision: Deci
           <p className={styles.muted}>None yet.</p>
         )}
       </Section>
-      <Section title="Requirements" id="requirements">
-        <Requirements home={home} rooms={rooms} requirements={decision.requirements} />
-      </Section>
+    </>
+  );
+  // Q22: a Settled, unfulfilled Purchase led with the Quick Guide, so the Guides stay on top. While
+  // it is still being chosen, the Requirements are what you work with, and they come first.
+  return withQuickGuide ? (
+    <>
+      {requirements}
+      {guides}
+    </>
+  ) : (
+    <>
+      {guides}
+      {requirements}
     </>
   );
 }

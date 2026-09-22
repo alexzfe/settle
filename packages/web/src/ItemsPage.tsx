@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import styles from "./App.module.css";
 import type { Item, Room } from "./api";
 import { itemPath } from "./decisions";
@@ -47,18 +47,76 @@ export function groupItems(items: readonly Item[], rooms: readonly Room[]): Item
   }));
 }
 
+/** What a header stat shows: every Item, or those missing one kind of fact. */
+export type ItemFilter = "no-dimensions" | "no-colors" | "unplaced";
+
+const FILTERS: Record<ItemFilter, { label: string; test: (item: Item) => boolean }> = {
+  "no-dimensions": {
+    label: "No dimensions",
+    test: (item) => !item.width && !item.depth && !item.height,
+  },
+  "no-colors": { label: "No colors", test: (item) => !item.colors?.length },
+  unplaced: { label: "Unplaced", test: (item) => !item.room },
+};
+
+function isFilter(value: string | null): value is ItemFilter {
+  return value !== null && Object.hasOwn(FILTERS, value);
+}
+
+/**
+ * The header's counts, in plain words: every live Item, then those with no dimensions, no colors,
+ * or no Room. A count of zero is left out, except the Items.
+ */
+export function itemStats(
+  items: readonly Item[],
+): { filter?: ItemFilter; label: string; count: number }[] {
+  const live = items.filter((item) => !item.archivedAt);
+  const missing = (Object.keys(FILTERS) as ItemFilter[]).map((filter) => ({
+    filter,
+    label: FILTERS[filter].label,
+    count: live.filter(FILTERS[filter].test).length,
+  }));
+  return [
+    { label: live.length === 1 ? "Item" : "Items", count: live.length },
+    ...missing.filter((stat) => stat.count > 0),
+  ];
+}
+
 export function ItemsPage() {
   const { home = "" } = useParams();
+  const [params, setParams] = useSearchParams();
   const [archived, setArchived] = useState(false);
-  const [unplacedOnly, setUnplacedOnly] = useState(false);
   const [search, setSearch] = useState("");
   const items = useItems(home, archived);
   const homeRead = useHome(home);
   const error = items.error ?? homeRead.error;
   const query = search.trim().toLowerCase();
+  const shown = params.get("show");
+  const filter = isFilter(shown) ? shown : undefined;
+  const choose = (next: ItemFilter | undefined) =>
+    setParams(next ? { show: next } : {}, { replace: true });
   return (
     <>
-      <h1>Items</h1>
+      <h1>Inventory</h1>
+      {items.data && items.data.items.length > 0 && (
+        <ul className={page.stats} aria-label="Show">
+          {itemStats(items.data.items).map((stat) => {
+            const pressed = stat.filter === filter;
+            return (
+              <li key={stat.label}>
+                <button
+                  type="button"
+                  className={`${page.stat} ${stat.filter ? page.missing : ""}`}
+                  aria-pressed={pressed}
+                  onClick={() => choose(pressed ? undefined : stat.filter)}
+                >
+                  <span className={page.statCount}>{stat.count}</span> {stat.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <div className={page.filters}>
         <label className={page.search}>
           <span className={page.visuallyHidden}>Search by name</span>
@@ -72,19 +130,20 @@ export function ItemsPage() {
         <label>
           <input
             type="checkbox"
-            checked={unplacedOnly}
-            onChange={(event) => setUnplacedOnly(event.target.checked)}
-          />{" "}
-          Unplaced only
-        </label>
-        <label>
-          <input
-            type="checkbox"
             checked={archived}
             onChange={(event) => setArchived(event.target.checked)}
           />{" "}
           Include Archived
         </label>
+        {filter && (
+          <button
+            type="button"
+            className={`secondary ${page.clear}`}
+            onClick={() => choose(undefined)}
+          >
+            Showing {FILTERS[filter].label.toLowerCase()} · Show all
+          </button>
+        )}
       </div>
       {error ? (
         <p className={styles.error}>{error.message}</p>
@@ -99,85 +158,121 @@ export function ItemsPage() {
           })}
         />
       ) : (
-        <ItemTable
+        <Inventory
           home={home}
-          items={groupItems(
+          groups={groupItems(
             items.data.items.filter(
               (item) =>
                 (archived || !item.archivedAt) &&
-                (!unplacedOnly || !item.room) &&
+                (!filter || FILTERS[filter].test(item)) &&
                 (!query || item.name.toLowerCase().includes(query)),
             ),
             homeRead.data.rooms,
-          ).flatMap((group) => group.items)}
+          )}
         />
       )}
     </>
   );
 }
 
-/** The Items as a table; each row's name opens the Item's page. */
-function ItemTable({ home, items }: { home: string; items: Item[] }) {
-  if (items.length === 0) return <p className={styles.muted}>No Items match.</p>;
+/** The Items grouped by Room, one row each; a row's name is its one link, and the whole row opens it. */
+function Inventory({ home, groups }: { home: string; groups: ItemGroup[] }) {
+  if (groups.length === 0) return <p className={styles.muted}>No Items match.</p>;
   return (
-    <div className={styles.scroll}>
-      <table className={`${styles.table} ${page.table}`}>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Room</th>
-            <th>Dimensions W×D×H</th>
-            <th>Color and material</th>
-            <th>Condition</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.slug} className={item.archivedAt ? page.archived : undefined}>
-              <td>
-                <Link className={page.name} to={itemPath(home, item.slug)}>
-                  {item.name}
-                </Link>
-                {item.quantity > 1 && <span className={page.quantity}> ×{item.quantity}</span>}
-                <span className={page.category}>{sentence(item.category)}</span>
-              </td>
-              <td>
-                {item.room ? (
-                  <Link to={`/homes/${home}/rooms/${item.room.slug}`}>{item.room.name}</Link>
-                ) : (
-                  <span className={styles.muted}>Unplaced</span>
-                )}
-              </td>
-              <td className={page.numbers}>
-                {dimensions([
-                  ["W", item.width],
-                  ["D", item.depth],
-                  ["H", item.height],
-                ])}
-              </td>
-              <td>
-                <Looks item={item} />
-              </td>
-              <td>{item.condition && sentence(item.condition)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className={page.inventory}>
+      <div className={page.columns} aria-hidden>
+        <span className="label">Item</span>
+        <span className="label">Colors &amp; materials</span>
+        <span className={`label ${page.size}`}>W × D × H</span>
+      </div>
+      {groups.map((group) => (
+        <section key={group.key} className={page.group} aria-labelledby={`group-${group.key}`}>
+          <h2 className={page.groupTitle} id={`group-${group.key}`}>
+            {group.room ? (
+              <Link to={`/homes/${home}/rooms/${group.room}`}>{group.title}</Link>
+            ) : (
+              group.title
+            )}{" "}
+            <span className={page.groupCount}>{group.items.length}</span>
+            {!group.room && <span className={page.needsRoom}>needs a room</span>}
+          </h2>
+          <ul className={page.rows}>
+            {group.items.map((item) => (
+              <ItemRow key={item.slug} home={home} item={item} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
 
-/** An Item's colors as swatches, then its materials. */
+/** One Item: name, kind and condition; its colors and materials; its size in cm. */
+function ItemRow({ home, item }: { home: string; item: Item }) {
+  const navigate = useNavigate();
+  const path = itemPath(home, item.slug);
+  // The whole row opens the Item, except a click on its link (which opens it anyway) or one
+  // that ends a text selection.
+  const open = (event: React.MouseEvent) => {
+    if ((event.target as Element).closest("a")) return;
+    if (window.getSelection?.()?.toString()) return;
+    navigate(path);
+  };
+  return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the name's link is the keyboard's way in.
+    <li className={item.archivedAt ? `${page.row} ${page.archived}` : page.row} onClick={open}>
+      <span className={page.what}>
+        <Link className={`${page.name} clamp`} to={path}>
+          {item.name}
+        </Link>
+        <span className={page.kind}>
+          <Parts separator=" · ">
+            {sentence(item.category)}
+            {item.quantity > 1 && `×${item.quantity}`}
+            {item.condition && sentence(item.condition)}
+          </Parts>
+          {item.archivedAt && (
+            <>
+              {" "}
+              · <ArchivedNote at={item.archivedAt} />
+            </>
+          )}
+        </span>
+      </span>
+      <Looks item={item} />
+      <span className={page.size}>
+        {dimensions(
+          [
+            ["W", item.width],
+            ["D", item.depth],
+            ["H", item.height],
+          ],
+          "cm",
+          { compact: true },
+        )}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * An Item's colors as swatches with their names, then its materials. A color with no screen color
+ * recorded is an empty outline beside its name; an Item with no colors at all shows nothing, since
+ * the header counts those.
+ */
 function Looks({ item }: { item: Item }) {
+  const materials = item.materials?.join(", ");
   return (
     <span className={page.looks}>
-      {item.colors?.map((color, index) => (
-        // Two colors may share a name, so the position keeps keys apart.
-        <Swatch key={`${index}-${color.name}`} color={color} />
-      ))}
-      {item.materials && item.materials.length > 0 && (
-        <span className={styles.muted}>{item.materials.join(", ")}</span>
+      {item.colors && item.colors.length > 0 && (
+        <span className={page.colors}>
+          {item.colors.map((color, index) => (
+            // Two colors may share a name, so the position keeps keys apart.
+            <Swatch key={`${index}-${color.name}`} color={color} compact />
+          ))}
+        </span>
       )}
+      {materials && <span className={`${page.materials} clamp`}>{materials}</span>}
     </span>
   );
 }
@@ -195,7 +290,10 @@ export function ItemList({ home, items }: { home: string; items: Item[] }) {
   );
 }
 
-/** One Item with whatever is recorded about it, its name linking to its page. */
+/**
+ * One Item with whatever is recorded about it, its name linking to its page. Values take the list
+ * form (only an Estimated one is marked, with "~"), and sizes are in cm, as everywhere for Items.
+ */
 export function ItemLine({ home, item }: { home: string; item: Item }) {
   const place = [item.wall && wallNameOf(item.wall), item.positionNote].filter(Boolean).join(", ");
   const light = item.light && lightText(item.light);
@@ -209,13 +307,17 @@ export function ItemLine({ home, item }: { home: string; item: Item }) {
         <span className={styles.muted}>({sentence(item.category)})</span>
       </span>
       {place}
-      {dimensions([
-        ["W", item.width],
-        ["D", item.depth],
-        ["H", item.height],
-      ])}
+      {dimensions(
+        [
+          ["W", item.width],
+          ["D", item.depth],
+          ["H", item.height],
+        ],
+        "cm",
+        { compact: true },
+      )}
       {item.colors?.map((color, index) => (
-        <Swatch key={`${index}-${color.name}`} color={color} />
+        <Swatch key={`${index}-${color.name}`} color={color} compact />
       ))}
       {item.materials?.join(", ")}
       {item.condition}

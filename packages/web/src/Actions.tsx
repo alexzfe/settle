@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import styles from "./Actions.module.css";
 import appStyles from "./App.module.css";
+import type { DecisionState } from "./api";
+import { LADDER, type Move, STATE_LABEL } from "./decisions";
 import { queriesShowing } from "./liveUpdates";
+import { StateMark } from "./ui/StateMark";
 
 export interface Action {
   /** The button's label. */
@@ -71,6 +74,87 @@ export function Actions({ home, actions }: { home: string; actions: readonly Act
       {act.isError && (
         <p role="alert" className={appStyles.error}>
           {act.error.message}
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * The state ladder: the four states with their marks, the current one highlighted. Each state the
+ * server allows a move to is a button with its consequence under it, and a click moves it at once;
+ * the rest are greyed. A refusal shows below. Every Decision query is refetched on success, since
+ * a move may flag other Decisions.
+ */
+export function StateLadder({
+  home,
+  state,
+  moves,
+  post,
+}: {
+  home: string;
+  state: DecisionState;
+  moves: readonly Move[];
+  post: (to: DecisionState) => Promise<unknown>;
+}) {
+  const queryClient = useQueryClient();
+  const id = useId();
+  const move = useMutation({
+    mutationFn: post,
+    onSuccess: () => {
+      for (const queryKey of queriesShowing("decision", home)) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
+  return (
+    <>
+      <ol className={styles.ladder} aria-label="State">
+        {LADDER.map((each) => {
+          const mark = (
+            <>
+              <span aria-hidden className={styles.rungMark}>
+                <StateMark state={each} />
+              </span>
+              <span className={styles.rungName}>{STATE_LABEL[each]}</span>
+            </>
+          );
+          if (each === state) {
+            return (
+              <li key={each} className={styles.current} aria-current="step">
+                <span className={styles.rung}>{mark}</span>
+              </li>
+            );
+          }
+          const reachable = moves.find((candidate) => candidate.to === each);
+          if (!reachable) {
+            return (
+              <li key={each} className={styles.unreachable}>
+                <span className={styles.rung}>{mark}</span>
+              </li>
+            );
+          }
+          return (
+            <li key={each}>
+              <button
+                type="button"
+                className={styles.rung}
+                disabled={move.isPending}
+                aria-describedby={`${id}-${each}`}
+                onClick={() => move.mutate(each)}
+              >
+                {mark}
+              </button>
+              <span id={`${id}-${each}`} className={styles.rungConsequence}>
+                {reachable.consequence}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {move.isError && (
+        <p role="alert" className={appStyles.error}>
+          {move.error.message}
         </p>
       )}
     </>

@@ -1,8 +1,13 @@
-/* Recorded values: lengths and their quiet Provenance tags. */
+/* Recorded values: lengths and their quiet Provenance tags (the full form). */
 
 .length {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Several sides in one value: each side is unbreakable, the line between them is not. */
+.lengths {
+  font-variant-numeric: tabular-nums;
 }
 
 .tag {
@@ -27,7 +32,7 @@
   cursor: help;
 }
 
-/* Blueprint-derived: a chip, olive when it links to the page it is printed on. */
+/* Blueprint-derived: a chip; when it links to the page it is printed on, underlined like a link. */
 .blueprint {
   border: 1px solid var(--color-hairline);
   background: var(--color-card);
@@ -35,20 +40,27 @@
 }
 
 a.blueprint {
-  border-color: var(--color-accent-soft);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-  text-decoration: none;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-stone);
+  text-underline-offset: 0.15em;
 }
 
 a.blueprint:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent-strong);
+  border-color: var(--color-ink-muted);
+  text-decoration-color: currentcolor;
 }
 
 /* Listed: a quiet chip, from the maker's or shop's Listing rather than the user's own measure. */
 .listed {
-  border: 1px dashed var(--color-stone);
+  border: 1px solid var(--color-hairline);
+  color: var(--color-ink-muted);
+  cursor: help;
+}
+
+/* Measured, named only where every Provenance is written out (the Item page). */
+.measured {
+  border: 1px solid var(--color-hairline);
   color: var(--color-ink-muted);
   cursor: help;
 }

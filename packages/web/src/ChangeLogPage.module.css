@@ -33,7 +33,7 @@
   left: calc(-1 * var(--space-6) + 0.05rem);
   width: 0.55rem;
   height: 0.55rem;
-  border: 1.5px solid var(--color-accent);
+  border: 1.5px solid var(--color-stone);
   border-radius: 50%;
   background: var(--color-ground);
   content: "";
@@ -79,7 +79,14 @@
 
 .stateChange {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
+  align-items: center;
+}
+
+.state {
+  display: inline-flex;
+  gap: 0.3em;
   align-items: center;
 }
 
@@ -113,6 +120,7 @@ button.more {
 }
 
 .raw td {
+  border-bottom-color: var(--color-hairline-soft);
   font-size: var(--text-xs);
 }
 
@@ -126,7 +134,7 @@ button.more {
 
 .record {
   padding-block: var(--space-3);
-  border-bottom: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline-soft);
 }
 
 .record:last-child {
@@ -169,18 +177,23 @@ button.more {
   }
 }
 
+/* The summary's parts as small-caps labels, the Agent's words beside them in the serif. */
 .summary dt {
-  font-weight: 600;
+  color: var(--color-ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  line-height: 2.4;
+  text-transform: uppercase;
 }
 
 .summary dd {
   margin: 0;
 }
 
+/* No summary yet: a plain muted line. The attention ground is kept for the Flags strip. */
 .unsummarised {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--color-attention-bg);
-  color: var(--color-attention);
+  color: var(--color-ink-muted);
   font-size: var(--text-sm);
 }

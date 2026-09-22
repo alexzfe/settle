@@ -10,7 +10,7 @@ import { queryKeys, useDecisions } from "./queries";
 import page from "./RoomTiles.module.css";
 import { buildPrompt } from "./ui/AskAgent";
 import { EmptyState } from "./ui/EmptyState";
-import { FlagMark } from "./ui/StatePill";
+import { FlagMark } from "./ui/StateMark";
 
 /** "1 Gap", "3 Gaps". */
 export function count(n: number, one: string, many = `${one}s`): string {
@@ -137,7 +137,7 @@ function RoomTile({
       )}
       <div className={page.tileBody}>
         <p className={page.tileName}>
-          <Link to={`/homes/${home}/rooms/${room.slug}`} className={page.tileLink}>
+          <Link to={`/homes/${home}/rooms/${room.slug}`} className={`clamp ${page.tileLink}`}>
             {room.name}
           </Link>
           {roomFlagged(room.slug, decisions) && (

@@ -1,27 +1,20 @@
-// The Home's Overview, a status board: what needs the user, where the last Session left off, the
-// Palette in force, the Rooms by Level, and the recent Sessions.
+// The Home's Overview answers "what should I do next?": the Flags strip when anything is open, the
+// last Session's next step as the page's main element, the Leaning Decisions waiting on the user,
+// and how much is on the Shopping List. A new Home gets the getting-started steps instead.
 
 import { Link, useParams } from "react-router";
 import { HomeFolderSetup } from "./AboutPage";
 import styles from "./App.module.css";
-import type { DecisionSummary, Home, Room, RoomDetail, Session } from "./api";
-import { decisionPath, paletteInForce } from "./decisions";
-import { openReviews, ReviewList } from "./Flags";
-import { FindBox } from "./find/Find";
+import type { DecisionSummary, Home, Session } from "./api";
+import { decisionPath } from "./decisions";
 import { sentence } from "./format";
 import page from "./HomePage.module.css";
-import { useDecisions, useHome, useSessions } from "./queries";
-import { count, RoomGrid, roomsWithGaps, useRoomDetails } from "./RoomTiles";
-import { PaletteChips } from "./Swatch";
+import { useDecisions, useHome, useSessions, useShopping } from "./queries";
 import { AgentWritten, shortDate } from "./ui/AgentWritten";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
-import { Card } from "./ui/Card";
-import { EmptyState } from "./ui/EmptyState";
+import { FlagsStrip } from "./ui/FlagsStrip";
 import { Section } from "./ui/Section";
-import { StatePill } from "./ui/StatePill";
-
-/** How many Sessions the Overview lists; the change log has the rest. */
-const RECENT_SESSIONS = 5;
+import { StateMark } from "./ui/StateMark";
 
 /** A Skill's slug as its name: "home-intake" is "Home Intake". */
 export function skillName(slug: string): string {
@@ -31,58 +24,43 @@ export function skillName(slug: string): string {
     .join(" ");
 }
 
-/** The Sessions, newest first. */
-function newestFirst(sessions: readonly Session[]): Session[] {
-  return sessions.toSorted((a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt));
+/** The Session closed most recently with a summary, if any. */
+export function lastClosedSession(sessions: readonly Session[]): Session | undefined {
+  const when = (session: Session) => Date.parse(session.closedAt ?? session.openedAt);
+  return sessions
+    .filter((session) => session.summary)
+    .toSorted((a, b) => when(b) - when(a))
+    .at(0);
 }
 
-/** The Design Direction in force: the Settled one, else the latest Leaning, else latest Candidate. */
-export function designDirectionInForce(
-  decisions: readonly DecisionSummary[],
-): DecisionSummary | undefined {
-  const directions = decisions.filter((decision) => decision.kind === "design-direction");
-  return (
-    directions.find((decision) => decision.state === "settled") ??
-    directions.filter((decision) => decision.state === "leaning").at(-1) ??
-    directions.filter((decision) => decision.state === "candidate").at(-1)
-  );
+/** The Leaning Decisions not Archived, oldest first: the longest wait leads. */
+export function waitingOnYou(decisions: readonly DecisionSummary[]): DecisionSummary[] {
+  return decisions
+    .filter((decision) => decision.state === "leaning" && !decision.archivedAt)
+    .toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
+function counted(count: number, one: string): string {
+  return `${count} ${one}${count === 1 ? "" : "s"}`;
 }
 
 export function HomePage() {
   const { home: slug = "" } = useParams();
   const home = useHome(slug);
-  const rooms = home.data?.rooms ?? [];
-  const details = useRoomDetails(slug, rooms);
   if (home.isPending) return <p>Loading…</p>;
   if (home.isError) return <p className={styles.error}>{home.error.message}</p>;
-  const { levels, unplacedItems } = home.data;
   const facts = home.data.home;
   return (
     <>
+      <FlagsStrip home={slug} />
       <header className={page.title}>
         <h1>{facts.name}</h1>
         <p className={page.caption}>
           {[facts.city, facts.tenure && sentence(facts.tenure)].filter(Boolean).join(" · ")}
         </p>
       </header>
-      <FindBox />
-      <NeedsYou home={slug} rooms={rooms} details={details} />
-      <LeftOff home={facts} />
-      <PaletteSection home={slug} />
-      <Section
-        title="Rooms"
-        action={
-          <span className={page.roomsActions}>
-            <Link to={`/homes/${slug}/items`}>{count(unplacedItems, "Unplaced Item")}</Link>
-            <Link to={`/homes/${slug}/rooms`}>All Rooms →</Link>
-          </span>
-        }
-      >
-        <RoomGrid home={slug} levels={levels} rooms={rooms} details={details} />
-      </Section>
-      <Section title="Recent Sessions" action={<Link to={`/homes/${slug}/log`}>Change log</Link>}>
-        <SessionList home={slug} />
-      </Section>
+      <WhatNext home={facts} />
+      <ShoppingLine home={slug} />
       <p className={page.footer}>
         <Link to={`/homes/${slug}/about`}>
           About this Home: facts, Constraints, Notes, Blueprints, Home Folder
@@ -92,227 +70,145 @@ export function HomePage() {
   );
 }
 
-/** The ochre band: open Flags and Conflicts as questions, and how many Rooms have Gaps. */
-function NeedsYou({
-  home,
-  rooms,
-  details,
-}: {
-  home: string;
-  rooms: readonly Room[];
-  details: Map<string, RoomDetail>;
-}) {
-  const decisions = useDecisions(home);
-  if (decisions.isPending) return <p>Loading…</p>;
+/**
+ * Next up and Waiting on you, or Getting started for a Home with no Decisions and no closed
+ * Session. The Decisions are asked for as the Flags strip and the sidebar ask, so all share one
+ * request.
+ */
+function WhatNext({ home }: { home: Home }) {
+  const sessions = useSessions(home.slug);
+  const decisions = useDecisions(home.slug, { archived: true });
+  if (sessions.isPending || decisions.isPending) return <p>Loading…</p>;
+  if (sessions.isError) return <p className={styles.error}>{sessions.error.message}</p>;
   if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
-  const reviews = openReviews(decisions.data.decisions);
-  const withGaps = roomsWithGaps(rooms, details);
-  if (reviews.length === 0 && withGaps.length === 0) {
-    return (
-      <section className={`${page.needs} ${page.calm}`} aria-label="Needs you">
-        <p>Nothing needs you right now.</p>
-      </section>
-    );
-  }
+  const last = lastClosedSession(sessions.data.sessions);
+  const all = decisions.data.decisions;
+  if (!last && all.length === 0) return <GettingStarted home={home} />;
   return (
-    <section className={page.needs} aria-labelledby="needs-you">
-      <h2 id="needs-you" className={page.needsTitle}>
-        Needs you
+    <>
+      {last && <NextUp home={home.slug} session={last} />}
+      <WaitingOnYou home={home.slug} decisions={waitingOnYou(all)} />
+    </>
+  );
+}
+
+/** The last Session's next step, big, with a prompt to carry it on; what is open; what changed. */
+function NextUp({ home, session }: { home: string; session: Session }) {
+  const summary = session.summary;
+  if (!summary) return null;
+  const skills = session.skills.map(skillName).join(", ");
+  const source = `${skills} Session`.trim();
+  const date = session.closedAt ?? session.openedAt;
+  return (
+    <section className={page.nextUp} aria-labelledby="next-up">
+      <h2 id="next-up" className={`label ${page.nextLabel}`}>
+        Next up
       </h2>
-      {reviews.length > 0 && <ReviewList home={home} reviews={reviews} />}
-      {withGaps.length > 0 && (
-        <p className={page.gaps}>
-          <Link to={`/homes/${home}/rooms`}>{count(withGaps.length, "Room")} with Gaps</Link>: facts
-          advice still needs.{" "}
-          <AskAgent
-            label="Fill the Gaps"
-            prompt={buildPrompt({
-              skill: "Home Intake",
-              text: `let's fill the Gaps in ${withGaps.map((room) => room.name).join(", ")}`,
-            })}
-          />
+      <AgentWritten source={source} date={date}>
+        <p className={page.next}>{summary.next}</p>
+        <p className={page.open}>
+          <span className={page.openLabel}>Still open:</span> {summary.open}
         </p>
-      )}
+      </AgentWritten>
+      <AskAgent
+        label="Continue"
+        prompt={buildPrompt({
+          text: `Let's pick up where the last Session left off. Next: ${summary.next}`,
+        })}
+      />
+      <p className={`clamp ${page.changed}`}>
+        <Link to={`/homes/${home}/sessions/${session.slug}`}>Last Session</Link> changed:{" "}
+        {summary.changed} · <Link to={`/homes/${home}/log`}>Change log</Link>
+      </p>
     </section>
   );
 }
 
-/** The getting-started checklist until the Home's first Session, then the card. */
-function LeftOff({ home }: { home: Home }) {
-  const sessions = useSessions(home.slug);
-  const decisions = useDecisions(home.slug);
-  if (sessions.isPending) return <p>Loading…</p>;
-  if (sessions.isError) return <p className={styles.error}>{sessions.error.message}</p>;
-  const all = newestFirst(sessions.data.sessions);
-  const last = all.find((session) => session.summary);
-  const direction = decisions.data && designDirectionInForce(decisions.data.decisions);
+/** The Leaning Decisions as Decisions-list rows; nothing at all when there are none. */
+function WaitingOnYou({ home, decisions }: { home: string; decisions: DecisionSummary[] }) {
+  if (decisions.length === 0) return null;
   return (
-    <>
-      {all.length === 0 && <GettingStarted home={home} />}
-      {last?.summary && (
-        <Section title="Where we left off">
-          <Card className={page.leftOff}>
-            <p className={page.sessionLine}>
-              <Link to={`/homes/${home.slug}/sessions/${last.slug}`}>
-                {last.skills.map(skillName).join(", ") || "Session"}
-              </Link>{" "}
-              · {shortDate(last.closedAt ?? last.openedAt)}
-            </p>
-            <AgentWritten
-              source={`${last.skills.map(skillName).join(", ")} Session`.trim()}
-              date={last.closedAt ?? last.openedAt}
-            >
-              <dl className={page.summary}>
-                <dt>Changed</dt>
-                <dd>{last.summary.changed}</dd>
-                <dt>Still open</dt>
-                <dd>{last.summary.open}</dd>
-              </dl>
-            </AgentWritten>
-            <p className={page.nextLabel}>Next</p>
-            <ol className={page.nextSteps}>
-              {decisions.data && direction?.state !== "settled" && (
-                <li>
-                  <span className={page.next}>Settle the Design Direction</span>
-                  <AskAgent
-                    prompt={buildPrompt({
-                      skill: "Design Direction",
-                      text: "let's settle the Design Direction for my home",
-                      ...(direction ? { slug: direction.slug } : {}),
-                    })}
-                  />
-                </li>
-              )}
-              <li>
-                <span className={page.next}>{last.summary.next}</span>
-                <AskAgent
-                  label="Continue"
-                  prompt={buildPrompt({
-                    text: `Let's pick up where the last Session left off. Next: ${last.summary.next}`,
-                  })}
-                />
-              </li>
-            </ol>
-          </Card>
-        </Section>
-      )}
-    </>
+    <Section
+      title="Waiting on you"
+      action={<span className={page.gloss}>Leaning: favoured, not committed yet</span>}
+    >
+      <ul className={page.rows}>
+        {decisions.map((decision) => (
+          <li key={decision.slug} className={page.row}>
+            <StateMark state={decision.state} className={page.mark} />
+            <Link to={decisionPath(home, decision.slug)} className={`clamp ${page.rowTitle}`}>
+              {decision.title}
+            </Link>
+            <span className={`clamp ${page.rowRoom}`}>{decision.room?.name ?? "Whole home"}</span>
+            <span className={page.rowSince} title="Open since">
+              {shortDate(decision.createdAt)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+/** "3 things to buy · Shopping", or nothing when the Shopping List is empty. */
+function ShoppingLine({ home }: { home: string }) {
+  const shopping = useShopping(home);
+  const toBuy = shopping.data?.shoppingList.length ?? 0;
+  if (toBuy === 0) return null;
+  return (
+    <p className={page.shoppingLine}>
+      {counted(toBuy, "thing")} to buy · <Link to={`/homes/${home}/shopping`}>Shopping</Link>
+    </p>
   );
 }
 
 /**
  * Three steps: set up the Home Folder, run claude there, and start Home Intake. The server keeps no
- * record of where the folder is, so the checklist shows until the first Session proves it.
+ * record of where the folder is, so the steps show until the Home has a Decision or a closed
+ * Session.
  */
 function GettingStarted({ home }: { home: Home }) {
   return (
     <Section title="Getting started">
-      <Card>
-        <ol className={page.checklist}>
-          <li>
-            <span className={page.check} aria-hidden>
-              1
-            </span>
-            <div>
-              <p className={page.step}>Set up the Home Folder</p>
-              <HomeFolderSetup home={home} />
-            </div>
-          </li>
-          <li>
-            <span className={page.check} aria-hidden>
-              2
-            </span>
-            <div>
-              <p className={page.step}>
-                Open a terminal there and run <code>claude</code>
-              </p>
-              <p className={styles.muted}>
-                Every Session started in the Home Folder belongs to this Home.
-              </p>
-            </div>
-          </li>
-          <li>
-            <span className={page.check} aria-hidden>
-              3
-            </span>
-            <div>
-              <p className={page.step}>Start with Home Intake</p>
-              <p className={page.starter}>“Let's record my home; I'll upload the floor plan.”</p>
-              <AskAgent
-                prompt={buildPrompt({
-                  skill: "Home Intake",
-                  text: "Let's record my home; I'll upload the floor plan",
-                })}
-              />
-            </div>
-          </li>
-        </ol>
-      </Card>
-    </Section>
-  );
-}
-
-/** The Design Direction on one line, then the Palette in force as chips, linking to its Decision. */
-function PaletteSection({ home }: { home: string }) {
-  const decisions = useDecisions(home);
-  if (decisions.isPending) return <p>Loading…</p>;
-  if (decisions.isError) return <p className={styles.error}>{decisions.error.message}</p>;
-  const palette = paletteInForce(decisions.data.decisions);
-  const direction = designDirectionInForce(decisions.data.decisions);
-  return (
-    <Section
-      title="Palette"
-      id="palette"
-      action={
-        palette && (
-          <span className={page.paletteLine}>
-            <Link to={decisionPath(home, palette.slug)}>{palette.title}</Link>
-            <StatePill state={palette.state} />
+      <ol className={page.checklist}>
+        <li>
+          <span className={page.check} aria-hidden>
+            1
           </span>
-        )
-      }
-    >
-      <p className={page.direction}>
-        <span className={page.directionLabel}>Design Direction</span>{" "}
-        {direction ? (
-          <>
-            <Link to={decisionPath(home, direction.slug)}>{direction.title}</Link>{" "}
-            <StatePill state={direction.state} />
-          </>
-        ) : (
-          <span className={styles.muted}>not settled yet</span>
-        )}
-      </p>
-      {palette ? (
-        <PaletteChips colors={palette.colors ?? []} />
-      ) : (
-        <EmptyState
-          text="No Palette yet"
-          prompt={buildPrompt({ skill: "Color", text: "let's choose my home's Palette" })}
-        />
-      )}
+          <div>
+            <p className={page.step}>Set up the Home Folder</p>
+            <HomeFolderSetup home={home} />
+          </div>
+        </li>
+        <li>
+          <span className={page.check} aria-hidden>
+            2
+          </span>
+          <div>
+            <p className={page.step}>
+              Open a terminal there and run <code>claude</code>
+            </p>
+            <p className={styles.muted}>
+              Every Session started in the Home Folder belongs to this Home.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span className={page.check} aria-hidden>
+            3
+          </span>
+          <div>
+            <p className={page.step}>Start with Home Intake</p>
+            <p className={page.starter}>“Let's record my home; I'll upload the floor plan.”</p>
+            <AskAgent
+              prompt={buildPrompt({
+                skill: "Home Intake",
+                text: "Let's record my home; I'll upload the floor plan",
+              })}
+            />
+          </div>
+        </li>
+      </ol>
     </Section>
-  );
-}
-
-function SessionList({ home }: { home: string }) {
-  const sessions = useSessions(home);
-  if (sessions.isPending) return <p>Loading…</p>;
-  if (sessions.isError) return <p className={styles.error}>{sessions.error.message}</p>;
-  if (sessions.data.sessions.length === 0) return <p className={styles.muted}>No Sessions yet.</p>;
-  return (
-    <ul className={page.sessions}>
-      {newestFirst(sessions.data.sessions)
-        .slice(0, RECENT_SESSIONS)
-        .map((session) => (
-          <li key={session.slug}>
-            <Link to={`/homes/${home}/sessions/${session.slug}`}>
-              {session.skills.map(skillName).join(", ") || "Session"}
-            </Link>
-            <span className={page.sessionDate}>{shortDate(session.openedAt)}</span>
-            {!session.summary && <span className={page.unsummarised}>unsummarised</span>}
-          </li>
-        ))}
-    </ul>
   );
 }

@@ -1,6 +1,7 @@
 import { act, cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Home, ShoppingEntry } from "./api";
+import page from "./ShoppingPage.module.css";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -70,19 +71,16 @@ function sectionOf(heading: string): HTMLElement {
 }
 
 /**
- * Each row of the checklist under `heading`: its title, statement, and what it has so far, then
- * its Room, Measure first, flag, Listings, and Quick Guide link.
+ * Each row under `heading`, cell by cell: the state, the title and statement, the Room, and the
+ * line of what it has so far with any Flag and what to measure first.
  */
 function entriesAfter(heading: string): string[][] {
-  const list = sectionOf(heading).querySelector("ul");
+  const list = sectionOf(heading).querySelector(`.${page.entries}`);
   return [...(list?.querySelectorAll(":scope > li") ?? [])].map((li) =>
     [...li.children]
-      .slice(1)
-      .flatMap((cell, index) =>
-        index === 0
-          ? [...cell.querySelectorAll("p")].map((line) => line.textContent ?? "")
-          : [cell.textContent ?? ""],
-      ),
+      .filter((cell) => cell.tagName !== "IMG" && !cell.querySelector("img"))
+      // The state's cell is the mark, so it reads by its name.
+      .map((cell) => cell.getAttribute("aria-label") ?? cell.textContent ?? ""),
   );
 }
 
@@ -108,51 +106,38 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
 
   expect(entriesAfter("Shopping List")).toEqual([
     [
-      "Wool rug",
-      "A large wool rug under the sofa.",
-      "2 musts, 1 prefer; Guides written, Full Guide out of date",
+      "Settled",
+      "Wool rugA large wool rug under the sofa.",
       "Living room",
-      // Several things to measure: a count, opening to the list.
-      "Measure first: 2 things" +
+      "2 musts, 1 prefer · Guides written · Full Guide out of date · " +
+        "2 Listings, best is 4 stars: Hay Plain rug" +
+        "Flagged" +
+        "Measure first" +
         "living-room/wall-2 length (~3.60 m)" +
         "the Home's narrowest access width (not recorded)",
-      "⚑ Flagged",
-      "2 Listings, best is 4 stars: Hay Plain rug",
-      "Quick Guide",
     ],
     [
-      "Reading lamp",
-      "Reading lamp.",
-      "1 must, 0 prefers; no Guides yet",
-      "Home-wide",
-      // One thing to measure: the phrase itself.
-      "Measure first: the desk height (not recorded)",
-      "",
-      "No Listings yet",
-      "",
+      "Settled",
+      "Reading lampReading lamp.",
+      "Whole home",
+      "1 must, 0 prefers · No Guides yet · No Listings yet" +
+        "Measure first" +
+        "the desk height (not recorded)",
     ],
   ]);
-  // Considering names each one's state.
+  // Considering shows each one's state on the mark, like every other list.
   expect(entriesAfter("Considering")).toEqual([
     [
-      "Low sofa◐Leaning",
-      "Low sofa.",
-      "1 must, 2 prefers; Guides written",
+      "Leaning",
+      "Low sofaLow sofa.",
       "Living room",
-      "",
-      "",
-      "1 Listing",
-      "Quick Guide",
+      "1 must, 2 prefers · Guides written · 1 Listing",
     ],
     [
-      "Desk chair○Candidate",
-      "Desk chair.",
-      "No Requirements yet; no Guides yet",
-      "Home-wide",
-      "",
-      "",
-      "No Listings yet",
-      "",
+      "Candidate",
+      "Desk chairDesk chair.",
+      "Whole home",
+      "No Requirements yet · No Guides yet · No Listings yet",
     ],
   ]);
 
@@ -160,17 +145,14 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
   expect(within(wool).getByRole("link", { name: "Wool rug" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/wool-rug",
   );
-  expect(within(wool).getByRole("link", { name: "Living room" }).getAttribute("href")).toBe(
-    "/homes/flat/rooms/living-room",
-  );
-  expect(within(wool).getByText(/^living-room\/wall-2/).tagName).toBe("STRONG");
+  // The title is the row's one link: its page puts the Quick Guide first once it is Settled.
+  expect(within(wool).getAllByRole("link")).toHaveLength(1);
+  expect(within(wool).getByText(/^living-room\/wall-2/).tagName).toBe("LI");
   expect(within(wool).getByText("Full Guide out of date").tagName).toBe("STRONG");
-  expect(within(wool).getByRole("link", { name: "Quick Guide" }).getAttribute("href")).toBe(
-    "/homes/flat/decisions/wool-rug#quick-guide",
-  );
+  expect(within(wool).getByRole("img", { name: "Settled" })).toBeDefined();
   // The sofa has a Listing but no Rating the user could act on — every one of them fails a must
   // or is Held — so its line says the count alone rather than headline one it cannot buy.
-  expect(within(entryOf("Low sofa")).getByText("1 Listing")).toBeDefined();
+  expect(within(entryOf("Low sofa")).getByText(/1 Listing$/)).toBeDefined();
   expect(screen.getByRole("link", { name: "Desk chair" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/desk-chair",
   );
@@ -210,8 +192,6 @@ it("shows the best Listing's picture beside the entry, stored copy first, then i
   expect(hay.getAttribute("src")).toBe(
     "/api/get_listing_photo?home=flat&listing=hay-plain-rug&v=625b0d88aa11bb22",
   );
-  // It links to the Purchase, like the rest of the entry.
-  expect(hay.closest("a")?.getAttribute("href")).toBe("/homes/flat/decisions/wool-rug");
   expect(picture("Floor lamp")?.getAttribute("src")).toBe(
     "/api/get_listing_photo?home=flat&listing=arc-lamp&v=abc",
   );
@@ -221,8 +201,9 @@ it("shows the best Listing's picture beside the entry, stored copy first, then i
   expect(picture("Side table")).toBeNull();
   expect(picture("Blind")).toBeNull();
   expect(
-    within(entryOf("Blind")).getByText("1 Listing, best is 5 stars: Linen blind"),
+    within(entryOf("Blind")).getByText(/1 Listing, best is 5 stars: Linen blind/),
   ).toBeDefined();
+  // The mark is drawn inline, so the picture is the row's only <img>.
   expect(entryOf("Wool rug").querySelectorAll("img")).toHaveLength(1);
 
   // A hotlink that will not load goes quietly, rather than leave a broken image.
@@ -238,6 +219,15 @@ it("shows no picture for an entry with no best Listing", async () => {
   renderRoutes("/homes/flat/shopping");
   await screen.findByRole("heading", { name: "Shopping List" });
   expect(document.querySelectorAll("main img, li img")).toHaveLength(0);
+});
+
+it("reads as stacked rows on a phone, with no cell of its own for a missing picture", async () => {
+  stubShopping({ get_shopping: () => ({ shoppingList: [rug, lamp], considering: [] }) });
+  renderRoutes("/homes/flat/shopping");
+  await screen.findByRole("heading", { name: "Shopping List" });
+  // Every row's cells are laid out by name, so the grid holds whether or not there is a picture.
+  expect(entryOf("Wool rug").children).toHaveLength(5);
+  expect(entryOf("Reading lamp").children).toHaveLength(4);
 });
 
 it("links to the printable Shopping List, its CSV, and the Shopping Guides", async () => {
@@ -294,7 +284,10 @@ it("moves an entry to the Shopping List when a Decision change event arrives", a
     }),
   );
   expect(await screen.findByText("Nothing under consideration.")).toBeDefined();
-  expect(entriesAfter("Shopping List").map(([title]) => title)).toEqual(["Wool rug", "Low sofa"]);
+  expect(entriesAfter("Shopping List").map(([, head]) => head)).toEqual([
+    "Wool rugA large wool rug under the sofa.",
+    "Low sofaLow sofa.",
+  ]);
 });
 
 it("refetches the Measure-first lines when a Wall is measured", async () => {

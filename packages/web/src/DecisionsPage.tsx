@@ -1,29 +1,45 @@
+import type { ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import styles from "./App.module.css";
-import type { DecisionSummary, Room } from "./api";
+import type { DecisionKind, DecisionState, DecisionSummary, Room } from "./api";
 import page from "./DecisionsPage.module.css";
 import {
   DECISION_KINDS,
-  DECISION_STATES,
   decisionPath,
   flagSummary,
+  GROUP_ORDER,
   KIND_LABEL,
+  STATE_GLOSS,
   STATE_LABEL,
 } from "./decisions";
-import { type DecisionFilter, useDecisions, useHome } from "./queries";
+import { useDecisions, useHome, useShopping } from "./queries";
 import { SwatchSquare } from "./Swatch";
+import { shortDate } from "./ui/AgentWritten";
 import { buildPrompt } from "./ui/AskAgent";
 import { useDocumentTitle } from "./ui/documentTitle";
 import { EmptyState } from "./ui/EmptyState";
+import { FlagsStrip } from "./ui/FlagsStrip";
 import { ShowSwitch, useRememberedSwitch } from "./ui/ShowArchived";
-import { FlagMark, FulfilledNote, StatePill } from "./ui/StatePill";
-import { Parts } from "./Values";
+import { StateMark } from "./ui/StateMark";
+
+/** What a Home-wide Decision's room reads as. */
+export const WHOLE_HOME = "Whole home";
+
+export type Grouping = "state" | "room" | "kind";
+
+const GROUPINGS: [Grouping, string][] = [
+  ["state", "By state"],
+  ["room", "By room"],
+  ["kind", "By kind"],
+];
 
 export interface DecisionGroup {
   /** Unique among the groups. */
   key: string;
   title: string;
-  /** The Room's slug; absent for the Home-wide group. */
+  /** The state, when grouped by state: its mark and gloss head the group. */
+  state?: DecisionState;
+  /** The Room's slug, when grouped by room; absent for the Home-wide group. */
   room?: string;
   decisions: DecisionSummary[];
 }
@@ -57,14 +73,28 @@ export function groupDecisions(
   const unlisted = [...byRoom.values()].filter((group) => !listed.includes(group));
   const groups = [...listed, ...unlisted];
   if (homeWide.length > 0) {
-    groups.unshift({ key: "home", title: "Home-wide", decisions: homeWide });
+    groups.unshift({ key: "home", title: WHOLE_HOME, decisions: homeWide });
   }
   return groups;
 }
 
-/** A value from the query string when it is one of `values`. */
-function oneOf<T extends string>(value: string | null, values: readonly T[]): T | undefined {
-  return values.find((each) => each === value);
+/** The Decisions by state, Leaning first, then Candidate, Settled, and Rejected; empty ones left out. */
+export function groupByState(decisions: readonly DecisionSummary[]): DecisionGroup[] {
+  return GROUP_ORDER.map((state) => ({
+    key: `state:${state}`,
+    title: STATE_LABEL[state],
+    state,
+    decisions: decisions.filter((decision) => decision.state === state),
+  })).filter((group) => group.decisions.length > 0);
+}
+
+/** The Decisions by kind, in the kinds' usual order; empty ones left out. */
+export function groupByKind(decisions: readonly DecisionSummary[]): DecisionGroup[] {
+  return DECISION_KINDS.map((kind: DecisionKind) => ({
+    key: `kind:${kind}`,
+    title: KIND_LABEL[kind],
+    decisions: decisions.filter((decision) => decision.kind === kind),
+  })).filter((group) => group.decisions.length > 0);
 }
 
 /** Whether a Decision needs the user: an open flag or Conflict. */
@@ -84,6 +114,16 @@ export function matchingTitle(
   });
 }
 
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+
+/** When a Decision was opened, short: "14 Sep" this year, "Sep 2025" before it. */
+export function openSince(at: string, now: Date = new Date()): string {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return "";
+  if (date.getFullYear() === now.getFullYear()) return shortDate(at) ?? "";
+  return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 /** A new query string from the current one, with `changes` set or (when undefined) removed. */
 function withParams(search: URLSearchParams, changes: Record<string, string | undefined>): string {
   const next = new URLSearchParams(search);
@@ -96,43 +136,65 @@ function withParams(search: URLSearchParams, changes: Record<string, string | un
 }
 
 /**
- * Every Decision of the Home by scope, as aligned rows. Views (All, Needs review, Leaning), the
- * state and kind filters, and a title search all live in the query string.
+ * Every Decision of the Home as aligned rows, grouped by state (or by room, or by kind), with the
+ * Flags strip above. The grouping, the flagged-only view (`?flagged=1`), and a title search live
+ * in the query string.
  */
 export function DecisionsPage() {
   const { home = "" } = useParams();
   const [search, setSearch] = useSearchParams();
   useDocumentTitle("Decisions");
-  const filter: DecisionFilter = {
-    state: oneOf(search.get("state"), DECISION_STATES),
-    kind: oneOf(search.get("kind"), DECISION_KINDS),
-  };
-  const review = search.get("view") === "review";
+  const grouping: Grouping =
+    GROUPINGS.find(([each]) => each === search.get("group"))?.[0] ?? "state";
+  const flagged = search.get("flagged") === "1";
   const query = search.get("q") ?? "";
-  // Archived Decisions come only when asked for; the switch below keeps them out of sight.
-  const decisions = useDecisions(home, { ...filter, archived: true });
+  // Archived Decisions come too, in the one request the sidebar and the Flags strip share; the
+  // switch below keeps them out of sight.
+  const decisions = useDecisions(home, { archived: true });
   const homeQuery = useHome(home);
+  // The Listing counts, from the Shopping List the sidebar already asks for.
+  const shopping = useShopping(home);
+  const listings = new Map(
+    [...(shopping.data?.shoppingList ?? []), ...(shopping.data?.considering ?? [])].map((entry) => [
+      entry.slug,
+      entry.listings,
+    ]),
+  );
   const error = decisions.error ?? homeQuery.error;
-  const filtered = filter.state !== undefined || filter.kind !== undefined || review || query;
   const [showOld, setShowOld] = useRememberedSwitch("settle.decisions.showRejectedArchived");
   const matched = decisions.data
     ? matchingTitle(decisions.data.decisions, query).filter(
-        (decision) => !review || needsReview(decision),
+        (decision) => !flagged || needsReview(decision),
       )
     : [];
   // The clutter rule: Rejected and Archived Decisions stay out of sight unless the switch is on.
-  // Filtering on the Rejected state asks for the Rejected ones, so only the Archived stay hidden.
   const old = matched.filter(
-    (decision) =>
-      decision.archivedAt !== undefined ||
-      (decision.state === "rejected" && filter.state !== "rejected"),
+    (decision) => decision.archivedAt !== undefined || decision.state === "rejected",
   );
   const shown = showOld ? matched : matched.filter((decision) => !old.includes(decision));
+  const groups =
+    grouping === "room"
+      ? groupDecisions(shown, homeQuery.data?.rooms ?? [])
+      : grouping === "kind"
+        ? groupByKind(shown)
+        : groupByState(shown);
   return (
     <>
+      <FlagsStrip home={home} />
       <h1>Decisions</h1>
       <div className={page.toolbar}>
-        <Views />
+        <nav className={page.pills} aria-label="Group">
+          {GROUPINGS.map(([each, label]) => (
+            <Link
+              key={each}
+              to={withParams(search, { group: each === "state" ? undefined : each })}
+              className={each === grouping ? page.pillCurrent : page.pill}
+              aria-current={each === grouping ? "true" : undefined}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
         <label className={page.search}>
           <span className={page.searchLabel}>Search titles</span>
           <input
@@ -147,18 +209,6 @@ export function DecisionsPage() {
             }}
           />
         </label>
-      </div>
-      <div className={page.filters}>
-        <FilterLinks
-          name="state"
-          title="State"
-          options={DECISION_STATES.map((state) => [state, STATE_LABEL[state]])}
-        />
-        <FilterLinks
-          name="kind"
-          title="Kind"
-          options={DECISION_KINDS.map((kind) => [kind, KIND_LABEL[kind]])}
-        />
         <ShowSwitch
           label="Show Rejected / Archived"
           count={old.length}
@@ -166,12 +216,20 @@ export function DecisionsPage() {
           onChange={setShowOld}
         />
       </div>
+      {flagged && (
+        <p className={page.flaggedNote}>
+          Only Decisions with an open Flag or Conflict.{" "}
+          <Link to={withParams(search, { flagged: undefined })}>Show all Decisions</Link>
+        </p>
+      )}
       {error ? (
         <p className={styles.error}>{error.message}</p>
       ) : !decisions.data || !homeQuery.data ? (
         <p>Loading…</p>
       ) : shown.length === 0 ? (
-        filtered || old.length > 0 ? (
+        flagged ? (
+          <EmptyState text="Nothing is flagged." />
+        ) : query || old.length > 0 ? (
           <EmptyState text="No Decisions match." />
         ) : (
           <EmptyState
@@ -184,25 +242,25 @@ export function DecisionsPage() {
         )
       ) : (
         <div className={page.list}>
-          <div className={page.columns} aria-hidden>
+          <div className={`${page.columns} label`} aria-hidden>
+            <span />
             <span>Decision</span>
-            <span>Kind</span>
-            <span>State</span>
-            <span>Review</span>
+            <span className={page.kind}>Kind</span>
+            <span className={page.room}>{grouping === "room" ? "State" : "Room"}</span>
+            <span className={page.since}>Open since</span>
           </div>
-          {groupDecisions(shown, homeQuery.data.rooms).map((group) => (
-            <section key={group.key} className={page.group}>
-              <h2 className={page.groupTitle}>
-                {group.room ? (
-                  <Link to={`/homes/${home}/rooms/${group.room}`}>{group.title}</Link>
-                ) : (
-                  group.title
-                )}
-              </h2>
+          {groups.map((group) => (
+            <section key={group.key} className={page.group} aria-label={group.title}>
+              <GroupHeading home={home} group={group} />
               <ul className={page.rows}>
                 {group.decisions.map((decision) => (
                   <li key={decision.slug}>
-                    <DecisionRow home={home} decision={decision} />
+                    <DecisionRow
+                      home={home}
+                      decision={decision}
+                      grouping={grouping}
+                      listings={listings.get(decision.slug)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -214,130 +272,122 @@ export function DecisionsPage() {
   );
 }
 
-type View = "all" | "review" | "leaning";
-
-/**
- * Segmented buttons for the common views: All clears the view and the state filter, Needs review
- * shows the flagged and Conflicted Decisions, and Leaning is the Leaning state filter.
- */
-function Views() {
-  const [search] = useSearchParams();
-  // Another state filter in force is none of the views.
-  const current: View | undefined =
-    search.get("view") === "review"
-      ? "review"
-      : search.get("state") === "leaning"
-        ? "leaning"
-        : search.get("state") === null
-          ? "all"
-          : undefined;
-  const views: [View, string, string][] = [
-    ["all", "All", withParams(search, { view: undefined, state: undefined })],
-    ["review", "Needs review", withParams(search, { view: "review", state: undefined })],
-    ["leaning", "Leaning", withParams(search, { view: undefined, state: "leaning" })],
-  ];
+/** A group's heading: by state, its mark, name, count, and what it means; else its name and count. */
+function GroupHeading({ home, group }: { home: string; group: DecisionGroup }) {
+  const count = <span className={page.count}>{group.decisions.length}</span>;
+  if (group.state) {
+    return (
+      <h2 className={page.groupTitle}>
+        <span aria-hidden>
+          <StateMark state={group.state} />
+        </span>
+        <span>{group.title}</span>
+        {count}
+        <span className={page.gloss}>{STATE_GLOSS[group.state]}</span>
+      </h2>
+    );
+  }
   return (
-    <nav className={page.views} aria-label="Views">
-      {views.map(([view, label, to]) => (
-        <Link
-          key={view}
-          to={to}
-          className={view === current ? page.viewCurrent : page.view}
-          aria-current={view === current ? "true" : undefined}
-        >
-          {label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-/** Links that set one filter, keeping the other; the one in force is plain text. */
-function FilterLinks({
-  name,
-  title,
-  options,
-}: {
-  name: string;
-  title: string;
-  options: [value: string, label: string][];
-}) {
-  const [search] = useSearchParams();
-  const current = search.get(name);
-  const all: [string | undefined, string][] = [[undefined, "All"], ...options];
-  return (
-    <nav className={page.filter} aria-label={title}>
-      <span className={page.filterTitle}>{title}</span>
-      {all.map(([value, label]) =>
-        (value ?? null) === current ? (
-          <strong key={label} aria-current="true" className={page.filterCurrent}>
-            {label}
-          </strong>
-        ) : (
-          <Link key={label} to={withParams(search, { [name]: value })}>
-            {label}
-          </Link>
-        ),
+    <h2 className={page.groupTitle}>
+      {group.room ? (
+        <Link to={`/homes/${home}/rooms/${group.room}`}>{group.title}</Link>
+      ) : (
+        <span>{group.title}</span>
       )}
-    </nav>
+      {count}
+    </h2>
   );
 }
 
 /**
- * One Decision in aligned columns: its title (with a Palette's colors as small swatches), kind,
- * state with any Fulfilment, and what needs review: each open flag's cause, and any Conflict.
+ * One Decision in aligned columns: its mark, its title (with a Palette's colors as small swatches)
+ * and a second line of what needs the user and a few neutral facts, its kind, its room (its state
+ * when grouped by room), and when it was opened. The title is the one link; the whole row is its
+ * click target.
  */
-function DecisionRow({ home, decision }: { home: string; decision: DecisionSummary }) {
-  const [flag, ...moreFlags] = decision.openFlags;
-  const [conflict, ...moreConflicts] = decision.openConflicts;
-  const faded = decision.state === "rejected" || decision.archivedAt !== undefined;
+function DecisionRow({
+  home,
+  decision,
+  grouping,
+  listings,
+}: {
+  home: string;
+  decision: DecisionSummary;
+  grouping: Grouping;
+  listings: number | undefined;
+}) {
+  const rejected = decision.state === "rejected";
+  const faded = rejected || decision.archivedAt !== undefined;
   return (
-    <div className={`${page.row} ${faded ? page.rejected : ""}`}>
-      <span className={page.title}>
-        <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>
-        {decision.colors && decision.colors.length > 0 && (
-          <span className={page.swatches}>
-            {decision.colors.map((color, index) => (
-              // Two colors may share a name, so the position keeps keys apart.
-              <SwatchSquare key={`${index}-${color.name}`} hex={color.hex} />
-            ))}
-          </span>
-        )}
+    <div className={`${page.row} ${faded ? page.faded : ""} ${rejected ? page.rejected : ""}`}>
+      <StateMark state={decision.state} className={page.mark} />
+      <div className={page.titleCell}>
+        <span className={page.titleLine}>
+          <Link className={`${page.title} clamp`} to={decisionPath(home, decision.slug)}>
+            {decision.title}
+          </Link>
+          {decision.colors && decision.colors.length > 0 && (
+            <span className={page.swatches}>
+              {decision.colors.map((color, index) => (
+                // Two colors may share a name, so the position keeps keys apart.
+                <SwatchSquare key={`${index}-${color.name}`} hex={color.hex} />
+              ))}
+            </span>
+          )}
+        </span>
+        <SecondLine decision={decision} listings={listings} />
+      </div>
+      <span className={page.facts}>
+        <span className={page.kind}>{KIND_LABEL[decision.kind]}</span>
+        <span className={page.room}>
+          {grouping === "room" ? STATE_LABEL[decision.state] : (decision.room?.name ?? WHOLE_HOME)}
+        </span>
       </span>
-      <span className={page.kind}>{KIND_LABEL[decision.kind]}</span>
-      <span className={page.state}>
-        <StatePill state={decision.state} />
-        {decision.fulfilledAt && <FulfilledNote />}
-        {decision.archivedAt && <span className={styles.tag}>Archived</span>}
-      </span>
-      <span className={page.review}>
-        {flag && (
-          <FlagMark>
-            {flagSummary(flag)}
-            {moreFlags.length > 0 && ` (and ${moreFlags.length} more)`}
-          </FlagMark>
-        )}
-        {conflict && (
-          <span className={page.conflict}>
-            Conflict: {conflict.description}
-            {moreConflicts.length > 0 && ` (and ${moreConflicts.length} more)`}
-          </span>
-        )}
-      </span>
+      <span className={page.since}>{openSince(decision.createdAt)}</span>
     </div>
   );
 }
 
-/** A Decision's title, kind, and state, with a marker when it is flagged or in Conflict. */
-export function DecisionLine({ home, decision }: { home: string; decision: DecisionSummary }) {
+/**
+ * Under the title: its open Flags and Conflicts in the attention color, then neutral facts in
+ * muted ink (a Purchase's Listing count, its Fulfilment, Archived). Nothing else goes here.
+ */
+function SecondLine({
+  decision,
+  listings,
+}: {
+  decision: DecisionSummary;
+  listings: number | undefined;
+}) {
+  const [flag, ...moreFlags] = decision.openFlags;
+  const conflicts = decision.openConflicts.length;
+  const attention: ReactNode[] = [];
+  if (flag) {
+    attention.push(
+      <span key="flag" className={page.attention}>
+        Flagged: {flagSummary(flag)}
+        {moreFlags.length > 0 && ` (and ${moreFlags.length} more)`}
+      </span>,
+    );
+  }
+  if (conflicts > 0) {
+    attention.push(
+      <span key="conflict" className={page.attention}>
+        {conflicts === 1 ? "Conflict" : `${conflicts} Conflicts`}
+      </span>,
+    );
+  }
+  const fulfilled = decision.fulfilledAt && shortDate(decision.fulfilledAt);
+  const neutral = [
+    listings !== undefined && listings > 0 && `${listings} Listing${listings === 1 ? "" : "s"}`,
+    fulfilled && `✓ Fulfilled ${fulfilled}`,
+    decision.archivedAt && "Archived",
+  ].filter(Boolean);
+  if (attention.length === 0 && neutral.length === 0) return null;
   return (
-    <Parts>
-      <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>
-      {KIND_LABEL[decision.kind]}
-      {STATE_LABEL[decision.state]}
-      {decision.fulfilledAt && "Fulfilled"}
-      {decision.openFlags.length > 0 && <span className={styles.tag}>Flagged</span>}
-      {decision.openConflicts.length > 0 && <span className={styles.tag}>Conflict</span>}
-    </Parts>
+    <span className={page.second}>
+      {attention}
+      {neutral.length > 0 && <span className={page.neutral}>{neutral.join(" · ")}</span>}
+    </span>
   );
 }

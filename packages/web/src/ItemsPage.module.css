@@ -1,4 +1,42 @@
-/* The Items page: a compact table with name search and filters; a row's name opens its page. */
+/* The Inventory: header stats that filter, then the Items grouped by Room, one grid row each. A
+   row's name is its one link and the whole row opens it. At phone width the columns stack. */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+.stat:hover {
+  border-color: var(--color-ink-muted);
+}
+
+.stat[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-ink);
+}
+
+.statCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* A count of missing facts is what needs the user, so its number takes the attention colour. */
+.missing .statCount {
+  color: var(--color-attention);
+}
 
 .filters {
   display: flex;
@@ -10,6 +48,11 @@
 
 .search input {
   width: 16rem;
+  max-width: 100%;
+}
+
+.clear {
+  font-size: var(--text-sm);
 }
 
 .visuallyHidden {
@@ -21,37 +64,125 @@
   white-space: nowrap;
 }
 
-.table td {
-  font-size: var(--text-sm);
+/* One grid for the column labels and every row, so the columns line up across groups. */
+.columns,
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-5);
+  align-items: start;
 }
 
-.name {
+.columns {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.group {
+  margin-top: var(--space-5);
+}
+
+.groupTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  margin: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-hairline);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
   font-weight: 600;
 }
 
-.quantity {
-  color: var(--color-ink-muted);
-  font-variant-numeric: tabular-nums;
+/* The Room's name leads its group; it is chrome, so it underlines only under the pointer. */
+.groupTitle a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.category {
-  display: block;
+.groupTitle a:hover {
+  text-decoration: underline;
+}
+
+.groupCount {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.needsRoom {
+  color: var(--color-attention);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline-soft);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background: var(--color-card);
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--text-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.kind {
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
 }
 
-.numbers {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.looks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
-.looks {
-  display: inline-flex;
+.colors {
+  display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
+  align-items: center;
 }
 
-.archived > td {
+.materials {
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.size {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.archived .what,
+.archived .looks,
+.archived .size {
   opacity: 0.55;
 }
 
@@ -59,6 +190,22 @@
   text-decoration: line-through;
 }
 
+@media (max-width: 40rem) {
+  .columns {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: var(--space-3);
+  }
+
+  .size {
+    text-align: left;
+  }
+}
+
+/* A Room's Items as a compact list (the Room page). */
 .list {
   margin: 0;
   padding: 0;

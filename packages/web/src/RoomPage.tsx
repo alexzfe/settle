@@ -6,6 +6,7 @@ import type {
   Home,
   NamedRef,
   Obstruction,
+  Provenance,
   RoomDetail,
   SurfacePart,
   Wall,
@@ -34,10 +35,18 @@ import { LrvBar } from "./Swatch";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { useDocumentTitle } from "./ui/documentTitle";
-import { Section } from "./ui/Section";
 import { ShowSwitch, useRememberedSwitch } from "./ui/ShowArchived";
-import { FlagMark, FulfilledNote, StatePill } from "./ui/StatePill";
-import { ArchivedNote, dimensions, Fact, Length, lightText, Parts, ProvenanceTag } from "./Values";
+import { FlagMark, FulfilledNote, StateMark } from "./ui/StateMark";
+import {
+  ArchivedNote,
+  dimensions,
+  ESTIMATE_NOTE,
+  Fact,
+  Length,
+  LISTED_NOTE,
+  lightText,
+  Parts,
+} from "./Values";
 
 const SURFACE_PART: Record<SurfacePart, string> = {
   walls: "Walls",
@@ -125,7 +134,7 @@ function RoomSheet({
         <Fact term="Times of use">{room.timesOfUse.join(", ")}</Fact>
       </dl>
 
-      <Section title="Walls" id="walls">
+      <Part title="Walls" id="walls">
         {walls.length === 0 ? (
           <p className={styles.muted}>No Walls recorded.</p>
         ) : (
@@ -134,27 +143,27 @@ function RoomSheet({
         {roofWindows.length > 0 && (
           <section className={page.subsection}>
             <h3>In the roof</h3>
-            <OpeningList windows={roofWindows} doors={[]} />
+            <OpeningList windows={roofWindows} doors={[]} compact />
           </section>
         )}
         {windowsOffWall.length + doorsOffWall.length > 0 && (
           <section className={page.subsection}>
             <h3>On no recorded Wall</h3>
-            <OpeningList windows={windowsOffWall} doors={doorsOffWall} />
+            <OpeningList windows={windowsOffWall} doors={doorsOffWall} compact />
           </section>
         )}
-      </Section>
+      </Part>
 
       <div className={page.pair}>
         <DaylightCard room={room} latitude={home?.latitude} />
         <GapsCard room={room} />
       </div>
 
-      <Section title="Surfaces" id="surfaces">
+      <Part title="Surfaces" id="surfaces">
         <Surfaces surfaces={room.surfaces} walls={walls} />
-      </Section>
+      </Part>
 
-      <Section title="Features">
+      <Part title="Features">
         {room.features.length === 0 ? (
           <p className={styles.muted}>No Features recorded.</p>
         ) : (
@@ -166,9 +175,9 @@ function RoomSheet({
             ))}
           </ul>
         )}
-      </Section>
+      </Part>
 
-      <Section title="Lights">
+      <Part title="Lights">
         {room.lights.length === 0 ? (
           <p className={styles.muted}>No lights recorded, so how the Room is lit is unknown.</p>
         ) : (
@@ -190,16 +199,42 @@ function RoomSheet({
             ))}
           </ul>
         )}
-      </Section>
+      </Part>
 
       <RoomItems items={room.items} />
 
-      <Section title="Decisions">
+      <Part title="Decisions">
         <RoomDecisions decisions={decisions} />
-      </Section>
+      </Part>
 
       <RoomNav room={room} rooms={rooms} />
     </>
+  );
+}
+
+/**
+ * A part of the Room Sheet under a small-caps label ("Walls", "Items"): these name what follows
+ * rather than head a section of prose, so they take the sans. The serif stays for the Room's name.
+ */
+function Part({
+  title,
+  action,
+  id,
+  children,
+}: {
+  title: ReactNode;
+  action?: ReactNode;
+  id?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section className={page.part} id={id}>
+      <div className={page.partHeader}>
+        <h2 className={`label ${page.partTitle}`}>{title}</h2>
+        {action && <div className={page.partAction}>{action}</div>}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -274,7 +309,7 @@ function RoomItems({ items }: { items: RoomDetail["items"] }) {
   const archived = items.filter((item) => item.archivedAt).length;
   const shown = showArchived ? items : items.filter((item) => !item.archivedAt);
   return (
-    <Section
+    <Part
       title="Items"
       action={
         <ShowSwitch
@@ -290,7 +325,7 @@ function RoomItems({ items }: { items: RoomDetail["items"] }) {
       ) : (
         <ItemList home={home} items={shown} />
       )}
-    </Section>
+    </Part>
   );
 }
 
@@ -522,7 +557,16 @@ function RoomLink({ room }: { room: NamedRef }) {
  * is measured along the Wall of the Room it was first recorded in (side A), so it only places the
  * Door on that Room's page.
  */
-function OpeningList({ windows, doors }: { windows: Window[]; doors: Door[] }) {
+function OpeningList({
+  windows,
+  doors,
+  compact = false,
+}: {
+  windows: Window[];
+  doors: Door[];
+  /** True in a list of openings; the Wall's own card examines them and names each Provenance. */
+  compact?: boolean;
+}) {
   const openings = [
     ...windows.map((window) => ({ slug: window.slug, offset: window.offset, window })),
     ...doors.map((door) => ({
@@ -536,9 +580,9 @@ function OpeningList({ windows, doors }: { windows: Window[]; doors: Door[] }) {
       {openings.map((opening) => (
         <li key={opening.slug}>
           {"window" in opening ? (
-            <WindowLine window={opening.window} />
+            <WindowLine window={opening.window} compact={compact} />
           ) : (
-            <DoorLine door={opening.door} offset={opening.offset} />
+            <DoorLine door={opening.door} offset={opening.offset} compact={compact} />
           )}
         </li>
       ))}
@@ -546,38 +590,54 @@ function OpeningList({ windows, doors }: { windows: Window[]; doors: Door[] }) {
   );
 }
 
-function WindowLine({ window }: { window: Window }) {
+function WindowLine({ window, compact }: { window: Window; compact: boolean }) {
   return (
     <Parts>
       <strong>{WINDOW_KIND[window.kind ?? "standard"]}</strong>
       {window.roofFacing && `roof facing ${compass(window.roofFacing)}`}
-      {dimensions([
-        ["W", window.width],
-        ["H", window.height],
-      ])}
+      {dimensions(
+        [
+          ["W", window.width],
+          ["H", window.height],
+        ],
+        undefined,
+        { compact },
+      )}
       {window.sillHeight && (
         <span>
-          sill <Length value={window.sillHeight} />
+          sill <Length value={window.sillHeight} compact={compact} />
         </span>
       )}
-      {window.offset && <FromStart offset={window.offset} />}
+      {window.offset && <FromStart offset={window.offset} compact={compact} />}
       {window.glass && window.glass !== "clear" && `${window.glass} glass`}
     </Parts>
   );
 }
 
-function DoorLine({ door, offset }: { door: Door; offset: Measure | undefined }) {
+function DoorLine({
+  door,
+  offset,
+  compact,
+}: {
+  door: Door;
+  offset: Measure | undefined;
+  compact: boolean;
+}) {
   const kind = door.noDoor ? "Doorway" : door.glazed ? "Glazed door" : "Door";
   return (
     <Parts>
       <span>
         <strong>{kind}</strong> {otherSide(door)}
       </span>
-      {dimensions([
-        ["clear width", door.clearWidth],
-        ["H", door.height],
-      ])}
-      {offset && <FromStart offset={offset} />}
+      {dimensions(
+        [
+          ["clear width", door.clearWidth],
+          ["H", door.height],
+        ],
+        undefined,
+        { compact },
+      )}
+      {offset && <FromStart offset={offset} compact={compact} />}
     </Parts>
   );
 }
@@ -600,10 +660,10 @@ function otherSide(door: Door): ReactNode {
   }
 }
 
-function FromStart({ offset }: { offset: Measure }) {
+function FromStart({ offset, compact }: { offset: Measure; compact: boolean }) {
   return (
     <span>
-      <Length value={offset} /> from the Wall's start
+      <Length value={offset} compact={compact} /> from the Wall's start
     </span>
   );
 }
@@ -711,7 +771,7 @@ function DaylightCard({ room, latitude }: { room: RoomDetail; latitude: number |
   );
   return (
     <Card className={page.daylight}>
-      <h2 className={page.cardTitle}>Daylight</h2>
+      <h2 className={`label ${page.cardTitle}`}>Daylight</h2>
       {openings.length === 0 ? (
         <p className={styles.muted}>
           {room.windowless
@@ -839,7 +899,7 @@ function GapsCard({ room }: { room: RoomDetail }) {
   });
   return (
     <Card className={page.gaps}>
-      <h2 className={page.cardTitle}>Gaps</h2>
+      <h2 className={`label ${page.cardTitle}`}>Gaps</h2>
       {room.gaps.length === 0 ? (
         <p className={page.noGaps}>
           <span aria-hidden>✓</span> None: everything advice needs is recorded.
@@ -910,21 +970,18 @@ function SurfaceFill({ surface }: { surface: Surface }) {
   );
 }
 
+/** What a Surface color's Provenance says on hover, where the list form shows no tag. */
+function colorTitle(provenance: Provenance): string | undefined {
+  if (provenance === "estimated") return ESTIMATE_NOTE;
+  if (provenance === "listed") return LISTED_NOTE;
+  return undefined;
+}
+
 function SurfaceLine({ surface }: { surface: Surface }) {
   const { color } = surface;
   return (
     <Parts>
-      {color && (
-        <span>
-          {formatColor(color)}
-          {color.provenance !== "measured" && (
-            <>
-              {" "}
-              <ProvenanceTag provenance={color.provenance} />
-            </>
-          )}
-        </span>
-      )}
+      {color && <span title={colorTitle(color.provenance)}>{formatColor(color)}</span>}
       {surface.materials
         ?.map(({ material, where }) => (where ? `${material} (${where})` : material))
         .join(", ")}
@@ -944,11 +1001,15 @@ function FeatureLine({ feature }: { feature: Feature }) {
       {!other && feature.description}
       {feature.wall && wallNameOf(feature.wall)}
       {feature.positionNote}
-      {dimensions([
-        ["W", feature.width],
-        ["H", feature.height],
-        ["D", feature.depth],
-      ])}
+      {dimensions(
+        [
+          ["W", feature.width],
+          ["H", feature.height],
+          ["D", feature.depth],
+        ],
+        undefined,
+        { compact: true },
+      )}
       {light && `light: ${light}`}
       {feature.archivedAt && (
         <ArchivedNote at={feature.archivedAt} reason={feature.archivedReason} />
@@ -964,13 +1025,19 @@ function RoomDecisions({ decisions }: { decisions: DecisionSummary[] }) {
   return (
     <ul className={page.decisions}>
       {decisions.map((decision) => (
-        <li key={decision.slug}>
-          <StatePill state={decision.state} />
-          <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>
-          <span className={styles.muted}>{KIND_LABEL[decision.kind]}</span>
-          {decision.fulfilledAt && <FulfilledNote />}
-          {decision.openFlags.length > 0 && <FlagMark />}
-          {decision.openConflicts.length > 0 && <span className={styles.tag}>Conflict</span>}
+        <li key={decision.slug} className={page.decision}>
+          <StateMark state={decision.state} />
+          <div className={page.decisionText}>
+            <Link className={`clamp ${page.decisionLink}`} to={decisionPath(home, decision.slug)}>
+              {decision.title}
+            </Link>
+            <span className={page.decisionMeta}>
+              <span>{KIND_LABEL[decision.kind]}</span>
+              {decision.fulfilledAt && <FulfilledNote />}
+              {decision.openFlags.length > 0 && <FlagMark />}
+              {decision.openConflicts.length > 0 && <span className={styles.tag}>Conflict</span>}
+            </span>
+          </div>
         </li>
       ))}
     </ul>

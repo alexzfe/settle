@@ -311,14 +311,14 @@ it("renders the Room Sheet from get_room: banner, Walls, daylight, Gaps, and the
   expect(listIn("Surfaces")).toEqual([
     "WallsSetting Plaster (Farrow & Ball 231), plaster, matt",
     "Flooroak boards (living end), tiles (by the door)",
-    "Wall 3~Inchyra Blue estimate",
+    "Wall 3~Inchyra Blue",
   ]);
   expect(listIn("Features")).toEqual([
-    "Radiator or heater, Wall 1, under the window, W 1.00 m × H 0.60 m",
+    "Radiator or heater, Wall 1, under the window, W 1.00 × H 0.60 m",
   ]);
   expect(listIn("Lights")).toEqual(["Floor lamp (Item): ambient, 2700 K, dim to warm"]);
   expect(listIn("Items")).toEqual([
-    "Sofa (Seating), Wall 3, W 2.10 m × D ~0.95 m estimate",
+    "Sofa (Seating), Wall 3, W 210 × D ~95 cm",
     "Floor lamp (Lighting), light: ambient, 2700 K, dim to warm",
   ]);
 
@@ -431,10 +431,15 @@ it("lists the Room's open Decisions that get_room answers with, each linking to 
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByText("A reading corner");
   expect(listIn("Decisions")).toEqual([
-    "○CandidateA reading cornerRoom use",
-    "◐LeaningA low sofaPurchase",
-    "●SettledCalm and lowRoom Direction⚑",
+    "A reading cornerRoom use",
+    "A low sofaPurchase",
+    "Calm and lowRoom Direction⚑",
   ]);
+  // Each row's state is its mark, named for a screen reader.
+  const rows = partOf("Decisions", 2)?.querySelectorAll("ul > li") ?? [];
+  expect(
+    [...rows].map((row) => row.querySelector('[role="img"]')?.getAttribute("aria-label")),
+  ).toEqual(["Candidate", "Leaning", "Settled"]);
   expect(screen.getByRole("link", { name: "Calm and low" }).getAttribute("href")).toBe(
     "/homes/flat/decisions/calm",
   );
@@ -522,10 +527,7 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
   renderRoutes("/homes/flat/rooms/living-room");
   await screen.findByText("Olive walls");
   // A Room color is listed with the Room's other open Decisions.
-  expect(listIn("Decisions")).toEqual([
-    "●SettledOlive wallsRoom color",
-    "◐LeaningA low sofaPurchase",
-  ]);
+  expect(listIn("Decisions")).toEqual(["Olive wallsRoom color", "A low sofaPurchase"]);
 
   // Fulfilment changes the walls Surface and publishes a surface change, then a decision one.
   room = {
@@ -550,7 +552,7 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
   );
   expect(await screen.findByTitle("Approximately #708238")).toBeDefined();
   expect(surfaceCard("Walls").textContent).toBe(
-    "Walls~Olive estimate, plaster, eggshellLRV 18 · dark, soaks up light",
+    "Walls~Olive, plaster, eggshellLRV 18 · dark, soaks up light",
   );
   expect(screen.queryByTitle("Approximately #e3c9b6")).toBeNull();
   // The banner takes the new walls color, with light text on the dark ground.
@@ -564,7 +566,7 @@ it("shows the new Surface color when a Room color is Fulfilled while the page is
       recordSlug: "olive-walls",
     }),
   );
-  await waitFor(() => expect(listIn("Decisions")).toEqual(["◐LeaningA low sofaPurchase"]));
+  await waitFor(() => expect(listIn("Decisions")).toEqual(["A low sofaPurchase"]));
 });
 
 describe("placeOpening", () => {

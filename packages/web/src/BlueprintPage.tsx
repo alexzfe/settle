@@ -107,7 +107,7 @@ export function BlueprintPage() {
       <h1>
         {blueprint.label}, page {shown.page} of {blueprint.pageCount}
       </h1>
-      <dl className={styles.facts}>
+      <dl className={`${styles.facts} ${page.facts}`}>
         <Fact term="Level">{shown.level && levelTitle(shown.level)}</Fact>
         <Fact term="Size">
           {shown.width} × {shown.height} px
@@ -242,7 +242,7 @@ function PrintedList({
   const loading = sheets.some((sheet) => sheet.isPending);
   return (
     <aside className={page.printed} aria-labelledby="printed-title">
-      <h2 id="printed-title" className={page.printedTitle}>
+      <h2 id="printed-title" className={`label ${page.printedTitle}`}>
         Recorded from this page
       </h2>
       {values.length === 0 ? (

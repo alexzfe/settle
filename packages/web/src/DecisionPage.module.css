@@ -28,28 +28,43 @@
   color: inherit;
 }
 
-/* Main column and side panel; on phones the panel follows the record. */
+/* The state: the mark and its name, the one state indicator on the page beside the ladder. */
+.stateName {
+  display: inline-flex;
+  gap: 0.35em;
+  align-items: center;
+  font-weight: 500;
+}
+
+.fulfilled {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Main column and rail; below 1000px the rail follows the record, with sticky off. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 1000px) {
   .layout {
-    grid-template-columns: minmax(0, 1fr) 17rem;
+    grid-template-columns: minmax(0, 1fr) 296px;
     align-items: start;
   }
 
   /* A Purchase's sections under its board keep to the main column's width. */
   .after {
-    max-width: calc(100% - 17rem - var(--space-6));
+    max-width: calc(100% - 296px - var(--space-6));
   }
 }
 
-/* The panel stays in reach while the record scrolls, but only on a window tall enough to show
-   all of it: a pinned panel taller than the window would hide its own last buttons. */
-@media (min-width: 60rem) and (min-height: 40rem) {
+/* The rail stays in reach while the record scrolls, but only on a window tall enough to show
+   all of it: a pinned rail taller than the window would hide its own last buttons. */
+@media (min-width: 1000px) and (min-height: 40rem) {
   .side {
     position: sticky;
     top: var(--space-4);
@@ -75,19 +90,6 @@
   margin: 0 0 var(--space-2);
   color: var(--color-ink-muted);
   font-size: var(--text-sm);
-}
-
-.statement {
-  max-width: var(--width-reading);
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  line-height: 1.45;
-}
-
-.direction {
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  line-height: 1.5;
 }
 
 /* Basis and Evidence chips. */
@@ -117,23 +119,11 @@ a.chip {
 }
 
 a.chip:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-ink-muted);
 }
 
-.dot {
-  font-size: var(--text-sm);
-}
-
-.state-candidate .dot {
-  color: var(--color-stone);
-}
-
-.state-leaning .dot {
-  color: var(--color-attention);
-}
-
-.state-settled .dot {
-  color: var(--color-accent);
+.chipMark {
+  align-self: center;
 }
 
 .state-rejected {
@@ -420,8 +410,8 @@ a.chip:hover {
   margin: 0;
   padding-inline-start: var(--space-8);
   font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  line-height: 1.4;
+  font-size: var(--text-agent);
+  line-height: 1.5;
 }
 
 .principles li::marker {

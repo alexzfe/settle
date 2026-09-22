@@ -1,13 +1,13 @@
 // One Item's page: its register (what it is, where it sits, when and where it was bought, how long
 // the warranty runs), the Decisions tied to it, and the history of its record. Whatever is not
-// recorded is left out entirely, not shown blank; the pencil opens a form with every field.
+// recorded is left out entirely, not shown blank; the pencil in the details card's header opens a
+// form with every field. Values here name their Provenance in full, Measured included.
 
 import { type ReactNode, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
 import { type ChangeEntry, type Item, type ItemPage as ItemRecord, listingPhotoUrl } from "./api";
 import { changeText, sessionName } from "./ChangeLogPage";
-import page from "./DecisionPage.module.css";
 import { decisionPath, itemPath } from "./decisions";
 import {
   centimetres,
@@ -29,7 +29,7 @@ import { Callout } from "./ui/Callout";
 import { Card } from "./ui/Card";
 import { useDocumentTitle } from "./ui/documentTitle";
 import { Section } from "./ui/Section";
-import { FulfilledNote, StatePill } from "./ui/StatePill";
+import { FulfilledNote, StateMark } from "./ui/StateMark";
 import { dimensions, Fact, ListedTag, lightText, Parts } from "./Values";
 
 export function ItemPage() {
@@ -46,17 +46,17 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
   const [editing, setEditing] = useState(false);
   return (
     <article>
-      <header className={`${page.header} ${sheet.header}`}>
+      <header className={sheet.header}>
         <div className={sheet.heading}>
-          <p className={page.eyebrow}>
+          <p className={sheet.eyebrow}>
             {item.room ? (
               <Link to={`/homes/${home}/rooms/${item.room.slug}`}>{item.room.name}</Link>
             ) : (
               "Unplaced"
             )}{" "}
-            › <Link to={`/homes/${home}/items`}>Items</Link>
+            › <Link to={`/homes/${home}/items`}>Inventory</Link>
           </p>
-          <h1 className={page.title}>{item.name}</h1>
+          <h1 className={sheet.title}>{item.name}</h1>
           <p className={sheet.kind}>
             <Parts separator=" · ">
               {sentence(item.category)}
@@ -65,17 +65,6 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
             </Parts>
           </p>
         </div>
-        {!editing && (
-          <button
-            type="button"
-            className={`secondary ${sheet.pencil}`}
-            aria-label="Edit its facts"
-            title="Edit its facts"
-            onClick={() => setEditing(true)}
-          >
-            <span aria-hidden>✎</span>
-          </button>
-        )}
       </header>
 
       {item.archivedAt && (
@@ -123,6 +112,18 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
           <ItemEdit home={home} item={item} onDone={() => setEditing(false)} />
         ) : (
           <Card className={sheet.card}>
+            <div className={sheet.cardHeader}>
+              <span className="label">Details</span>
+              <button
+                type="button"
+                className={`secondary ${sheet.pencil}`}
+                aria-label="Edit its facts"
+                title="Edit its facts"
+                onClick={() => setEditing(true)}
+              >
+                <span aria-hidden>✎</span>
+              </button>
+            </div>
             <Register home={home} item={item} />
           </Card>
         )}
@@ -178,7 +179,10 @@ function WebAddress({ url }: { url: string }) {
   );
 }
 
-/** The facts recorded about an Item, each left out when it is not recorded. */
+/**
+ * The facts recorded about an Item, each left out when it is not recorded. With none but its name,
+ * one muted line pointing at the pencil.
+ */
 function Register({ home, item }: { home: string; item: Item }) {
   const listed = (field: Listed) =>
     item.listed?.includes(field) ? (
@@ -198,7 +202,7 @@ function Register({ home, item }: { home: string; item: Item }) {
     <span className={sheet.looks}>
       {item.colors?.map((color, index) => (
         // Two colors may share a name, so the position keeps keys apart.
-        <Swatch key={`${index}-${color.name}`} color={color} />
+        <Swatch key={`${index}-${color.name}`} color={color} named />
       ))}
       {item.materials && item.materials.length > 0 && <span>{item.materials.join(", ")}</span>}
     </span>
@@ -231,6 +235,21 @@ function Register({ home, item }: { home: string; item: Item }) {
   );
   const countdown = item.warrantyUntil && warrantyCountdown(item.warrantyUntil);
   const light = item.light && lightText(item.light);
+  const recorded = [
+    where,
+    item.width || item.depth || item.height,
+    looks,
+    make,
+    bought,
+    item.warrantyUntil,
+    item.serialNumber,
+    item.manualLink,
+    item.link,
+    light,
+  ].some(Boolean);
+  if (!recorded) {
+    return <p className={sheet.onlyName}>Only a name is recorded. ✎ to add more.</p>;
+  }
   return (
     <dl className={`${styles.facts} ${sheet.facts}`}>
       <Fact term="Where">{where}</Fact>
@@ -242,6 +261,7 @@ function Register({ home, item }: { home: string; item: Item }) {
             ["H", item.height],
           ],
           "cm",
+          { named: true },
         )}
       </Fact>
       <Fact term="Colors & materials">{looks || undefined}</Fact>
@@ -280,15 +300,20 @@ const RELATION_LABEL: Record<Relation["relation"], string> = {
   "replaced-by": "replaced by",
 };
 
-/** "relies on it  Main bedroom bed frame ● Settled", with the Requirements citing the Item. */
+/** "relies on it  ◑ Main bedroom bed frame", with the Requirements citing the Item. */
 function RelationLine({ home, decision }: { home: string; decision: Relation }) {
   return (
     <>
       <span className={sheet.relation}>{RELATION_LABEL[decision.relation]}</span>
       <span className={sheet.relationBody}>
         <span className={sheet.relationHead}>
-          <Link to={decisionPath(home, decision.slug)}>{decision.title}</Link>{" "}
-          <StatePill state={decision.state} />
+          <StateMark state={decision.state} />
+          <Link
+            className={decision.state === "rejected" ? sheet.rejected : undefined}
+            to={decisionPath(home, decision.slug)}
+          >
+            {decision.title}
+          </Link>
           {decision.fulfilled && <FulfilledNote />}
           {decision.archived && <span className={styles.muted}>Archived</span>}
         </span>

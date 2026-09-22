@@ -77,15 +77,41 @@ export function formatLength(value: Measure, unit: LengthUnit = "m"): string {
   return `${estimatedMark(value.provenance)}${text}`;
 }
 
+/**
+ * Labelled lengths in the list form, one unit at the end and "~" before each Estimated value:
+ * "210 × ~95 × 80 cm". When one is missing the rest keep their labels, "W 210 × H 80 cm", so a
+ * number is never read as the wrong side. Undefined when none is recorded.
+ */
+export function formatDimensions(
+  parts: readonly [label: string, value: Measure | undefined][],
+  unit: LengthUnit = "m",
+): string | undefined {
+  const present = parts.filter((part): part is [string, Measure] => part[1] !== undefined);
+  if (present.length === 0) return undefined;
+  const labelled = present.length < parts.length;
+  const numbers = present.map(([label, value]) => {
+    const text = formatLength(value, unit).replace(/ c?m$/, "");
+    return labelled ? `${label} ${text}` : text;
+  });
+  return `${numbers.join(" × ")} ${unit}`;
+}
+
 /** A color by name, with its maker and code when known: "~Setting Plaster (Farrow & Ball 231)". */
 export function formatColor(color: ColorText): string {
   const maker = [color.brand, color.code].filter(Boolean).join(" ");
   return `${estimatedMark(color.provenance)}${color.name}${maker ? ` (${maker})` : ""}`;
 }
 
-/** A timestamp in the reader's locale. */
+/** A timestamp in the reader's locale, the way the rest of the app writes dates: "15 Sep 2026, 03:19". */
 export function formatTime(at: string): string {
-  return new Date(at).toLocaleString();
+  return new Date(at).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 /** A date in the reader's locale. */

@@ -50,3 +50,29 @@
   padding-inline-start: var(--space-5);
   color: var(--color-ink-muted);
 }
+
+/* A flagged Decision: the 4px attention dot the list rows use, with its cause beside it. */
+.flagDot {
+  display: inline-flex;
+  gap: 0.4em;
+  align-items: baseline;
+  color: var(--color-attention);
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.25em;
+}
+
+/* A Decision's state in a line of facts: the mark and its name. */
+.state {
+  display: inline-flex;
+  gap: 0.3em;
+  align-items: center;
+  white-space: nowrap;
+}

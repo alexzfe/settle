@@ -173,6 +173,18 @@ describe("a bare Item", () => {
     expect(history?.textContent).toContain("Home Intake Session: added");
   });
 
+  it("says so when only a name is recorded, pointing at the pencil", async () => {
+    stubItem(() => ({
+      ...bare,
+      item: { slug: "vase", name: "Vase", category: "decor", quantity: 1 },
+    }));
+    renderRoutes("/homes/flat/items/vase");
+    await screen.findByRole("heading", { name: "Vase" });
+    expect(screen.getByText("Only a name is recorded. ✎ to add more.")).toBeDefined();
+    expect(document.querySelector("dl")).toBeNull();
+    expect(screen.getByRole("button", { name: "Edit its facts" })).toBeDefined();
+  });
+
   it("leaves the History out when it has none", async () => {
     stubItem(() => ({ ...bare, history: [] }));
     renderRoutes("/homes/flat/items/rosemary");
@@ -199,7 +211,8 @@ describe("a rich Item", () => {
     ]);
     const fact = Object.fromEntries(facts());
     expect(fact.Where).toBe("Main bedroom · Wall 3 · head against the wall opposite the hallway");
-    expect(fact.Size).toBe("W 153 cm × D 203 cm × H 26 cm");
+    // The page examines one record, so every Provenance is written out, Measured included.
+    expect(fact.Size).toBe("W 153 cm × D 203 cm × H 26 cm Measured");
     expect(fact["Colors & materials"]).toBe("white Listedlatex, pocket springs");
     expect(fact["Brand · Model"]).toBe("Drimer · Pocket Aero Látex, Queen Americano");
     expect(fact.Bought).toBe("Mar 2025 from drimer.pe Listed · S/ 1,299");
@@ -236,12 +249,18 @@ describe("a rich Item", () => {
     const rows = [...(section?.querySelectorAll(":scope > ul > li") ?? [])].map(
       (row) => row.textContent,
     );
+    // The mark is the state: it is named for a screen reader, not written in the row.
     expect(rows).toEqual([
-      "relies on itMain bedroom bed frame ◐Leaning" +
+      "relies on itMain bedroom bed frame" +
         "Fits a 153 × 203 cm mattress (must)Slats ≤ 7 cm apart (must)",
-      "bought byA new mattress ●Settled✓ Fulfilled",
-      "replaced byA better mattress ●Settled✓ Fulfilled",
+      "bought byA new mattress✓ Fulfilled",
+      "replaced byA better mattress✓ Fulfilled",
     ]);
+    expect(
+      within(section as HTMLElement)
+        .getAllByRole("img")
+        .map((mark) => mark.getAttribute("aria-label")),
+    ).toEqual(["Leaning", "Settled", "Settled"]);
     expect(screen.getByRole("link", { name: "Main bedroom bed frame" }).getAttribute("href")).toBe(
       "/homes/flat/decisions/bed-frame",
     );

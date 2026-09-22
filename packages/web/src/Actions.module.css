@@ -30,3 +30,74 @@
   font-size: var(--text-xs);
   line-height: 1.4;
 }
+
+/* The state ladder: every state on its own rung, the current one highlighted. */
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ladder > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rung {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+}
+
+.rungMark {
+  display: inline-flex;
+  line-height: 0;
+}
+
+button.rung {
+  border-color: var(--color-hairline);
+  background: var(--color-card);
+}
+
+button.rung:hover {
+  border-color: var(--color-ink-muted);
+  background: var(--color-card);
+}
+
+.current .rung {
+  border-color: var(--color-ink);
+  background: var(--color-card);
+  font-weight: 600;
+}
+
+.current .rungName::after {
+  content: " · now";
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+
+.unreachable .rung {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+  opacity: 0.55;
+}
+
+.rungConsequence {
+  padding: 0 var(--space-2) var(--space-2) calc(var(--space-2) + 17px + var(--space-2));
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}

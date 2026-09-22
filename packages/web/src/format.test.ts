@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   compass,
   formatColor,
+  formatDimensions,
   formatLength,
   formatLogValue,
   sentence,
@@ -20,6 +21,37 @@ describe("formatLength", () => {
     expect(formatLength({ mm: 3505, provenance: "blueprint" })).toBe("3.51 m");
     expect(formatLength({ mm: 2505, provenance: "measured" })).toBe("2.51 m");
     expect(formatLength({ mm: 2504, provenance: "estimated" })).toBe("~2.50 m");
+  });
+});
+
+describe("formatDimensions", () => {
+  const cm = (mm: number, provenance: "measured" | "estimated" = "measured") => ({
+    mm,
+    provenance,
+  });
+
+  it("gives the list form: one unit at the end, ~ only on an Estimated value", () => {
+    expect(
+      formatDimensions(
+        [
+          ["W", cm(2100)],
+          ["D", cm(950, "estimated")],
+          ["H", cm(800)],
+        ],
+        "cm",
+      ),
+    ).toBe("210 × ~95 × 80 cm");
+  });
+
+  it("keeps the labels when one is missing, and is undefined when none is recorded", () => {
+    expect(
+      formatDimensions([
+        ["W", cm(2100)],
+        ["D", undefined],
+        ["H", cm(800)],
+      ]),
+    ).toBe("W 2.10 × H 0.80 m");
+    expect(formatDimensions([["W", undefined]])).toBeUndefined();
   });
 });
 

@@ -1,6 +1,8 @@
 // A Decision's state as the mark, the one state indicator in the app: 17px, the fill level is the
-// state. Ink while it is being worked out, olive once Settled, a stone ring once Rejected.
+// state. Ink while it is being worked out, olive once Settled, a stone ring once Rejected. The
+// small Fulfilled and Flag notes that sit beside it live here too.
 
+import type { ReactNode } from "react";
 import type { DecisionState } from "../api";
 import { STATE_LABEL } from "../decisions";
 import { type Level, SettleIcon } from "./SettleIcon";
@@ -24,6 +26,27 @@ export function StateMark({ state, className }: { state: DecisionState; classNam
       title={STATE_LABEL[state]}
     >
       <SettleIcon level={STATE_LEVEL[state]} size={17} />
+    </span>
+  );
+}
+
+/** "✓ Fulfilled", a small note beside a Settled Decision (Fulfilled is not a state, Q3). */
+export function FulfilledNote({ children = "Fulfilled" }: { children?: ReactNode }) {
+  return (
+    <span className={styles.fulfilled}>
+      <span aria-hidden>✓</span> {children}
+    </span>
+  );
+}
+
+/** A small ochre ⚑ marking a flagged Decision, with the cause as optional text beside it. */
+export function FlagMark({ children }: { children?: ReactNode }) {
+  return (
+    <span className={styles.flagMark}>
+      <span role="img" aria-label="Flagged" title="Flagged for review">
+        ⚑
+      </span>
+      {children && <span> {children}</span>}
     </span>
   );
 }

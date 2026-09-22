@@ -144,19 +144,6 @@ export function FindButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-/** The Home page's prominent box, which opens the overlay. */
-export function FindBox() {
-  const finder = useContext(FinderContext);
-  if (!finder) return null;
-  return (
-    <button type="button" className={styles.box} onClick={finder.open}>
-      <SearchIcon />
-      <span className={styles.boxText}>Find a Room, Decision, Item…</span>
-      <kbd className={styles.kbd}>/</kbd>
-    </button>
-  );
-}
-
 /** Which result has the keyboard: a row, or the side link at its right end. */
 interface Active {
   row: number;

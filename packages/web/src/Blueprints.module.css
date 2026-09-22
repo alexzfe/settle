@@ -21,9 +21,7 @@
 }
 
 .label strong {
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .count {
@@ -59,5 +57,5 @@
 }
 
 .uploaded {
-  color: var(--color-accent-strong);
+  color: var(--color-ink);
 }

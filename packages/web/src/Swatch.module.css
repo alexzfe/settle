@@ -1,4 +1,26 @@
-/* PaletteChips and LrvBar. */
+/* A color's square, PaletteChips and LrvBar. */
+
+.swatchText {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 18px, the user's color edged faintly so near-white and near-black fills both stay visible. */
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-right: 0.4em;
+  border: 1px solid var(--color-edge);
+  border-radius: 3px;
+  vertical-align: -0.25em;
+}
+
+/* No hex recorded: an empty outline in stone, never a guessed fill or a dashed box. */
+.unrecorded {
+  border-color: var(--color-stone);
+  background: transparent;
+}
 
 .palette {
   margin: var(--space-3) 0;
@@ -44,14 +66,14 @@
   box-shadow: inset 0 0 0 1px var(--color-edge);
 }
 
-/* No hex recorded: outlined only, never a guessed fill. */
+/* No hex recorded: an empty stone outline, never a guessed fill or a dashed box. */
 .placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   margin: var(--space-2);
   height: calc(8rem - 2 * var(--space-2));
-  border: 1px dashed var(--color-stone);
+  border: 1px solid var(--color-stone);
   border-radius: var(--radius-sm);
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
@@ -119,7 +141,7 @@
   height: calc(100% + 0.4rem);
   margin-left: -1px;
   border-radius: 1px;
-  background: var(--color-accent);
+  background: var(--color-ink);
   box-shadow: 0 0 0 1px var(--color-card);
 }
 

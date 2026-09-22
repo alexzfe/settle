@@ -13,6 +13,15 @@
   }
 }
 
+/* Fact names as small-caps labels. */
+.facts dt {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  line-height: 2.1;
+  text-transform: uppercase;
+}
+
 .viewerColumn {
   min-width: 0;
 }
@@ -30,9 +39,10 @@
   font-size: var(--text-xs);
 }
 
+/* The zoom in use: an ink edge and weight. Olive is kept for Settled. */
 .toolbar button[aria-pressed="true"] {
-  border-color: var(--color-accent);
-  color: var(--color-accent-strong);
+  border-color: var(--color-ink);
+  font-weight: 600;
 }
 
 .zoomLevel {
@@ -64,7 +74,6 @@
 
 .printedTitle {
   margin: 0 0 var(--space-2);
-  font-size: var(--text-lg);
 }
 
 .printedList {
@@ -76,7 +85,7 @@
 
 .printedList li {
   padding-block: var(--space-2);
-  border-bottom: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline-soft);
 }
 
 .printedList li:last-child {

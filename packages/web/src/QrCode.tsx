@@ -17,6 +17,8 @@ export function QrCode({ text, size = 200 }: { text: string; size?: number }) {
       viewBox={`0 0 ${side} ${side}`}
       width={size}
       height={size}
+      // On a narrow phone the block shrinks with its column rather than pushing the page sideways.
+      style={{ maxWidth: "100%", height: "auto" }}
       shapeRendering="crispEdges"
     >
       <title>{`QR code for ${text}`}</title>
