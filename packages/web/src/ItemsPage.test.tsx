@@ -160,6 +160,24 @@ it("opens an Item's page from anywhere in its row", async () => {
   await waitFor(() => expect(router.state.location.pathname).toBe("/homes/flat/items/sofa"));
 });
 
+it("fills a swatch from a color word when no hex is recorded", async () => {
+  stubItems(() => [
+    item("sofa", "Sofa", "living-room", {
+      colors: [
+        { name: "dark grey", provenance: "estimated" },
+        { name: "Setting Plaster", provenance: "estimated" },
+      ],
+    }),
+  ]);
+  renderRoutes("/homes/flat/items");
+  await screen.findByText("Sofa");
+  // "dark grey" says a color, so its square is filled and its tooltip says where the fill came
+  // from; a paint name says nothing about its color, so that one stays an empty outline.
+  const grey = screen.getByTitle('From the name "dark grey": no screen color recorded');
+  expect(grey.style.backgroundColor).not.toBe("");
+  expect(screen.getByTitle("No screen color recorded").style.backgroundColor).toBe("");
+});
+
 it("counts what is missing in plain words, and a stat filters the list", async () => {
   stubItems(() => [
     item("sofa", "Sofa", "living-room", {

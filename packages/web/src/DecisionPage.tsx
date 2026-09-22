@@ -251,7 +251,7 @@ function Content({
               // Two colors may share a name, so the position keeps keys apart.
               <li key={`${index}-${color.name}`}>
                 <span className={page.applicationName}>
-                  <SwatchSquare hex={color.hex} />
+                  <SwatchSquare hex={color.hex} name={color.name} />
                   {color.name}
                 </span>
                 <span className={page.applicationNote}>

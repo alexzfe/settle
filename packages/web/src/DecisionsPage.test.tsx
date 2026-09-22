@@ -305,7 +305,8 @@ it("shows a Palette's colors as small swatches in its row", async () => {
   renderRoutes("/homes/flat/decisions");
   await screen.findByText("Earthy palette");
   expect(screen.getByTitle("Approximately #e3c9b6")).toBeDefined();
-  expect(screen.getByTitle("No screen color recorded")).toBeDefined();
+  // "Olive" has no hex, but it is a color word, so its square is filled from the name.
+  expect(screen.getByTitle('From the name "Olive": no screen color recorded')).toBeDefined();
 });
 
 it("dates when a Decision was opened, naming the year only once it is past", () => {

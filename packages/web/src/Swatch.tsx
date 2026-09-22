@@ -1,34 +1,41 @@
 // A color as the pages show it, wherever a Palette, Surface, or Item color appears: an 18px square
-// filled from its approximate hex, or an empty stone outline when none is recorded (never a
-// guessed fill, never a dashed box), then its name with maker and code, LRV, Provenance, and a
-// Palette color's role.
+// filled from its approximate hex, or from its name when the name is a plain color word and no hex
+// is recorded ("dark grey", "terracotta"), or an empty stone outline when neither gives a color
+// (never a dashed box), then its name with maker and code, LRV, Provenance, and a Palette color's
+// role.
 // A Palette shows as PaletteChips, large chips sized by role, and an LRV as an LrvBar.
 
 import type { Color, PaletteRole } from "@settle/core";
 import { formatColor } from "./format";
+import { namedColorHex } from "./namedColors";
 import chips from "./Swatch.module.css";
 import { ESTIMATE_NOTE, ProvenanceTag } from "./Values";
 
 /**
  * The square alone, 18px. Decorative: the name beside it says the color; its title gives the hex.
- * With no hex recorded it is an empty outline in stone.
+ * With no hex recorded, `name` fills it from the color word when it is one ("dark grey"), and its
+ * title says the fill came from the name. With neither it is an empty outline in stone.
  */
 export function SwatchSquare({
   hex,
+  name,
   title = "No screen color recorded",
 }: {
   hex?: string | undefined;
+  /** The color's name, read for a fill when no hex is recorded. */
+  name?: string | undefined;
   /** What an empty outline's tooltip says. */
   title?: string;
 }) {
-  if (!hex) {
+  const fromName = hex ? undefined : name && namedColorHex(name);
+  if (!hex && !fromName) {
     return <span className={`${chips.swatch} ${chips.unrecorded}`} title={title} aria-hidden />;
   }
   return (
     <span
       className={chips.swatch}
-      style={{ backgroundColor: hex }}
-      title={`Approximately ${hex}`}
+      style={{ backgroundColor: hex ?? fromName }}
+      title={hex ? `Approximately ${hex}` : `From the name "${name}": no screen color recorded`}
       aria-hidden
     />
   );
@@ -54,7 +61,7 @@ export function Swatch({
   const estimated = color.provenance === "estimated";
   return (
     <span className={chips.swatchText}>
-      <SwatchSquare hex={color.hex} />
+      <SwatchSquare hex={color.hex} name={color.name} />
       <span title={compact && estimated ? ESTIMATE_NOTE : undefined}>{formatColor(color)}</span>
       {color.lrv !== undefined && `, LRV ${color.lrv}`}
       {provenance && !compact && (

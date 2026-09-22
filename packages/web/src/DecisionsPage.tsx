@@ -330,7 +330,7 @@ function DecisionRow({
             <span className={page.swatches}>
               {decision.colors.map((color, index) => (
                 // Two colors may share a name, so the position keeps keys apart.
-                <SwatchSquare key={`${index}-${color.name}`} hex={color.hex} />
+                <SwatchSquare key={`${index}-${color.name}`} hex={color.hex} name={color.name} />
               ))}
             </span>
           )}

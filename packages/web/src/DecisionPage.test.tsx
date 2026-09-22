@@ -509,8 +509,11 @@ it("lists a Palette's colors with swatches, roles, and notes, and a placeholder 
   const [plaster, olive] = [...list.querySelectorAll("li")];
   const swatch = within(plaster as HTMLElement).getByTitle("Approximately #e3c9b6");
   expect(swatch.style.backgroundColor).toBe("rgb(227, 201, 182)");
-  const placeholder = within(olive as HTMLElement).getByTitle("No screen color recorded");
-  expect(placeholder.style.backgroundColor).toBe("");
+  // "Olive" is a color word, so the small square is filled from the name, and says so.
+  const fromName = within(olive as HTMLElement).getByTitle(
+    'From the name "Olive": no screen color recorded',
+  );
+  expect(fromName.style.backgroundColor).toBe("rgb(107, 107, 63)");
 });
 
 it("shows a Room color's Surface, Wall, and finish, with its color from the Palette in its Basis", async () => {
