@@ -79,13 +79,13 @@ A free-form fact about a Home or the people living in it that doesn't fit a stru
 _Avoid_: Memory, fact
 
 **Constraint**:
-A fact about the user's situation that the AI must obey as strictly as a Locked Decision, but which is not a design choice (e.g. "rental: no painting or drilling", "two cats").
+A fact about the user's situation that the AI must obey as strictly as a Settled Decision, but which is not a design choice (e.g. "rental: no painting or drilling", "two cats").
 _Avoid_: Rule, requirement, limitation
 
 ### Deciding
 
 **Decision**:
-A choice about a Home as a whole or about one of its Rooms: a design choice, a purchase, or work to be done. Always in exactly one state: Candidate, Leaning, Locked, or Rejected.
+A choice about a Home as a whole or about one of its Rooms: a design choice, a purchase, or work to be done. Always in exactly one state: Candidate, Leaning, Settled, or Rejected.
 _Avoid_: Choice, option, recommendation
 
 **Candidate**:
@@ -96,16 +96,16 @@ _Avoid_: Possible option, idea
 A Decision state: favoured but not committed; later Evidence may strengthen or weaken it.
 _Avoid_: Tentative
 
-**Locked**:
-A Decision state: committed. The AI treats it as settled ground for later Decisions; it may Lock when the user clearly commits, but only moves a Decision out of Locked on the user's explicit instruction.
-_Avoid_: Final, locked in
+**Settled**:
+A Decision state: committed, and settled ground for later Decisions. The AI may Settle a Decision when the user clearly commits, but only moves it out of Settled on the user's explicit instruction.
+_Avoid_: Locked, final, locked in
 
 **Rejected**:
 A Decision state: ruled out. The AI must not propose it again, and only revives it on the user's explicit instruction.
 
 **Reopen**:
-To move a Locked Decision back to Leaning, on the user's explicit instruction ("let's rethink the couch"). Contrast with rejecting it ("let's give up on the green couch"). Either one flags, but never changes, every Decision with it in its Basis.
-_Avoid_: Unlock
+To move a Settled Decision back to Leaning, on the user's explicit instruction ("let's rethink the couch"). Contrast with rejecting it ("let's give up on the green couch"). Either one flags, but never changes, every Decision with it in its Basis.
+_Avoid_: Unlock, unsettle
 
 **Design Direction**:
 The Home's overall design philosophy (style references, mood, color temperature, key materials, guiding principles). It names no specific colors; those belong to the Palette. It is a Home-wide Decision, settled by the Design Direction Skill, that is automatically part of the Basis of every other Decision. It frames every later Session, Decision, and Shopping Guide.
@@ -127,14 +127,14 @@ _Avoid_: Dependencies, parents
 A Note, Session, or other Decision recorded as supporting or undermining a Decision.
 
 **Conflict**:
-A flagged contradiction between new Evidence and a Locked Decision, which only the user can resolve by keeping, reopening, or rejecting the Decision.
+A flagged contradiction between new Evidence and a Settled Decision, which only the user can resolve by keeping, reopening, or rejecting the Decision.
 
 **Flag**:
 A mark on a Decision saying that something it rests on has changed and it needs review: a Decision in its Basis was reopened, rejected, or Fulfilled with a Deviation from a *must* Requirement, or a value one of its Requirements' reasons points at has changed. Unlike a Conflict, the platform raises it; the user clears it by keeping, reopening, or rejecting the Decision.
 _Avoid_: Alert, warning
 
 **Fulfilled**:
-Said of a Locked Decision that needed action (buying, painting, installing, moving) once that action has been carried out. Fulfilling it updates the Home, e.g. by adding the bought Item to the Inventory, Archiving the Item it replaced, or changing a Room's Surface. What was actually done may differ from what was decided, and the Home records what was actually done. Not a Decision state.
+Said of a Settled Decision that needed action (buying, painting, installing, moving) once that action has been carried out. Fulfilling it updates the Home, e.g. by adding the bought Item to the Inventory, Archiving the Item it replaced, or changing a Room's Surface. What was actually done may differ from what was decided, and the Home records what was actually done. Not a Decision state.
 _Avoid_: Done, purchased, completed
 
 **Deviation**:
@@ -168,7 +168,7 @@ Said of a Listing kept for reference but not buyable now — out of stock, disco
 _Avoid_: Flagged, blocked, unavailable, paused
 
 **Shopping List**:
-Every Locked Purchase Decision that is not yet Fulfilled. Downloadable.
+Every Settled Purchase Decision that is not yet Fulfilled. Downloadable.
 _Avoid_: Wishlist, cart
 
 **Considering**:
@@ -214,7 +214,7 @@ The compact picture of the Active Home that every Skill is given at Session star
 _Avoid_: Summary, context, snapshot
 
 **Room Sheet**:
-Everything recorded about one Room — its Walls, Windows, Doors, Features, Surfaces, lights, Items, and its Decisions that are Candidate, Leaning, or Locked but not yet Fulfilled — which the AI fetches only when a Session needs that Room.
+Everything recorded about one Room — its Walls, Windows, Doors, Features, Surfaces, lights, Items, and its Decisions that are Candidate, Leaning, or Settled but not yet Fulfilled — which the AI fetches only when a Session needs that Room.
 _Avoid_: Room brief, room detail, room file
 
 **Gap**:
