@@ -1,9 +1,14 @@
-// A Purchase Decision's own parts on its page: first its Quick Guide as core assembles it, in the
-// phone page's order (the looking-for line, Measure first, Must, Avoid, then Prefer, In the shop,
-// and Ask the seller), and how to take it shopping; then the Full Guide one tap away, marked when
-// a Requirement changed after it was written; its Requirements under Must and Prefer, each with a
-// short line linking to the record it comes from; the Listings checked against the Requirements, side by
-// side; and, once Fulfilled, what was bought and how it differs from what was asked.
+// A Purchase Decision's own parts on its page: its Requirements under Must and Prefer, each with a
+// short line linking to the record it comes from; then Taking it shopping — the Agent's own Quick
+// Guide lines (what to avoid on sight, what to try in the shop, what to ask the seller), the Full
+// Guide one tap away, marked when a Requirement changed after it was written, and how to carry the
+// Quick Guide; the Listings checked against the Requirements, side by side; and, once Fulfilled,
+// what was bought and how it differs from what was asked.
+//
+// The page shows the Agent's lines alone, not the whole Quick Guide, because the Requirements are
+// a few hundred pixels above it and core splices each one into the guide verbatim (shopLines,
+// below). Every surface that renders the guide without the Requirements beside it — the phone
+// page, the printable and Markdown exports, the Shopping List — still shows it whole.
 
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
@@ -25,8 +30,10 @@ import page from "./Purchase.module.css";
 import { QrCode } from "./QrCode";
 import { useFullGuide, useHome } from "./queries";
 import { AgentWritten } from "./ui/AgentWritten";
+import { buildPrompt } from "./ui/AskAgent";
 import { Callout } from "./ui/Callout";
 import { Card } from "./ui/Card";
+import { EmptyState } from "./ui/EmptyState";
 import { Section } from "./ui/Section";
 import { Fact } from "./Values";
 
@@ -40,24 +47,64 @@ function byStrength(a: Pick<Requirement, "strength">, b: Pick<Requirement, "stre
 /** A Full Guide with at least this many headings (more than 3) gets a table of contents. */
 const CONTENTS_FROM = 4;
 
+/** The kinds of Quick Guide line the Agent writes itself, rather than core deriving them. */
+const SHOP_LINE_KINDS = new Set<QuickGuideLine["kind"]>(["avoid", "test", "ask"]);
+
 /**
- * The Quick Guide as core assembles it, and how to take it shopping. A Settled Purchase not yet
- * Fulfilled shows it above everything else (handoff Q22); the rest keep it in its usual place.
+ * The Agent's own Quick Guide lines: what the Requirements cannot say. The Decision page shows
+ * only these, because the Requirements are already on the page (handoff Q12) and core splices each
+ * one into the guide verbatim as a must or a prefer. Core's text renderer filters the same way,
+ * for the same reason ("Quick Guide, besides the Requirements", render.ts); the two are kept apart
+ * deliberately, since importing a value from core pulls its Node-only modules into this bundle.
  */
-export function QuickGuideSection({ home, decision }: { home: string; decision: DecisionDetail }) {
-  const quickLines = decision.quickGuide?.lines ?? [];
+export function shopLines(lines: readonly QuickGuideLine[]): QuickGuideLine[] {
+  return lines.filter((line) => SHOP_LINE_KINDS.has(line.kind));
+}
+
+/**
+ * Taking it shopping: what the Requirements above cannot settle — what to reject on sight, what to
+ * try with it in your hands, what to ask the seller — then the Full Guide, then where to read the
+ * whole Quick Guide once you are out of the house.
+ */
+function TakingItShoppingSection({ home, decision }: { home: string; decision: DecisionDetail }) {
+  const quickGuide = decision.quickGuide;
+  const lines = shopLines(quickGuide?.lines ?? []);
+  const fullGuide = decision.guides?.fullGuide;
   return (
-    <Section title="Quick Guide" id="quick-guide">
-      {quickLines.length > 0 ? (
-        <QuickGuideBlocks
-          lookingFor={decision.quickGuide?.lookingFor ?? decision.statement}
-          lines={quickLines}
-        />
+    <Section title="Taking it shopping" id="taking-it-shopping">
+      {/* Core's Find index still sends readers to #quick-guide (find-index.ts), and core is not
+          this track's to change; the anchor keeps those links landing here. */}
+      <span id="quick-guide" />
+      {lines.length > 0 ? (
+        <ShopLines lookingFor={quickGuide?.lookingFor} lines={lines} />
       ) : (
-        <p className={styles.muted}>None yet: the Agent writes the Guides in a Purchase Session.</p>
+        <EmptyState
+          /* Core assembles a Quick Guide for every Purchase, so what says whether the Agent has
+             been here at all is the saved Guides, not the guide. */
+          text={
+            decision.guides
+              ? "No shop notes yet: nothing recorded to avoid on sight, try in the shop, or ask the seller."
+              : "None yet: the Agent writes the Guides in a Purchase Session."
+          }
+          prompt={buildPrompt({
+            skill: "Purchase",
+            text:
+              `write the shop notes for "${decision.title}": what to avoid on sight, what to ` +
+              "test in the shop, and what to ask the seller",
+            slug: decision.slug,
+          })}
+        />
       )}
+      <div className={page.fullGuideBlock} id="full-guide">
+        <h3 className={page.guideTitle}>Full Guide</h3>
+        {fullGuide ? (
+          <FullGuideSection home={home} decision={decision.slug} fullGuide={fullGuide} />
+        ) : (
+          <p className={styles.muted}>None yet.</p>
+        )}
+      </div>
       {/* Core serves no phone page, export, or phone address for a Rejected Purchase. */}
-      {quickLines.length > 0 &&
+      {quickGuide &&
         (decision.state === "rejected" ? (
           <p className={styles.muted}>
             Rejected, so it has no Guides to open, print, or take shopping.
@@ -69,48 +116,20 @@ export function QuickGuideSection({ home, decision }: { home: string; decision: 
   );
 }
 
-/** The Guides and the Requirements: what is read beside the Decision's side panel. */
-export function PurchaseParts({
-  home,
-  decision,
-  withQuickGuide,
-}: {
-  home: string;
-  decision: DecisionDetail;
-  /** False once the page has led with the Quick Guide. */
-  withQuickGuide: boolean;
-}) {
+/**
+ * The Requirements and then Taking it shopping: what is read beside the Decision's side panel.
+ * One order at every state — the Requirements are the record, and the shop lines are what you take
+ * away from it.
+ */
+export function PurchaseParts({ home, decision }: { home: string; decision: DecisionDetail }) {
   // A Window, Door, or Feature is found in its Room through the Home's Rooms.
   const rooms = useHome(home).data?.rooms;
-  const fullGuide = decision.guides?.fullGuide;
-  const requirements = (
-    <Section title="Requirements" id="requirements">
-      <Requirements home={home} rooms={rooms} requirements={decision.requirements} />
-    </Section>
-  );
-  const guides = (
+  return (
     <>
-      {withQuickGuide && <QuickGuideSection home={home} decision={decision} />}
-      <Section title="Full Guide" id="full-guide">
-        {fullGuide ? (
-          <FullGuideSection home={home} decision={decision.slug} fullGuide={fullGuide} />
-        ) : (
-          <p className={styles.muted}>None yet.</p>
-        )}
+      <Section title="Requirements" id="requirements">
+        <Requirements home={home} rooms={rooms} requirements={decision.requirements} />
       </Section>
-    </>
-  );
-  // Q22: a Settled, unfulfilled Purchase led with the Quick Guide, so the Guides stay on top. While
-  // it is still being chosen, the Requirements are what you work with, and they come first.
-  return withQuickGuide ? (
-    <>
-      {requirements}
-      {guides}
-    </>
-  ) : (
-    <>
-      {guides}
-      {requirements}
+      <TakingItShoppingSection home={home} decision={decision} />
     </>
   );
 }
@@ -224,7 +243,11 @@ export function BoldNumbers({ text }: { text: string }) {
 
 const MEASURE_FIRST = /^Measure first:\s*/i;
 
-/** The heading over each kind of Quick Guide line, as the phone page and the exports have it. */
+/**
+ * The heading over each kind of Quick Guide line, as the phone page and the exports have it. The
+ * Decision page uses only Measure first and the Agent's three; the rest are kept so a kind added
+ * or dropped in core fails this build.
+ */
 const QUICK_GUIDE_HEADINGS: Record<QuickGuideLine["kind"], string> = {
   "measure-first": "Measure first",
   must: "Must",
@@ -235,37 +258,45 @@ const QUICK_GUIDE_HEADINGS: Record<QuickGuideLine["kind"], string> = {
 };
 
 /**
- * The Quick Guide in core's order, all of it shown: the looking-for line (the statement until a
- * Session writes one), Measure first as an important Callout, the musts and the avoids, then the
- * prefers, the tests for the shop, and what to ask the seller, quieter. Numbers bold throughout.
+ * What to measure before leaving the house, as an important Callout: nothing else on the page has
+ * to happen first, and a missed one means a wasted trip. It sits under the statement rather than
+ * in Taking it shopping (handoff Q10, Q21), and appears exactly once, so this de-duplication
+ * introduces no fresh duplicate. The phone page keeps its own Measure first section.
  */
-function QuickGuideBlocks({
+export function MeasureFirst({ decision }: { decision: DecisionDetail }) {
+  const lines = (decision.quickGuide?.lines ?? []).filter((line) => line.kind === "measure-first");
+  if (lines.length === 0) return null;
+  return (
+    <div className={page.measureFirst}>
+      <Callout tone="important" title={QUICK_GUIDE_HEADINGS["measure-first"]}>
+        <ul className={page.guideList}>
+          {lines.map((line) => (
+            <li key={line.text}>
+              <strong>{line.text.replace(MEASURE_FIRST, "")}</strong>
+            </li>
+          ))}
+        </ul>
+      </Callout>
+    </div>
+  );
+}
+
+/**
+ * The Agent's own lines in core's order, under the looking-for line: what to avoid on sight, what
+ * to try in the shop, and what to ask the seller. No section is quieter than another — they are
+ * the whole of what this card says, and the Requirements above carry the rest. Numbers bold
+ * throughout, so measurements stand out in a shop.
+ */
+function ShopLines({
   lookingFor,
   lines,
 }: {
   lookingFor: string | undefined;
   lines: QuickGuideLine[];
 }) {
-  const of = (kind: QuickGuideLine["kind"]) => lines.filter((line) => line.kind === kind);
-  const key = (line: QuickGuideLine) => `${line.kind}:${line.requirement ?? line.text}`;
-  const measure = of("measure-first");
-  const group = (kinds: QuickGuideLine["kind"][]) =>
-    kinds.map((kind) => ({ kind, lines: of(kind) })).filter((each) => each.lines.length > 0);
-  const firm = group(["must", "avoid"]);
-  const soft = group(["prefer", "test", "ask"]);
-  const blocks = (groups: typeof firm) =>
-    groups.map(({ kind, lines: shown }) => (
-      <div key={kind} className={page.guideGroup}>
-        <h3 className={page.guideTitle}>{QUICK_GUIDE_HEADINGS[kind]}</h3>
-        <ul className={`${page.guideList} ${page[`guide-${kind}`] ?? ""}`}>
-          {shown.map((line) => (
-            <li key={key(line)}>
-              <BoldNumbers text={line.text} />
-            </li>
-          ))}
-        </ul>
-      </div>
-    ));
+  const groups = (["avoid", "test", "ask"] as const)
+    .map((kind) => ({ kind, lines: lines.filter((line) => line.kind === kind) }))
+    .filter((each) => each.lines.length > 0);
   return (
     <div className={page.quickGuide}>
       {lookingFor && (
@@ -273,34 +304,34 @@ function QuickGuideBlocks({
           <BoldNumbers text={lookingFor} />
         </p>
       )}
-      {measure.length > 0 && (
-        <Callout tone="important" title={QUICK_GUIDE_HEADINGS["measure-first"]}>
-          <ul className={page.guideList}>
-            {measure.map((line) => (
-              <li key={key(line)}>
-                <strong>{line.text.replace(MEASURE_FIRST, "")}</strong>
-              </li>
-            ))}
-          </ul>
-        </Callout>
-      )}
-      {firm.length > 0 && <div className={page.guideBlock}>{blocks(firm)}</div>}
-      {soft.length > 0 && (
-        <div className={`${page.guideBlock} ${page.guideSoft}`}>{blocks(soft)}</div>
-      )}
+      <div className={page.guideBlock}>
+        {groups.map(({ kind, lines: shown }) => (
+          <div key={kind} className={page.guideGroup}>
+            <h3 className={page.guideTitle}>{QUICK_GUIDE_HEADINGS[kind]}</h3>
+            <ul className={page.guideList}>
+              {shown.map((line) => (
+                <li key={line.text}>
+                  <BoldNumbers text={line.text} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 /**
- * How to take the Quick Guide shopping, in steps: open it on a phone (by the QR code of its phone
- * address, when the app has one), print it or download it, and know the phone page is live.
+ * Where to read the whole Quick Guide, in steps: open it on a phone (by the QR code of its phone
+ * address, when the app has one), print it or download it, and know the phone page is live. Its
+ * heading says where rather than what, since the section around it is already "Taking it shopping".
  */
 function TakeItShopping({ home, decision }: { home: string; decision: DecisionDetail }) {
   const phoneUrl = decision.guides?.phoneUrl;
   return (
     <Card className={page.shopping}>
-      <h3 className={page.shoppingTitle}>Take it shopping</h3>
+      <h3 className={page.shoppingTitle}>Where to read it</h3>
       <nav aria-label="The Guides elsewhere">
         <ol className={page.steps}>
           <li>

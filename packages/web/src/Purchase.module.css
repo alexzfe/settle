@@ -1,15 +1,16 @@
-/* A Purchase's parts: the Quick Guide in sections, taking it shopping, the Full Guide, the
-   Requirements, and the Listings compared. */
+/* A Purchase's parts: the Requirements, taking it shopping (the Agent's shop lines and the Full
+   Guide), and the Listings compared. */
 
-/* Quick Guide. */
+/* Measure first, hoisted under the statement: kept to the prose's width, not the column's. */
+.measureFirst {
+  max-width: var(--width-reading);
+}
+
+/* The Agent's shop lines. */
 .quickGuide {
   display: grid;
   gap: var(--space-3);
   max-width: var(--width-reading);
-}
-
-.quickGuide > aside {
-  margin: 0;
 }
 
 .guideBlock {
@@ -18,11 +19,6 @@
   border-radius: var(--radius);
   background: var(--color-card);
   box-shadow: var(--shadow-card);
-}
-
-.guideSoft {
-  background: transparent;
-  box-shadow: none;
 }
 
 .guideTitle {
@@ -56,20 +52,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Musts heavier than everything else; the quieter sections carry lightness, not hue. */
-.guide-must {
-  font-weight: 500;
+/* The Full Guide, inside the same card: the long version, under the shop lines. */
+.fullGuideBlock {
+  max-width: var(--width-reading);
+  margin-top: var(--space-4);
 }
 
-.guideSoft .guideList {
-  color: var(--color-ink-muted);
-}
-
-.guideSoft .guideList strong {
-  color: var(--color-ink);
-}
-
-/* Take it shopping. */
+/* Where to read it. */
 .shopping {
   max-width: var(--width-reading);
   margin-top: var(--space-4);
@@ -621,8 +610,18 @@ a.reason:hover {
   border-top: 3px solid var(--color-error);
 }
 
-.cardChecks {
+/* "7 of 7 musts · 6 of 8 prefers": how a Listing stands, before the checks worth reading. A good
+   Listing stops here, so the card gets shorter as it gets better. */
+.checkSummary {
   margin: var(--space-3) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Only the checks that fail or carry a note; the rest are counted in the summary above. */
+.cardChecks {
+  margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--text-sm);

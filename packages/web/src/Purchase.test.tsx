@@ -11,6 +11,7 @@ import type {
   Room,
 } from "./api";
 import { formatDate } from "./format";
+import { shopLines } from "./Purchase";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -212,11 +213,19 @@ function listAfter(heading: string): string[] {
   );
 }
 
-/** The items of the list under a title in a section: a Quick Guide section's, or a strength's. */
-function block(title: string, section = "Quick Guide"): (string | null)[] {
+/** The items of the list under a title in a section: a shop-line group's, or a strength's. */
+function block(title: string, section = "Taking it shopping"): (string | null)[] {
   const heading = within(sectionOf(section)).getByRole("heading", { name: title, level: 3 });
   const list = heading.nextElementSibling;
   return [...(list?.querySelectorAll("li") ?? [])].map((li) => li.textContent);
+}
+
+/** The Full Guide's block, which lives inside Taking it shopping rather than in a section. */
+function fullGuideBlock(): HTMLElement {
+  return within(sectionOf("Taking it shopping")).getByRole("heading", {
+    name: "Full Guide",
+    level: 3,
+  }).parentElement as HTMLElement;
 }
 
 function href(name: string): string | null {
@@ -233,6 +242,17 @@ function requirementsUnder(strength: string): string[] {
     [...li.children].map((child) => child.textContent).join(" | "),
   );
 }
+
+it("takes the Agent's own kinds out of the Quick Guide, in core's order, and nothing else", () => {
+  // Core splices each Requirement into the guide verbatim as a must or a prefer, and the Decision
+  // page prints the Requirements itself a few hundred pixels above (handoff Q12).
+  expect(shopLines(quickGuide.lines)).toEqual([
+    { kind: "avoid", text: "Viscose — sheds" },
+    { kind: "test", text: "Drag a key across it: loops that snag catch claws" },
+    { kind: "ask", text: "Backing latex or felt?" },
+  ]);
+  expect(shopLines([])).toEqual([]);
+});
 
 it("groups the Requirements under Must and Prefer, each reason linking to its record", async () => {
   showRug({ quickGuide, guides });
@@ -290,44 +310,41 @@ it("names a reason on a long Note by what comes before its colon, the whole text
   expect(screen.getByText("Living room window cover").getAttribute("title")).toBe(note);
 });
 
-it("shows the Quick Guide in the phone page's order and the Full Guide on a tap", async () => {
+it("takes only the Agent's own lines shopping, with the Full Guide on a tap", async () => {
   const fetch = showRug({ quickGuide, guides });
-  await screen.findByRole("heading", { name: "Quick Guide" });
-  // The looking-for line leads, then the sections in the phone page's order, all shown.
-  const guide = within(sectionOf("Quick Guide")).getByText("Measure first").closest("aside")
-    ?.parentElement as HTMLElement;
-  expect(guide.firstElementChild?.textContent).toBe(
+  await screen.findByRole("heading", { name: "Taking it shopping" });
+  // The looking-for line leads, then the Agent's lines in core's order, then the long version and
+  // where to read it. The musts and prefers are the Requirements, printed once, above.
+  const shopping = sectionOf("Taking it shopping");
+  expect(shopping.querySelector("p")?.textContent).toBe(
     "Wool · low pile · warm clay · at least 2.0 × 1.4 m",
   );
-  expect(
-    [...guide.querySelectorAll("aside > p:first-child, h3")].map((title) => title.textContent),
-  ).toEqual(["Measure first", "Must", "Avoid", "Prefer", "In the shop", "Ask the seller"]);
-  // Measure first, set off as important, before anything else.
-  const measure = within(sectionOf("Quick Guide")).getByText("Measure first").closest("aside");
-  expect([...(measure?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
-    "living-room/wall-2 length (~3.60 m)",
+  expect([...shopping.querySelectorAll("h3")].map((title) => title.textContent)).toEqual([
+    "Avoid",
+    "In the shop",
+    "Ask the seller",
+    "Full Guide",
+    "Where to read it",
   ]);
-  expect(measure?.querySelector("li strong")?.textContent).toBe(
-    "living-room/wall-2 length (~3.60 m)",
-  );
-  expect(block("Must")).toEqual(["At least 2.0 × 1.4 m", "Rolls to fit through the hallway door"]);
-  // The numbers of a must stand out.
+  // The numbers of the looking-for line stand out, as they do in a shop.
   expect(
-    within(sectionOf("Quick Guide"))
+    within(shopping)
       .getAllByText("2.0 × 1.4 m")
       .map((number) => number.tagName),
-  ).toEqual(["STRONG", "STRONG"]);
-  expect(block("Prefer")).toEqual([
-    "Wool, low pile",
-    "In the Palette's clay",
-    "No wider than the sofa",
-  ]);
+  ).toEqual(["STRONG"]);
   expect(block("Avoid")).toEqual(["Viscose — sheds"]);
   expect(block("In the shop")).toEqual(["Drag a key across it: loops that snag catch claws"]);
   expect(block("Ask the seller")).toEqual(["Backing latex or felt?"]);
-  expect(sectionOf("Full Guide").querySelector("p")?.textContent).toBe(
-    `Written ${formatDate(written)}.`,
+  // Measure first is hoisted under the statement, and is on the page exactly once.
+  const measure = screen.getByText("Measure first").closest("aside") as HTMLElement;
+  expect([...measure.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
+    "living-room/wall-2 length (~3.60 m)",
+  ]);
+  expect(measure.querySelector("li strong")?.textContent).toBe(
+    "living-room/wall-2 length (~3.60 m)",
   );
+  expect(within(shopping).queryByText("Measure first")).toBeNull();
+  expect(fullGuideBlock().querySelector("p")?.textContent).toBe(`Written ${formatDate(written)}.`);
   // The Full Guide's text is not fetched until it is asked for.
   expect(inputsTo(fetch, "get_decision")).toEqual([{ home: "flat", decision: "wool-rug" }]);
 
@@ -353,18 +370,39 @@ it("shows the Quick Guide in the phone page's order and the Full Guide on a tap"
   await waitFor(() => expect(screen.queryByRole("heading", { name: "Size" })).toBeNull());
 });
 
-it("leads the Quick Guide with the statement until a Session writes a looking-for line", async () => {
+it("does not reprint the statement as a looking-for line, which is a few pixels above", async () => {
+  // The phone page keeps that fallback, so it is never headless; here the statement is already on
+  // the page, and reprinting it is the duplication this work removes.
   const { lookingFor: _, ...unwritten } = quickGuide;
   showRug({ quickGuide: unwritten, guides: { ...guides, lookingFor: undefined } });
-  await screen.findByRole("heading", { name: "Quick Guide" });
+  await screen.findByRole("heading", { name: "Taking it shopping" });
+  expect(screen.getAllByText("A large wool rug under the sofa.")).toHaveLength(1);
   expect(
-    within(sectionOf("Quick Guide")).getByText("A large wool rug under the sofa.").tagName,
-  ).toBe("P");
+    within(sectionOf("Taking it shopping")).getByRole("heading", { name: "Avoid" }),
+  ).toBeDefined();
+});
+
+it("still offers the phone page and the exports when the Agent has written no shop lines", async () => {
+  // A Purchase from before the Skill pushed on these lines has Guides but nothing to show here.
+  const musts = quickGuide.lines.filter(
+    (line) => line.kind !== "avoid" && line.kind !== "test" && line.kind !== "ask",
+  );
+  showRug({ quickGuide: { ...quickGuide, lines: musts }, guides: { ...guides, quickLines: [] } });
+  await screen.findByRole("heading", { name: "Taking it shopping" });
+  const shopping = sectionOf("Taking it shopping");
+  expect(
+    within(shopping).getByText(
+      "No shop notes yet: nothing recorded to avoid on sight, try in the shop, or ask the seller.",
+    ),
+  ).toBeDefined();
+  // The empty state is where the app says what to ask the Agent for.
+  expect(within(shopping).getByRole("button", { name: /Ask the Agent/ })).toBeDefined();
+  expect(within(shopping).getByRole("link", { name: "Phone page" })).toBeDefined();
 });
 
 it("says the phone page is live when taking it shopping", async () => {
   showRug({ quickGuide, guides });
-  await screen.findByRole("heading", { name: "Take it shopping" });
+  await screen.findByRole("heading", { name: "Where to read it" });
   const steps = screen.getByRole("navigation", { name: "The Guides elsewhere" });
   expect(
     [...steps.querySelectorAll("ol > li > span:first-child")].map((s) => s.textContent),
@@ -384,7 +422,7 @@ it("marks the Full Guide out of date when a Requirement changed after it was wri
     },
   });
   await screen.findByRole("heading", { name: "Full Guide" });
-  expect(sectionOf("Full Guide").querySelector("p")?.textContent).toBe(
+  expect(fullGuideBlock().querySelector("p")?.textContent).toBe(
     `Written ${formatDate(written)}. ` +
       `Out of date: a Requirement changed on ${formatDate(changed)} after it was written.`,
   );
@@ -393,10 +431,15 @@ it("marks the Full Guide out of date when a Requirement changed after it was wri
 
 it("says so when the Agent has written no Guides and checked no Listing yet", async () => {
   showRug();
-  await screen.findByRole("heading", { name: "Quick Guide" });
-  expect(after("Quick Guide")).toBe("None yet: the Agent writes the Guides in a Purchase Session.");
-  expect(after("Full Guide")).toBe("None yet.");
+  await screen.findByRole("heading", { name: "Taking it shopping" });
+  const shopping = sectionOf("Taking it shopping");
+  expect(
+    within(shopping).getByText("None yet: the Agent writes the Guides in a Purchase Session."),
+  ).toBeDefined();
+  expect(fullGuideBlock().textContent).toBe("Full GuideNone yet.");
   expect(screen.queryByRole("button", { name: "Show the Full Guide" })).toBeNull();
+  // No Guides at all, so no phone page and no exports to offer.
+  expect(screen.queryByRole("navigation", { name: "The Guides elsewhere" })).toBeNull();
   expect(after("Listings")).toBe(
     "None yet: the Agent checks a product you bring it against the Requirements.",
   );
@@ -472,10 +515,10 @@ it("offers no phone page, exports, or QR code for a Rejected Purchase, and says 
   // Core keeps a Rejected Purchase's Guides and phone address but serves none of them.
   const phoneUrl = "http://192.168.1.20:4380/guide/k3Jx9QaZ7pLm";
   showRug({ state: "rejected", quickGuide, guides: { ...guides, phoneUrl } });
-  await screen.findByRole("heading", { name: "Quick Guide" });
+  await screen.findByRole("heading", { name: "Taking it shopping" });
 
   expect(
-    within(sectionOf("Quick Guide")).getByText(
+    within(sectionOf("Taking it shopping")).getByText(
       "Rejected, so it has no Guides to open, print, or take shopping.",
     ),
   ).toBeDefined();
@@ -553,7 +596,7 @@ it("names the changed record and field of a value_changed flag, and clears it wi
 
 it("links to the phone page and the Guides' exports, with a QR code only given a phone address", async () => {
   showRug({ quickGuide, guides });
-  await screen.findByRole("heading", { name: "Quick Guide" });
+  await screen.findByRole("heading", { name: "Taking it shopping" });
   const elsewhere = screen.getByRole("navigation", { name: "The Guides elsewhere" });
   expect(
     [...elsewhere.querySelectorAll("a")].map((link) => [

@@ -603,6 +603,46 @@ const BED_FRAME_IDEAS = `Here are three on Falabella to start from:
 
 Add these three to the bed frame's Listings? I'd check each against the four Requirements and keep its picture.`;
 
+const BED_FRAME_GUIDES_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Settled, and the bed frame rests on it.
+
+The *Bed frame* for the Main bedroom is Leaning, with five Requirements and nothing checked against them yet:
+
+**Must**
+1. Queen size, for the mattress you have — from the Double bed.
+2. Comes apart to pass a 0.76 m doorway — from the front door, the narrowest way in.
+3. At most 1.75 m wide, headboard included — from the Main bedroom's Wall 2, the wall the bed stands against.
+
+**Prefer**
+4. Solid wood, warm natural finish — from the Design Direction's key materials.
+5. No fabric headboard: claws shred it — from the Constraint *Two cats*.
+
+Measure first: Wall 2's length isn't recorded, so must 3 is an allowance of mine rather than a measured limit. Measure that wall and tell me, and I'll record it.
+
+That covers size, access, material and the headboard, so we could stop here. Shall I write the Quick Guide for the shop and the Full Guide to read ahead? *(Recommended: yes.)*`;
+
+/**
+ * A Purchase Session on the Main bedroom's bed frame, before either Guide is written: the opening,
+ * the Purchase found and read, and the first round, which ends on the offer to write them. The
+ * case's own mocks give the bed frame, including the Measure-first line the app derives from Wall
+ * 2's unrecorded length. Nothing of the Agent's is in `quickLines` yet, so the graded turn writes
+ * every line from nothing.
+ */
+function bedFrameGuides(context: HistoryContext): Turn[] {
+  const { turns, session } = opening(
+    context,
+    "Let's carry on with the bed frame for the main bedroom.",
+    "purchase",
+  );
+  const find = { session, kind: "purchase", room: "main-bedroom" };
+  const read = { session, decision: "bed-frame" };
+  return [
+    ...turns,
+    { tool: "find_decisions", input: find, result: context.answer("find_decisions", find) },
+    { tool: "get_decision", input: read, result: context.answer("get_decision", read) },
+    { assistant: BED_FRAME_GUIDES_ROUND },
+  ];
+}
+
 /**
  * A Purchase Session on the Main bedroom's bed frame, which has Requirements and no Listings: the
  * opening, the Purchase found and read, then the user asking for ideas and the Agent showing three
@@ -944,6 +984,11 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   "purchase-asks-when-the-page-gives-nothing": (context) =>
     rugListingStart(context, "Let's get back to the living room rug — I've been looking at a few.")
       .turns,
+
+  // Graded turn: the user throws a bare link at a bed frame and asks for the guide. The shop lines
+  // it writes are actions, cover avoid, test and ask, and repeat neither a Requirement nor the
+  // Measure-first line the app derives from Wall 2.
+  "purchase-shop-lines-are-actions": bedFrameGuides,
 
   // Graded turn: the user says yes to the three bed frames the Agent showed when asked for ideas.
   // Each is recorded once, with a Rating, its reason, and the picture from its own page; nothing

@@ -737,7 +737,51 @@ function CheckCell({ check, failedMust }: { check: ListingCheck; failedMust: boo
   );
 }
 
-/** A Listing on a phone: the same head, then each Requirement's result, musts first. */
+/** Whether a check counts as met: passed, and not one of the musts the Listing is marked as failing. */
+function met(listing: Listing, check: ListingCheck): boolean {
+  return (
+    check.result === "pass" && !check.unchecked && !listing.failedMusts.includes(check.requirement)
+  );
+}
+
+/** "7 of 7 musts", "1 of 1 prefer": how many are met, the plural following the total. */
+function metOf(met: number, total: number, noun: string): string {
+  return `${met} of ${total} ${noun}${total === 1 ? "" : "s"}`;
+}
+
+/**
+ * How a Listing stands against the Requirements in one line: "7 of 7 musts · 6 of 8 prefers". A
+ * strength with no Requirements is left out, and nothing at all is returned when there are none.
+ */
+export function checkSummary(
+  listing: Listing,
+  requirements: readonly Requirement[],
+): string | undefined {
+  const parts = (["must", "prefer"] as const).flatMap((strength) => {
+    const of = requirements.filter((requirement) => requirement.strength === strength);
+    if (of.length === 0) return [];
+    const passed = of.filter((requirement) => met(listing, checkFor(listing, requirement))).length;
+    return [metOf(passed, of.length, strength)];
+  });
+  return parts.length === 0 ? undefined : parts.join(" · ");
+}
+
+/**
+ * A Listing on a phone: the same head, the summary of its checks, then only the checks that are
+ * not a plain pass — the fails and the unknowns — musts first.
+ *
+ * The wide board prints each Requirement once, as a row head, and reads every Listing's answer
+ * across it; a card has no row heads, so printing them here repeated every Requirement once per
+ * Listing (handoff Q7, Q11). Showing only what is unsettled makes a card *shorter* as a Listing
+ * gets better, which is the right incentive when four of them are being compared on a phone, and a
+ * good one collapses to its head and one line rather than fifteen ticks.
+ *
+ * Handoff Q7 says "fail or carry a note". Measured against the user's own board, the Agent writes
+ * a note on every check it makes — all 44 on the laundry basket's four Listings — so that rule
+ * filtered nothing at all and each Requirement was still printed four times. A passing check's
+ * note is the evidence for a yes, which the summary above already counts; what cannot be read off
+ * the count is which ones are not a yet. The wide table still carries every note.
+ */
 function ListingCard({
   home,
   listing,
@@ -749,31 +793,38 @@ function ListingCard({
   requirements: readonly Requirement[];
   eager: boolean;
 }) {
+  const summary = checkSummary(listing, requirements);
+  const flagged = requirements.flatMap((requirement) => {
+    const check = checkFor(listing, requirement);
+    const failedMust = listing.failedMusts.includes(requirement.position);
+    return met(listing, check) ? [] : [{ requirement, check, failedMust }];
+  });
   return (
     <Card className={listing.failedMusts.length > 0 ? page.failedCard : undefined}>
       <ListingHead home={home} listing={listing} requirements={requirements} eager={eager} />
-      <ul className={page.cardChecks}>
-        {requirements.map((requirement) => {
-          const check = checkFor(listing, requirement);
-          const failedMust = listing.failedMusts.includes(requirement.position);
-          const { label, result } = resultOf(check);
-          return (
-            <li
-              key={requirement.position}
-              className={`${page[result]} ${failedMust ? page.failedMust : ""}`}
-            >
-              <span className={page.result}>
-                <span aria-hidden>{RESULT_SYMBOL[result]}</span>{" "}
-                {failedMust ? <strong>{label}</strong> : label}
-              </span>
-              <span>
-                {sentence(requirement.strength)}: {requirement.text}
-                {check.note && <span className={page.note}> · {check.note}</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      {summary && <p className={page.checkSummary}>{summary}</p>}
+      {flagged.length > 0 && (
+        <ul className={page.cardChecks}>
+          {flagged.map(({ requirement, check, failedMust }) => {
+            const { label, result } = resultOf(check);
+            return (
+              <li
+                key={requirement.position}
+                className={`${page[result]} ${failedMust ? page.failedMust : ""}`}
+              >
+                <span className={page.result}>
+                  <span aria-hidden>{RESULT_SYMBOL[result]}</span>{" "}
+                  {failedMust ? <strong>{label}</strong> : label}
+                </span>
+                <span>
+                  {sentence(requirement.strength)}: {requirement.text}
+                  {check.note && <span className={page.note}> · {check.note}</span>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </Card>
   );
 }

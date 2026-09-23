@@ -24,7 +24,7 @@ import {
 import { FlagCause, FlagDot, flagActions } from "./Flags";
 import { formatDate, sentence, wallName, words } from "./format";
 import { isSafeLink } from "./Markdown";
-import { PurchaseBoard, PurchaseParts, QuickGuideSection } from "./Purchase";
+import { MeasureFirst, PurchaseBoard, PurchaseParts } from "./Purchase";
 import { useDecision } from "./queries";
 import { LrvBar, PaletteChips, Swatch, SwatchSquare } from "./Swatch";
 import { AgentWritten } from "./ui/AgentWritten";
@@ -55,8 +55,6 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
   const skill = KIND_SKILL[decision.kind];
   const openFlags = decision.flags.filter((flag) => !flag.clearedAt).length;
   const purchase = decision.kind === "purchase";
-  // A Settled Purchase still to be bought leads with its Quick Guide: in a shop that is the page.
-  const guideFirst = purchase && decision.state === "settled" && !decision.fulfilledAt;
   // What it rests on and what is wrong with it: under the Content, or for a Purchase, under its
   // Listing board.
   const records = (
@@ -151,13 +149,15 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
       </header>
       <div className={page.layout}>
         <div className={page.main}>
-          {guideFirst && <QuickGuideSection home={home} decision={decision} />}
           {decision.statement && (
             <AgentWritten source={skill && `${skill} Session`} date={decision.createdAt}>
               <p>{decision.statement}</p>
             </AgentWritten>
           )}
-          <Content home={home} decision={decision} withQuickGuide={!guideFirst} />
+          {/* What to measure before leaving the house, under the statement at every state and
+              nowhere else on the page (handoff Q10, Q21). */}
+          {purchase && <MeasureFirst decision={decision} />}
+          <Content home={home} decision={decision} />
           {!purchase && records}
         </div>
         <aside className={page.side} aria-label="Change it">
@@ -196,15 +196,7 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
 }
 
 /** What the Decision decides, as its kind records it; an Other Decision has only its statement. */
-function Content({
-  home,
-  decision,
-  withQuickGuide,
-}: {
-  home: string;
-  decision: DecisionDetail;
-  withQuickGuide: boolean;
-}) {
+function Content({ home, decision }: { home: string; decision: DecisionDetail }) {
   switch (decision.kind) {
     case "design-direction":
       return (
@@ -300,7 +292,7 @@ function Content({
       );
     }
     case "purchase":
-      return <PurchaseParts home={home} decision={decision} withQuickGuide={withQuickGuide} />;
+      return <PurchaseParts home={home} decision={decision} />;
     case "other":
       return null;
   }

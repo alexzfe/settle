@@ -602,11 +602,56 @@ it("stacks one card per Listing on a phone, with the same head and the same orde
   expect(heldIn(nordicCard)?.textContent).toBe("Held 3 weeks ago: out of stock (back in March)");
   expect(within(nordicCard).getByRole("button", { name: "Release" })).toBeDefined();
   expect(within(nordicCard).getByRole("button", { name: "Drop" })).toBeDefined();
-  // And each Requirement's result beneath it, musts first.
-  expect([...nordicCard.querySelectorAll("ul li")].map((li) => li.textContent)).toEqual([
-    "✓ PassMust: At least 2.0 × 1.4 m",
-    "✓ PassMust: Rolls to fit through the hallway door",
-    "✓ PassPrefer: Wool, low pile",
+  // A card has no row heads, so printing every Requirement would repeat all of them once per
+  // Listing. It carries how it stands in one line, and then only what is worth reading.
+  expect(within(nordicCard).getByText("2 of 2 musts · 1 of 1 prefer")).toBeDefined();
+  expect([...nordicCard.querySelectorAll("ul li")]).toHaveLength(0);
+  // The Jute fails a must and a prefer, and each carries the Agent's note.
+  const juteCard = cards[2] as HTMLElement;
+  expect(within(juteCard).getByText("1 of 2 musts · 0 of 1 prefer")).toBeDefined();
+  expect([...juteCard.querySelectorAll("ul li")].map((li) => li.textContent)).toEqual([
+    "✕ FailMust: At least 2.0 × 1.4 m · 80 × 250 cm",
+    "✕ FailPrefer: Wool, low pile · jute",
+  ]);
+});
+
+it("keeps a card to the checks that are not a plain pass, whether or not they carry a note", async () => {
+  // The Agent notes most of the checks it makes, passes included, so a note cannot be what puts a
+  // row on a card: on the user's own board that would print every Requirement once per Listing,
+  // which is the repeat this layout exists to remove.
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({ matches: false, addEventListener() {}, removeEventListener() {} })),
+  );
+  const noted = listing({
+    slug: "noted-rug",
+    name: "Noted rug",
+    checks: [
+      { requirement: 1, text: "Wool, low pile", strength: "prefer", result: "pass", note: "wool" },
+      {
+        requirement: 2,
+        text: "At least 2.0 × 1.4 m",
+        strength: "must",
+        result: "pass",
+        note: "2.0 × 1.4 m exactly",
+      },
+      {
+        requirement: 3,
+        text: "Rolls to fit through the hallway door",
+        strength: "must",
+        result: "unknown",
+        note: "the shop could not say",
+      },
+    ],
+    counts: { pass: 2, fail: 0, unknown: 1 },
+  });
+  showBoard([noted]);
+  await screen.findByText("Noted rug");
+  const card = boardSection().querySelector("ul > li") as HTMLElement;
+  expect(within(card).getByText("1 of 2 musts · 1 of 1 prefer")).toBeDefined();
+  // The two passes are counted above; only the one nobody could answer is worth the room.
+  expect([...card.querySelectorAll("ul li")].map((li) => li.textContent)).toEqual([
+    "? UnknownMust: Rolls to fit through the hallway door · the shop could not say",
   ]);
 });
 
