@@ -18,7 +18,7 @@ the queue**: what has been decided, what is still open, what is blocking, what w
 
 Two consequences that drive everything below:
 
-- **Decisions are the spine.** State (Candidate → Leaning → Locked, plus Rejected) is the most
+- **Decisions are the spine.** State (Candidate → Leaning → Settled, plus Rejected) is the most
   important attribute on the screen, so it gets the leftmost column, an icon, and grouping.
 - **The UI is style-agnostic.** It must hold a warm Japandi home, a cool Scandi one, and a
   vibrant pop one without the chrome fighting the content. No design-system color may be
@@ -63,12 +63,12 @@ only variable**. Use the `SettleIcon` component in `brand/HANDOFF.md` verbatim.
 |---|---|---|---|
 | Candidate | 01 low | `M4.39 16.8A9 9 0 0 0 19.61 16.8Z` | `--color-ink` |
 | Leaning | 02 half | `M3 12A9 9 0 0 0 21 12Z` | `--color-ink` |
-| Locked | 03 full | solid disc | `--color-accent` |
+| Settled | 03 full | solid disc | `--color-accent` |
 | Rejected | drained ring | none | `--color-stone`, title struck through |
 
 Rules, non-negotiable:
 
-- **Ink = in progress, accent = terminal.** Only Locked is drawn in the accent.
+- **Ink = in progress, accent = terminal.** Only Settled is drawn in the accent.
 - **The logo's own waterline (y=15.4) is never a status.** Chrome only — sidebar lockup,
   favicon, splash.
 - **One form, one size, one position.** 17px, leading every row, in group headers, in the
@@ -86,7 +86,7 @@ with explanatory paragraphs underneath don't show where the Decision *is* in its
 
 ## 4. Decisions list
 
-- **Grouped by state by default** (Leaning → Candidate → Locked → Rejected), with
+- **Grouped by state by default** (Leaning → Candidate → Settled → Rejected), with
   `by room` / `by kind` as regrouping pills. Each group header carries the mark at its level,
   the count, and a one-line gloss of what the state *means* ("half full — the Agent has a
   recommendation, waiting on you").
@@ -137,9 +137,9 @@ Keep the existing warm neutrals — ground, card, ink, ink-muted, hairline. They
 they let the user's own colours carry the colour. Changes:
 
 **Accent: olive `#5e6b4e` light / `#a3b18a` dark.** Confirmed. It does **one** job: the
-terminal state (Locked) and the current nav item. It is *not* the link colour, not every
+terminal state (Settled) and the current nav item. It is *not* the link colour, not every
 primary button, not the focus ring alone. When olive means five unrelated things, every
-underlined link looks faintly Locked-coloured and Locked stops feeling settled.
+underlined link looks faintly Settled-coloured and Settled stops feeling settled.
 
 **Dark mode is supported and first-class.** Both themes come from one token object — one
 layout, one set of rules, dark accent derived from light, never a separately hand-tuned skin.

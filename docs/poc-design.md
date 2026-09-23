@@ -7,7 +7,7 @@ The settled shape of the proof of concept, agreed in the design grilling of 2026
 Run on the user's own real home:
 
 1. Home Intake works through a Blueprint, then interviews for the remaining Gaps, and produces correct Rooms and Inventory.
-2. A Design Direction Session ends with the Direction Locked.
+2. A Design Direction Session ends with the Direction Settled.
 3. A Color Session Locks a palette resting on the Direction.
 4. A Purchase Session produces Requirements that trace back to the palette and the Rooms, plus a Quick Guide and a Full Guide.
 5. The user takes the Quick Guide shopping.
@@ -26,12 +26,12 @@ Run on the user's own real home:
 ## AI behaviour
 
 - Skills are chosen automatically, and the user can also invoke one by name.
-- State changes follow the rules in CONTEXT.md (Locked, Rejected, Reopen, Conflict). Every state change the Agent makes is logged with its Session and a reason; web UI changes are logged as coming from the web UI ([skill-set.md](specs/skill-set.md#rule-enforcement)).
-- The AI makes state changes on its own judgment and says plainly what it changed. Before a Reopen, Rejecting a Locked Decision, reviving a Rejected one, or adding or removing a Constraint, it asks the user in the conversation. There are no confirmation dialogs. The server enforces only what it can check from data (ADR 0004).
+- State changes follow the rules in CONTEXT.md (Settled, Rejected, Reopen, Conflict). Every state change the Agent makes is logged with its Session and a reason; web UI changes are logged as coming from the web UI ([skill-set.md](specs/skill-set.md#rule-enforcement)).
+- The AI makes state changes on its own judgment and says plainly what it changed. Before a Reopen, Rejecting a Settled Decision, reviving a Rejected one, or adding or removing a Constraint, it asks the user in the conversation. There are no confirmation dialogs. The server enforces only what it can check from data (ADR 0004).
 - The AI creates a Constraint only from a fact the user states. It reads the Constraint back before saving it, and removes one only on the user's explicit instruction.
 - The AI gets what the current work needs, in full, and nothing it would have to ignore ([home-model.md](specs/home-model.md#context-tiers)). At Session start every Skill gets the Home Overview (the Home's facts, Constraints, and one line per Room with its Gaps) and open flags and Conflicts. Every Skill except Home Intake also gets the Home-wide Decisions in force, with the Design Direction and Palette in full. A Skill fetches a Room Sheet, with that Room's Items and open Decisions, only when the Session needs that Room. Everything else, history included, is looked up only when a question needs it.
 - The AI has no tool to see or switch Homes. Each Home has a Home Folder on each computer the user works from, set up by a command the web UI shows ([ADR 0006](adr/0006-home-folder-files-fetched-not-written.md)). Every Session started in that folder belongs to its Home, whatever the web UI is showing.
-- Skills name the Active Home at Session start. Every Skill except Home Intake warns while the Design Direction is not yet Locked.
+- Skills name the Active Home at Session start. Every Skill except Home Intake warns while the Design Direction is not yet Settled.
 - Home Intake gathers Items by interview, and the user confirms them before they are saved. Photos were designed as scaffolding in the PoC — stored by the platform, uploaded by the web UI, unused by the AI — but **none of it was built**: there is no `photos` table, no operation, and no upload, and inspiration images are explicitly not stored either (`design-direction/SKILL.md`). The only image bytes the app holds are Blueprints. Corrected 2026-09-17, in the Listing board grilling ([handoff/listing-board.md](handoff/listing-board.md)); see also [skill-set.md](specs/skill-set.md#blueprints-and-photos).
 
 ## Web UI

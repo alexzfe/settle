@@ -23,7 +23,7 @@ Every rule that depends on what the user meant lives only in Skill instructions:
 - never re-proposing a Rejected Decision
 - never changing a Decision's state on a Note alone
 
-The AI makes these calls itself and says plainly what it changed. It asks the user in the conversation before Reopening, Rejecting a Locked Decision, reviving a Rejected one, or adding or removing a Constraint. The reason it records quotes the user's permission.
+The AI makes these calls itself and says plainly what it changed. It asks the user in the conversation before Reopening, Rejecting a Settled Decision, reviving a Rejected one, or adding or removing a Constraint. The reason it records quotes the user's permission.
 
 We considered two stronger mechanisms and rejected both:
 

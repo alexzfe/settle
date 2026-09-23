@@ -14,7 +14,8 @@ Two worked examples, which are the real specification — read one before writin
 
 - [`docs/handoff/quick-guide-rework.md`](../../../docs/handoff/quick-guide-rework.md) and its briefs in
   `docs/handoff/quick-guide-rework/`
-- [`docs/handoff/listing-board.md`](../../../docs/handoff/listing-board.md)
+- [`docs/handoff/quick-guide-split.md`](../../../docs/handoff/quick-guide-split.md) and its briefs in
+  `docs/handoff/quick-guide-split/`
 
 ## The handoff doc
 
@@ -58,9 +59,25 @@ and the rest start from its report.
 ## Orchestration
 
 Running the tracks is Herdr's job, and the procedure that works is written down in
-[`docs/handoff/slice-6.md`](../../../docs/handoff/slice-6.md) under "How to run the agents with Herdr" —
-follow it rather than improvising. The user wants sub-agents on Opus (`--permission-mode auto --model
+[`docs/running-agents.md`](../../../docs/running-agents.md) — follow it rather than improvising, and do
+not restate it in the handoff. The user wants sub-agents on Opus (`--permission-mode auto --model
 opus`), one prompt per Bash command, and waits armed in the background.
+
+## Closing a handoff out
+
+Do this as part of the wave that finishes the work, not later. Docs bloat here comes from waves that
+built the thing and left their scaffolding behind: by 2026-09-23 the per-track briefs and completion
+reports were 63% of `docs/handoff/`, all of it describing work already on `main`.
+
+- **Rewrite the Status line** to say **done and live**, with the date and the commit or tag. A shipped
+  handoff that still opens "Status: settled" reads as unbuilt to anyone skimming.
+- **Delete the per-track briefs and any completion reports** once the wave has merged and its checks
+  pass. Their whole job was to brief one fresh agent; git keeps them. Delete the handoff's own
+  orchestration and "Done when" sections with them, and remove the links.
+- **Keep Why, The decisions, Vocabulary, Corrections, Deferred and Open.** That is the design memory
+  and the only register of parked work — never delete a handoff outright because the build shipped.
+- **Add a row to [`docs/build-plan.md`](../../../docs/build-plan.md)'s ledger** with the date, what
+  shipped, the test count and the marker. Keep it to one row; the narration belongs in the commit.
 
 ## Done when
 
