@@ -10,16 +10,22 @@ after the first is done by a *fresh* session that never saw the conversation. Th
 only thing that crosses that gap. Write them as though the reader has no memory of the discussion,
 because they do not.
 
+**These documents live in a separate private repo, `settle-docs`, cloned at
+`~/Projects/settle-docs`.** They left this repo when it was made public on 2026-09-27: they record
+the author's own home and server, which a public repo must not. Every path below is relative to
+that checkout, not to this one. If it is not there, clone `git@github.com:alexzfe/settle-docs.git`
+first — never write a handoff into this repo.
+
 Two worked examples, which are the real specification — read one before writing:
 
-- [`docs/handoff/quick-guide-rework.md`](../../../docs/handoff/quick-guide-rework.md) and its briefs in
-  `docs/handoff/quick-guide-rework/`
-- [`docs/handoff/quick-guide-split.md`](../../../docs/handoff/quick-guide-split.md) and its briefs in
-  `docs/handoff/quick-guide-split/`
+- `~/Projects/settle-docs/handoff/quick-guide-rework.md` and its briefs in
+  `~/Projects/settle-docs/handoff/quick-guide-rework/`
+- `~/Projects/settle-docs/handoff/quick-guide-split.md` and its briefs in
+  `~/Projects/settle-docs/handoff/quick-guide-split/`
 
 ## The handoff doc
 
-One file, `docs/handoff/<topic>.md`. Sections, in order:
+One file, `~/Projects/settle-docs/handoff/<topic>.md`. Sections, in order:
 
 1. **Status** — the date, that it was settled with the user in a grilling, the HEAD commit, and the
    branch. Say plainly if it is not to be built yet, and what it waits on.
@@ -42,7 +48,7 @@ write what they chose and why — not the recommendation.
 
 ## Per-track briefs
 
-When the work splits across parallel agents, one brief per track in `docs/handoff/<topic>/<track>.md`.
+When the work splits across parallel agents, one brief per track in `~/Projects/settle-docs/handoff/<topic>/<track>.md`.
 Each one:
 
 - Points at the handoff doc first, then names **the files that track owns**. Tracks must not overlap.
@@ -59,7 +65,7 @@ and the rest start from its report.
 ## Orchestration
 
 Running the tracks is Herdr's job, and the procedure that works is written down in
-[`docs/running-agents.md`](../../../docs/running-agents.md) — follow it rather than improvising, and do
+`~/Projects/settle-docs/running-agents.md` — follow it rather than improvising, and do
 not restate it in the handoff. The user wants sub-agents on Opus (`--permission-mode auto --model
 opus`), one prompt per Bash command, and waits armed in the background.
 
@@ -67,7 +73,7 @@ opus`), one prompt per Bash command, and waits armed in the background.
 
 Do this as part of the wave that finishes the work, not later. Docs bloat here comes from waves that
 built the thing and left their scaffolding behind: by 2026-09-23 the per-track briefs and completion
-reports were 63% of `docs/handoff/`, all of it describing work already on `main`.
+reports were 63% of the handoff folder, all of it describing work already on `main`.
 
 - **Rewrite the Status line** to say **done and live**, with the date and the commit or tag. A shipped
   handoff that still opens "Status: settled" reads as unbuilt to anyone skimming.
@@ -76,12 +82,12 @@ reports were 63% of `docs/handoff/`, all of it describing work already on `main`
   orchestration and "Done when" sections with them, and remove the links.
 - **Keep Why, The decisions, Vocabulary, Corrections, Deferred and Open.** That is the design memory
   and the only register of parked work — never delete a handoff outright because the build shipped.
-- **Add a row to [`docs/build-plan.md`](../../../docs/build-plan.md)'s ledger** with the date, what
-  shipped, the test count and the marker. Keep it to one row; the narration belongs in the commit.
+- **Commit and push `settle-docs`.** It is a separate repo, so a handoff written there is not
+  covered by this repo's commit and is one `rm -rf` from being lost until it is pushed.
 
 ## Done when
 
 - Every decision the grilling reached is in the table, each with its why.
 - A fresh agent could build the work from these files alone, without the transcript.
 - Nothing in the doc describes code that does not exist — mark anything unbuilt as unbuilt.
-- Nothing is committed unless the user asked.
+- Nothing in this repo is committed unless the user asked. `settle-docs` is pushed, per above.
