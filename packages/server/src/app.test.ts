@@ -755,7 +755,9 @@ describe("DNS-rebinding protection", () => {
     );
     expect((await request({ host: `127.0.0.1:${PORT}` })).status).toBe(200);
     expect((await request({ ...publicHost, origin: "https://evil.example" })).status).toBe(403);
-    expect((await request({ ...publicHost, origin: "http://settle.example.com" })).status).toBe(403);
+    expect((await request({ ...publicHost, origin: "http://settle.example.com" })).status).toBe(
+      403,
+    );
     expect((await request({ host: "evil.example" })).status).toBe(403);
     expect((await api("list_homes", {}, publicHost)).status).toBe(403);
   });
