@@ -19,14 +19,14 @@ State: Leaning
 Statement: A large wool rug under the sofa.
 
 Requirements:
-1. must: At least 2.0 × 1.4 m (reason: Wall living-room/wall-2, length)
+1. must: At least 2.0 × 1.4 m (reason: Living room, Wall 2 (living-room/wall-2), length)
 2. prefer: Wool, low pile: loops catch the cats' claws (reason: Constraint Two cats (two-cats))
-3. must: No longer than 3.4 m, to keep the walk past the west window clear (reason: Wall living-room/wall-5, length)
+3. must: No longer than 3.4 m, to keep the walk past the west window clear (reason: Living room, Wall 5 (living-room/wall-5), length)
 4. prefer: Warm terracotta, the Palette's accent, or close to it (reason: Decision Warm clay (warm-clay))
 
 Quick Guide, besides the Requirements:
 - Looking for: Wool · cut pile · warm terracotta · 2.0–3.4 m long
-- Measure first: living-room/wall-5 length (~3.70 m)
+- Measure first: Living room, Wall 5 length (~3.70 m)
 - avoid: Loop pile, viscose blends — claws catch, viscose marks
 - test: Rub the pile hard: more than a little fluff means shedding
 - test: Turn a corner back: stiff latex cracks on tiles

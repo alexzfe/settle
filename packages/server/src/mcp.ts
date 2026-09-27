@@ -4,8 +4,8 @@ import { type AnyOperation, type Core, CoreError } from "@settle/core";
 import type { AgentActivity } from "./agent-activity.js";
 
 /**
- * The backstop from docs/specs/skill-set.md#rule-enforcement, in case compaction drops the Skill
- * text. Kept under 512 characters.
+ * The server's instructions: the core rules the Skills teach, repeated as a backstop in case
+ * compaction drops the Skill text. Kept under 512 characters.
  */
 export const SERVER_INSTRUCTIONS =
   "Interior design platform for one Home. Call open_session first and pass its session id on " +

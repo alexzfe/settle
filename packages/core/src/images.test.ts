@@ -1,7 +1,7 @@
 // The image port's own rules, written against a stubbed global fetch so no test ever reaches the
 // network: what it validates, in what order, and that the 2 MB cap is enforced while reading
-// rather than trusted from content-length (docs/adr/0005-core-fetches-listing-images.md,
-// docs/research/spikes/5-listing-image-fetch.md).
+// rather than trusted from content-length, which a retailer's CDN is free to leave out or get
+// wrong.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CoreError } from "./errors.js";
 import { MAX_IMAGE_BYTES, nodeImageFetcher, sniffImageType } from "./images.js";
@@ -77,12 +77,14 @@ describe("the image fetch", () => {
     expect(image.bytes).toEqual(WEBP);
   });
 
-  it("sends a browser User-Agent and follows redirects", async () => {
+  it("sends Settle's own User-Agent and follows redirects", async () => {
     serves(answer(PNG, { type: "image/png" }));
     await nodeImageFetcher("https://shop.example/rug.png");
     const [, init] = (globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } })
       .mock.calls[0] as [string, RequestInit];
-    expect((init.headers as Record<string, string>)["user-agent"]).toContain("Mozilla/5.0");
+    expect((init.headers as Record<string, string>)["user-agent"]).toBe(
+      "Settle/1.0 (+https://github.com/alexzfe/settle)",
+    );
     expect(init.redirect).toBe("follow");
   });
 

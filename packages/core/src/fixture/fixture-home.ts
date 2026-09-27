@@ -11,9 +11,9 @@ import type { DecisionState, Measurement } from "../operations/schemas.js";
 import { openStore } from "../store.js";
 
 /**
- * The fixture files: blueprint-a3.pdf (a one-page A3 ground floor with a text layer) and
- * blueprint-3-pages.pdf (portrait, /Rotate 90, and a scan), from docs/research/spikes/fixtures/.
- * packages/core/fixture/, from both src/fixture and dist/fixture.
+ * The fixture files, in packages/core/fixture/: blueprint-a3.pdf (a one-page A3 ground floor with
+ * a text layer) and blueprint-3-pages.pdf (portrait, /Rotate 90, and a scan). The path resolves
+ * to that directory from both src/fixture and dist/fixture.
  */
 export const FIXTURE_FILES = join(import.meta.dirname, "..", "..", "fixture");
 

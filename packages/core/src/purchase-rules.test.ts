@@ -1,8 +1,9 @@
 // The server-enforced Purchase rules of slice 6, written before their implementation: stable
 // Requirement identity and Archiving, reasons of every kind, the Quick Guide's assembly (Measure
 // first from Estimated values only, then must, avoid, prefer, test, and ask, under the looking-for
-// line), save_guides and
-// its refusals, and the Full Guide going out of date (docs/specs/skill-set.md#purchase).
+// line), save_guides and its refusals, and the Full Guide going out of date: it is marked so when
+// the Requirements change after it was written, since unlike the Quick Guide it is the AI's own
+// prose and can't be rebuilt.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -261,11 +262,31 @@ describe("the Quick Guide", () => {
       ]),
     );
     expect(await lines("measure-first")).toEqual([
-      "Measure first: living-room/wall-2 length (~3.00 m)",
+      "Measure first: Living room, Wall 2 length (~3.00 m)",
     ]);
     expect((await lines())[0]).toBe(
-      "measure-first: Measure first: living-room/wall-2 length (~3.00 m)",
+      "measure-first: Measure first: Living room, Wall 2 length (~3.00 m)",
     );
+  });
+
+  it("names a Wall by its Room and its label, never its slug, in Measure first and a Requirement's reason", async () => {
+    await core.run("save_room", agent(session), {
+      session,
+      name: "Study",
+      walls: [{ position: 1, length: estimated(3900), label: "sofa wall" }],
+    });
+    await save(
+      rug([must("Under 3.6 m long", { kind: "wall", id: "study/wall-1", field: "length" })]),
+    );
+    expect(await lines("measure-first")).toEqual([
+      "Measure first: Study, Sofa wall length (~3.90 m)",
+    ]);
+    expect((await detail()).requirements[0]?.reason).toEqual({
+      kind: "wall",
+      id: "study/wall-1",
+      name: "Study, Sofa wall",
+      field: "length",
+    });
   });
 
   it("rests a must naming no field on every length of its record, each value once", async () => {

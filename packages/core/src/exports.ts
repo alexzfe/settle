@@ -8,9 +8,10 @@ import type {
 import { QUICK_GUIDE_LINE_KINDS } from "./operations/schemas.js";
 import { fieldLabel, QUICK_GUIDE_HEADINGS, DECISION_STATE_LABELS as STATES } from "./render.js";
 
-// The files the web serves as they are, rendered from stored data only (docs/poc-design.md#web-ui):
-// the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and
-// Markdown, and the Quick Guide's phone page. Every page is static HTML with no JavaScript, and
+// The files the web serves as they are, rendered from stored data only, never by the AI at export
+// time: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and
+// Markdown, and the Quick Guide's phone page, which must read well on a phone since that is how
+// it gets into the shop. Every page is static HTML with no JavaScript, and
 // every stored text is escaped, the Full Guide's Markdown included. The pages share the web app's
 // "paper and ink" look, with its values copied into their own styles so each file stands alone.
 
@@ -445,8 +446,8 @@ const MARKDOWN_MEASURE: MeasureFormat = {
 
 /**
  * A Measure first line as an instruction with a blank for the measurement:
- * "living-room/wall-5 length (~3.70 m)" becomes
- * "Living room · Wall 5 · length. Recorded ~370 cm (estimate). Measured: ____ cm".
+ * "Living room, Wall 5 length (~3.70 m)" becomes
+ * "Living room, Wall 5 length. Recorded ~370 cm (estimate). Measured: ____ cm".
  */
 function measureText(purchase: DecisionDetail, line: string, format: MeasureFormat): string {
   const blank = `Measured: ${format.blank} cm`;
@@ -461,10 +462,12 @@ function measureText(purchase: DecisionDetail, line: string, format: MeasureForm
   return `${format.text(measurePlace(purchase, what))}. ${recorded} ${blank}`;
 }
 
-/** "living-room/wall-5 length" as "Living room · Wall 5 · length"; a Home's field alone, capitalised. */
+/**
+ * What to measure, as the line names it: a record by its name, and a Home's field alone,
+ * capitalised. A Window, Door, or Surface still goes by its slug, "living-room/window-1 width",
+ * which reads as "Living room · Window 1 · width".
+ */
 function measurePlace(purchase: DecisionDetail, what: string): string {
-  const named = /^(.+?) \(([^()\s]+)\) (.+)$/.exec(what);
-  if (named?.[1] && named[3]) return `${named[1]} · ${named[3]}`;
   const slugged = /^(\S*[-/]\S*) (.+)$/.exec(what);
   if (!slugged?.[1] || !slugged[2]) return capitalise(what);
   const parts = slugged[1]

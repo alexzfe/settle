@@ -1,8 +1,12 @@
-// A Home Folder's two files, and the script that writes them, as docs/specs/skill-set.md#packaging,
-// spike 1, and ADR 0006 settled. The server never writes to the user's disk: the web shows a
-// command that fetches this script from the server and runs it inside the folder, on each computer.
-// Claude Code owns .claude/settings.local.json (the server approval lands there), so the script
-// never touches it, and only .mcp.json says which Home a folder belongs to.
+// A Home Folder's two files, and the script that writes them. The server never writes to the
+// user's disk: it cannot see it, and a Home has one folder per computer, so the web shows a command
+// that fetches this script from the server and runs it inside the folder, on each computer. The MCP
+// config lives in the folder, not the plugin, because its URL is how the server knows the folder's
+// Home, and there is no portable way for a plugin-level config to say that. settings.json
+// pre-approves the folder's MCP server, which, once the user trusts the folder, leaves the trust
+// dialog as the only question. Claude Code owns .claude/settings.local.json (the server approval
+// lands there), so the script never touches it, and only .mcp.json says which Home a folder
+// belongs to.
 
 /** The server key in .mcp.json, so the Agent's tools are mcp__settle__<tool>. */
 export const MCP_SERVER_KEY = "settle";

@@ -52,9 +52,11 @@ function missingAsUndefined<T>(read: () => T): T | undefined {
 // ─── The rendering port ─────────────────────────────────────────────────────────────────────
 //
 // Turns a Blueprint file into page images and text lines. One implementation, with mupdf, in
-// blueprints/mupdf.ts: the only module that imports it, so it can be swapped for pdftoppm or pdfjs
-// (mupdf is AGPL; docs/research/spikes/3-pdf-to-png.md). Pages are numbered from 1, and sizes are
-// in the page's displayed orientation, after any /Rotate.
+// blueprints/mupdf.ts: the only module that imports it. The port exists so the renderer can be
+// swapped, for pdftoppm or pdf.js, without touching anything else. That matters because mupdf is
+// AGPL-licensed, and it is the reason Settle itself is AGPL-3.0-or-later; a permissively licensed
+// renderer behind this port is what would let that change. Pages are numbered from 1, and sizes
+// are in the page's displayed orientation, after any /Rotate.
 
 /** One line of a page's text layer. `bbox` is [x0, y0, x1, y1] in the rendered page's pixels. */
 export interface TextLine {

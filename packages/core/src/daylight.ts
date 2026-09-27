@@ -3,9 +3,9 @@ import { optional } from "./optional.js";
 
 /**
  * One way daylight reaches a Room: a Window, or a glazed Door leading outside or onto an outdoor
- * Room. The spec has said so all along (docs/specs/home-model.md#door: "A glazed door (e.g. French
- * doors) counts as a light source"); nothing read the field until now, so a Room whose only glazing
- * was a balcony door had to be marked windowless to clear its Gap, and then read as dark.
+ * Room. A Door's glazed field has always meant that the door counts as a light source (French
+ * doors, a balcony door); nothing read the field until now, so a Room whose only glazing was a
+ * balcony door had to be marked windowless to clear its Gap, and then read as dark.
  *
  * A glazed Door between two indoor Rooms is borrowed light, not daylight, and is left out until
  * the case comes up.

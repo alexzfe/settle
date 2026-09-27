@@ -35,7 +35,7 @@ const rug = entry("wool-rug", "Wool rug", {
   bestRating: 4,
   bestListing: { slug: "hay-plain-rug", name: "Hay Plain rug", photoVersion: "625b0d88aa11bb22" },
   measureFirst: [
-    "Measure first: living-room/wall-2 length (~3.60 m)",
+    "Measure first: Living room, Wall 2 length (~3.60 m)",
     "Measure first: the Home's narrowest access width (not recorded)",
   ],
   openFlags: 1,
@@ -114,7 +114,7 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
         "2 Listings, best is 4 stars: Hay Plain rug" +
         "Flagged" +
         "Measure first" +
-        "living-room/wall-2 length (~3.60 m)" +
+        "Living room, Wall 2 length (~3.60 m)" +
         "the Home's narrowest access width (not recorded)",
     ],
     [
@@ -148,7 +148,7 @@ it("shows the Shopping List and Considering, each entry linking to its Decision 
   );
   // The title is the row's one link: its page puts the Quick Guide first once it is Settled.
   expect(within(wool).getAllByRole("link")).toHaveLength(1);
-  expect(within(wool).getByText(/^living-room\/wall-2/).tagName).toBe("LI");
+  expect(within(wool).getByText(/^Living room, Wall 2/).tagName).toBe("LI");
   expect(within(wool).getByText("Full Guide out of date").tagName).toBe("STRONG");
   expect(within(wool).getByRole("img", { name: "Settled" })).toBeDefined();
   // The sofa has a Listing but no Rating the user could act on — every one of them fails a must
@@ -297,7 +297,7 @@ it("refetches the Measure-first lines when a Wall is measured", async () => {
     get_shopping: () => ({ shoppingList: [{ ...rug, measureFirst }], considering: [] }),
   });
   renderRoutes("/homes/flat/shopping");
-  await screen.findByText(/^living-room\/wall-2/);
+  await screen.findByText(/^Living room, Wall 2/);
 
   measureFirst = rug.measureFirst.slice(1);
   act(() =>
@@ -307,6 +307,6 @@ it("refetches the Measure-first lines when a Wall is measured", async () => {
       recordSlug: "living-room/wall-2",
     }),
   );
-  await vi.waitFor(() => expect(screen.queryByText(/^living-room\/wall-2/)).toBeNull());
+  await vi.waitFor(() => expect(screen.queryByText(/^Living room, Wall 2/)).toBeNull());
   expect(screen.getByText(/^the Home's/)).toBeDefined();
 });

@@ -1,7 +1,7 @@
 -- windowless means a Room has no Windows *and* no glazed Door leading outside or onto an outdoor
--- Room (docs/specs/home-model.md#room). Until daylight openings were read, the only way to clear a
--- Room's "Windows or windowless" Gap was to assert windowless, so Rooms whose only glazing is a
--- balcony door were recorded windowless and then read as having no daylight. Clear the flag
+-- Room: a glazed Door counts as a light source. Until daylight openings were read, the only way to
+-- clear a Room's "Windows or windowless" Gap was to assert windowless, so Rooms whose only glazing
+-- is a balcony door were recorded windowless and then read as having no daylight. Clear the flag
 -- wherever a daylight opening is recorded; where it is true, it stays.
 UPDATE rooms
 SET windowless = 0

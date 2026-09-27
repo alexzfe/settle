@@ -39,8 +39,9 @@ import {
 import { requireHome, requireSession } from "./scope.js";
 import { Writer } from "./writer.js";
 
-// The Purchase operations of slice 6 (docs/specs/skill-set.md#purchase): the Shopping Guides,
-// Listings, and the web's Shopping views and exports.
+// The Purchase operations of slice 6: the Shopping Guides, Listings, and the web's Shopping views
+// and exports. A Purchase Decision carries plain-text Requirements, each a must or a prefer with a
+// reason; the Guides and the Listing checks are built on them, and the AI does the checking.
 
 export const saveGuides = defineOperation({
   name: "save_guides",
@@ -436,8 +437,9 @@ function storeChecks(
 // ─── The Listing's picture ──────────────────────────────────────────────────────────────────
 //
 // The bytes live beside the Blueprint uploads, under uploads/<home>/listings/. The platform
-// fetches them itself when a Listing is recorded (ADR 0005), and the user can paste or point at
-// another picture from the board, because a shop's own photo is often the worst one of the
+// fetches them itself when a Listing is recorded, best-effort, so the picture outlives the shop's
+// listing and the Agent never spends its context passing image bytes. The user can paste or point
+// at another picture from the board, because a shop's own photo is often the worst one of the
 // product.
 
 const PHOTO_EXTENSIONS: Record<PhotoType, string> = {
@@ -507,7 +509,7 @@ async function fetchPhoto(
 // ─── The board's own writes ─────────────────────────────────────────────────────────────────
 //
 // The first web-callable writes Listings have ever had: until now they were written only by the
-// Agent over MCP (docs/handoff/listing-board.md). Culling a Listing and noting that stock has run
+// Agent over MCP, and the shift is deliberate. Culling a Listing and noting that stock has run
 // out are not changes to the Decision, so a Rejected or Fulfilled Purchase takes them too.
 
 export const dropListing = defineOperation({

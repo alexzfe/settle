@@ -8,9 +8,9 @@ import { guideOf, hasGuides } from "./purchase-views.js";
 import { findIndexInput } from "./schemas.js";
 import { requireHome } from "./scope.js";
 
-// The web's search box (docs/handoff/generalized-search.md): every findable record of one Home as
-// one flat list, which the browser matches and ranks as the user types. Web-only: the Agent has
-// its own finders, and a fourth overlapping one would make it pick wrong.
+// The web's search box, the incremental kind an operating system's has: every findable record of
+// one Home as one flat list, which the browser matches and ranks as the user types. Web-only: the
+// Agent has its own finders, and a fourth overlapping one would make it pick wrong.
 
 /** One findable record, as the browser's search index holds it. */
 export interface FindRow {

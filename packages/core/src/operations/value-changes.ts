@@ -4,16 +4,16 @@ import type { FeatureKind, RequirementReasonKind } from "./schemas.js";
 import { REQUIREMENT_REASON_KINDS } from "./schemas.js";
 import type { Writer } from "./writer.js";
 
-// The value_changed flag (docs/specs/home-model.md#rules-the-home-model-owns): when a value a
-// Requirement's reason points at changes, the platform flags the Purchase Decision. A reason
+// The value_changed flag: when a value a Requirement's reason points at changes, the platform flags
+// the Purchase Decision, so a Requirement never silently outlives the fact it rests on. A reason
 // naming a field is flagged by a change to that field only; one naming none by any change to its
 // record. Archiving or restoring the record flags every reason on it, field or none. A Decision's
 // record changes, for a reason naming no field, when its title, statement, or content does: its
 // state changes already flag the Decisions resting on it. Likewise an Item's changes, except its
-// register (docs/handoff/item-page.md): when and where it was bought, the price paid, its warranty,
-// serial number, and manual say nothing about the thing a Requirement rests on, so typing a
-// warranty date on the Item page doesn't flag every Purchase citing the Item. A reason naming one
-// of those fields is still flagged by it.
+// register: when and where it was bought, the price paid, its warranty, serial number, and manual
+// say nothing about the thing a Requirement rests on, so typing a warranty date on the Item page
+// doesn't flag every Purchase citing the Item. A reason naming one of those fields is still flagged
+// by it.
 
 const DECISION_FIELDS: ReadonlySet<string> = new Set(["title", "statement", "content"]);
 const ITEM_REGISTER_FIELDS: ReadonlySet<string> = new Set([

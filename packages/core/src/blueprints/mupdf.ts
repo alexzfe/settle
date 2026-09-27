@@ -1,7 +1,7 @@
 // The rendering port, implemented with mupdf (WebAssembly): the only module that imports it.
-// mupdf is AGPL-3.0; to swap it for pdftoppm or pdfjs, replace this one file
-// (docs/research/spikes/3-pdf-to-png.md). Every mupdf object holds WASM memory until destroy(),
-// so each one is destroyed in a finally.
+// mupdf is AGPL-3.0, which is why Settle is AGPL too; to swap it for pdftoppm or pdf.js, replace
+// this one file. Every mupdf object holds WASM memory until destroy(), so each one is destroyed in
+// a finally.
 import * as mupdf from "mupdf";
 import { CoreError } from "../errors.js";
 import type { BlueprintDocument, PdfRenderer, RenderedImage, TextLine } from "../files.js";

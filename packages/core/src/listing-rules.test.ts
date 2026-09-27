@@ -1,6 +1,7 @@
 // The server-enforced Listing board rules, beside the other Purchase rules of slice 6: the
 // Rating and its mandatory reason line, the picture the platform fetches and stores, Held, and
-// the board's own writes — drop, hold, and the paste box (docs/handoff/listing-board.md).
+// the board's own writes — drop, hold, and the paste box. Those are the first writes on Listings
+// the web can make; until them only the Agent wrote Listings, and the shift is deliberate.
 //
 // The image fetch is a port on OperationContext, so every test here injects its own: no test
 // reaches the network. What the real one does is in images.test.ts.

@@ -5,7 +5,9 @@ import type { DecisionModel } from "./decisions.js";
 import type { RequirementReasonKind, requirementReasonInput } from "./schemas.js";
 
 // What a Requirement's reason points at: a Decision, a Constraint, a Note, or a recorded part of
-// the Home (docs/specs/home-model.md#rules-the-home-model-owns), and optionally one field of it.
+// the Home (a Room, Wall, Window, Door, Feature, Surface, or Item), and optionally one field of it.
+// A field must be one the record's receipts name, and a refusal lists them. Naming a field narrows
+// which changes flag the Purchase (see value-changes.ts).
 
 type ReasonIn = z.output<typeof requirementReasonInput>;
 
@@ -94,7 +96,12 @@ export function reasonRecords(model: DecisionModel, kind: RequirementReasonKind)
         row,
       }));
     case "wall":
-      return bySlug(model.walls);
+      return model.walls.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: wallName(model, row),
+        row,
+      }));
     case "window":
       return bySlug(model.windows);
     case "door":
@@ -102,6 +109,17 @@ export function reasonRecords(model: DecisionModel, kind: RequirementReasonKind)
     case "surface":
       return bySlug(model.surfaces);
   }
+}
+
+/**
+ * A Wall as a person names it: its Room, then its label when it has one, or else its position.
+ * "Living room, Sofa wall", "Living room, Wall 2".
+ */
+function wallName(model: DecisionModel, wall: DecisionModel["walls"][number]): string {
+  const room = model.rooms.find((each) => each.id === wall.roomId)?.name ?? "?";
+  const label = wall.label?.trim();
+  const own = label ? label.charAt(0).toUpperCase() + label.slice(1) : `Wall ${wall.position}`;
+  return `${room}, ${own}`;
 }
 
 /** The record a stored reason points at, if it is still in the Home. */
@@ -158,12 +176,16 @@ export function recordName(record: ReasonRecord | undefined): string {
   return record.name === record.slug ? record.slug : named(record);
 }
 
-/** A Requirement's reason as a receipt shows it: "Wall living-room/wall-2, length". */
+/** A Requirement's reason as a receipt shows it: "Living room, Wall 2 (living-room/wall-2), length". */
 export function reasonLabel(
   model: DecisionModel,
   reason: { reasonKind: RequirementReasonKind; reasonId: number; reasonField: string | null },
 ): string {
   const what = recordName(reasonRecord(model, reason.reasonKind, reason.reasonId));
-  const noun = reason.reasonKind.charAt(0).toUpperCase() + reason.reasonKind.slice(1);
-  return `${noun} ${what}${reason.reasonField ? `, ${reason.reasonField}` : ""}`;
+  // A Wall's name already says what it is: "Living room, Wall 2", not "Wall Living room, Wall 2".
+  const noun =
+    reason.reasonKind === "wall"
+      ? ""
+      : `${reason.reasonKind.charAt(0).toUpperCase()}${reason.reasonKind.slice(1)} `;
+  return `${noun}${what}${reason.reasonField ? `, ${reason.reasonField}` : ""}`;
 }

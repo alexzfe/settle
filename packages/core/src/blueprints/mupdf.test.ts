@@ -1,4 +1,5 @@
-// The conversion test: both fixture PDFs from spike 3 through the mupdf renderer.
+// The conversion test: both fixture PDFs through the mupdf renderer, including a /Rotate 90 page
+// and an image-only scan.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";

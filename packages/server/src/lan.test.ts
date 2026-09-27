@@ -1,6 +1,6 @@
 // LAN mode's listener, written before it: it serves each Quick Guide by its token and refuses
-// every other path with 404, so a phone on the user's network reaches nothing but those pages
-// (docs/build-plan.md "The server process").
+// every other path with 404, so a phone on the user's network reaches nothing but those pages;
+// the web app, the API, and the MCP endpoint stay on loopback.
 import { mkdtempSync, rmSync } from "node:fs";
 import { type NetworkInterfaceInfo, tmpdir } from "node:os";
 import { join } from "node:path";

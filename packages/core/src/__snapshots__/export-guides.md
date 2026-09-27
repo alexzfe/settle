@@ -12,7 +12,7 @@ A large wool rug under the sofa.
 
 #### Measure first
 
-- Living room · Wall 5 · length. Recorded **~370 cm** (estimate). Measured: ____ cm
+- Living room, Wall 5 length. Recorded **~370 cm** (estimate). Measured: ____ cm
 
 #### Must
 

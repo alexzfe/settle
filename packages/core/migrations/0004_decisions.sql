@@ -1,9 +1,10 @@
 -- Slice 4: Decisions, their Basis and Evidence, Requirements, flags, Conflicts, and the record
 -- of every state change. Listings, Guides, and Deviations wait for slice 6.
 --
--- A Decision is Home-wide when scope_room_id is null. content is JSON validated per kind by core
--- (docs/specs/skill-set.md#decision-kinds); fulfilment is JSON of what was actually done, set
--- with fulfilled_at. Fulfilled is not a state: a Fulfilled Decision stays Locked.
+-- A Decision is Home-wide when scope_room_id is null. content is JSON validated per kind by core,
+-- since a kind says what the platform does with a Decision (a Palette's colors, a Room color's
+-- Surface and finish) and so what its content must hold; fulfilment is JSON of what was actually
+-- done, set with fulfilled_at. Fulfilled is not a state: a Fulfilled Decision stays Locked.
 
 CREATE TABLE decisions (
   id INTEGER PRIMARY KEY,

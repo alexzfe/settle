@@ -16,7 +16,7 @@ Living room (living-room): no Gaps left
 Wool rug (wool-rug) can't be Fulfilled while it has an open flag or Conflict (wool-rug/flag-1, wool-rug/flag-2): the user settles it first.
 Open flags and Conflicts:
 - Wool rug (wool-rug), Living room (living-room): flagged on 2026-09-14, Calm evenings (calm-evenings) was reopened
-- Wool rug (wool-rug), Living room (living-room): flagged on 2026-09-14, living-room/wall-5 length changed
+- Wool rug (wool-rug), Living room (living-room): flagged on 2026-09-14, Living room, Wall 5 (living-room/wall-5) length changed
 Ask the user whether it still holds, then keep it with set_decision_state (to settled, quoting them) and Fulfil it; or Reopen or Reject it with set_decision_state, if that is what they say. Nothing was recorded.
 
 # set_decision_state: the rug kept, clearing its flags

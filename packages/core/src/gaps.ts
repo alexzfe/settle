@@ -2,10 +2,12 @@ import { daylightOpenings } from "./daylight.js";
 import { type RoomDetail, SURFACE_PARTS } from "./operations/schemas.js";
 
 /**
- * A Room's Gaps: what the "enough for advice" list (docs/specs/home-model.md#rules-the-home-model-
- * owns) needs and the Room lacks, in the list's order: Wall lengths, ceiling height, Windows with
- * a daylight opening (a Window, or a glazed Door leading outside) with the facing of its Wall, or
- * the Room marked windowless, times of use, and the four Surfaces.
+ * A Room's Gaps: what the "enough for advice" list needs and the Room lacks. The list is the
+ * facts a Skill can't advise well on a Room without, and it is short on purpose, since each Gap
+ * shows in the Home Overview and the Skills ask only for what is missing. In the list's order:
+ * Wall lengths, ceiling height, Windows with a daylight opening (a Window, or a glazed Door
+ * leading outside) with the facing of its Wall, or the Room marked windowless, times of use, and
+ * the four Surfaces.
  * An outdoor Room is checked only for its floor Surface and times of use.
  */
 export function roomGaps(room: Omit<RoomDetail, "gaps">): string[] {

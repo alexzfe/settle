@@ -132,7 +132,7 @@ Let's go Room by Room, starting with the Main bedroom, which has one Item record
 
 // ─── Blueprint cases ────────────────────────────────────────────────────────────────────────
 // Their own mocks give a new Home, Flat 5, whose only record so far is an uploaded Blueprint: the
-// one-page A3 ground floor of docs/research/spikes/fixtures/blueprint-a3.pdf. A mock can't return
+// one-page A3 ground floor of packages/core/fixture/blueprint-a3.pdf. A mock can't return
 // images, so the view_images mock lists what the page prints, keeping two of its dimension
 // strings. The history's own writes get receipts in core's wording, since a canned mock answers
 // every save_room alike.
@@ -906,7 +906,7 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
         input: save,
         result: [
           `${of}: created as a Candidate Purchase for Living room (living-room); Basis: Warm minimalism (warm-minimalism), the Design Direction, automatically; Warm clay (warm-clay), the Palette, automatically`,
-          `Requirement 1 of ${of}: added: must, At most 2.20 m wide (reason: Wall living-room/wall-6, length)`,
+          `Requirement 1 of ${of}: added: must, At most 2.20 m wide (reason: Living room, Wall 6 (living-room/wall-6), length)`,
           `Requirement 2 of ${of}: added: must, Gets through a 0.76 m doorway, legs off if need be (reason: Home Fixture Home (fixture-home), accessWidth)`,
           `Requirement 3 of ${of}: added: must, A tightly woven wool cover, no loops or loose weave (reason: Constraint Two cats (two-cats))`,
           `Requirement 4 of ${of}: added: prefer, Cover in Jitney, or close to it (reason: Decision Warm clay (warm-clay))`,

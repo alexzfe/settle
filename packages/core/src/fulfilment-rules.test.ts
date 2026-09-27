@@ -1,7 +1,8 @@
 // The server-enforced Purchase rules of slice 6 that follow its Guides, written before their
 // implementation: the value_changed flag (a named field, no field, an unrelated field), Listings
 // with a check per Requirement, and a Purchase's Fulfilment with its Deviations, its Item or
-// Feature change, and the cascade of a Deviation from a must (docs/specs/skill-set.md#purchase).
+// Feature change, and the cascade of a Deviation from a must, which flags every Decision with the
+// Fulfilled Purchase in its Basis.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -140,12 +141,14 @@ describe("value_changed flags", () => {
         source: {
           kind: "wall",
           slug: "living-room/wall-2",
-          name: "living-room/wall-2",
+          name: "Living room, Wall 2",
           field: "length",
         },
       }),
     ]);
-    expect(await decisionText()).toContain("living-room/wall-2 length changed on");
+    expect(await decisionText()).toContain(
+      "Living room, Wall 2 (living-room/wall-2) length changed on",
+    );
   });
 
   it("flag one naming no field on any change to its record", async () => {
@@ -510,7 +513,7 @@ describe("record_fulfilment of a Purchase", () => {
     const error = await refusal(fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool }));
     expect(error.code).toBe("validation");
     expect(error.message).toContain("(wool-rug/flag-1)");
-    expect(error.message).toContain("living-room/wall-2 length changed");
+    expect(error.message).toContain("Living room, Wall 2 (living-room/wall-2) length changed");
     expect(error.message).toContain("set_decision_state");
     expect((await detail()).fulfilledAt).toBeUndefined();
     const { items } = await core.run("list_items", web, { home });

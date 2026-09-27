@@ -1,5 +1,5 @@
 ---
-description: The user gives the main bedroom's real times of use and skips the balcony. Only the times they gave are saved, and the balcony's stay a Gap: Room functions never supply a routine.
+description: "The user gives the main bedroom's real times of use and skips the balcony. Only the times they gave are saved, and the balcony's stay a Gap: Room functions never supply a routine."
 tags: [behaviour, home-intake, times-of-use]
 max_turns: 40
 timeout_seconds: 600

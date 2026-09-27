@@ -1,7 +1,9 @@
 // The server-enforced Decision rules of slice 4, written before their implementation: one test
 // per row of the transitions table and per illegal transition, the Session and reason rule, Basis
 // and Evidence existence, the automatic Design Direction, the flag cascade, clearing a flag, and
-// Conflicts only against Settled Decisions (docs/specs/skill-set.md#rule-enforcement).
+// Conflicts only against Settled Decisions. These are the rules the server can check from the
+// data alone, so it enforces them by refusing the write; every judgment about what the user meant
+// is left to the Skills.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";

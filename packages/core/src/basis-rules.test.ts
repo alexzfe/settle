@@ -2,7 +2,9 @@
 // and the Palette in force are stored in a Decision's Basis when it is created or starts using the
 // Palette's colors, and never move silently; keeping or Reopening a Decision flagged by its own
 // automatic entry re-bases it on the one in force; the cascade reads the stored Basis only; and a
-// Room color is Fulfilled against the Palette stored in its Basis (docs/handoff/slice-5b.md).
+// Room color is Fulfilled against the Palette stored in its Basis. Computing the automatic entries
+// from whatever is in force now would rewrite history once a successor exists: a Room color made on
+// Palette A would come to show Palette B, and nothing would record that it was made on A.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";

@@ -2,7 +2,9 @@
 // names a color of the Palette in force; the Palette in force enters the Basis of the Decisions
 // using its colors, and only theirs; its Reopen and Reject flag those Decisions and no others;
 // Fulfilling a Settled Room color paints its Surface with the right Provenance and finish; and one
-// Palette is Settled at a time (docs/specs/skill-set.md#decision-kinds and #rule-enforcement).
+// Palette is Settled at a time. Unlike the Design Direction, which is in every Basis, a Palette
+// enters the Basis only of the Decisions that use one of its colors, so rethinking it flags no
+// others.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";

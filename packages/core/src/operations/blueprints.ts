@@ -24,7 +24,8 @@ import { requireHome, requireSession } from "./scope.js";
 
 /**
  * A page whose PNG is bigger than this goes to the Agent as a JPEG instead, which keeps six pages
- * far under the 16 MB limit on one tool result (docs/research/spikes/4-images-in-results.md).
+ * far under the 16 MB limit on one tool result. That limit is Claude Code's streamable HTTP
+ * transport, not tokens: a result over it fails as "session expired", however few tokens it is.
  */
 export const JPEG_OVER_BYTES = 1024 * 1024;
 const JPEG_QUALITY = 85;

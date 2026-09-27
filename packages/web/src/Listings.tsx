@@ -4,9 +4,8 @@
 // Rating, the price — and the grid beneath it is the only thing that shows why one Listing beats
 // another, so the two stay together.
 //
-// This is also where Listings got their first web-callable writes (docs/handoff/listing-board.md):
-// dropping one, holding one, and setting its picture. Everything else about a Listing is the
-// Agent's to write.
+// This is also where Listings got their first web-callable writes, deliberately: dropping one,
+// holding one, and setting its picture. Everything else about a Listing is the Agent's to write.
 
 import type { Held, HoldReason } from "@settle/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

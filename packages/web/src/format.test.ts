@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   compass,
   formatColor,
+  formatDate,
   formatDimensions,
   formatLength,
   formatLogValue,
@@ -72,6 +73,22 @@ describe("words and sentence", () => {
     expect(words("sillHeight")).toBe("sill height");
     expect(sentence("radiator-or-heater")).toBe("Radiator or heater");
     expect(sentence("1-3")).toBe("1-3");
+  });
+});
+
+describe("formatDate", () => {
+  const now = new Date(2026, 8, 25, 12);
+
+  it("writes a date as day and month this year, as the Agent's label does, never numerically", () => {
+    expect(formatDate(new Date(2026, 8, 25, 9).toISOString(), now)).toBe("25 Sep");
+  });
+
+  it("adds the year to a date from an earlier year", () => {
+    expect(formatDate(new Date(2025, 0, 3, 9).toISOString(), now)).toBe("3 Jan 2025");
+  });
+
+  it("leaves an unreadable date as it came", () => {
+    expect(formatDate("not a date", now)).toBe("not a date");
   });
 });
 

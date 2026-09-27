@@ -1,7 +1,7 @@
-// The Item page's rules (docs/handoff/item-page.md): the register migration, Listed as a fourth
-// Provenance that only an Item takes, register dates, the pencil (edit_item) as the same write as
-// the Agent's, a Fulfilment that fills the register from the Listing bought, the bought Listing
-// kept from drop_listing, get_item's page, and the register in find_items but not the Room Sheet.
+// The Item page's rules: the register migration, Listed as a fourth Provenance that only an Item
+// takes, register dates, the pencil (edit_item) as the same write as the Agent's, a Fulfilment that
+// fills the register from the Listing bought, the bought Listing kept from drop_listing, get_item's
+// page, and the register in find_items but not the Room Sheet.
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

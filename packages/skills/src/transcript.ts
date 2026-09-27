@@ -1,6 +1,7 @@
 // Encodes a scripted conversation as a Claude Code session transcript (.jsonl): the format
-// `claude plugin eval` resumes from a replay case's context.history_file, as spike 2 found
-// (docs/research/spikes/2-eval-harness.md). The line shapes copy a real Home Folder transcript.
+// `claude plugin eval` resumes from a replay case's context.history_file, which is how a case
+// starts partway into a conversation. Replay works even when the history holds AskUserQuestion
+// calls, answered or not. The line shapes copy a real Home Folder transcript.
 import { createHash } from "node:crypto";
 
 /** The MCP server key every Home Folder's .mcp.json uses, and so the mock directory's name. */

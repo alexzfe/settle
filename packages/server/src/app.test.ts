@@ -698,8 +698,8 @@ describe("Blueprints", () => {
       [1414, 2000],
       [2000, 1414],
     ]);
-    // Claude's image tokens are about width × height / 750 (spike 4 measured 3,904 for a
-    // 2000 × 1500 page); text is at most one token per character.
+    // Claude's image tokens are about width × height / 750 (a 2000 × 1500 page measured 3,904);
+    // text is at most one token per character.
     const tokens =
       decoded.map(pngSize).reduce((sum, [width, height]) => sum + (width * height) / 750, 0) +
       (text?.text?.length ?? 0);

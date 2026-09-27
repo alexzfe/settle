@@ -1,6 +1,8 @@
 -- The Listing board: a Listing gains the Agent's Rating with its one-line reason, a stored
 -- picture kept apart from the link it came from, and Held — kept for reference but not buyable
--- now (docs/handoff/listing-board.md, docs/adr/0005-core-fetches-listing-images.md).
+-- now. The Rating says how good a Listing is, separately from whether it passes its checks. The
+-- platform fetches and stores the picture itself, best-effort, so it outlives the shop's listing
+-- and the Agent never spends its context passing image bytes.
 --
 -- photo_path has only ever held a remote URL, written straight in by record_listing, so every
 -- value moves into photo_url and photo_path is emptied. From here photo_path holds a path under

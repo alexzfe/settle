@@ -35,9 +35,10 @@ import {
 } from "./schemas.js";
 import { requireHome } from "./scope.js";
 
-// The web's Shopping section and the files it offers (docs/poc-design.md#web-ui): the Shopping
-// List and Considering, the two exports, and the Quick Guide's phone page, which the LAN listener
-// serves by its token alone.
+// The web's Shopping section and the files it offers: the Shopping List and Considering, the two
+// exports, and the Quick Guide's phone page, which the LAN listener serves by its token alone.
+// Every non-Rejected Purchase Decision appears, each opening its Quick Guide, with the Full Guide
+// one tap away.
 
 const HTML = "text/html; charset=utf-8";
 const CSV = "text/csv; charset=utf-8";

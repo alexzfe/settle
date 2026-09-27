@@ -34,7 +34,7 @@ const fulfilled = "2026-09-14T15:00:00Z";
 const quickGuide: QuickGuide = {
   lookingFor: "Wool · low pile · warm clay · at least 2.0 × 1.4 m",
   lines: [
-    { kind: "measure-first", text: "Measure first: living-room/wall-2 length (~3.60 m)" },
+    { kind: "measure-first", text: "Measure first: Living room, Wall 2 length (~3.60 m)" },
     { kind: "must", text: "At least 2.0 × 1.4 m", requirement: 2 },
     { kind: "must", text: "Rolls to fit through the hallway door", requirement: 3 },
     { kind: "prefer", text: "Wool, low pile", requirement: 1 },
@@ -338,10 +338,10 @@ it("takes only the Agent's own lines shopping, with the Full Guide on a tap", as
   // Measure first is hoisted under the statement, and is on the page exactly once.
   const measure = screen.getByText("Measure first").closest("aside") as HTMLElement;
   expect([...measure.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
-    "living-room/wall-2 length (~3.60 m)",
+    "Living room, Wall 2 length (~3.60 m)",
   ]);
   expect(measure.querySelector("li strong")?.textContent).toBe(
-    "living-room/wall-2 length (~3.60 m)",
+    "Living room, Wall 2 length (~3.60 m)",
   );
   expect(within(shopping).queryByText("Measure first")).toBeNull();
   expect(fullGuideBlock().querySelector("p")?.textContent).toBe(`Written ${formatDate(written)}.`);

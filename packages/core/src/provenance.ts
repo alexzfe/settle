@@ -1,8 +1,11 @@
 import type { Color, Measurement, Provenance } from "./operations/schemas.js";
 
-// The Provenance rule (docs/specs/home-model.md#rules-the-home-model-owns): a value is never
-// replaced by one of weaker Provenance (measured > blueprint > listed > estimated) unless the user
-// says so. Only an Item's sizes and colors are ever Listed: the maker's or shop's figures.
+// The Provenance rule, which the server enforces rather than trusting the Skills to: a value is
+// never replaced by one of weaker Provenance (measured > blueprint > listed > estimated) unless the
+// user says so. A refused write is not stored and says why. The user's say-so travels as a
+// non-empty override reason, quoting them, and is logged; it exists because the stronger value can
+// be wrong (a mis-typed measurement, a wall that has since changed). Only an Item's sizes and
+// colors are ever Listed: the maker's or shop's figures.
 
 const STRENGTH: Record<Provenance, number> = { estimated: 0, listed: 1, blueprint: 2, measured: 3 };
 

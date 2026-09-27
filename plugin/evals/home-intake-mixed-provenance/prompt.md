@@ -1,5 +1,5 @@
 ---
-description: One reply mixes three sources: a measured wall, a length printed on the plan, and a guessed ceiling height. Each value is saved with its own Provenance, and the guess is not recorded as Measured or Blueprint.
+description: "One reply mixes three sources: a measured wall, a length printed on the plan, and a guessed ceiling height. Each value is saved with its own Provenance, and the guess is not recorded as Measured or Blueprint."
 tags: [behaviour, home-intake, provenance]
 max_turns: 40
 timeout_seconds: 600

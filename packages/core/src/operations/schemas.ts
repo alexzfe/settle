@@ -1,12 +1,16 @@
 // The Zod schemas of the Home model's operation inputs and results (slices 2 and 3), and of the
 // records and values they carry: the single source of truth that core, the web API, the MCP tools,
-// the web UI, and the Skills read. Field names are the camelCase of docs/specs/home-model.md's
-// field tables.
+// the web UI, and the Skills read. Record names are CONTEXT.md's terms, and field names are the
+// camelCase of the plain-English field names the UI and the AI use: "clear width" is clearWidth,
+// "bought on" is boughtOn.
 import { z } from "zod";
 import { PHOTO_TYPES } from "../images.js";
 import { homeInput, sessionInput } from "./scope.js";
 
-// ─── Fixed lists (docs/specs/home-model.md#fixed-lists) ─────────────────────────────────────
+// ─── Fixed lists ────────────────────────────────────────────────────────────────────────────
+//
+// Short on purpose, most ending in "other": they are revised from real usage, so a value that
+// piles up under "other" earns its own entry and one that goes unused is dropped.
 
 /** In strength order, strongest first. Only an Item's sizes and colors may be Listed. */
 export const PROVENANCES = ["measured", "blueprint", "listed", "estimated"] as const;
@@ -69,7 +73,10 @@ export const LIGHT_ROLES = ["ambient", "task", "accent"] as const;
 export const COLOR_TEMPERATURES = ["warm", "neutral", "cool"] as const;
 export const DIMMING_KINDS = ["none", "standard", "dim-to-warm", "tunable"] as const;
 
-// ─── Blueprints (docs/research/spikes/3-pdf-to-png.md and 4-images-in-results.md) ─────────────
+// ─── Blueprints ─────────────────────────────────────────────────────────────────────────────
+//
+// Each PDF page is rendered to PNG on upload, on the platform side, with its text layer in the
+// same coordinates as the image, so a printed dimension can be read and cited rather than guessed.
 
 /** What a Blueprint file may be. HEIC is refused until conversion arrives. */
 export const BLUEPRINT_FILE_TYPES = ["pdf", "png", "jpeg"] as const;
@@ -1167,7 +1174,12 @@ export type ListNotesResult = z.infer<typeof listNotesResult>;
 export type SearchNotesResult = z.infer<typeof searchNotesResult>;
 export type GetChangeLogResult = z.infer<typeof getChangeLogResult>;
 
-// ─── Decisions (slice 4: docs/specs/skill-set.md#decision-kinds and #rule-enforcement) ─────────
+// ─── Decisions (slice 4) ────────────────────────────────────────────────────────────────────
+//
+// A kind never limits what a Decision is about; it says what the platform does with it. A fridge,
+// a towel, and a washing machine are all Purchase Decisions. The server enforces every rule it can
+// check from the data, refusing with an actionable error, and leaves every judgment about what the
+// user meant to the Skills.
 
 export const DECISION_KINDS = [
   "design-direction",
@@ -2112,7 +2124,7 @@ export const QUICK_GUIDE_LINE_KINDS = [
 export const quickGuideLineSchema = z.object({
   kind: z.enum(QUICK_GUIDE_LINE_KINDS),
   /**
-   * What the line says: "Measure first: living-room/wall-5 length (~3.70 m)", a Requirement's
+   * What the line says: "Measure first: Living room, Wall 5 length (~3.70 m)", a Requirement's
    * text, or one of the AI's lines.
    */
   text: z.string(),

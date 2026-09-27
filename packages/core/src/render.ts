@@ -1,4 +1,8 @@
-// The text the AI reads. Rules from docs/specs/home-model.md#context-tiers: leave out empty
+// The text the AI reads, for each of its Context tiers. The tiers exist so the AI gets what the
+// current work needs, in full, and nothing it would have to ignore: the Home Overview and the
+// Home-wide Decisions in force at Session start, a Room's whole Room Sheet the first time the work
+// touches that Room, and everything else (history, Archived records, one Decision in full) only
+// on request. The change log is never rendered. Every tier follows the same rules: leave out empty
 // fields, mark Estimated values with ~ and Listed ones (the maker's or shop's figures) with *, and
 // name records by their names with their readable slugs in brackets, never database ids.
 import { type DaylightOpening, daylightOpenings } from "./daylight.js";
@@ -688,10 +692,12 @@ function requirementLine(requirement: Requirement): string {
   const { reason } = requirement;
   const what =
     reason.name === reason.id ? reason.id : named({ name: reason.name, slug: reason.id });
-  const noun = reason.kind.charAt(0).toUpperCase() + reason.kind.slice(1);
+  // A Wall's name already says what it is: "Living room, Wall 2", not "Wall Living room, Wall 2".
+  const noun =
+    reason.kind === "wall" ? "" : `${reason.kind.charAt(0).toUpperCase()}${reason.kind.slice(1)} `;
   return (
     `${requirement.position}. ${requirement.strength}: ${requirement.text} ` +
-    `(reason: ${noun} ${what}${reason.field ? `, ${reason.field}` : ""})`
+    `(reason: ${noun}${what}${reason.field ? `, ${reason.field}` : ""})`
   );
 }
 

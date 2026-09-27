@@ -1,7 +1,8 @@
--- The committed Decision state Locked is renamed Settled (docs/adr/0007-locked-renamed-settled.md):
--- every stored 'locked' becomes 'settled', in decisions.state, in the from and to of every
--- recorded state change, and in the Change Log's state entries. SQLite can't alter a CHECK, so
--- decisions and state_changes are rebuilt.
+-- The committed Decision state Locked is renamed Settled: every stored 'locked' becomes
+-- 'settled', in decisions.state, in the from and to of every recorded state change, and in the
+-- Change Log's state entries. The rename is total, storage and tool inputs included, because a
+-- partial one would leave the Agent reading "Settled" in its Skill but sending 'locked' to the
+-- tool. SQLite can't alter a CHECK, so decisions and state_changes are rebuilt.
 --
 -- Migrations run with foreign keys on, in one transaction, where PRAGMA foreign_keys does nothing.
 -- Nothing refers to state_changes, so it is rebuilt the usual way: created anew, copied, the old

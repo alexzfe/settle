@@ -59,9 +59,9 @@ slug="$(node -e '
 [[ "${slug}" == "${HOME_SLUG}" ]] ||
   fail "create_home should have made the Home ${HOME_SLUG}; it answered: ${response}"
 
-# The Blueprint the view_images case reads: the spike's one-page A3 ground floor, uploaded the way
+# The Blueprint the view_images case reads: the fixture one-page A3 ground floor, uploaded the way
 # the web UI does. Its page stays unmapped, so the Agent names the Level from the page itself.
-BLUEPRINT_FILE=docs/research/spikes/fixtures/blueprint-a3.pdf
+BLUEPRINT_FILE=packages/core/fixture/blueprint-a3.pdf
 BLUEPRINT_SLUG=ground-floor-plan
 echo "Uploading the fixture Blueprint..."
 response="$(curl -sS -X POST "${BASE}/api/upload_blueprint" -F "home=${HOME_SLUG}" \

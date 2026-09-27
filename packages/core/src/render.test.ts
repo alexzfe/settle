@@ -1,5 +1,6 @@
 // Snapshots of the text the AI reads, rendered from the fixture Home. A new line in a snapshot
-// must be justified against the Context tiers (docs/specs/home-model.md#context-tiers).
+// must be justified against the Context tiers (see render.ts): the AI gets what the current work
+// needs, in full, and nothing it would have to ignore.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

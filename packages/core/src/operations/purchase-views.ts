@@ -8,7 +8,7 @@ import {
   type RequirementRow,
 } from "../store.js";
 import type { DecisionModel } from "./decisions.js";
-import { reasonRecord, recordName } from "./reasons.js";
+import { reasonRecord } from "./reasons.js";
 import {
   type CheckResult,
   type Deviation,
@@ -23,7 +23,8 @@ import {
 
 // A Purchase's Quick Guide, Guides, Listings, and Deviations, as results carry them. The Quick
 // Guide is assembled here from the Requirements and the AI's own lines, never stored whole, so it
-// can't go stale when a Requirement changes (docs/specs/skill-set.md#purchase).
+// can't go stale when a Requirement changes. Only its frame is fixed: Measure first at the top when
+// a must rests on an Estimated value, and musts before prefers.
 
 /** A Decision's Requirements not Archived, by position. */
 export function activeRequirements(model: DecisionModel, decision: DecisionRow): RequirementRow[] {
@@ -54,7 +55,8 @@ export function measureFirst(model: DecisionModel, decision: DecisionRow): strin
       requirement.reasonField !== null
         ? [requirement.reasonField]
         : Object.keys(row).filter((key) => MEASUREMENT_KEYS.has(key));
-    const what = requirement.reasonKind === "home" ? "" : `${recordName(record)} `;
+    // Read by the user in the shop, so the record goes by its name alone, never its slug.
+    const what = requirement.reasonKind === "home" ? "" : `${record.name} `;
     for (const field of fields) {
       const value = row[field];
       const line = isMeasurement(value)

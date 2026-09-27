@@ -36,9 +36,9 @@ export interface OperationContext extends CallContext {
   /** Renders Blueprint files to page images and text lines. */
   renderPdf: PdfRenderer;
   /**
-   * Fetches a Listing's product photo from the shop, validated (ADR 0005). A port like the two
-   * above, so no test ever reaches the network; store.transaction is synchronous, so callers
-   * fetch before the write, never inside it.
+   * Fetches a Listing's product photo from the shop, validated: core's one outbound call (see
+   * images.ts). A port like the two above, so no test ever reaches the network; store.transaction
+   * is synchronous, so callers fetch before the write, never inside it.
    */
   fetchImage: ImageFetcher;
   /** The folder holding uploads/ and rendered/, which the stored Blueprint paths are relative to. */

@@ -1,5 +1,6 @@
-// find_index, the web's search index (docs/handoff/generalized-search.md): every Room, Decision,
-// Item, Listing, and Feature of the Home as one flat list of FindRows, which the browser matches.
+// find_index, the web's search index: every Room, Decision, Item, Listing, and Feature of the Home
+// as one flat list of FindRows, which the browser matches as the user types. A Home is small
+// enough (a few dozen records) that the whole index ships to the browser, with no search engine.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CallContext, createCore } from "./core.js";
 import { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";

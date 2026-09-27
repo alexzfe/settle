@@ -1,10 +1,10 @@
--- An Item gains an owner's register (docs/handoff/item-page.md, Q6, Q15): when and where it was
--- bought, what was paid, how long the warranty runs, its serial number, and a manual or support
--- link. The free-text `price` becomes `price_paid`: it was never filled for a real Item, and
--- "price" alone is ambiguous between asking and paid. `listed_fields` names which of bought_from,
--- price_paid, and link were copied from the Listing bought and not edited since, as a JSON array.
+-- An Item gains an owner's register: when and where it was bought, what was paid, how long the
+-- warranty runs, its serial number, and a manual or support link. The free-text `price` becomes
+-- `price_paid`: it was never filled for a real Item, and "price" alone is ambiguous between asking
+-- and paid. `listed_fields` names which of bought_from, price_paid, and link were copied from the
+-- Listing bought and not edited since, as a JSON array.
 --
--- Provenance gains Listed, the maker's or shop's figures (Q13), and only an Item's sizes may be
+-- Provenance gains Listed, the maker's or shop's figures, and only an Item's sizes may be
 -- Listed: a Room's ceiling or a Wall's length never is. SQLite can't alter a CHECK, so `items` is
 -- rebuilt: created anew, copied, the old one dropped, the new one renamed.
 --

@@ -1,15 +1,18 @@
 import { CoreError } from "./errors.js";
 
-// The image port: core's only way out to the network, and the first outbound call it has ever
-// made (docs/adr/0005-core-fetches-listing-images.md). It fetches a Listing's product photo from
-// the retailer's CDN and hands back validated bytes. Tests inject a fake, so no test ever touches
-// the network.
+// The image port: core's only way out to the network, and deliberately so. Core otherwise binds
+// loopback and makes no model calls; it fetches a Listing's product photo itself only because the
+// alternatives were worse (base64 bytes in an MCP argument spend the Agent's context once per
+// Listing, and hand uploads put the chore back on the user). It fetches the photo from the
+// retailer's CDN and hands back validated bytes. The fetch is best-effort: a failure never fails
+// record_listing, which keeps the link instead. Tests inject a fake, so no test ever touches the
+// network.
 //
-// Spike 5 (docs/research/spikes/5-listing-image-fetch.md) measured 8 of 8 real Amazon and
-// Falabella images with no request headers at all, 13-397 KB each, at about 110 ms and no
-// redirects. What it found that shapes the code below: the type must be sniffed from the bytes,
-// because Falabella's image URLs have no extension and one path serves JPEG on one host and WebP
-// on another; and a bot wall arrives as HTML behind a 200, which only the magic number catches.
+// Measured against 8 of 8 real Amazon and Falabella images, fetched with no request headers at
+// all: 13-397 KB each, at about 110 ms and no redirects. What that measurement found shapes the
+// code below: the type must be sniffed from the bytes, because Falabella's image URLs have no
+// extension and one path serves JPEG on one host and WebP on another; and a bot wall arrives as
+// HTML behind a 200, which only the magic number catches.
 
 /** The image types the platform stores, as their media types. */
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -27,13 +30,14 @@ export interface FetchedImage {
  */
 export type ImageFetcher = (url: string) => Promise<FetchedImage>;
 
-/** Nothing bigger is stored. Spike 5's worst case across every variant probed was 624 KB. */
+/** Nothing bigger is stored. The worst case measured across every variant probed was 624 KB. */
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const TIMEOUT_MS = 8000;
-/** Sent because it is the polite default; spike 5 measured byte-identical responses without it. */
-const USER_AGENT =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " +
-  "Chrome/140.0.0.0 Safari/537.36";
+/**
+ * Names Settle honestly, with a link to what it is. The retailers measured served byte-identical
+ * images with no user-agent at all, so nothing would be gained by posing as a browser.
+ */
+const USER_AGENT = "Settle/1.0 (+https://github.com/alexzfe/settle)";
 
 /** Enough bytes to tell a WebP apart: "RIFF", four of length, then "WEBP". */
 const SNIFF_BYTES = 12;

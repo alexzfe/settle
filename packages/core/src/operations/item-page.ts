@@ -15,9 +15,10 @@ import {
 import { requireHome } from "./scope.js";
 import { Writer } from "./writer.js";
 
-// The Item page (docs/handoff/item-page.md): an Item's register, the Decisions tied to it, and the
-// history of its record; and its pencil, the first web write to an Item. Neither is an Agent tool:
-// the Agent reads Items through find_items and writes them through save_items.
+// The Item page: an Item's register (when and where it was bought, the price paid, its warranty,
+// serial number, and manual), the Decisions tied to it, and the history of its record; and its
+// pencil, the first web write to an Item. Neither is an Agent tool: the Agent reads Items through
+// find_items and writes them through save_items.
 
 /** The reason an edit on the page carries: the pencil is the user saying so (Q18). */
 const WEB_EDIT = "edited by the user on the web";

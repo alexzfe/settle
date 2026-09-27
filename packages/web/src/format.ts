@@ -1,4 +1,4 @@
-// How recorded values read on screen. Rules from docs/specs/home-model.md: lengths are stored in
+// How recorded values read on screen, by the Home model's conventions: lengths are stored in
 // millimetres and shown in metres with two decimals (until the units setting exists), Estimated
 // values carry a leading ~, and Measured and Blueprint values read plain.
 
@@ -114,9 +114,18 @@ export function formatTime(at: string): string {
   });
 }
 
-/** A date in the reader's locale. */
-export function formatDate(at: string): string {
-  return new Date(at).toLocaleDateString();
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+
+/**
+ * A date the way the rest of the app writes one, in the reader's time zone: "25 Sep" this year,
+ * "25 Sep 2025" in an earlier one. Never the browser's numeric locale form, which reads "9/25/2026"
+ * to one reader and "25/09/2026" to the next.
+ */
+export function formatDate(at: string, now: Date = new Date()): string {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return at;
+  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === now.getFullYear() ? day : `${day} ${date.getFullYear()}`;
 }
 
 /** A fixed-list value or field name as words: "dim-to-warm", "art_and_mirrors", "sillHeight". */

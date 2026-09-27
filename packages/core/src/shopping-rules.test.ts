@@ -1,8 +1,10 @@
 // The Shopping section's reads and the exports of slice 6, written before their implementation:
 // get_shopping's two groups, the Shopping List as a printable page and CSV, the Shopping Guides
 // as a printable page and Markdown, the phone page of the Quick Guide by slug and by its LAN
-// token, and the LAN URLs of LAN mode (docs/poc-design.md#web-ui, docs/build-plan.md "The server
-// process").
+// token, and the LAN URLs of LAN mode. LAN mode opens a second listener on the machine's LAN
+// address that serves only the Quick Guide pages, by an unguessable per-Purchase token, so a phone
+// on the user's own network can open one from a QR code while the web app, the API, and the MCP
+// endpoint stay on loopback.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -196,7 +198,7 @@ describe("get_shopping", () => {
       fullGuideOutOfDate: false,
       listings: 1,
       held: 0,
-      measureFirst: ["Measure first: living-room/wall-2 length (~3.00 m)"],
+      measureFirst: ["Measure first: Living room, Wall 2 length (~3.00 m)"],
       openFlags: 0,
     });
     expect(considering[0]).toMatchObject({
@@ -239,7 +241,7 @@ describe("export_shopping_list", () => {
     expect(rows[1]).toBe(
       'Wool rug,wool-rug,Living room,"A large wool rug, <b>under</b> the sofa.",' +
         '"At least 2.0 × 1.4 m; Wool, ""low"" pile, no loops",Terracotta,' +
-        "living-room/wall-2 length (~3.00 m),1,yes,0",
+        '"Living room, Wall 2 length (~3.00 m)",1,yes,0',
     );
     expect(rows.slice(2)).toEqual([""]);
   });
@@ -259,7 +261,7 @@ describe("export_shopping_list", () => {
     expect(page).toContain("<title>Shopping List: My flat</title>");
     expect(page).toContain("@media print");
     expect(page).toContain(
-      'Living room · Wall 2 · length. Recorded <span class="num">~300 cm</span> (estimate). Measured:',
+      'Living room, Wall 2 length. Recorded <span class="num">~300 cm</span> (estimate). Measured:',
     );
     expect(page).toContain("A large wool rug, &lt;b&gt;under&lt;/b&gt; the sofa.");
     expect(page).toContain("Wool, &quot;low&quot; pile, no loops");
@@ -313,7 +315,7 @@ describe("export_guides", () => {
       "### Quick Guide",
       "**Looking for:** Wool · low pile · terracotta · at least 2.0 × 1.4 m",
       "#### Measure first",
-      "- Living room · Wall 2 · length. Recorded **~300 cm** (estimate). Measured: ____ cm",
+      "- Living room, Wall 2 length. Recorded **~300 cm** (estimate). Measured: ____ cm",
       "#### Must",
       "- At least 2.0 × 1.4 m",
       '- Wool, "low" pile, no loops',
@@ -412,7 +414,7 @@ describe("the phone page of a Quick Guide", () => {
       "<h1>Wool rug</h1>",
       "Wool · low pile · terracotta · at least",
       "<h2>Measure first</h2>",
-      "Living room · Wall 2 · length. Recorded",
+      "Living room, Wall 2 length. Recorded",
       "<h2>Must</h2>",
       'At least <strong class="num">2.0 × 1.4 m</strong>',
       "Wool, &quot;low&quot; pile, no loops",
