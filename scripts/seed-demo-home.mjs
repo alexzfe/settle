@@ -17,15 +17,40 @@
 // Create the Home first, then seed it; it refuses a Home that already has Rooms:
 //   curl -X POST http://127.0.0.1:4391/api/create_home -H 'content-type: application/json' \
 //     -d '{"name":"Lisbon flat","country":"PT","city":"Lisbon"}'
-// Usage: node scripts/seed-demo-home.mjs http://127.0.0.1:4391/mcp/homes/lisbon-flat
+// Usage: node scripts/seed-demo-home.mjs http://127.0.0.1:4391/mcp/homes/lisbon-flat [token]
+//
+// Against a server with SETTLE_PASSWORD, log in for the create_home call first (curl -c jar -d
+// password=… <origin>/login, then -b jar on the call above), and give the Home's key, from its
+// About page's .mcp.json, as the second argument or SETTLE_TOKEN; the script sends it on every
+// MCP call, and logs in with SETTLE_PASSWORD for the picture uploads. Without a password, on
+// loopback, neither is needed.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const [url] = process.argv.slice(2);
-if (!url) throw new Error("Usage: node scripts/seed-demo-home.mjs <MCP endpoint URL>");
+const [url, tokenArgument] = process.argv.slice(2);
+if (!url) throw new Error("Usage: node scripts/seed-demo-home.mjs <MCP endpoint URL> [token]");
 // The listing pictures go through the web API beside the MCP endpoint, as the app uploads them.
 const { origin, pathname } = new URL(url);
 const home = pathname.split("/").at(-1);
+const token = tokenArgument ?? process.env.SETTLE_TOKEN;
+const authorization = token ? { authorization: `Bearer ${token}` } : {};
+
+/** The web API's session cookie, from logging in with SETTLE_PASSWORD; none without one. */
+async function logIn() {
+  const password = process.env.SETTLE_PASSWORD;
+  if (!password) return {};
+  const response = await fetch(`${origin}/login`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ password }),
+    redirect: "manual",
+  });
+  const cookie = response.headers.get("set-cookie")?.split(";")[0];
+  if (response.status !== 303 || !cookie) {
+    throw new Error(`Logging in at ${origin}/login failed: HTTP ${response.status}`);
+  }
+  return { cookie };
+}
 
 let id = 0;
 
@@ -33,7 +58,11 @@ let id = 0;
 async function call(name, args) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      ...authorization,
+    },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: ++id,
@@ -928,6 +957,7 @@ await listing({
 });
 
 // Each sofa's picture, a drawing beside this script, sent the way the app's picture box sends one.
+const session = await logIn();
 for (const sofa of [
   "tejo-modular-sofa-3-seats",
   "linho-2-5-seat-sofa",
@@ -939,7 +969,11 @@ for (const sofa of [
   form.append("listing", sofa);
   const bytes = readFileSync(join(import.meta.dirname, "demo-home", `${sofa}.png`));
   form.append("file", new Blob([bytes], { type: "image/png" }), `${sofa}.png`);
-  const response = await fetch(`${origin}/api/set_listing_photo`, { method: "POST", body: form });
+  const response = await fetch(`${origin}/api/set_listing_photo`, {
+    method: "POST",
+    headers: session,
+    body: form,
+  });
   if (!response.ok) throw new Error(`set_listing_photo ${sofa}: ${await response.text()}`);
 }
 

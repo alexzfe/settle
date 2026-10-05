@@ -24,7 +24,7 @@ const OWN_ROUTES: Record<string, string> = {
   upload_blueprint:
     "POST /api/upload_blueprint, as multipart/form-data with the fields home, file, and label",
   get_blueprint_page: "GET /api/get_blueprint_page?home=<slug>&blueprint=<slug>&page=<number>",
-  get_guide_page: "GET /guide/<decision slug>?home=<home slug>, as a page",
+  get_guide_page: "GET /guide/<decision slug>?home=<home slug>, or GET /guide/<token>, as a page",
   set_listing_photo:
     "POST /api/set_listing_photo, as multipart/form-data with the fields home, listing, and " +
     "either file or url",
@@ -190,7 +190,8 @@ export async function handleHomeFolderScript(core: Core, c: Context): Promise<Re
   const home = c.req.query("home");
   try {
     const { origin } = await core.run("home_folder_setup", web, { home } as { home: string });
-    return c.body(homeFolderScript(origin, home as string), 200, {
+    const token = core.homeToken(home as string) as string;
+    return c.body(homeFolderScript(origin, home as string, token), 200, {
       "content-type": "text/x-shellscript; charset=utf-8",
       "cache-control": "no-store",
     });

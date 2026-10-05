@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useId, useLayoutEffect, useState } from "react";
 import {
   Link,
@@ -10,6 +11,7 @@ import {
 } from "react-router";
 import { AboutPage } from "./AboutPage";
 import styles from "./App.module.css";
+import { authStatus } from "./api";
 import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
 import { DecisionPage } from "./DecisionPage";
@@ -144,10 +146,27 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
         <div className={styles.footer}>
           <ThemeToggle />
           {home && <AgentStatus home={home.slug} live={home.live} />}
+          <LogOut />
         </div>
       </aside>
       <main className={styles.main}>{children}</main>
     </div>
+  );
+}
+
+/**
+ * Logging out, when the server has a password: a plain form, since the server clears the cookie
+ * and answers with its login page.
+ */
+function LogOut() {
+  const status = useQuery({ queryKey: ["auth-status"], queryFn: authStatus, staleTime: Infinity });
+  if (!status.data?.auth) return null;
+  return (
+    <form method="post" action="/logout">
+      <button type="submit" className="secondary">
+        Log out
+      </button>
+    </form>
   );
 }
 

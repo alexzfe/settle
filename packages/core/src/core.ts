@@ -169,6 +169,11 @@ export interface Core {
   run(name: string, context: CallContext, input: unknown): Promise<unknown>;
   /** Hears every change after its write commits; the returned function stops listening. */
   subscribe(listener: ChangeListener): () => void;
+  /**
+   * The bearer key of the Home with this slug, for the server to check a request against;
+   * undefined when there is no such Home. No operation returns it to the Agent.
+   */
+  homeToken(home: string): string | undefined;
   close(): void;
 }
 
@@ -256,6 +261,7 @@ export function createCore(options: CoreOptions = {}): Core {
       return (await operation.handler(operationContext, parsed.data)) as never;
     },
     subscribe: (listener) => bus.subscribe(listener),
+    homeToken: (home) => store.home(home)?.token,
     close() {
       store.close();
       if (temporaryDataDir) rmSync(temporaryDataDir, { recursive: true, force: true });

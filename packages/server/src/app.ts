@@ -9,7 +9,9 @@ import {
   handleListingPhotoUpload,
   handleUpload,
 } from "./api.js";
+import { type AuthOptions, useAuth, useNoAuth } from "./auth.js";
 import { streamChanges } from "./events.js";
+import { handleGuideByToken } from "./lan.js";
 import { handleMcpRequest, mcpTools } from "./mcp.js";
 import { handleExport, handleGuidePage } from "./pages.js";
 import { serveWeb } from "./web.js";
@@ -22,15 +24,21 @@ export interface AppOptions {
   webDist?: string;
   /** When hosted: the origin the app is reached at, which the front door accepts too. */
   publicOrigin?: string;
+  /** With SETTLE_PASSWORD: the login, which every route but a few needs (auth.ts). */
+  auth?: AuthOptions;
 }
 
-export function createApp({ core, port, webDist, publicOrigin }: AppOptions): Hono {
+export function createApp({ core, port, webDist, publicOrigin, auth }: AppOptions): Hono {
   const tools = mcpTools(core);
   // The Agent's last tool call per Home, which /events passes on. The web's /api calls don't count.
   const activity = new AgentActivity();
   const app = new Hono();
   app.use("*", frontDoor(publicOrigin));
+  if (auth) useAuth(app, { core, auth, ...(publicOrigin ? { publicOrigin } : {}) });
+  else useNoAuth(app);
   app.get("/health", (c) => c.json({ status: "ok" }));
+  // Whether there is a login, so the web knows to offer a log-out.
+  app.get("/api/auth_status", (c) => c.json({ auth: auth !== undefined }));
   // Blueprints: a multipart upload in, and each rendered page out as a PNG.
   app.post("/api/upload_blueprint", (c) => handleUpload(core, c));
   app.get("/api/get_blueprint_page", (c) => handleBlueprintPage(core, c));
@@ -43,8 +51,13 @@ export function createApp({ core, port, webDist, publicOrigin }: AppOptions): Ho
   // The Home Folder command fetches this and pipes it into sh, inside the folder.
   app.get("/api/home_folder_script", (c) => handleHomeFolderScript(core, c));
   app.post("/api/:operation", (c) => handleApi(core, c));
-  // The Quick Guide's phone page. In LAN mode the LAN listener serves it by token (lan.ts).
-  app.get("/guide/:slug", (c) => handleGuidePage(core, c));
+  // The Quick Guide's phone page: by its token, which needs no login, or by its slug with
+  // ?home=, for the web UI. In LAN mode the LAN listener serves it by token too (lan.ts).
+  app.get("/guide/:slug", (c) =>
+    c.req.query("home") === undefined
+      ? handleGuideByToken(core, c, c.req.param("slug"))
+      : handleGuidePage(core, c),
+  );
   app.get("/events", (c) => streamChanges(core, activity, c));
   app.all("/mcp/homes/:home", (c) =>
     handleMcpRequest(c.req.raw, {

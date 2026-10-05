@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, call, unreachableMessage } from "./api";
+import { ApiError, authStatus, call, login, unreachableMessage } from "./api";
 
 describe("call", () => {
   afterEach(() => {
@@ -45,6 +45,27 @@ describe("call", () => {
     await expect(call("list_homes", {})).rejects.toMatchObject({ code: "unexpected_response" });
   });
 
+  it("goes to the login on a 401, still refusing the call", async () => {
+    const go = vi.spyOn(login, "go").mockImplementation(() => {});
+    const refusal = { error: { code: "unauthorized", message: "Log in first." } };
+    vi.stubGlobal("fetch", async () => Response.json(refusal, { status: 401 }));
+    await expect(call("list_homes", {})).rejects.toMatchObject({
+      code: "unauthorized",
+      status: 401,
+    });
+    expect(go).toHaveBeenCalledTimes(1);
+    go.mockRestore();
+  });
+
+  it("never goes to the login for any other refusal", async () => {
+    const go = vi.spyOn(login, "go").mockImplementation(() => {});
+    const refusal = { error: { code: "forbidden", message: "Not here." } };
+    vi.stubGlobal("fetch", async () => Response.json(refusal, { status: 403 }));
+    await expect(call("list_homes", {})).rejects.toMatchObject({ status: 403 });
+    expect(go).not.toHaveBeenCalled();
+    go.mockRestore();
+  });
+
   it("reports a network failure as unreachable", async () => {
     vi.stubGlobal("fetch", async () => {
       throw new TypeError("fetch failed");
@@ -62,5 +83,18 @@ describe("unreachableMessage", () => {
     expect(unreachableMessage("localhost")).toBe(start);
     expect(unreachableMessage("127.0.0.1")).toBe(start);
     expect(unreachableMessage("settle.example.com")).toBe("The server is not answering.");
+  });
+});
+
+describe("authStatus", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("asks GET /api/auth_status whether the server has a login", async () => {
+    const fetch = vi.fn(async () => Response.json({ auth: true }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(authStatus()).resolves.toEqual({ auth: true });
+    expect(fetch).toHaveBeenCalledWith("/api/auth_status", { method: "GET" });
   });
 });

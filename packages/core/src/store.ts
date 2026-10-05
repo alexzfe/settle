@@ -59,6 +59,8 @@ export interface HomeRow {
   liftCarDepth: Measurement | null;
   accessWidth: Measurement | null;
   accessNote: string | null;
+  /** The Home's bearer key for its MCP endpoint and Home Folder script; never shown to the Agent. */
+  token: string;
 }
 
 export interface LevelRow {
@@ -500,7 +502,9 @@ export interface Store {
   /** Runs `fn` in one transaction, rolled back if it throws. `fn` must be synchronous. */
   transaction<T>(fn: () => T): T;
 
-  insertHome(home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude">): HomeRow;
+  insertHome(
+    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token">,
+  ): HomeRow;
   home(slug: string): HomeRow | undefined;
   homes(): HomeRow[];
 

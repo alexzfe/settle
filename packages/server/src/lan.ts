@@ -14,17 +14,22 @@ const web = { caller: { kind: "web" } } as const;
  */
 export function createLanApp({ core }: { core: Core }): Hono {
   const app = new Hono();
-  app.get("/guide/:token", async (c) => {
-    try {
-      const token = c.req.param("token");
-      return fileResponse(c, await core.run("get_guide_page", web, { token }));
-    } catch (error) {
-      if (!(error instanceof CoreError)) throw error;
-      return notFound(c);
-    }
-  });
+  app.get("/guide/:token", (c) => handleGuideByToken(core, c, c.req.param("token")));
   app.notFound(notFound);
   return app;
+}
+
+/**
+ * GET /guide/<token>: a Quick Guide's phone page by its token, on the LAN listener and, with no
+ * login, on the main one. Every miss is the same 404, so a wrong token says nothing.
+ */
+export async function handleGuideByToken(core: Core, c: Context, token: string): Promise<Response> {
+  try {
+    return fileResponse(c, await core.run("get_guide_page", web, { token }));
+  } catch (error) {
+    if (!(error instanceof CoreError)) throw error;
+    return notFound(c);
+  }
 }
 
 function notFound(c: Context) {

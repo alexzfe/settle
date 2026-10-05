@@ -1,0 +1,19 @@
+# Settle in one container. Put SETTLE_PUBLIC_ORIGIN and SETTLE_PASSWORD in a .env file beside this
+# one, or in the environment; compose refuses to start without either.
+# Serves plain http: put HTTPS in front of it, or keep it on a private network. See SELF-HOSTING.md.
+name: settle
+
+services:
+  settle:
+    image: ghcr.io/alexzfe/settle:latest
+    restart: unless-stopped
+    ports:
+      - "4380:4380"
+    environment:
+      SETTLE_PUBLIC_ORIGIN: ${SETTLE_PUBLIC_ORIGIN:?set SETTLE_PUBLIC_ORIGIN to the address the browser uses, such as https://settle.example.com}
+      SETTLE_PASSWORD: ${SETTLE_PASSWORD:?set SETTLE_PASSWORD to the household's password}
+    volumes:
+      - settle-data:/data
+
+volumes:
+  settle-data:

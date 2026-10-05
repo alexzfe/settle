@@ -6,8 +6,8 @@ by talking it through with Claude. Each choice is a Decision you can settle, and
 on the ones you've settled. When you're buying something, it writes down what the thing has to fit
 and why, then gives you a Quick Guide to take into the shop.
 
-It runs as a small server on your own computer, with an MCP endpoint your own Claude session works
-through.
+It runs as a small server on your own computer or your own server, with an MCP endpoint your own
+Claude session works through.
 
 ![The Overview of a demo Home: what the Agent suggests next, and the Decisions waiting on you](docs/screenshots/overview.png)
 
@@ -38,12 +38,11 @@ from the screenshots:
 node scripts/seed-demo-home.mjs http://127.0.0.1:4380/mcp/homes/lisbon-flat
 ```
 
-## No login
+## On a server
 
-Settle has no authentication. It listens on `127.0.0.1` and that is the only thing protecting it:
-anyone who can reach the server can read and change everything in it, including the rendered pages
-of your floor plan. **Don't expose it to a network.** Authentication will ship before running Settle
-on a server is supported.
+Run locally as above, Settle asks for no password and listens on `127.0.0.1` only. To run it on a
+server, use the Docker image and follow [SELF-HOSTING.md](SELF-HOSTING.md); there it requires a
+password, and won't start without one.
 
 ## Notes
 

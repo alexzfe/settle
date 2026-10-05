@@ -1,5 +1,5 @@
-Session: home-intake-4567
-Pass session "home-intake-4567" on every write in this conversation.
+Session: home-intake-vwxy
+Pass session "home-intake-vwxy" on every write in this conversation.
 
 Home-wide Decisions in force:
 
@@ -26,7 +26,7 @@ Soft plaster and clay tones, a warm stone for the living room, a terracotta acce
 Other Home-wide Decisions, Settled:
 - Keep the original floors (keep-the-original-floors): Other, Settled; 1 open Conflict. The oak boards and terracotta tiles stay.
 
-Session: home-intake-4567
-Pass session "home-intake-4567" on every write in this conversation.
+Session: home-intake-vwxy
+Pass session "home-intake-vwxy" on every write in this conversation.
 
 This Session already has the opening. If the Home Overview is no longer in view, call open_session again with resend: true.

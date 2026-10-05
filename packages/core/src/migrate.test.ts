@@ -35,6 +35,7 @@ describe("migrate", () => {
       { id: 11 },
       { id: 12 },
       { id: 13 },
+      { id: 14 },
     ]);
     db.close();
   });
@@ -43,7 +44,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 14 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 15 });
     db.close();
   });
 
@@ -250,6 +251,36 @@ describe("migrate", () => {
         )
         .run(),
     ).toThrow(/CHECK/);
+    db.close();
+  });
+
+  it("gives every existing Home its own token, and keeps two Homes from sharing one", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = ON");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0014")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early.exec(`
+      INSERT INTO homes (slug, name, country, city, latitude) VALUES
+        ('flat', 'Flat', 'CL', 'Santiago', -33.4),
+        ('cottage', 'Cottage', 'GB', 'York', 54);
+    `);
+    early.close();
+
+    const db = migrate(path);
+    const tokens = db.prepare("SELECT token FROM homes ORDER BY id").all() as { token: string }[];
+    expect(tokens).toHaveLength(2);
+    for (const { token } of tokens) expect(token).toMatch(/^[0-9a-f]{36}$/);
+    expect(tokens[0]?.token).not.toBe(tokens[1]?.token);
+    expect(() =>
+      db.prepare("UPDATE homes SET token = ? WHERE slug = 'cottage'").run(tokens[0]?.token ?? ""),
+    ).toThrow(/UNIQUE/);
     db.close();
   });
 

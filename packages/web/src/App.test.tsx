@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { DecisionSummary, Home } from "./api";
+import { type DecisionSummary, type Home, login } from "./api";
 import { FakeEventSource, renderRoutes, stubApi } from "./testSupport";
 
 const house: Home = {
@@ -130,4 +130,52 @@ it("shows only the mark and the theme switch outside a Home", async () => {
   expect(screen.queryByText("States")).toBeNull();
   expect(screen.getByRole("group", { name: "Theme" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "settle" }).getAttribute("href")).toBe("/");
+});
+
+/** The stubbed API, answering GET /api/auth_status as the server would. */
+function stubAuth(auth: boolean | "expired") {
+  const api = stubApi({ list_homes: () => ({ homes: [house] }) });
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url !== "/api/auth_status") return api(url, init);
+    if (auth === "expired") {
+      const error = { code: "unauthorized", message: "Log in first." };
+      return Response.json({ error }, { status: 401 });
+    }
+    return Response.json({ auth });
+  });
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
+it("offers a log-out on every page when the server has a login", async () => {
+  stubAuth(true);
+  renderRoutes("/");
+  const button = await screen.findByRole("button", { name: "Log out" });
+  const form = button.closest("form");
+  expect(form?.getAttribute("method")).toBe("post");
+  expect(form?.getAttribute("action")).toBe("/logout");
+});
+
+it("offers no log-out when the server has no login", async () => {
+  const fetch = stubAuth(false);
+  renderRoutes("/homes/house/about");
+  await vi.waitFor(() =>
+    expect(fetch.mock.calls.some(([url]) => url === "/api/auth_status")).toBe(true),
+  );
+  await screen.findAllByText("House");
+  expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
+});
+
+it("goes to the login when the live connection is refused for a session that ran out", async () => {
+  const go = vi.spyOn(login, "go").mockImplementation(() => {});
+  stubAuth(true);
+  renderRoutes("/homes/house/about");
+  await screen.findByRole("button", { name: "Log out" });
+  expect(go).not.toHaveBeenCalled();
+  stubAuth("expired");
+  const source = FakeEventSource.open();
+  source.readyState = 2;
+  act(() => source.emit("error"));
+  await vi.waitFor(() => expect(go).toHaveBeenCalledTimes(1));
+  go.mockRestore();
 });

@@ -529,7 +529,7 @@ describe("LAN mode", () => {
     expect(decision.guides).toBeUndefined();
   });
 
-  it("puts the public origin's guide page on the Guides instead, when the app is hosted", async () => {
+  it("puts the public origin's guide page, by its token, on the Guides instead, when the app is hosted", async () => {
     const hosted = await createFixtureHome({
       publicOrigin: "https://settle.example.com",
       lanUrl: LAN_URL,
@@ -539,9 +539,11 @@ describe("LAN mode", () => {
         home: hosted.home,
         decision: "wool-rug",
       });
-      expect(decision.guides?.phoneUrl).toBe(
-        `https://settle.example.com/guide/wool-rug?home=${hosted.home}`,
+      // The token, never the guessable slug: the phone in the shop is not logged in.
+      expect(decision.guides?.phoneUrl).toMatch(
+        /^https:\/\/settle\.example\.com\/guide\/[A-Za-z0-9]{24}$/,
       );
+      expect(decision.quickGuide?.path).toBe(`/guide/wool-rug?home=${hosted.home}`);
     } finally {
       hosted.core.close();
     }

@@ -40,9 +40,9 @@ describe("the Quick Guide's phone page", () => {
     expect(page).not.toContain("<script");
   });
 
-  it("answers a refusal as a page: 400 without the Home or for a Decision that is no Purchase, 404 for one the Home lacks", async () => {
+  it("answers a refusal as a page: 400 for a Decision that is no Purchase, 404 for one the Home lacks, and the token page's 404 without the Home", async () => {
     const cases = [
-      ["/guide/wool-rug", 400, "Pass `home`"],
+      ["/guide/wool-rug", 404, "There is nothing here."],
       ["/guide/calm-evenings?home=fixture-home", 400, "Purchase Decisions only"],
       ["/guide/nothing?home=fixture-home", 404, "nothing"],
     ] as const;

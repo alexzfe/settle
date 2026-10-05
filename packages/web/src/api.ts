@@ -2,6 +2,7 @@
 // comes back as { error: { code, message } } with a message written for the reader. The shapes
 // are core's: the Zod schemas in packages/core/src/operations/ are their single source of truth.
 // Uploads are the exception to JSON: they post a multipart form, and answer the same way.
+// With a password set on the server, any call answered 401 sends the browser to its login page.
 
 import type {
   OperationName as CoreOperationName,
@@ -188,6 +189,22 @@ export function guidesExportUrl(
   return `/api/export_guides?${query}`;
 }
 
+/** Whether the server has a login, so there is one to log out of. */
+export function authStatus(): Promise<{ auth: boolean }> {
+  return send("/api/auth_status", { method: "GET" });
+}
+
+/**
+ * The way to the server's login page, which comes back here once logged in. An object, so a test
+ * can watch it: jsdom cannot navigate.
+ */
+export const login = {
+  go(): void {
+    const here = `${location.pathname}${location.search}${location.hash}`;
+    location.assign(`/login?next=${encodeURIComponent(here)}`);
+  },
+};
+
 async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   let response: Response;
   try {
@@ -195,6 +212,8 @@ async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   } catch {
     throw new ApiError("unreachable", unreachableMessage());
   }
+  // Not logged in, or the session ran out: the page underneath is left as it is.
+  if (response.status === 401) login.go();
   const body: unknown = await response.json().catch(() => undefined);
   if (response.ok && body !== undefined) return body as Output;
   const error = errorIn(body);

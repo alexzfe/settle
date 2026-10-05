@@ -15,7 +15,7 @@ Basis:
 - Warm minimalism (warm-minimalism): Design Direction, Settled; in every Basis as the Design Direction
 
 Evidence:
-- supports: Session color-jkmn, 2026-09-14, color: The user held the samples up to the bay window at dusk.
+- supports: Session color-bcde, 2026-09-14, color: The user held the samples up to the bay window at dusk.
 
 Decision: Living room walls in Jitney (living-room-walls-in-jitney)
 Kind: Room color

@@ -1111,7 +1111,7 @@ export const getHomeResult = z.object({
 export const homeFolderSetupResult = z.object({
   /** The origin the app names itself by, e.g. "https://settle.example.com". */
   origin: z.string(),
-  /** curl -fsSL "<origin>/api/home_folder_script?home=<slug>" | sh */
+  /** curl -fsSL -H "Authorization: Bearer <token>" "<origin>/api/home_folder_script?home=<slug>" | sh */
   command: z.string(),
   /** Run once inside the folder: adds the plugin marketplace and installs the plugin for it. */
   pluginInstall: z.string(),

@@ -9,6 +9,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { DECISION_KIND_LABELS as KINDS, listingLine, titled } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { DecisionRow, HomeRow, ListingRow, RequirementRow } from "../store.js";
+import { randomToken } from "../token.js";
 import { type DecisionModel, loadDecisions, requireDecision } from "./decisions.js";
 import {
   activeRequirements,
@@ -737,7 +738,7 @@ function storeGuides(
       fullMarkdown: null,
       writtenAt: null,
       requirementsChangedAt: null,
-      lanToken: lanToken(context),
+      lanToken: randomToken(context.random),
     });
     model.guides.push(guide);
   }
@@ -806,17 +807,4 @@ function quickGuideSummary(model: DecisionModel, decision: DecisionRow): string 
     `${count(own.length, "line")} of yours${kinds.length > 0 ? ` (${kinds.join(", ")})` : ""}`,
   ];
   return `its Quick Guide has ${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
-}
-
-// No 0/O or 1/l/I, so a token read off a screen can't be mistyped; 24 of them is about 139 bits.
-const TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-const TOKEN_LENGTH = 24;
-
-/** An unguessable token naming a Quick Guide on the LAN listener. */
-function lanToken(context: OperationContext): string {
-  let token = "";
-  for (let i = 0; i < TOKEN_LENGTH; i++) {
-    token += TOKEN_ALPHABET[context.random(TOKEN_ALPHABET.length)];
-  }
-  return token;
 }

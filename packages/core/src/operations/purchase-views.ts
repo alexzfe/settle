@@ -127,13 +127,13 @@ export interface PhoneOrigins {
 
 /** A Purchase's saved Guides, the Full Guide's Markdown only with `includeFullGuide`. */
 export function toGuides(
-  model: DecisionModel,
-  decision: DecisionRow,
   guide: GuideRow | undefined,
   { includeFullGuide = false, ...phone }: { includeFullGuide?: boolean } & PhoneOrigins = {},
 ): Guides | undefined {
   if (!guide) return undefined;
   const written = guide.fullMarkdown !== null && guide.writtenAt !== null;
+  // By the guide's unguessable token, which opens its page without a login, hosted or on the LAN.
+  const phoneOrigin = phone.publicOrigin ?? phone.lanUrl;
   return {
     quickLines: guide.quickLines,
     ...optional({
@@ -146,9 +146,7 @@ export function toGuides(
             ...optional({ markdown: includeFullGuide ? guide.fullMarkdown : undefined }),
           }
         : undefined,
-      phoneUrl: phone.publicOrigin
-        ? `${phone.publicOrigin}${guidePath(model, decision)}`
-        : phone.lanUrl && `${phone.lanUrl}/guide/${guide.lanToken}`,
+      phoneUrl: phoneOrigin && `${phoneOrigin}/guide/${guide.lanToken}`,
     }),
   };
 }

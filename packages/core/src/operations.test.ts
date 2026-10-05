@@ -348,15 +348,24 @@ describe("home_folder_setup", () => {
     const setup = await core.run("home_folder_setup", web, { home });
 
     expect(setup.origin).toBe("http://127.0.0.1:4380");
+    const token = core.homeToken(home) as string;
+    expect(token).toMatch(/^[A-Za-z0-9]{24}$/);
     expect(setup.command).toBe(
-      'curl -fsSL "http://127.0.0.1:4380/api/home_folder_script?home=my-flat" | sh',
+      `curl -fsSL -H "Authorization: Bearer ${token}" ` +
+        '"http://127.0.0.1:4380/api/home_folder_script?home=my-flat" | sh',
     );
     expect(setup.pluginInstall).toBe(
       "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle --scope project",
     );
     expect(setup.files.map((file) => file.path)).toEqual([".mcp.json", ".claude/settings.json"]);
     expect(JSON.parse(setup.files[0]?.content ?? "")).toEqual({
-      mcpServers: { settle: { type: "http", url: "http://127.0.0.1:4380/mcp/homes/my-flat" } },
+      mcpServers: {
+        settle: {
+          type: "http",
+          url: "http://127.0.0.1:4380/mcp/homes/my-flat",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      },
     });
     expect(JSON.parse(setup.files[1]?.content ?? "")).toEqual({
       enabledPlugins: { "settle@settle": true },
@@ -387,6 +396,25 @@ describe("home_folder_setup", () => {
       } finally {
         other.close();
       }
+    }
+  });
+
+  it("gives each Home its own key, which no Home or change-log output shows", async () => {
+    const home = await newHome();
+    const other = (
+      await core.run("create_home", web, { name: "Cottage", country: "GB", city: "London" })
+    ).home.slug;
+    const token = core.homeToken(home) as string;
+
+    expect(core.homeToken(other)).toMatch(/^[A-Za-z0-9]{24}$/);
+    expect(core.homeToken(other)).not.toBe(token);
+    expect(core.homeToken("nowhere")).toBeUndefined();
+    for (const output of [
+      await core.run("list_homes", web, {}),
+      await core.run("get_home", web, { home }),
+      await core.run("get_change_log", web, { home }),
+    ]) {
+      expect(JSON.stringify(output)).not.toContain(token);
     }
   });
 

@@ -836,7 +836,9 @@ describe("the Home Folder script", () => {
     const response = await api("home_folder_setup", { home: "my-flat" });
     expect(await response.json()).toMatchObject({
       origin: `http://127.0.0.1:${PORT}`,
-      command: `curl -fsSL "http://127.0.0.1:${PORT}/api/home_folder_script?home=my-flat" | sh`,
+      command:
+        `curl -fsSL -H "Authorization: Bearer ${core.homeToken("my-flat")}" ` +
+        `"http://127.0.0.1:${PORT}/api/home_folder_script?home=my-flat" | sh`,
     });
   });
 });

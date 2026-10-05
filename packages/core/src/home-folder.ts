@@ -41,18 +41,29 @@ export interface HomeFolderSetup {
   files: HomeFolderFile[];
 }
 
-export function homeFolderSetup(origin: string, homeSlug: string): HomeFolderSetup {
+/**
+ * `token` is the Home's bearer key: the command sends it to fetch the script, and .mcp.json sends
+ * it on every MCP call. Both carry it whether or not the server has a password, so turning one on
+ * later needs no new setup.
+ */
+export function homeFolderSetup(origin: string, homeSlug: string, token: string): HomeFolderSetup {
   return {
     origin,
-    command: `curl -fsSL "${scriptUrl(origin, homeSlug)}" | sh`,
+    command: `curl -fsSL -H "${authorization(token)}" "${scriptUrl(origin, homeSlug)}" | sh`,
     pluginInstall: PLUGIN_INSTALL,
-    files: homeFolderFiles(origin, homeSlug),
+    files: homeFolderFiles(origin, homeSlug, token),
   };
 }
 
-export function homeFolderFiles(origin: string, homeSlug: string): HomeFolderFile[] {
+export function homeFolderFiles(origin: string, homeSlug: string, token: string): HomeFolderFile[] {
   const mcp = {
-    mcpServers: { [MCP_SERVER_KEY]: { type: "http", url: `${origin}/mcp/homes/${homeSlug}` } },
+    mcpServers: {
+      [MCP_SERVER_KEY]: {
+        type: "http",
+        url: `${origin}/mcp/homes/${homeSlug}`,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    },
   };
   const settings = {
     enabledPlugins: { [`${PLUGIN_NAME}@${PLUGIN_MARKETPLACE}`]: true },
@@ -71,10 +82,11 @@ export function homeFolderFiles(origin: string, homeSlug: string): HomeFolderFil
  * The POSIX sh script GET /api/home_folder_script serves: run in the Home Folder, it refuses a
  * folder whose .mcp.json names another Home, keeps a differing file as <file>.before-settle,
  * writes both files, and says what to do next. It reads nothing from stdin, which is the script
- * itself under `curl … | sh`. Home slugs are [a-z0-9-], so they need no shell quoting.
+ * itself under `curl … | sh`. Home slugs are [a-z0-9-] and tokens letters and digits, so they
+ * need no shell quoting.
  */
-export function homeFolderScript(origin: string, homeSlug: string): string {
-  const writes = homeFolderFiles(origin, homeSlug).flatMap(({ path, content }) => [
+export function homeFolderScript(origin: string, homeSlug: string, token: string): string {
+  const writes = homeFolderFiles(origin, homeSlug, token).flatMap(({ path, content }) => [
     `write_file ${path} <<'SETTLE_EOF'`,
     content.trimEnd(),
     "SETTLE_EOF",
@@ -123,6 +135,7 @@ export function homeFolderScript(origin: string, homeSlug: string): string {
     'if [ -n "$same" ]; then echo "Already up to date:$same."; fi',
     'if [ -n "$kept" ]; then echo "Kept the files that were there as$kept."; fi',
     `echo "This folder is now the Home Folder of the Home \\"$home\\"."`,
+    'echo ".mcp.json holds this Home\'s key for the Agent: do not commit it or share it."',
     "echo",
     "echo 'Then, once in this folder, install the Settle plugin for it:'",
     `echo '  ${PLUGIN_INSTALL}'`,
@@ -130,6 +143,10 @@ export function homeFolderScript(origin: string, homeSlug: string): string {
     "echo 'Run `claude` here.'",
     "",
   ].join("\n");
+}
+
+function authorization(token: string): string {
+  return `Authorization: Bearer ${token}`;
 }
 
 function scriptUrl(origin: string, homeSlug: string): string {

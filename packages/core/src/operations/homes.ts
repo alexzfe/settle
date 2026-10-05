@@ -7,6 +7,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { HomeRow, LevelRow, RoomRow, SessionRow } from "../store.js";
+import { randomToken } from "../token.js";
 import {
   blueprintName,
   findLevel,
@@ -84,6 +85,7 @@ export const createHome = defineOperation({
         country: input.country,
         city: input.city,
         latitude,
+        token: randomToken(context.random),
       });
       log({ home, recordKind: "home", record: home, new: toHome(home) });
       const ground = store.insertLevel({
@@ -319,8 +321,10 @@ export const homeFolderSetupOperation = defineOperation({
   input: z.object({ home: homeInput }),
   readOnly: true,
   surface: "web",
-  handler: (context): HomeFolderSetupResult =>
-    homeFolderSetup(context.origin, requireHome(context).slug),
+  handler(context): HomeFolderSetupResult {
+    const home = requireHome(context);
+    return homeFolderSetup(context.origin, home.slug, home.token);
+  },
 });
 
 export const listSessions = defineOperation({

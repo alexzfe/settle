@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { homeFolderFiles, homeFolderScript } from "./home-folder.js";
 
 const ORIGIN = "https://settle.example.com";
+const TOKEN = "Abc23defGHJ456kmnPQR789s";
 
 const dirs: string[] = [];
 const tempFolder = () => {
@@ -21,7 +22,7 @@ afterEach(() => {
 function runScript(folder: string, home: string) {
   const run = spawnSync("sh", [], {
     cwd: folder,
-    input: homeFolderScript(ORIGIN, home),
+    input: homeFolderScript(ORIGIN, home, TOKEN),
     encoding: "utf8",
   });
   return { status: run.status, stdout: run.stdout, stderr: run.stderr };
@@ -29,10 +30,10 @@ function runScript(folder: string, home: string) {
 
 const read = (folder: string, path: string) => readFileSync(join(folder, path), "utf8");
 const expected = (home: string, path: string) =>
-  homeFolderFiles(ORIGIN, home).find((file) => file.path === path)?.content;
+  homeFolderFiles(ORIGIN, home, TOKEN).find((file) => file.path === path)?.content;
 
 describe("the Home Folder script", () => {
-  it("writes both files into a fresh folder and says what to do next", () => {
+  it("writes both files into a fresh folder, the Home's key in .mcp.json, and says what to do next", () => {
     const folder = tempFolder();
 
     const run = runScript(folder, "my-flat");
@@ -40,12 +41,21 @@ describe("the Home Folder script", () => {
     expect(run.status).toBe(0);
     expect(read(folder, ".mcp.json")).toBe(expected("my-flat", ".mcp.json"));
     expect(JSON.parse(read(folder, ".mcp.json"))).toEqual({
-      mcpServers: { settle: { type: "http", url: `${ORIGIN}/mcp/homes/my-flat` } },
+      mcpServers: {
+        settle: {
+          type: "http",
+          url: `${ORIGIN}/mcp/homes/my-flat`,
+          headers: { Authorization: `Bearer ${TOKEN}` },
+        },
+      },
     });
     expect(read(folder, ".claude/settings.json")).toBe(
       expected("my-flat", ".claude/settings.json"),
     );
     expect(run.stdout).toContain("Wrote .mcp.json .claude/settings.json.");
+    expect(run.stdout).toContain(
+      ".mcp.json holds this Home's key for the Agent: do not commit it or share it.",
+    );
     expect(run.stdout).toContain(
       "claude plugin marketplace add alexzfe/settle && claude plugin install settle@settle",
     );

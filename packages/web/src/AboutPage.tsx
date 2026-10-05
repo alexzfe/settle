@@ -230,7 +230,8 @@ export function HomeFolderSetup({ home }: { home: Home }) {
         <summary>Show the files</summary>
         <p className={styles.muted}>
           The command writes these two files in the folder. Write them by hand instead if you
-          prefer.
+          prefer. <code>.mcp.json</code> holds this Home's key for the Agent: do not commit it or
+          share it.
         </p>
         {files.map((file) => (
           <figure key={file.path} className={about.file}>

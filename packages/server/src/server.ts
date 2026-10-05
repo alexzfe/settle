@@ -6,6 +6,7 @@ import { serve } from "@hono/node-server";
 import { type Core, createCore } from "@settle/core";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
+import { sessionSecret } from "./auth.js";
 import type { Config } from "./config.js";
 import { createLanApp, lanAddress, NoLanAddressError } from "./lan.js";
 import { WEB_DIST } from "./web.js";
@@ -79,6 +80,9 @@ export async function startServer(
       port,
       webDist,
       ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
+      ...(config.password
+        ? { auth: { password: config.password, secret: sessionSecret(config.dataDir) } }
+        : {}),
     });
     if (lanHost) lanApp = createLanApp({ core: open });
     return {

@@ -1193,7 +1193,7 @@ export function toDetail(
       paletteColor: palette && colorOf(palette, (row.content as RoomColorContent).color),
       missingAutomatic: missing.length > 0 ? missing : undefined,
       quickGuide: purchase ? toQuickGuide(model, row) : undefined,
-      guides: purchase ? toGuides(model, row, guideOf(model, row), options) : undefined,
+      guides: purchase ? toGuides(guideOf(model, row), options) : undefined,
     }),
     listings: purchase ? toListings(model, row) : [],
     deviations: purchase ? toDeviations(model, row) : [],
