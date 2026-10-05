@@ -570,7 +570,7 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
   });
 });
 
-describe("the clutter rule's data (Q9): Archived records for the web's switches", () => {
+describe("the clutter rule's data: Archived records for the web's switches", () => {
   it("get_room gives the Room's Archived Items after the live ones, marked archivedAt, and the Room Sheet still leaves them out", async () => {
     const fixture = await createFixtureHome();
     try {

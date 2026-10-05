@@ -253,7 +253,7 @@ function HomeSidebar({ home }: { home: ShellHome }) {
             >
               <span>{label}</span>
               {/* Shown, not spoken: the link keeps the section's name. A zero is not
-                  actionable (Q7), so it is left off. */}
+                  actionable, so it is left off. */}
               {count !== undefined && count > 0 && (
                 <span className={styles.count} aria-hidden="true">
                   {count}

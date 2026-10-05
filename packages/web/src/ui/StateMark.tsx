@@ -30,7 +30,7 @@ export function StateMark({ state, className }: { state: DecisionState; classNam
   );
 }
 
-/** "✓ Fulfilled", a small note beside a Settled Decision (Fulfilled is not a state, Q3). */
+/** "✓ Fulfilled", a small note beside a Settled Decision (Fulfilled is not a state). */
 export function FulfilledNote({ children = "Fulfilled" }: { children?: ReactNode }) {
   return (
     <span className={styles.fulfilled}>

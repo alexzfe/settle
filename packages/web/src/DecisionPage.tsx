@@ -155,7 +155,7 @@ function DecisionSheet({ home, decision }: { home: string; decision: DecisionDet
             </AgentWritten>
           )}
           {/* What to measure before leaving the house, under the statement at every state and
-              nowhere else on the page (handoff Q10, Q21). */}
+              nowhere else on the page. */}
           {purchase && <MeasureFirst decision={decision} />}
           <Content home={home} decision={decision} />
           {!purchase && records}

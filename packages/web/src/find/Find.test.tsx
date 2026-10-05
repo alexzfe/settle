@@ -101,7 +101,7 @@ function active(): HTMLElement | null {
 
 async function openFromHomePage() {
   const view = renderRoutes("/homes/flat");
-  // The Overview's own box went with Q20; the sidebar's Find row is the way in.
+  // The Overview no longer has its own box; the sidebar's Find row is the way in.
   fireEvent.click(await screen.findByRole("button", { name: "Find in this Home" }));
   await waitFor(() => expect(within(dialog()).queryByText("Loading…")).toBeNull());
   return view;

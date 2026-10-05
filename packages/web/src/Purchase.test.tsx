@@ -245,7 +245,7 @@ function requirementsUnder(strength: string): string[] {
 
 it("takes the Agent's own kinds out of the Quick Guide, in core's order, and nothing else", () => {
   // Core splices each Requirement into the guide verbatim as a must or a prefer, and the Decision
-  // page prints the Requirements itself a few hundred pixels above (handoff Q12).
+  // page prints the Requirements itself a few hundred pixels above.
   expect(shopLines(quickGuide.lines)).toEqual([
     { kind: "avoid", text: "Viscose — sheds" },
     { kind: "test", text: "Drag a key across it: loops that snag catch claws" },

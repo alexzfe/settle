@@ -159,7 +159,7 @@ export const getRoom = defineOperation({
       model.rooms.find((each) => each.slug === input.room) ??
       requireRoom(model, input.room, { archived: true });
     const detail = roomDetail(model, room);
-    // The Room Sheet never shows Archived Items; the page keeps them behind a switch (Q9).
+    // The Room Sheet never shows Archived Items; the page keeps them behind a switch.
     const archived = model.items
       .filter((item) => item.roomId === room.id && !active(item))
       .map((item) => toItem(model, item));

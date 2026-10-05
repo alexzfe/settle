@@ -1,7 +1,7 @@
 // Recorded values as the pages show them, and lines of parts that leave out whatever is not
 // recorded. Colors are shown by Swatch.tsx.
 //
-// A value has two forms (handoff ui-overhaul.md Q9). The full form, for a page that examines one
+// A value has two forms. The full form, for a page that examines one
 // record, names its Provenance: "~0.95 m estimate", "2.40 m Blueprint", "1.53 m Listed". The list
 // form, for lists and tables (pass `compact`), marks only an Estimated value, with a "~" in front
 // ("~95 cm"), and shows Measured, Blueprint and Listed plain. Where every Provenance should be

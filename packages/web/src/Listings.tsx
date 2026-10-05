@@ -771,11 +771,11 @@ export function checkSummary(
  *
  * The wide board prints each Requirement once, as a row head, and reads every Listing's answer
  * across it; a card has no row heads, so printing them here repeated every Requirement once per
- * Listing (handoff Q7, Q11). Showing only what is unsettled makes a card *shorter* as a Listing
+ * Listing. Showing only what is unsettled makes a card *shorter* as a Listing
  * gets better, which is the right incentive when four of them are being compared on a phone, and a
  * good one collapses to its head and one line rather than fifteen ticks.
  *
- * Handoff Q7 says "fail or carry a note". Measured against the user's own board, the Agent writes
+ * The first rule was "fail or carry a note". Measured against the user's own board, the Agent writes
  * a note on every check it makes — all 44 on the laundry basket's four Listings — so that rule
  * filtered nothing at all and each Requirement was still printed four times. A passing check's
  * note is the evidence for a yes, which the summary above already counts; what cannot be read off

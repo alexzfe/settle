@@ -52,7 +52,7 @@ const SHOP_LINE_KINDS = new Set<QuickGuideLine["kind"]>(["avoid", "test", "ask"]
 
 /**
  * The Agent's own Quick Guide lines: what the Requirements cannot say. The Decision page shows
- * only these, because the Requirements are already on the page (handoff Q12) and core splices each
+ * only these, because the Requirements are already on the page and core splices each
  * one into the guide verbatim as a must or a prefer. Core's text renderer filters the same way,
  * for the same reason ("Quick Guide, besides the Requirements", render.ts); the two are kept apart
  * deliberately, since importing a value from core pulls its Node-only modules into this bundle.
@@ -260,7 +260,7 @@ const QUICK_GUIDE_HEADINGS: Record<QuickGuideLine["kind"], string> = {
 /**
  * What to measure before leaving the house, as an important Callout: nothing else on the page has
  * to happen first, and a missed one means a wasted trip. It sits under the statement rather than
- * in Taking it shopping (handoff Q10, Q21), and appears exactly once, so this de-duplication
+ * in Taking it shopping, and appears exactly once, so this de-duplication
  * introduces no fresh duplicate. The phone page keeps its own Measure first section.
  */
 export function MeasureFirst({ decision }: { decision: DecisionDetail }) {
