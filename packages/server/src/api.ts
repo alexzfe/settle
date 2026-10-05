@@ -29,6 +29,10 @@ const OWN_ROUTES: Record<string, string> = {
     "POST /api/set_listing_photo, as multipart/form-data with the fields home, listing, and " +
     "either file or url",
   get_listing_photo: "GET /api/get_listing_photo?home=<slug>&listing=<slug>&v=<photoVersion>",
+  add_photo:
+    "POST /api/add_photo, as multipart/form-data with the fields home, item, file, thumb, and " +
+    "optionally takenOn and caption",
+  get_photo: "GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>",
 };
 
 const web = { caller: { kind: "web" } } as const;
@@ -155,6 +159,71 @@ export async function handleListingPhoto(core: Core, c: Context): Promise<Respon
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
       "content-type": mimeType,
       // The bytes at one version never change; a new version is a new URL.
+      "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
+    });
+  });
+}
+
+/**
+ * POST /api/add_photo: a Photo of an Item, as multipart/form-data with the fields `home`, `item`,
+ * `file` (the photo, shrunk by the browser), `thumb` (its thumbnail), and optionally `takenOn`
+ * (YYYY-MM-DD) and `caption`. Answers { photos } as JSON, the Item's Photos newest first.
+ */
+export async function handlePhotoUpload(core: Core, c: Context): Promise<Response> {
+  if (!c.req.header("content-type")?.startsWith("multipart/form-data")) {
+    return c.json(
+      { error: { code: "validation", message: `Send it by ${OWN_ROUTES.add_photo}.` } },
+      415,
+    );
+  }
+  let form: FormData;
+  try {
+    form = await c.req.formData();
+  } catch {
+    return c.json({ error: { code: "validation", message: "The form could not be read." } }, 400);
+  }
+  const file = form.get("file");
+  const thumb = form.get("thumb");
+  if (!(file instanceof File) || !(thumb instanceof File)) {
+    const message = "Send the photo as file and its thumbnail as thumb.";
+    return c.json({ error: { code: "validation", message } }, 400);
+  }
+  const text = (name: string) => {
+    const value = form.get(name);
+    return typeof value === "string" ? value : undefined;
+  };
+  const takenOn = text("takenOn");
+  const caption = text("caption");
+  const input = {
+    home: text("home"),
+    item: text("item"),
+    file: new Uint8Array(await file.arrayBuffer()),
+    thumb: new Uint8Array(await thumb.arrayBuffer()),
+    ...(takenOn ? { takenOn } : {}),
+    ...(caption ? { caption } : {}),
+  };
+  return answer(c, async () =>
+    c.json(await core.run("add_photo", web, input as OperationInput<"add_photo">)),
+  );
+}
+
+/**
+ * GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>: one Photo's
+ * bytes, or its thumbnail's. `v` is ignored here, as for a Listing's picture: with it the browser
+ * may keep the bytes for a year, since a Photo's bytes never change.
+ */
+export async function handlePhoto(core: Core, c: Context): Promise<Response> {
+  const { home, item, photo, size, v } = c.req.query();
+  return answer(c, async () => {
+    const { data, mimeType } = await core.run("get_photo", web, {
+      home,
+      item,
+      photo,
+      size,
+      v,
+    } as OperationInput<"get_photo">);
+    return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      "content-type": mimeType,
       "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
     });
   });

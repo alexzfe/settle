@@ -195,8 +195,21 @@ it("renders the view_images text block, which comes before the images", async ()
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("view_images"));
 });
 
-it("renders find_items lines", async () => {
+it("renders find_items lines, with an Item's Photos by day and caption, and the Room Sheet without them", async () => {
   const session = await openSession();
+  // The user's Photos of the sofa: the Agent is told they exist, and never sees them.
+  const jpeg = new Uint8Array(64);
+  jpeg.set([0xff, 0xd8, 0xff, 0xe0]);
+  for (const photo of [
+    { takenOn: "2026-01-02" },
+    { takenOn: "2026-03-14", caption: "scratch on the left leg" },
+  ]) {
+    await fixture.core.run(
+      "add_photo",
+      { caller: { kind: "web" } },
+      { home: fixture.home, item: "sofa", file: jpeg, thumb: jpeg, ...photo },
+    );
+  }
   const find = async (title: string, filter: Record<string, unknown>) => {
     const result = await fixture.core.run("find_items", agent(session), { session, ...filter });
     return `# ${title}\n${toolText("find_items", result)}`;
@@ -209,6 +222,11 @@ it("renders find_items lines", async () => {
     await find("the balcony", { room: "balcony" }),
   ];
   await expect(results.join("\n\n")).toMatchFileSnapshot(snapshot("find_items"));
+  const sheet = await fixture.core.run("get_room_sheet", agent(session), {
+    session,
+    room: "living-room",
+  });
+  expect(toolText("get_room_sheet", sheet)).not.toContain("photos:");
 });
 
 it("renders search_notes lines", async () => {

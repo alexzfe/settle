@@ -1,6 +1,6 @@
-/* An Item's page: its header, then the register (the Listing's picture beside the fact card), the
-   Decisions tied to it, and its history. The pencil sits in the card's header ("Details ✎") and its
-   form takes the card's place. */
+/* An Item's page: its header, then the register (its Photos, or else the Listing's picture, beside
+   the fact card), the Decisions tied to it, and its history. The pencil sits in the card's header
+   ("Details ✎") and its form takes the card's place. */
 
 .header {
   margin-block: var(--space-6) var(--space-4);
@@ -92,6 +92,188 @@
   margin-top: var(--space-1);
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
+}
+
+/* The picture's column: the main Photo or the Listing's picture, then Add photo. */
+.media {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* A Photo is a button that opens it full size; it keeps the picture's own frame. */
+.photoButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.photoButton:hover {
+  border: 0;
+  background: none;
+}
+
+.picture figcaption .photoCaption {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+/* The other Photos, as thumbnails in a row that wraps. */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strip .photoButton {
+  width: 3.5rem;
+}
+
+.picture .strip img {
+  width: 3.5rem;
+  height: 3.5rem;
+  max-height: none;
+  object-fit: cover;
+}
+
+/* Add photo: the button, or the picked photo with its caption box. The input itself is hidden. */
+.addPhoto {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  max-width: 24rem;
+  margin-top: var(--space-4);
+}
+
+.media .addPhoto {
+  margin-top: 0;
+}
+
+.addPhoto > p {
+  margin: 0;
+}
+
+.chooser {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.addForm,
+.captionForm {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.addForm input,
+.captionForm input {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.addForm button,
+.captionForm button {
+  min-height: 2.75rem;
+}
+
+.preview {
+  display: block;
+  max-width: 100%;
+  max-height: 16rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+}
+
+/* A Photo full size: the bar with its count and Close, the image, then its date, caption, and
+   delete. */
+.viewer {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.viewerBar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 2.75rem;
+  font-size: var(--text-sm);
+}
+
+.viewerBar button,
+.viewerSteps button {
+  min-height: 2.75rem;
+}
+
+.viewerImage {
+  display: block;
+  width: 100%;
+  max-height: 70dvh;
+  border-radius: var(--radius);
+  background: var(--color-card);
+  object-fit: contain;
+}
+
+.viewerSteps {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.viewerDetails {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.viewerDetails p {
+  margin: 0;
+}
+
+.viewerDate {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.captionLine {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.captionLine p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Delete, asked once: permanent, said plainly before it happens. */
+.deleteConfirm {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+.deleteWarning {
+  color: var(--color-error);
 }
 
 .card {

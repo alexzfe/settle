@@ -67,7 +67,10 @@ One of a Room's walls, ceiling, floor, or woodwork, described by its material, c
 _Avoid_: Finish, decoration
 
 **Photo**:
-A dated picture of one Room or of a single Item, kept by the platform. Inspiration images are not Photos.
+A dated picture of one Room or of a single Item, taken and added by the user and kept by the
+platform, with an optional caption. Its date is when it was taken. The Agent knows a Photo exists
+and reads its caption, but does not see it. A Listing's picture and inspiration images are not
+Photos.
 _Avoid_: Image, picture
 
 **Provenance**:

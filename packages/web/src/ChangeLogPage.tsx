@@ -20,6 +20,7 @@ import {
   wallNameOf,
   words,
 } from "./format";
+import { formatPartialDate } from "./itemDates";
 import { useChangeLog, useDecisions, useHome, useSessions } from "./queries";
 import { shortDate } from "./ui/AgentWritten";
 import { useDocumentTitle } from "./ui/documentTitle";
@@ -149,12 +150,25 @@ function shortValue(value: unknown): string | undefined {
   return text.length <= SHORT ? text : undefined;
 }
 
+/** A logged Photo's day, "14 Mar 2026", from its { takenOn, caption }. */
+function photoDay(photo: unknown): string | undefined {
+  if (typeof photo !== "object" || photo === null) return undefined;
+  const { takenOn } = photo as Record<string, unknown>;
+  return typeof takenOn === "string" ? formatPartialDate(takenOn) : undefined;
+}
+
 /** What happened, after the record's name: "length ~3.70 → 3.62 m (Measured)". */
 export function changeText(change: ChangeEntry): ReactNode {
   const { field, old, new: next } = change;
   if (field === undefined) return change.recordKind === "session" ? "opened" : "added";
   if (field === "archivedAt") return next ? "Archived" : "brought back";
   if (field === "removed") return "removed";
+  // A Photo is named by the day it was taken, never by its id.
+  if (change.recordKind === "item" && field === "photo") {
+    const photo = next ?? old;
+    const day = photoDay(photo);
+    return `photo ${next ? "added" : "deleted"}${day ? ` (${day})` : ""}`;
+  }
   if (change.recordKind === "session" && field === "closed_at") return "closed";
   if (change.recordKind === "session" && field === "summary") return "summary written";
   if (field === "state" && DECISION_STATES.has(old) && DECISION_STATES.has(next)) {

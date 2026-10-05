@@ -7,6 +7,8 @@ import {
   handleHomeFolderScript,
   handleListingPhoto,
   handleListingPhotoUpload,
+  handlePhoto,
+  handlePhotoUpload,
   handleUpload,
 } from "./api.js";
 import { type AuthOptions, useAuth, useNoAuth } from "./auth.js";
@@ -45,6 +47,9 @@ export function createApp({ core, port, webDist, publicOrigin, auth }: AppOption
   // A Listing's picture: pasted or fetched in through a multipart form, served back as its bytes.
   app.post("/api/set_listing_photo", (c) => handleListingPhotoUpload(core, c));
   app.get("/api/get_listing_photo", (c) => handleListingPhoto(core, c));
+  // An Item's Photos: the photo and its thumbnail in through a multipart form, each served back.
+  app.post("/api/add_photo", (c) => handlePhotoUpload(core, c));
+  app.get("/api/get_photo", (c) => handlePhoto(core, c));
   // The exports as files, for a link to open; POST gives the same as JSON.
   app.get("/api/export_shopping_list", (c) => handleExport(core, c, "export_shopping_list"));
   app.get("/api/export_guides", (c) => handleExport(core, c, "export_guides"));

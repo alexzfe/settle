@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { CoreError } from "../errors.js";
+import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, named, renderItems } from "../render.js";
 import { uniqueSlug } from "../slug.js";
@@ -86,7 +87,15 @@ export const findItems = defineOperation({
         (input.category === undefined || item.category === input.category) &&
         (words === undefined || searchText(item).includes(words)),
     );
-    return { items: items.map((item) => toItem(model, item)) };
+    return {
+      items: items.map((item) => {
+        // From the Photos the model already holds, newest first: no query per Item.
+        const photos = model.photos
+          .filter((each) => each.itemId === item.id)
+          .map((each) => ({ takenOn: each.takenOn, ...optional({ caption: each.caption }) }));
+        return { ...toItem(model, item), ...(photos.length > 0 ? { photos } : {}) };
+      }),
+    };
   },
   text: ({ items }) => renderItems(items),
 });

@@ -5,6 +5,8 @@
 // With a password set on the server, any call answered 401 sends the browser to its login page.
 
 import type {
+  Item as CoreItem,
+  ItemPage as CoreItemPage,
   OperationName as CoreOperationName,
   DecisionReceiptResult,
   EditItemInput,
@@ -50,8 +52,6 @@ export type {
   Held,
   HoldReason,
   Home,
-  Item,
-  ItemPage,
   Level,
   ListDecisionsInput,
   Listing,
@@ -73,6 +73,31 @@ export type {
 // Surface record in the package's exports; the record's type is taken from the Room detail.
 export type Surface = RoomDetail["surfaces"][number];
 
+// Photos, as the item-photos handoff's contract gives them. Core builds them alongside this page,
+// so their shapes are declared here until its schemas carry them; core's own types, once they do,
+// must agree with these.
+
+/** A Photo of an Item: a dated picture the user took and added, with an optional caption. */
+export interface Photo {
+  id: number;
+  /** Changes whenever the stored bytes do; passed to get_photo so the browser caches for good. */
+  version: string;
+  /** When it was taken, YYYY-MM-DD: from the photo's EXIF, else the day it was added. */
+  takenOn: string;
+  caption?: string;
+}
+
+/** An Item, with its main (newest) Photo when it has any, for the lists' thumbnails. */
+export type Item = CoreItem & { photo?: Pick<Photo, "id" | "version"> };
+
+/** One Item's page, with its Photos newest first, empty when it has none. */
+export type ItemPage = Omit<CoreItemPage, "item"> & { item: Item; photos: Photo[] };
+
+/** What every Photo write answers: the Item's Photos as they now stand, newest first. */
+export interface PhotosResult {
+  photos: Photo[];
+}
+
 /** An operation's input and output, as core's registry declares them. */
 interface Shapes<Name extends CoreOperationName> {
   input: OperationInput<Name>;
@@ -89,7 +114,7 @@ export interface Operations {
   get_room: Shapes<"get_room">;
   list_items: Shapes<"list_items">;
   /** One Item's page: its register, the Decisions tied to it, and its history. Web-only. */
-  get_item: Shapes<"get_item">;
+  get_item: { input: OperationInput<"get_item">; output: ItemPage };
   /** The pencil: the first write to an Item from the web, logged with origin "web". */
   edit_item: { input: EditItemInput; output: OperationOutput<"edit_item"> };
   list_constraints: Shapes<"list_constraints">;
@@ -109,6 +134,12 @@ export interface Operations {
   // The board's own writes: the first Listings have ever had from the web.
   drop_listing: Shapes<"drop_listing">;
   hold_listing: Shapes<"hold_listing">;
+  // A Photo's caption and its removal: web-only, the user's own hand. An empty caption clears it.
+  edit_photo: {
+    input: { home: string; item: string; photo: number; caption: string | null };
+    output: PhotosResult;
+  };
+  delete_photo: { input: { home: string; item: string; photo: number }; output: PhotosResult };
 }
 
 export type OperationName = keyof Operations;
@@ -118,6 +149,8 @@ export interface Uploads {
   upload_blueprint: UploadBlueprintResult;
   /** The board's paste box: the bytes the user pasted, or an image URL for the app to fetch. */
   set_listing_photo: ListingResult;
+  /** A Photo of an Item: home, item, file and thumb (both JPEGs made here), takenOn, caption. */
+  add_photo: PhotosResult;
 }
 
 export type UploadName = keyof Uploads;
@@ -161,6 +194,26 @@ export function listingPhotoUrl(home: string, listing: string, v?: string): stri
   const query = new URLSearchParams({ home, listing });
   if (v) query.set("v", v);
   return `/api/get_listing_photo?${query}`;
+}
+
+/**
+ * Where the server serves a Photo, full size or as its thumbnail. `v` is the Photo's version, so
+ * the server can tell the browser to keep it for good.
+ */
+export function photoUrl(
+  home: string,
+  item: string,
+  photo: Pick<Photo, "id" | "version">,
+  size: "full" | "thumb",
+): string {
+  const query = new URLSearchParams({
+    home,
+    item,
+    photo: String(photo.id),
+    size,
+    v: photo.version,
+  });
+  return `/api/get_photo?${query}`;
 }
 
 /** Where the server serves one page of a Blueprint, rendered as a PNG. */

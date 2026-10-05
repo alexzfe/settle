@@ -39,6 +39,7 @@ import {
 import { editItem, getItem } from "./operations/item-page.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
+import { addPhoto, deletePhoto, editPhoto, getPhoto } from "./operations/photos.js";
 import {
   dropListing,
   getListingPhoto,
@@ -92,6 +93,10 @@ const operations = {
   drop_listing: dropListing,
   hold_listing: holdListing,
   set_listing_photo: setListingPhoto,
+  add_photo: addPhoto,
+  edit_photo: editPhoto,
+  delete_photo: deletePhoto,
+  get_photo: getPhoto,
   edit_item: editItem,
   open_session: openSession,
   get_room_sheet: getRoomSheet,

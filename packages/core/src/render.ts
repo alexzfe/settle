@@ -22,10 +22,10 @@ import type {
   FeatureKind,
   Flag,
   FlagCause,
+  FoundItem,
   Fulfilment,
   HoldReason,
   Home,
-  Item,
   Level,
   Light,
   ListedField,
@@ -396,7 +396,7 @@ function featureLine(feature: Feature, sources: boolean): string {
  * it rarely matters to design advice, and find_items gives it when the talk turns to it.
  */
 export function itemLine(
-  item: Item,
+  item: FoundItem,
   { where, register, sources = false }: { where: boolean; register: boolean; sources?: boolean },
 ): string {
   const location = where
@@ -430,8 +430,11 @@ export function itemLine(
   return line;
 }
 
-/** The register facts recorded for an Item, a Listed one marked *, like its sizes. */
-function registerParts(item: Item): (string | undefined)[] {
+/**
+ * The register facts recorded for an Item, a Listed one marked *, like its sizes; then its Photos,
+ * newest first, each by the day taken and its caption, so the Agent knows they exist.
+ */
+function registerParts(item: FoundItem): (string | undefined)[] {
   const listed = (field: ListedField, value: string | undefined) =>
     value && `${item.listed?.includes(field) ? "*" : ""}${value}`;
   return [
@@ -441,11 +444,16 @@ function registerParts(item: Item): (string | undefined)[] {
     item.warrantyUntil && `warranty until ${item.warrantyUntil}`,
     item.serialNumber && `serial ${item.serialNumber}`,
     item.manualLink && `manual ${item.manualLink}`,
+    item.photos?.length
+      ? `photos: ${item.photos.length} (${item.photos
+          .map((photo) => join(" ", [photo.takenOn, photo.caption && `"${photo.caption}"`]))
+          .join("; ")})`
+      : undefined,
   ];
 }
 
 /** find_items: one line per Item, with where it is and its register. */
-export function renderItems(items: Item[]): string {
+export function renderItems(items: FoundItem[]): string {
   if (items.length === 0) return "No Items match.";
   return items.map((item) => `- ${itemLine(item, { where: true, register: true })}`).join("\n");
 }

@@ -139,6 +139,24 @@
   background: var(--color-card);
 }
 
+.named {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+/* An Item's main Photo, small and square, only when it has one. */
+.thumb {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  object-fit: cover;
+}
+
 .what {
   display: flex;
   flex-direction: column;
@@ -180,6 +198,7 @@
   text-align: right;
 }
 
+.archived .thumb,
 .archived .what,
 .archived .looks,
 .archived .size {
@@ -220,4 +239,15 @@
 
 .list li:last-child {
   border-bottom: 0;
+}
+
+.lineThumb {
+  width: 2rem;
+  height: 2rem;
+  margin-right: var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  object-fit: cover;
+  vertical-align: middle;
 }

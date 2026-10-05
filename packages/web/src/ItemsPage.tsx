@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import styles from "./App.module.css";
-import type { Item, Room } from "./api";
+import { type Item, photoUrl, type Room } from "./api";
 import { itemPath } from "./decisions";
 import { sentence, wallNameOf } from "./format";
 import page from "./ItemsPage.module.css";
@@ -207,7 +207,23 @@ function Inventory({ home, groups }: { home: string; groups: ItemGroup[] }) {
   );
 }
 
-/** One Item: name, kind and condition; its colors and materials; its size in cm. */
+/**
+ * An Item's main Photo, small and square, when it has one; nothing at all when it has none. The
+ * name sits beside it, so it says nothing more to a screen reader.
+ */
+function Thumb({ home, item, className }: { home: string; item: Item; className?: string }) {
+  if (!item.photo) return null;
+  return (
+    <img
+      className={className}
+      src={photoUrl(home, item.slug, item.photo, "thumb")}
+      alt=""
+      loading="lazy"
+    />
+  );
+}
+
+/** One Item: its Photo, name, kind and condition; its colors and materials; its size in cm. */
 function ItemRow({ home, item }: { home: string; item: Item }) {
   const navigate = useNavigate();
   const path = itemPath(home, item.slug);
@@ -221,22 +237,25 @@ function ItemRow({ home, item }: { home: string; item: Item }) {
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: the name's link is the keyboard's way in.
     <li className={item.archivedAt ? `${page.row} ${page.archived}` : page.row} onClick={open}>
-      <span className={page.what}>
-        <Link className={`${page.name} clamp`} to={path}>
-          {item.name}
-        </Link>
-        <span className={page.kind}>
-          <Parts separator=" · ">
-            {sentence(item.category)}
-            {item.quantity > 1 && `×${item.quantity}`}
-            {item.condition && sentence(item.condition)}
-          </Parts>
-          {item.archivedAt && (
-            <>
-              {" "}
-              · <ArchivedNote at={item.archivedAt} />
-            </>
-          )}
+      <span className={page.named}>
+        <Thumb home={home} item={item} className={page.thumb} />
+        <span className={page.what}>
+          <Link className={`${page.name} clamp`} to={path}>
+            {item.name}
+          </Link>
+          <span className={page.kind}>
+            <Parts separator=" · ">
+              {sentence(item.category)}
+              {item.quantity > 1 && `×${item.quantity}`}
+              {item.condition && sentence(item.condition)}
+            </Parts>
+            {item.archivedAt && (
+              <>
+                {" "}
+                · <ArchivedNote at={item.archivedAt} />
+              </>
+            )}
+          </span>
         </span>
       </span>
       <Looks item={item} />
@@ -300,6 +319,7 @@ export function ItemLine({ home, item }: { home: string; item: Item }) {
   return (
     <Parts>
       <span>
+        <Thumb home={home} item={item} className={page.lineThumb} />
         <strong>
           <Link to={itemPath(home, item.slug)}>{item.name}</Link>
         </strong>

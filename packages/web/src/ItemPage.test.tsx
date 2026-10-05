@@ -1,10 +1,14 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Home, Item, ItemPage } from "./api";
+import type { Home, Item, ItemPage, Photo } from "./api";
 import { recordPath } from "./decisions";
 import { changedFields, draftOf } from "./ItemEdit";
 import { historySummary } from "./ItemPage";
+import { preparePhoto } from "./photoPrep";
 import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
+
+// jsdom can neither decode nor draw a picture; the compression has its own tests.
+vi.mock("./photoPrep", () => ({ preparePhoto: vi.fn() }));
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Peru", city: "Lima", latitude: -12 };
 
@@ -52,6 +56,7 @@ const created = (at: string, origin: string, skills?: string[]): ItemPage["histo
 
 const bare: ItemPage = {
   item: rosemary,
+  photos: [],
   decisions: [],
   history: [created("2026-09-15T16:21:00Z", "home-intake-r4qu", ["home-intake"])],
 };
@@ -61,6 +66,7 @@ const rich: ItemPage = {
   replaces: [{ slug: "old-futon", name: "Old futon" }],
   replacedBy: { slug: "new-mattress", name: "New mattress" },
   picture: { listing: "drimer-aero", photoVersion: "abc123" },
+  photos: [],
   decisions: [
     {
       relation: "relies-on",
@@ -129,13 +135,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function stubItem(record: () => ItemPage, edit?: (input: unknown) => unknown) {
+function stubItem(
+  record: () => ItemPage,
+  edit?: (input: unknown) => unknown,
+  photoWrites: Parameters<typeof stubApi>[0] = {},
+) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_item: () => record(),
     ...(edit
       ? { edit_item: (input) => edit(input) as { receipt: string } }
       : { edit_item: () => ({ receipt: "Saved." }) }),
+    ...photoWrites,
   });
 }
 
@@ -440,4 +451,207 @@ it("refetches the page on an Item change, and on a Decision change", async () =>
 
 it("links every Item mention to its page", () => {
   expect(recordPath("flat", "item", "rosemary")).toBe("/homes/flat/items/rosemary");
+});
+
+describe("Photos", () => {
+  const march: Photo = {
+    id: 7,
+    version: "a1b2",
+    takenOn: "2026-03-14",
+    caption: "scratch on the left leg",
+  };
+  const january: Photo = { id: 3, version: "c3d4", takenOn: "2026-01-02" };
+  const withPhotos: ItemPage = { ...rich, photos: [march, january] };
+
+  it("shows the newest Photo in the Listing picture's place, the Listing picture not at all", async () => {
+    stubItem(() => withPhotos);
+    renderRoutes("/homes/flat/items/drimer-queen-mattress");
+    await screen.findByRole("heading", { name: mattress.name });
+    expect(screen.queryByText("from the Listing")).toBeNull();
+    expect(document.querySelector('img[src*="get_listing_photo"]')).toBeNull();
+    const main = screen.getByRole("img", { name: mattress.name });
+    expect(main.getAttribute("src")).toBe(
+      "/api/get_photo?home=flat&item=drimer-queen-mattress&photo=7&size=full&v=a1b2",
+    );
+    expect(main.closest("figure")?.querySelector("figcaption")?.textContent).toBe(
+      "14 Mar 2026scratch on the left leg",
+    );
+    // The others as thumbnails beneath it.
+    const strip = screen.getByRole("list", { name: "More photos" });
+    const thumbs = within(strip).getAllByRole("button");
+    expect(thumbs.map((thumb) => thumb.getAttribute("aria-label"))).toEqual([
+      "Open the photo from 2 Jan 2026",
+    ]);
+    expect(thumbs[0]?.querySelector("img")?.getAttribute("src")).toBe(
+      "/api/get_photo?home=flat&item=drimer-queen-mattress&photo=3&size=thumb&v=c3d4",
+    );
+  });
+
+  it("shows no strip for one Photo, and nothing of Photos but Add photo for none", async () => {
+    stubItem(() => ({ ...bare, photos: [january] }));
+    renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("heading", { name: "Rosemary" });
+    expect(screen.queryByRole("list", { name: "More photos" })).toBeNull();
+    cleanup();
+    stubItem(() => bare);
+    renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("heading", { name: "Rosemary" });
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/No photos/i);
+    expect(screen.getByRole("button", { name: "Add photo" })).toBeDefined();
+  });
+
+  it("adds a Photo through a plain file input: made ready, previewed, captioned, sent", async () => {
+    const file = new Blob(["small"], { type: "image/jpeg" });
+    const thumb = new Blob(["smaller"], { type: "image/jpeg" });
+    vi.mocked(preparePhoto).mockResolvedValue({ file, thumb, takenOn: "2026-03-14" });
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
+    );
+    let sent: FormData | undefined;
+    const fetch = stubItem(() => bare, undefined, {
+      add_photo: (form) => {
+        sent = form;
+        return { photos: [march] };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("button", { name: "Add photo" });
+    const input = screen.getByLabelText("Photo file") as HTMLInputElement;
+    expect(input.getAttribute("accept")).toBe("image/*");
+    expect(input.hasAttribute("capture")).toBe(false);
+    const picked = new File(["big"], "IMG_0001.jpg", { type: "image/jpeg" });
+    fireEvent.change(input, { target: { files: [picked] } });
+    const form = await screen.findByRole("form", { name: "Add a photo" });
+    expect(preparePhoto).toHaveBeenCalledWith(picked);
+    expect(within(form).getByRole("img").getAttribute("src")).toBe("blob:preview");
+    fireEvent.change(within(form).getByLabelText("Caption (optional)"), {
+      target: { value: " under the window " },
+    });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("form", { name: "Add a photo" })).toBeNull());
+    const posted = sent as FormData;
+    expect(posted.get("home")).toBe("flat");
+    expect(posted.get("item")).toBe("rosemary");
+    expect(await (posted.get("file") as Blob).text()).toBe("small");
+    expect(await (posted.get("thumb") as Blob).text()).toBe("smaller");
+    expect(posted.get("takenOn")).toBe("2026-03-14");
+    expect(posted.get("caption")).toBe("under the window");
+    await waitFor(() => expect(inputsTo(fetch, "get_item")).toHaveLength(2));
+  });
+
+  it("shows core's refusal of a photo it could not take", async () => {
+    const original = new File(["ftypheic"], "IMG_0002.HEIC", { type: "image/heic" });
+    vi.mocked(preparePhoto).mockResolvedValue({ file: original, thumb: original });
+    const message = "This is a HEIC photo, which the app cannot read. Export it as a JPEG.";
+    stubItem(() => bare, undefined, {
+      add_photo: () =>
+        Response.json({ error: { code: "unsupported_file", message } }, { status: 400 }),
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("button", { name: "Add photo" });
+    fireEvent.change(screen.getByLabelText("Photo file"), { target: { files: [original] } });
+    const form = await screen.findByRole("form", { name: "Add a photo" });
+    // Not decoded here, so not previewed either: its name stands in.
+    expect(within(form).queryByRole("img")).toBeNull();
+    expect(within(form).getByText("IMG_0002.HEIC")).toBeDefined();
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    expect((await within(form).findByRole("alert")).textContent).toBe(message);
+  });
+
+  it("opens a Photo full size, steps to the next, and edits and clears its caption", async () => {
+    const fetch = stubItem(() => withPhotos, undefined, {
+      edit_photo: () => ({ photos: [march, january] }),
+    });
+    renderRoutes("/homes/flat/items/drimer-queen-mattress");
+    fireEvent.click(await screen.findByRole("button", { name: "Open the photo from 14 Mar 2026" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(within(dialog).getByText("1 of 2")).toBeDefined();
+    expect(within(dialog).getByText("scratch on the left leg")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Edit the caption" }));
+    fireEvent.change(within(dialog).getByLabelText("Caption"), {
+      target: { value: "scratch, left leg" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(inputsTo(fetch, "edit_photo")).toHaveLength(1));
+    expect(inputsTo(fetch, "edit_photo")[0]).toEqual({
+      home: "flat",
+      item: "drimer-queen-mattress",
+      photo: 7,
+      caption: "scratch, left leg",
+    });
+    // The arrow keys step too, wherever focus fell after the save.
+    await waitFor(() =>
+      expect(within(dialog).queryByRole("form", { name: "Edit the caption" })).toBeNull(),
+    );
+    fireEvent.keyDown(document.body, { key: "ArrowRight" });
+    expect(within(dialog).getByText("2 Jan 2026")).toBeDefined();
+    fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+    expect(within(dialog).getByText("1 of 2")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next ›" }));
+    expect(within(dialog).getByText("2 Jan 2026")).toBeDefined();
+    expect(within(dialog).getByText("2 of 2")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole("button", { name: "‹ Previous" }));
+    await waitFor(() =>
+      expect(within(dialog).queryByRole("form", { name: "Edit the caption" })).toBeNull(),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Edit the caption" }));
+    fireEvent.change(within(dialog).getByLabelText("Caption"), { target: { value: "  " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(inputsTo(fetch, "edit_photo")).toHaveLength(2));
+    expect(inputsTo(fetch, "edit_photo")[1]).toMatchObject({ photo: 7, caption: null });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("deletes a Photo only once armed, and keeps it when the user says so", async () => {
+    let photos = [march, january];
+    const fetch = stubItem(() => ({ ...rich, photos }), undefined, {
+      delete_photo: (input) => {
+        photos = photos.filter((photo) => photo.id !== input.photo);
+        return { photos };
+      },
+    });
+    renderRoutes("/homes/flat/items/drimer-queen-mattress");
+    fireEvent.click(await screen.findByRole("button", { name: "Open the photo from 14 Mar 2026" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(within(dialog).getByText("Deletes this photo for good.")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep it" }));
+    expect(within(dialog).queryByText("Deletes this photo for good.")).toBeNull();
+    expect(inputsTo(fetch, "delete_photo")).toEqual([]);
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete it" }));
+    await waitFor(() => expect(inputsTo(fetch, "delete_photo")).toHaveLength(1));
+    expect(inputsTo(fetch, "delete_photo")[0]).toEqual({
+      home: "flat",
+      item: "drimer-queen-mattress",
+      photo: 7,
+    });
+    // The one left takes its place, in the dialog and on the page.
+    await waitFor(() => expect(within(dialog).getByText("2 Jan 2026")).toBeDefined());
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("img", { name: mattress.name }).map((img) => img.getAttribute("src")),
+      ).toEqual([
+        "/api/get_photo?home=flat&item=drimer-queen-mattress&photo=3&size=full&v=c3d4",
+        "/api/get_photo?home=flat&item=drimer-queen-mattress&photo=3&size=full&v=c3d4",
+      ]),
+    );
+  });
+
+  it("reads a Photo's history as added, captioned, and deleted", () => {
+    expect(historySummary([{ field: "photo", new: { takenOn: "2026-03-14" } }])).toBe(
+      "photo added",
+    );
+    expect(historySummary([{ field: "photo caption", old: "a", new: "b" }])).toBe(
+      "photo caption changed",
+    );
+    expect(historySummary([{ field: "photo", old: { takenOn: "2026-03-14" } }])).toBe(
+      "photo deleted",
+    );
+  });
 });

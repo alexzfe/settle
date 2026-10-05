@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { CoreError } from "./errors.js";
 
 // The image port: core's only way out to the network, and deliberately so. Core otherwise binds
@@ -56,6 +57,59 @@ export function sniffImageType(bytes: Uint8Array): PhotoType | undefined {
   )
     return "image/webp";
   return undefined;
+}
+
+/** The extension a stored image is saved under, by its sniffed type. */
+export const PHOTO_EXTENSIONS: Record<PhotoType, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+/** Changes exactly when the bytes do, which is all the browser cache needs of it. */
+export function imageVersion(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+}
+
+/**
+ * Uploaded image bytes, validated by the bytes themselves exactly as a fetched image is. `name`
+ * says what was too big. With `heic`, HEIF bytes are refused by name, as Blueprints refuse them.
+ */
+export function uploadedImage(
+  file: Uint8Array,
+  { name = "That picture", heic = false }: { name?: string; heic?: boolean } = {},
+): FetchedImage {
+  if (file.length > MAX_IMAGE_BYTES) {
+    throw new CoreError(
+      "validation",
+      `${name} is over ${Math.round(MAX_IMAGE_BYTES / 1024)} KB, the most the app stores.`,
+    );
+  }
+  const type = sniffImageType(file);
+  if (!type) {
+    if (heic && isHeif(file)) throw new CoreError("unsupported_file", heicMessage(name));
+    throw new CoreError(
+      "unsupported_file",
+      "That file is not a JPEG, PNG, or WebP, whatever it is called.",
+    );
+  }
+  return { bytes: file, type };
+}
+
+const HEIF_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1"]);
+
+/** Whether the bytes are a HEIF image, as an iPhone saves its photos: "ftyp" and a HEIF brand. */
+export function isHeif(bytes: Uint8Array): boolean {
+  const head = new TextDecoder("latin1").decode(bytes.subarray(4, 12));
+  return head.slice(0, 4) === "ftyp" && HEIF_BRANDS.has(head.slice(4, 8));
+}
+
+/** The refusal of a HEIC image, which `name` is; `otherwise` offers another way, after a comma. */
+export function heicMessage(name: string, otherwise?: string): string {
+  return (
+    `${name} is a HEIC image, which the app can't read yet. Export it as a JPEG (most photo ` +
+    `apps can)${otherwise ? `, or ${otherwise}` : ""}.`
+  );
 }
 
 function starts(bytes: Uint8Array, signature: number[]): boolean {

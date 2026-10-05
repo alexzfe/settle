@@ -13,6 +13,7 @@
     "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/newsreader": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "exifr": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:"

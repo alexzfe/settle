@@ -255,6 +255,104 @@ describe("the Item page", () => {
   });
 });
 
+describe("Photos", () => {
+  it("takes a photo and its thumbnail by multipart, serves both, and edits and deletes by JSON", async () => {
+    const fixture = await createFixtureHome();
+    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const post = (operation: string, body: unknown) =>
+      withFixture.request(`/api/${operation}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const jpeg = (mark: number) => {
+      const bytes = new Uint8Array(64);
+      bytes.set([0xff, 0xd8, 0xff, 0xe0]);
+      bytes[60] = mark;
+      return bytes;
+    };
+    const upload = (fields: Record<string, string | Uint8Array>) => {
+      const form = new FormData();
+      for (const [name, value] of Object.entries(fields)) {
+        form.set(
+          name,
+          typeof value === "string"
+            ? value
+            : new File([new Uint8Array(value)], `${name}.jpg`, { type: "image/jpeg" }),
+        );
+      }
+      return withFixture.request("/api/add_photo", { method: "POST", body: form });
+    };
+    try {
+      const added = await upload({
+        home: fixture.home,
+        item: "sofa",
+        file: jpeg(1),
+        thumb: jpeg(2),
+        takenOn: "2026-03-14",
+        caption: "scratch on the left leg",
+      });
+      expect(added.status).toBe(200);
+      const { photos } = (await added.json()) as { photos: { id: number; version: string }[] };
+      expect(photos).toEqual([
+        {
+          id: expect.any(Number),
+          version: expect.any(String),
+          takenOn: "2026-03-14",
+          caption: "scratch on the left leg",
+        },
+      ]);
+      const [{ id, version }] = photos as [{ id: number; version: string }];
+      const url = (size: string, v?: string) =>
+        `/api/get_photo?home=${fixture.home}&item=sofa&photo=${id}&size=${size}` +
+        (v ? `&v=${v}` : "");
+
+      const full = await withFixture.request(url("full", version));
+      const thumb = await withFixture.request(url("thumb"));
+      expect([full.status, full.headers.get("content-type")]).toEqual([200, "image/jpeg"]);
+      expect(full.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+      expect(new Uint8Array(await full.arrayBuffer())).toEqual(jpeg(1));
+      expect(thumb.headers.get("cache-control")).toBe("no-cache");
+      expect(new Uint8Array(await thumb.arrayBuffer())).toEqual(jpeg(2));
+
+      const heic = new Uint8Array(64);
+      heic.set([0, 0, 0, 0x18, ...new TextEncoder().encode("ftypheic")]);
+      const refused = await upload({
+        home: fixture.home,
+        item: "sofa",
+        file: heic,
+        thumb: jpeg(2),
+      });
+      expect(refused.status).toBe(400);
+      expect(await refused.json()).toEqual({
+        error: {
+          code: "unsupported_file",
+          message: expect.stringContaining("Export it as a JPEG"),
+        },
+      });
+      // Its own route, so JSON is refused as upload_blueprint's is.
+      const asJson = await post("add_photo", { home: fixture.home, item: "sofa" });
+      expect(asJson.status).toBe(415);
+
+      const edited = await post("edit_photo", {
+        home: fixture.home,
+        item: "sofa",
+        photo: id,
+        caption: "",
+      });
+      expect(await edited.json()).toEqual({ photos: [{ id, version, takenOn: "2026-03-14" }] });
+      const deleted = await post("delete_photo", { home: fixture.home, item: "sofa", photo: id });
+      expect(await deleted.json()).toEqual({ photos: [] });
+      expect((await withFixture.request(url("full"))).status).toBe(404);
+
+      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      expect(tools.map((tool) => tool.name).filter((name) => name.includes("photo"))).toEqual([]);
+    } finally {
+      fixture.core.close();
+    }
+  });
+});
+
 describe("the MCP endpoint", () => {
   it("answers initialize with the server's name and its instructions under 512 characters", async () => {
     const response = await mcp("any", "initialize", {

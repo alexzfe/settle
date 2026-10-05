@@ -4,6 +4,7 @@ import { named } from "../render.js";
 import type { ChangeRow, DecisionRow, ItemRow, ListingRow, RequirementRow } from "../store.js";
 import { requireItem, untagListed } from "./items.js";
 import { loadHome, toItem } from "./model.js";
+import { toPhoto } from "./photos.js";
 import {
   editItemInput,
   getItemInput,
@@ -27,7 +28,8 @@ export const getItem = defineOperation({
   name: "get_item",
   description:
     "An Item's page, Archived ones too: the Item, the Items it replaced or that replaced it, the " +
-    "Listing picture of the Purchase that bought it, the Decisions tied to it, and its history, " +
+    "Listing picture of the Purchase that bought it, its Photos newest first, the Decisions tied " +
+    "to it, and its history, " +
     "one entry per change event, newest first.",
   input: getItemInput,
   readOnly: true,
@@ -46,6 +48,7 @@ export const getItem = defineOperation({
       ...(replaces.length > 0 ? { replaces: replaces.map(ref) } : {}),
       ...(replacedBy ? { replacedBy: ref(replacedBy) } : {}),
       ...(picture ? { picture } : {}),
+      photos: model.photos.filter((each) => each.itemId === item.id).map(toPhoto),
       decisions: [
         ...reliesOn(context.store.list("requirements", home.id), decisions, item),
         ...(boughtBy ? [related("bought-by", boughtBy)] : []),

@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Home, Item, Level, Room } from "./api";
-import { groupItems } from "./ItemsPage";
+import { groupItems, ItemList } from "./ItemsPage";
 import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Spain", city: "Madrid", latitude: 40.4 };
@@ -230,4 +231,37 @@ it("says so when there are no Items, with a prompt for the Agent", async () => {
   renderRoutes("/homes/flat/items");
   expect(await screen.findByText(/No Items yet/)).toBeDefined();
   expect(screen.getByRole("button", { name: /Ask the Agent/ })).toBeDefined();
+});
+
+describe("thumbnails", () => {
+  const lamp = item("lamp", "Lamp", "main-bedroom", { photo: { id: 4, version: "f00d" } });
+  const vase = item("vase", "Vase", "main-bedroom");
+  const thumbs = () =>
+    [...document.querySelectorAll("img")].map((img) => [
+      img.getAttribute("src"),
+      img.getAttribute("alt"),
+      img.getAttribute("loading"),
+    ]);
+
+  it("shows an Item's Photo on its Inventory row, and nothing for an Item without one", async () => {
+    stubItems(() => [lamp, vase]);
+    renderRoutes("/homes/flat/items");
+    await screen.findByRole("link", { name: "Lamp" });
+    expect(thumbs()).toEqual([
+      ["/api/get_photo?home=flat&item=lamp&photo=4&size=thumb&v=f00d", "", "lazy"],
+    ]);
+    const vaseRow = screen.getByRole("link", { name: "Vase" }).closest("li");
+    expect(vaseRow?.querySelector("img")).toBeNull();
+  });
+
+  it("shows it on a Room page's list too", () => {
+    render(
+      <MemoryRouter>
+        <ItemList home="flat" items={[lamp, vase]} />
+      </MemoryRouter>,
+    );
+    expect(thumbs()).toEqual([
+      ["/api/get_photo?home=flat&item=lamp&photo=4&size=thumb&v=f00d", "", "lazy"],
+    ]);
+  });
 });

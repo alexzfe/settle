@@ -1,6 +1,7 @@
 import { basename, join } from "node:path";
 import { CoreError } from "../errors.js";
 import type { BlueprintDocument, RenderedImage } from "../files.js";
+import { heicMessage, isHeif } from "../images.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { renderViewedPages } from "../render.js";
 import { uniqueSlug } from "../slug.js";
@@ -258,7 +259,6 @@ function withDocument<T>(
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
-const HEIF_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1"]);
 
 /** What a file is, from its first bytes rather than its name. */
 function fileTypeOf(bytes: Uint8Array, fileName: string): BlueprintFileType {
@@ -270,13 +270,8 @@ function fileTypeOf(bytes: Uint8Array, fileName: string): BlueprintFileType {
   // A PDF may have a few bytes of junk before its header.
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 1024));
   if (head.includes("%PDF-")) return "pdf";
-  const heif = head.slice(4, 8) === "ftyp" && HEIF_BRANDS.has(head.slice(8, 12));
-  if (heif || /\.hei[cf]$/i.test(fileName)) {
-    throw new CoreError(
-      "unsupported_file",
-      `${fileName} is a HEIC image, which the app can't read yet. Export it as a JPEG (most ` +
-        "photo apps can), or upload the plan as a PDF.",
-    );
+  if (isHeif(bytes) || /\.hei[cf]$/i.test(fileName)) {
+    throw new CoreError("unsupported_file", heicMessage(fileName, "upload the plan as a PDF"));
   }
   throw new CoreError(
     "unsupported_file",

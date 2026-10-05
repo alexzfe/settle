@@ -1001,6 +1001,19 @@ export const itemSchema = z.object({
   manualLink: z.string().optional(),
   /** Which of boughtFrom, pricePaid, link came from a Listing and have not been edited since. */
   listed: z.array(z.enum(LISTED_FIELDS)).optional(),
+  /**
+   * The main Photo, the newest, for a thumbnail. The web builds
+   * /api/get_photo?home=<home>&item=<slug>&photo=<id>&size=thumb&v=<version>.
+   */
+  photo: z.object({ id: z.number(), version: z.string() }).optional(),
+});
+
+/**
+ * An Item as find_items gives it to the Agent: with each Photo's date and caption, newest first,
+ * so it knows a Photo exists and what it notes. Never the image.
+ */
+export const foundItemSchema = itemSchema.extend({
+  photos: z.array(z.object({ takenOn: z.string(), caption: z.string().optional() })).optional(),
 });
 
 /** A light source in a Room: the Item or Feature that carries the light attributes. */
@@ -1077,6 +1090,7 @@ export type Door = z.infer<typeof doorSchema>;
 export type Surface = z.infer<typeof surfaceSchema>;
 export type Feature = z.infer<typeof featureSchema>;
 export type Item = z.infer<typeof itemSchema>;
+export type FoundItem = z.infer<typeof foundItemSchema>;
 export type LightSource = z.infer<typeof lightSourceSchema>;
 export type RoomDetail = z.infer<typeof roomDetailSchema>;
 export type Constraint = z.infer<typeof constraintSchema>;
@@ -1120,7 +1134,7 @@ export const homeFolderSetupResult = z.object({
 });
 
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
-export const findItemsResult = z.object({ items: z.array(itemSchema) });
+export const findItemsResult = z.object({ items: z.array(foundItemSchema) });
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
 export const listNotesResult = z.object({ notes: z.array(noteSchema) });
 export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
@@ -2515,6 +2529,93 @@ export const itemHistoryEntrySchema = z.object({
 });
 
 /** get_item: an Item's page. */
+// ─── Photos: add_photo, edit_photo, delete_photo, get_photo (web only) ──────────────────────
+
+/** A Photo as the web sees it. The web builds /api/get_photo?…&photo=<id>&size=…&v=<version>. */
+export const photoSchema = z.object({
+  id: z.number(),
+  version: z.string(),
+  /** When it was taken, YYYY-MM-DD. */
+  takenOn: z.string(),
+  caption: z.string().optional(),
+});
+
+const PHOTO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A real calendar day, YYYY-MM-DD. Whether it is in the future is the handler's to say. */
+const photoDay = z
+  .string()
+  .trim()
+  .refine(
+    (value) => {
+      const [, year, month, day] = PHOTO_DAY.exec(value) ?? [];
+      if (day === undefined) return false;
+      const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+      return date.getUTCMonth() === Number(month) - 1 && date.getUTCDate() === Number(day);
+    },
+    { error: 'A Photo\'s date is a real day, as "2026-03-14"' },
+  );
+
+/** A one-line caption; an empty one is no caption. */
+const photoCaption = z
+  .string()
+  .trim()
+  .max(200)
+  .regex(/^[^\n\r]*$/, {
+    error: "A caption is one line",
+  });
+
+const photoIdInput = z.number().int().positive().describe("The Photo's id.");
+
+/** add_photo, as multipart/form-data. Both files are made by the browser, both validated here. */
+export const addPhotoInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  file: bytes.describe("The photo, shrunk by the browser: a JPEG, PNG, or WebP."),
+  thumb: bytes.describe("Its thumbnail, made by the browser: a JPEG, PNG, or WebP."),
+  takenOn: photoDay.optional().describe("When it was taken; today when left out."),
+  caption: photoCaption.optional(),
+});
+
+/** edit_photo: the caption only; null or an empty string clears it. */
+export const editPhotoInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  photo: photoIdInput,
+  caption: photoCaption.nullable(),
+});
+
+export const deletePhotoInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  photo: photoIdInput,
+});
+
+/** get_photo: the stored bytes. `v` is the Photo's version, for the browser cache. */
+export const getPhotoInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  photo: z.coerce.number().int().positive().describe("The Photo's id."),
+  size: z.enum(["full", "thumb"]),
+  v: z.string().optional().describe("Ignored by the server; it is there for the browser cache."),
+});
+
+/** add_photo, edit_photo, and delete_photo: the Item's Photos as they now are, newest first. */
+export const photosResult = z.object({ photos: z.array(photoSchema) });
+
+export const getPhotoResult = z.object({
+  mimeType: z.enum(PHOTO_TYPES),
+  data: bytes,
+});
+
+export type Photo = z.infer<typeof photoSchema>;
+export type AddPhotoInput = z.input<typeof addPhotoInput>;
+export type EditPhotoInput = z.input<typeof editPhotoInput>;
+export type DeletePhotoInput = z.input<typeof deletePhotoInput>;
+export type GetPhotoInput = z.input<typeof getPhotoInput>;
+export type PhotosResult = z.infer<typeof photosResult>;
+export type GetPhotoResult = z.infer<typeof getPhotoResult>;
+
 export const itemPageSchema = z.object({
   item: itemSchema,
   /** The Items this one replaced. */
@@ -2526,6 +2627,8 @@ export const itemPageSchema = z.object({
    * /api/get_listing_photo?home=<home>&listing=<listing>&v=<photoVersion>.
    */
   picture: z.object({ listing: z.string(), photoVersion: z.string() }).optional(),
+  /** The Item's Photos, newest first by takenOn then id; empty when it has none. */
+  photos: z.array(photoSchema),
   /** Empty when nothing relates. */
   decisions: z.array(itemDecisionSchema),
   /** Newest first. One entry per (at, origin). */

@@ -1,7 +1,8 @@
-// One Item's page: its register (what it is, where it sits, when and where it was bought, how long
-// the warranty runs), the Decisions tied to it, and the history of its record. Whatever is not
-// recorded is left out entirely, not shown blank; the pencil in the details card's header opens a
-// form with every field. Values here name their Provenance in full, Measured included.
+// One Item's page: its Photos, its register (what it is, where it sits, when and where it was
+// bought, how long the warranty runs), the Decisions tied to it, and the history of its record.
+// Whatever is not recorded is left out entirely, not shown blank; the pencil in the details card's
+// header opens a form with every field. Values here name their Provenance in full, Measured
+// included.
 
 import { type ReactNode, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -20,6 +21,7 @@ import {
 } from "./format";
 import { ItemEdit } from "./ItemEdit";
 import sheet from "./ItemPage.module.css";
+import { AddPhoto, PhotoFigure } from "./ItemPhotos";
 import { formatPartialDate, longDate, warrantyCountdown } from "./itemDates";
 import { isSafeLink } from "./Markdown";
 import { useItem } from "./queries";
@@ -42,8 +44,9 @@ export function ItemPage() {
 }
 
 function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
-  const { item, replaces = [], replacedBy, picture, decisions, history } = record;
+  const { item, replaces = [], replacedBy, picture, photos = [], decisions, history } = record;
   const [editing, setEditing] = useState(false);
+  const pictured = photos.length > 0 || picture !== undefined;
   return (
     <article>
       <header className={sheet.header}>
@@ -98,15 +101,25 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
         </p>
       )}
 
-      <div className={picture ? `${sheet.register} ${sheet.withPicture}` : sheet.register}>
-        {picture && (
-          <figure className={sheet.picture}>
-            <img
-              src={listingPhotoUrl(home, picture.listing, picture.photoVersion)}
-              alt={item.name}
-            />
-            <figcaption>from the Listing</figcaption>
-          </figure>
+      {/* A Photo of the Item itself displaces the Listing's picture entirely. */}
+      <div className={pictured ? `${sheet.register} ${sheet.withPicture}` : sheet.register}>
+        {pictured && (
+          <div className={sheet.media}>
+            {photos.length > 0 ? (
+              <PhotoFigure home={home} item={item.slug} name={item.name} photos={photos} />
+            ) : (
+              picture && (
+                <figure className={sheet.picture}>
+                  <img
+                    src={listingPhotoUrl(home, picture.listing, picture.photoVersion)}
+                    alt={item.name}
+                  />
+                  <figcaption>from the Listing</figcaption>
+                </figure>
+              )
+            )}
+            <AddPhoto home={home} item={item.slug} />
+          </div>
         )}
         {editing ? (
           <ItemEdit home={home} item={item} onDone={() => setEditing(false)} />
@@ -128,6 +141,7 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
           </Card>
         )}
       </div>
+      {!pictured && <AddPhoto home={home} item={item.slug} />}
 
       {decisions.length > 0 && (
         <Section title="Decisions">
@@ -382,11 +396,21 @@ export function historySummary(changes: readonly Change[]): string {
   }
   const parts: string[] = [];
   if (changes.some((change) => change.field === "name")) parts.push("renamed");
+  for (const { field, new: next } of changes) {
+    if (field === "photo") parts.push(next ? "photo added" : "photo deleted");
+  }
   // How each field changed: "set", "changed", "cleared", or for a length whose number stayed,
   // "now Measured"; in order of first mention.
   const by = new Map<string, string[]>();
   for (const { field, old, new: next } of changes) {
-    if (field === undefined || field === "name" || field === "archivedReason") continue;
+    if (
+      field === undefined ||
+      field === "name" ||
+      field === "archivedReason" ||
+      field === "photo"
+    ) {
+      continue;
+    }
     const how =
       isMeasure(old) && isMeasure(next) && old.mm === next.mm
         ? `now ${PROVENANCE_LABEL[next.provenance]}`

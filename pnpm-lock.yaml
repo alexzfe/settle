@@ -45,6 +45,9 @@ catalogs:
     concurrently:
       specifier: ^10.0.5
       version: 10.0.5
+    exifr:
+      specifier: ^7.1.3
+      version: 7.1.3
     hono:
       specifier: ^4.13.7
       version: 4.13.7
@@ -123,12 +126,12 @@ importers:
       '@hono/node-server':
         specifier: 'catalog:'
         version: 2.1.1(hono@4.13.7)
-      '@settle/core':
-        specifier: workspace:*
-        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.30.0(supports-color@10.2.2)(zod@4.6.4)
+      '@settle/core':
+        specifier: workspace:*
+        version: link:../core
       hono:
         specifier: 'catalog:'
         version: 4.13.7
@@ -182,6 +185,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.102.8(react@19.3.0)
+      exifr:
+        specifier: 'catalog:'
+        version: 7.1.3
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -1043,6 +1049,9 @@ packages:
   eventsource@3.0.7:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
+
+  exifr@7.1.3:
+    resolution: {integrity: sha512-g/aje2noHivrRSLbAUtBPWFbxKdKhgj/xr1vATDdUXPOFYJlQ62Ft0oy+72V6XLIpDJfHs6gXLbBLAolqOXYRw==}
 
   expect-type@1.4.0:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
@@ -2297,6 +2306,8 @@ snapshots:
   eventsource@3.0.7:
     dependencies:
       eventsource-parser: 3.1.1
+
+  exifr@7.1.3: {}
 
   expect-type@1.4.0: {}
 

@@ -11,6 +11,7 @@ import type {
   ItemRow,
   LevelRow,
   NoteRow,
+  PhotoRow,
   RoomRow,
   Store,
   SurfaceRow,
@@ -52,6 +53,8 @@ export interface HomeModel {
   /** In the order they were uploaded. */
   blueprints: BlueprintRow[];
   blueprintPages: BlueprintPageRow[];
+  /** Every Item's Photos, newest first by taken date, then by upload. */
+  photos: PhotoRow[];
 }
 
 export function loadHome(store: Store, home: HomeRow): HomeModel {
@@ -68,7 +71,15 @@ export function loadHome(store: Store, home: HomeRow): HomeModel {
     constraints: store.list("constraints", home.id),
     blueprints: store.list("blueprints", home.id),
     blueprintPages: store.list("blueprint_pages", home.id),
+    photos: newestFirst(store.list("photos", home.id)),
   };
+}
+
+/** Photos newest first: by the day taken, then by upload, so the main one comes first. */
+export function newestFirst(photos: PhotoRow[]): PhotoRow[] {
+  return photos.sort((a, b) =>
+    a.takenOn === b.takenOn ? b.id - a.id : a.takenOn < b.takenOn ? 1 : -1,
+  );
 }
 
 const active = <T extends { archivedAt: string | null }>(row: T) => row.archivedAt === null;
@@ -278,6 +289,7 @@ function toFeature(model: HomeModel, feature: FeatureRow): Feature {
 
 export function toItem(model: HomeModel, item: ItemRow): Item {
   const room = item.roomId === null ? undefined : roomById(model, item.roomId);
+  const photo = model.photos.find((each) => each.itemId === item.id);
   return {
     slug: item.slug,
     name: item.name,
@@ -306,6 +318,7 @@ export function toItem(model: HomeModel, item: ItemRow): Item {
       serialNumber: item.serialNumber,
       manualLink: item.manualLink,
       listed: item.listedFields?.length ? item.listedFields : undefined,
+      photo: photo && { id: photo.id, version: photo.version },
     }),
   };
 }

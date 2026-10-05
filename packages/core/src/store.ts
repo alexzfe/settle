@@ -356,6 +356,25 @@ export interface ListingRow {
   recordedAt: string;
 }
 
+/** A Photo of an Item, taken and added by the user. Its files live under the data dir. */
+export interface PhotoRow {
+  id: number;
+  homeId: number;
+  itemId: number;
+  /** uploads/<home>/photos/<id>.<ext>, under the data dir. */
+  path: string;
+  /** uploads/<home>/photos/<id>-thumb.<ext>: the browser's small copy, for lists. */
+  thumbPath: string;
+  /** The photo's media type, sniffed from its bytes. */
+  type: PhotoType;
+  /** Changes exactly when the photo's bytes do, so the web can defeat the browser cache. */
+  version: string;
+  /** When it was taken, YYYY-MM-DD; the day it was added when the file did not say. */
+  takenOn: string;
+  caption: string | null;
+  createdAt: string;
+}
+
 export interface ListingCheckRow {
   id: number;
   homeId: number;
@@ -488,6 +507,7 @@ export interface HomeTables {
   listings: ListingRow;
   listing_checks: ListingCheckRow;
   deviations: DeviationRow;
+  photos: PhotoRow;
 }
 
 export type HomeTable = keyof HomeTables;
@@ -533,6 +553,8 @@ export interface Store {
   removeListingChecks(listingId: number): void;
   /** Drops a Listing outright. Its checks go first, or the foreign key refuses it. */
   removeListing(id: number): void;
+  /** Deletes a Photo's row; its files are the caller's to remove. Nothing refers to a Photo. */
+  removePhoto(id: number): void;
 
   insertSession(session: Omit<SessionRow, "id">): SessionRow;
   /** Looks across every Home: Session slugs are unique app-wide. */
@@ -764,6 +786,9 @@ export function openStore(path: string): Store {
     },
     removeListing(id) {
       run("DELETE FROM listings WHERE id = ?", id);
+    },
+    removePhoto(id) {
+      run("DELETE FROM photos WHERE id = ?", id);
     },
 
     insertSession(session) {

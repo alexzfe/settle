@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { CoreError } from "../errors.js";
 import type { FetchedImage, PhotoType } from "../images.js";
-import { MAX_IMAGE_BYTES, sniffImageType } from "../images.js";
+import { imageVersion, PHOTO_EXTENSIONS, uploadedImage } from "../images.js";
 import { optional } from "../optional.js";
 import { equal } from "../provenance.js";
 import { defineOperation, type OperationContext } from "../registry.js";
@@ -443,12 +442,6 @@ function storeChecks(
 // at another picture from the board, because a shop's own photo is often the worst one of the
 // product.
 
-const PHOTO_EXTENSIONS: Record<PhotoType, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-
 /** What the columns hold once a picture is stored. */
 interface StoredPhoto {
   photoPath: string;
@@ -470,16 +463,11 @@ function storePhoto(
     `${slug}.${PHOTO_EXTENSIONS[image.type]}`,
   );
   context.files.writeBytes(join(context.dataDir(), photoPath), image.bytes);
-  return { photoPath, photoType: image.type, photoVersion: version(image.bytes) };
+  return { photoPath, photoType: image.type, photoVersion: imageVersion(image.bytes) };
 }
 
 function removePhoto(context: OperationContext, path: string | null): void {
   if (path) context.files.remove(join(context.dataDir(), path));
-}
-
-/** Changes exactly when the bytes do, which is all the browser cache needs of it. */
-function version(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
 }
 
 /**
@@ -610,7 +598,9 @@ export const setListingPhoto = defineOperation({
   async handler(context, input): Promise<ListingResult> {
     const home = requireHome(context);
     const image =
-      input.file === undefined ? await context.fetchImage(input.url as string) : pasted(input.file);
+      input.file === undefined
+        ? await context.fetchImage(input.url as string)
+        : uploadedImage(input.file);
     let stored: StoredPhoto | undefined;
     try {
       return context.write("web", (log) => {
@@ -666,24 +656,6 @@ export const getListingPhoto = defineOperation({
     return { mimeType: listing.photoType, data: bytes };
   },
 });
-
-/** A pasted image, validated by its own bytes exactly as a fetched one is. */
-function pasted(file: Uint8Array): FetchedImage {
-  if (file.length > MAX_IMAGE_BYTES) {
-    throw new CoreError(
-      "validation",
-      `That picture is over ${Math.round(MAX_IMAGE_BYTES / 1024)} KB, the most the app stores.`,
-    );
-  }
-  const type = sniffImageType(file);
-  if (!type) {
-    throw new CoreError(
-      "unsupported_file",
-      "That file is not a JPEG, PNG, or WebP, whatever it is called.",
-    );
-  }
-  return { bytes: file, type };
-}
 
 /** A Listing of the Home by slug, with the Purchase it belongs to. Slugs are unique per Home. */
 function requireListing(

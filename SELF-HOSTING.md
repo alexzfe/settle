@@ -70,9 +70,9 @@ a link nobody can guess. Nothing else in the app is open without the password.
 
 ## Backups
 
-The volume holds `settle.sqlite`, the database, and `uploads/` and `rendered/`, the floor plans you
-uploaded and their pages as images. Stop the container before copying them, so the database is
-consistent:
+The volume holds `settle.sqlite`, the database; `uploads/`, the floor plans you uploaded, the
+Listings' pictures, and your Photos of Items; and `rendered/`, the floor plans' pages as images.
+Stop the container before copying them, so the database is consistent:
 
 ```sh
 docker compose stop
