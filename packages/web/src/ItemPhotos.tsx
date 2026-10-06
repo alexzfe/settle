@@ -145,7 +145,11 @@ function PhotoViewer({
     else onClose();
   };
   return (
-    <Dialog label={`Photo of ${name}, ${photoDate(photo)}`} onClose={onClose}>
+    <Dialog
+      label={`Photo of ${name}, ${photoDate(photo)}`}
+      onClose={onClose}
+      className={sheet.viewerDialog}
+    >
       <div className={sheet.viewer}>
         <div className={sheet.viewerBar}>
           {photos.length > 1 && (

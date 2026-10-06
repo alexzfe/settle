@@ -68,9 +68,11 @@
   max-width: 60rem;
 }
 
+/* The picture's column is wide enough for a Photo to be looked at, not just recognised: a
+   portrait phone shot at 16rem was the size of a playing card on a laptop. */
 @media (min-width: 48rem) {
   .withPicture {
-    grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 25rem) minmax(0, 1fr);
   }
 }
 
@@ -78,10 +80,11 @@
   margin: 0;
 }
 
-.picture img {
+/* Not the viewer's image: the viewer opens inside this figure, and must not inherit its cap. */
+.picture img:not(.viewerImage) {
   display: block;
   width: 100%;
-  max-height: 20rem;
+  max-height: 28rem;
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius);
   background: var(--color-card);
@@ -243,6 +246,45 @@
   border-radius: var(--radius);
   background: var(--color-card);
   object-fit: contain;
+}
+
+/* On a wide screen the viewer takes most of the screen, and the date, caption, and delete sit
+   beside the Photo rather than under it, so a portrait shot can fill the height without scrolling. */
+@media (min-width: 64rem) {
+  /* Doubled to outrank the shared dialog's own max-width, whatever order the two modules load in. */
+  .viewerDialog.viewerDialog {
+    max-width: min(90vw, 90rem);
+  }
+
+  .viewer {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-areas:
+      "bar bar"
+      "image details"
+      "steps details";
+    align-items: start;
+  }
+
+  .viewerBar {
+    grid-area: bar;
+  }
+
+  /* Sized by its own shape, so a portrait Photo is not letterboxed across the whole column. */
+  .viewerImage {
+    grid-area: image;
+    justify-self: center;
+    width: auto;
+    max-width: 100%;
+    max-height: calc(100dvh - 11rem);
+  }
+
+  .viewerSteps {
+    grid-area: steps;
+  }
+
+  .viewerDetails {
+    grid-area: details;
+  }
 }
 
 .viewerSteps {
