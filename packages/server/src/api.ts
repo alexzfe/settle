@@ -2,7 +2,9 @@ import {
   type Core,
   CoreError,
   type CoreErrorCode,
+  DOCUMENT_TOO_BIG,
   homeFolderScript,
+  MAX_DOCUMENT_BYTES,
   type OperationInput,
 } from "@settle/core";
 import type { Context } from "hono";
@@ -33,7 +35,14 @@ const OWN_ROUTES: Record<string, string> = {
     "POST /api/add_photo, as multipart/form-data with the fields home, item, file, thumb, and " +
     "optionally takenOn and caption",
   get_photo: "GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>",
+  add_document:
+    "POST /api/add_document, as multipart/form-data with the fields home, item, kind, file, and " +
+    "optionally name",
+  get_document: "GET /api/get_document?home=<slug>&item=<slug>&document=<id>&v=<version>",
 };
+
+/** A Document's cap plus room for the rest of the form: a body plainly over it is never read. */
+const MAX_DOCUMENT_FORM_BYTES = MAX_DOCUMENT_BYTES + 1024 * 1024;
 
 const web = { caller: { kind: "web" } } as const;
 
@@ -224,6 +233,72 @@ export async function handlePhoto(core: Core, c: Context): Promise<Response> {
     } as OperationInput<"get_photo">);
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
       "content-type": mimeType,
+      "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
+    });
+  });
+}
+
+/**
+ * POST /api/add_document: a Document of an Item, as multipart/form-data with the fields `home`,
+ * `item`, `kind`, `file` (a PDF as it came, or an image the browser shrank), and optionally
+ * `name`. Answers { documents } as JSON, the Item's Documents by kind. A Content-Length plainly
+ * over the cap is answered 413 before the body is read, since the whole form is held in memory.
+ */
+export async function handleDocumentUpload(core: Core, c: Context): Promise<Response> {
+  if (Number(c.req.header("content-length")) > MAX_DOCUMENT_FORM_BYTES) {
+    return c.json({ error: { code: "validation", message: DOCUMENT_TOO_BIG } }, 413);
+  }
+  if (!c.req.header("content-type")?.startsWith("multipart/form-data")) {
+    return c.json(
+      { error: { code: "validation", message: `Send it by ${OWN_ROUTES.add_document}.` } },
+      415,
+    );
+  }
+  let form: FormData;
+  try {
+    form = await c.req.formData();
+  } catch {
+    return c.json({ error: { code: "validation", message: "The form could not be read." } }, 400);
+  }
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return c.json({ error: { code: "validation", message: "Send the Document as file." } }, 400);
+  }
+  const text = (name: string) => {
+    const value = form.get(name);
+    return typeof value === "string" ? value : undefined;
+  };
+  const name = text("name");
+  const input = {
+    home: text("home"),
+    item: text("item"),
+    kind: text("kind"),
+    file: new Uint8Array(await file.arrayBuffer()),
+    ...(name ? { name } : {}),
+  };
+  return answer(c, async () =>
+    c.json(await core.run("add_document", web, input as OperationInput<"add_document">)),
+  );
+}
+
+/**
+ * GET /api/get_document?home=<slug>&item=<slug>&document=<id>&v=<version>: one Document's bytes,
+ * offered inline under its name, so a PDF opens in the browser's own viewer. With `v` the browser
+ * may keep the bytes for a year, since a Document's bytes never change.
+ */
+export async function handleDocument(core: Core, c: Context): Promise<Response> {
+  const { home, item, document, v } = c.req.query();
+  return answer(c, async () => {
+    const { data, mimeType, fileName } = await core.run("get_document", web, {
+      home,
+      item,
+      document,
+      v,
+    } as OperationInput<"get_document">);
+    return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      "content-type": mimeType,
+      // Core has taken out of the name anything that would break the quotes.
+      "content-disposition": `inline; filename="${fileName}"`,
       "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
     });
   });

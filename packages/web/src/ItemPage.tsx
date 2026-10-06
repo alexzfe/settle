@@ -1,5 +1,6 @@
 // One Item's page: its Photos, its register (what it is, where it sits, when and where it was
-// bought, how long the warranty runs), the Decisions tied to it, and the history of its record.
+// bought, how long the warranty runs), its Documents, the Decisions tied to it, and the history of
+// its record.
 // Whatever is not recorded is left out entirely, not shown blank; the pencil in the details card's
 // header opens a form with every field. Values here name their Provenance in full, Measured
 // included.
@@ -19,6 +20,7 @@ import {
   wallNameOf,
   words,
 } from "./format";
+import { ItemDocuments } from "./ItemDocuments";
 import { ItemEdit } from "./ItemEdit";
 import sheet from "./ItemPage.module.css";
 import { AddPhoto, PhotoFigure } from "./ItemPhotos";
@@ -44,7 +46,16 @@ export function ItemPage() {
 }
 
 function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
-  const { item, replaces = [], replacedBy, picture, photos = [], decisions, history } = record;
+  const {
+    item,
+    replaces = [],
+    replacedBy,
+    picture,
+    photos = [],
+    documents = [],
+    decisions,
+    history,
+  } = record;
   const [editing, setEditing] = useState(false);
   const pictured = photos.length > 0 || picture !== undefined;
   return (
@@ -142,6 +153,8 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
         )}
       </div>
       {!pictured && <AddPhoto home={home} item={item.slug} />}
+
+      <ItemDocuments home={home} item={item.slug} documents={documents} />
 
       {decisions.length > 0 && (
         <Section title="Decisions">
@@ -399,6 +412,13 @@ export function historySummary(changes: readonly Change[]): string {
   for (const { field, new: next } of changes) {
     if (field === "photo") parts.push(next ? "photo added" : "photo deleted");
   }
+  for (const { field, old, new: next } of changes) {
+    if (field === "document") {
+      const kind = (next ?? old) as { kind?: string } | null;
+      const what = kind?.kind ?? "document";
+      parts.push(`${what} ${!old ? "added" : !next ? "deleted" : "changed"}`);
+    }
+  }
   // How each field changed: "set", "changed", "cleared", or for a length whose number stayed,
   // "now Measured"; in order of first mention.
   const by = new Map<string, string[]>();
@@ -407,7 +427,8 @@ export function historySummary(changes: readonly Change[]): string {
       field === undefined ||
       field === "name" ||
       field === "archivedReason" ||
-      field === "photo"
+      field === "photo" ||
+      field === "document"
     ) {
       continue;
     }

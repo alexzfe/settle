@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { exifDay, fitWithin, PHOTO_QUALITY, preparePhoto, THUMB_QUALITY } from "./photoPrep";
+import {
+  DOCUMENT_QUALITY,
+  exifDay,
+  fitWithin,
+  PHOTO_QUALITY,
+  prepareDocumentImage,
+  preparePhoto,
+  THUMB_QUALITY,
+} from "./photoPrep";
 
 /**
  * A JPEG holding nothing but an EXIF block with one DateTimeOriginal: a little-endian TIFF whose
@@ -177,6 +185,57 @@ describe("preparePhoto", () => {
     expect(
       (await preparePhoto(picked(new Uint8Array([0xff, 0xd8, 0xff, 0xd9])))).takenOn,
     ).toBeUndefined();
+  });
+});
+
+describe("prepareDocumentImage", () => {
+  it("redraws a phone shot of a receipt at 2400 px as a finer JPEG, with no thumbnail or date", async () => {
+    const { decode } = stubDrawing({ width: 3024, height: 4032 });
+    const file = picked(jpegTakenOn("2026:03:14 10:22:01"));
+    const prepared = await prepareDocumentImage(file);
+    expect(decode).toHaveBeenCalledWith(file, { imageOrientation: "from-image" });
+    expect(saved.get(prepared.file)).toEqual({
+      width: 1800,
+      height: 2400,
+      type: "image/jpeg",
+      quality: DOCUMENT_QUALITY,
+    });
+    expect(prepared).toEqual({ file: prepared.file, size: { width: 3024, height: 4032 } });
+  });
+
+  it("leaves a Photo at 1600 px all the same", async () => {
+    stubDrawing({ width: 3024, height: 4032 });
+    const photo = await preparePhoto(picked());
+    const document = await prepareDocumentImage(picked());
+    expect(saved.get(photo.file)).toMatchObject({ width: 1200, height: 1600 });
+    expect(saved.get(document.file)).toMatchObject({ width: 1800, height: 2400 });
+  });
+
+  it("never scales a small image up, but still redraws it", async () => {
+    stubDrawing({ width: 1200, height: 900 });
+    const file = picked();
+    const prepared = await prepareDocumentImage(file);
+    expect(prepared.file).not.toBe(file);
+    expect(saved.get(prepared.file)).toMatchObject({ width: 1200, height: 900 });
+  });
+
+  it("cuts the crop from the whole picture before shrinking it to 2400 px", async () => {
+    const { drawImage } = stubDrawing({ width: 3024, height: 4032 });
+    const prepared = await prepareDocumentImage(picked(), {
+      x: 500,
+      y: 0,
+      width: 2000,
+      height: 4000,
+    });
+    expect(drawImage.mock.calls[0]?.slice(1)).toEqual([500, 0, 2000, 4000, 0, 0, 1200, 2400]);
+    expect(saved.get(prepared.file)).toMatchObject({ width: 1200, height: 2400 });
+    expect(prepared.size).toEqual({ width: 3024, height: 4032 });
+  });
+
+  it("sends a file it cannot decode as it is, for core to refuse", async () => {
+    stubDrawing("undecodable");
+    const file = new File(["ftypheic"], "IMG_0002.HEIC", { type: "image/heic" });
+    expect(await prepareDocumentImage(file)).toEqual({ file });
   });
 });
 

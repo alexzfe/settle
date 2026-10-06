@@ -432,7 +432,8 @@ export function itemLine(
 
 /**
  * The register facts recorded for an Item, a Listed one marked *, like its sizes; then its Photos,
- * newest first, each by the day taken and its caption, so the Agent knows they exist.
+ * newest first, each by the day taken and its caption, and its Documents, each by kind and name,
+ * so the Agent knows they exist.
  */
 function registerParts(item: FoundItem): (string | undefined)[] {
   const listed = (field: ListedField, value: string | undefined) =>
@@ -448,6 +449,11 @@ function registerParts(item: FoundItem): (string | undefined)[] {
       ? `photos: ${item.photos.length} (${item.photos
           .map((photo) => join(" ", [photo.takenOn, photo.caption && `"${photo.caption}"`]))
           .join("; ")})`
+      : undefined,
+    item.documents?.length
+      ? `documents: ${item.documents
+          .map((document) => join(" ", [document.kind, document.name && `"${document.name}"`]))
+          .join("; ")}`
       : undefined,
   ];
 }

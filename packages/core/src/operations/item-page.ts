@@ -2,6 +2,7 @@ import { optional } from "../optional.js";
 import { defineOperation } from "../registry.js";
 import { named } from "../render.js";
 import type { ChangeRow, DecisionRow, ItemRow, ListingRow, RequirementRow } from "../store.js";
+import { toDocument } from "./documents.js";
 import { requireItem, untagListed } from "./items.js";
 import { loadHome, toItem } from "./model.js";
 import { toPhoto } from "./photos.js";
@@ -28,7 +29,8 @@ export const getItem = defineOperation({
   name: "get_item",
   description:
     "An Item's page, Archived ones too: the Item, the Items it replaced or that replaced it, the " +
-    "Listing picture of the Purchase that bought it, its Photos newest first, the Decisions tied " +
+    "Listing picture of the Purchase that bought it, its Photos newest first, its Documents by " +
+    "kind, the Decisions tied " +
     "to it, and its history, " +
     "one entry per change event, newest first.",
   input: getItemInput,
@@ -49,6 +51,7 @@ export const getItem = defineOperation({
       ...(replacedBy ? { replacedBy: ref(replacedBy) } : {}),
       ...(picture ? { picture } : {}),
       photos: model.photos.filter((each) => each.itemId === item.id).map(toPhoto),
+      documents: model.documents.filter((each) => each.itemId === item.id).map(toDocument),
       decisions: [
         ...reliesOn(context.store.list("requirements", home.id), decisions, item),
         ...(boughtBy ? [related("bought-by", boughtBy)] : []),

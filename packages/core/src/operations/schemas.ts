@@ -18,6 +18,10 @@ export const PROVENANCES = ["measured", "blueprint", "listed", "estimated"] as c
 export const BUILDING_PROVENANCES = ["measured", "blueprint", "estimated"] as const;
 /** The Item fields that can be copied from a Listing and tagged Listed, besides sizes and colors. */
 export const LISTED_FIELDS = ["boughtFrom", "pricePaid", "link"] as const;
+/** What a Document of an Item is, in the order the Item page lists them. */
+export const DOCUMENT_KINDS = ["receipt", "warranty", "manual", "other"] as const;
+/** The file types a Document is stored as, sniffed from its bytes. */
+export const DOCUMENT_TYPES = ["application/pdf", ...PHOTO_TYPES] as const;
 export const ROOM_FUNCTIONS = [
   "kitchen",
   "dining",
@@ -1014,6 +1018,10 @@ export const itemSchema = z.object({
  */
 export const foundItemSchema = itemSchema.extend({
   photos: z.array(z.object({ takenOn: z.string(), caption: z.string().optional() })).optional(),
+  /** Each Document's kind and name, in the Item page's order. Never the file. */
+  documents: z
+    .array(z.object({ kind: z.enum(DOCUMENT_KINDS), name: z.string().optional() }))
+    .optional(),
 });
 
 /** A light source in a Room: the Item or Feature that carries the light attributes. */
@@ -2616,6 +2624,86 @@ export type GetPhotoInput = z.input<typeof getPhotoInput>;
 export type PhotosResult = z.infer<typeof photosResult>;
 export type GetPhotoResult = z.infer<typeof getPhotoResult>;
 
+// ─── Documents: add_document, edit_document, delete_document, get_document (web only) ───────
+
+/**
+ * A Document as the web sees it. The web opens
+ * /api/get_document?home=<home>&item=<slug>&document=<id>&v=<version>.
+ */
+export const documentSchema = z.object({
+  id: z.number(),
+  kind: z.enum(DOCUMENT_KINDS),
+  name: z.string().optional(),
+  type: z.enum(DOCUMENT_TYPES),
+  bytes: z.number(),
+  version: z.string(),
+});
+
+/** A one-line name; an empty one is no name, and the kind alone is shown. */
+const documentName = z
+  .string()
+  .trim()
+  .max(200)
+  .regex(/^[^\n\r]*$/, {
+    error: "A Document's name is one line",
+  });
+
+const documentKind = z.enum(DOCUMENT_KINDS).describe("Receipt, warranty, manual, or other.");
+const documentIdInput = z.number().int().positive().describe("The Document's id.");
+
+/** add_document, as multipart/form-data. The file is validated by its bytes. */
+export const addDocumentInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  kind: documentKind,
+  file: bytes.describe("A PDF as it came, or a JPEG, PNG, or WebP the browser shrank."),
+  name: documentName.optional(),
+});
+
+/** edit_document: the kind and the name; null or an empty string clears the name. */
+export const editDocumentInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  document: documentIdInput,
+  kind: documentKind.optional(),
+  name: documentName.nullable().optional(),
+});
+
+export const deleteDocumentInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  document: documentIdInput,
+});
+
+/** get_document: the stored file. `v` is the Document's version, for the browser cache. */
+export const getDocumentInput = z.object({
+  home: homeInput,
+  item: itemSlugInput,
+  document: z.coerce.number().int().positive().describe("The Document's id."),
+  v: z.string().optional().describe("Ignored by the server; it is there for the browser cache."),
+});
+
+/** add_document, edit_document, and delete_document: the Item's Documents as they now are. */
+export const documentsResult = z.object({ documents: z.array(documentSchema) });
+
+/** get_document: the bytes, their type, and the file name to offer, `<name or kind>.<ext>`. */
+export const getDocumentResult = z.object({
+  mimeType: z.enum(DOCUMENT_TYPES),
+  fileName: z.string(),
+  data: bytes,
+});
+
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+/** Not `Document`, which would shadow the DOM's in the web. */
+export type ItemDocument = z.infer<typeof documentSchema>;
+export type AddDocumentInput = z.input<typeof addDocumentInput>;
+export type EditDocumentInput = z.input<typeof editDocumentInput>;
+export type DeleteDocumentInput = z.input<typeof deleteDocumentInput>;
+export type GetDocumentInput = z.input<typeof getDocumentInput>;
+export type DocumentsResult = z.infer<typeof documentsResult>;
+export type GetDocumentResult = z.infer<typeof getDocumentResult>;
+
 export const itemPageSchema = z.object({
   item: itemSchema,
   /** The Items this one replaced. */
@@ -2629,6 +2717,8 @@ export const itemPageSchema = z.object({
   picture: z.object({ listing: z.string(), photoVersion: z.string() }).optional(),
   /** The Item's Photos, newest first by takenOn then id; empty when it has none. */
   photos: z.array(photoSchema),
+  /** The Item's Documents, by kind (receipt, warranty, manual, other) then id; empty when none. */
+  documents: z.array(documentSchema),
   /** Empty when nothing relates. */
   decisions: z.array(itemDecisionSchema),
   /** Newest first. One entry per (at, origin). */

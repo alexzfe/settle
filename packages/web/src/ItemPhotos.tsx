@@ -10,7 +10,7 @@ import styles from "./App.module.css";
 import { call, type Photo, photoUrl, upload } from "./api";
 import sheet from "./ItemPage.module.css";
 import { formatPartialDate } from "./itemDates";
-import { type PreparedPhoto, preparePhoto } from "./photoPrep";
+import { type CropArea, type PreparedPhoto, preparePhoto } from "./photoPrep";
 import { queryKeys } from "./queries";
 import { Dialog } from "./ui/Dialog";
 
@@ -398,7 +398,7 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
     size: { width: number; height: number },
     crop: PercentCrop,
   ) {
-    if (crop.x <= 0 && crop.y <= 0 && crop.width >= 100 && crop.height >= 100) {
+    if (isWhole(crop)) {
       setAdding((current) =>
         current?.step === "ready" ? { ...current, cropped: undefined } : current,
       );
@@ -407,12 +407,7 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
     }
     setCropping("cutting");
     try {
-      const prepared = await preparePhoto(picked, {
-        x: (crop.x / 100) * size.width,
-        y: (crop.y / 100) * size.height,
-        width: (crop.width / 100) * size.width,
-        height: (crop.height / 100) * size.height,
-      });
+      const prepared = await preparePhoto(picked, cropArea(crop, size));
       setAdding((current) =>
         current?.step === "ready"
           ? { ...current, cropped: { ...ready(picked, prepared), crop } }
@@ -569,14 +564,32 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
 }
 
 /** A file sent as it is could not be decoded here, so it cannot be previewed either. */
-function ready(picked: File, prepared: PreparedPhoto): Ready {
+export function ready<Prepared extends { file: Blob }>(
+  picked: File,
+  prepared: Prepared,
+): { prepared: Prepared; preview?: string } {
   return prepared.file === picked
     ? { prepared }
     : { prepared, preview: URL.createObjectURL(prepared.file) };
 }
 
-/** A refusal from a Photo write, in the reader's words, where it happened. */
-function Refusal({ of }: { of: { isError: boolean; error: Error | null } }) {
+/** A box around all of the picture, which is no crop at all. */
+export function isWhole(crop: PercentCrop): boolean {
+  return crop.x <= 0 && crop.y <= 0 && crop.width >= 100 && crop.height >= 100;
+}
+
+/** A box drawn in percent of the picture as shown, in the whole picture's own pixels. */
+export function cropArea(crop: PercentCrop, size: { width: number; height: number }): CropArea {
+  return {
+    x: (crop.x / 100) * size.width,
+    y: (crop.y / 100) * size.height,
+    width: (crop.width / 100) * size.width,
+    height: (crop.height / 100) * size.height,
+  };
+}
+
+/** A refusal from a write, in the reader's words, where it happened. */
+export function Refusal({ of }: { of: { isError: boolean; error: Error | null } }) {
   if (!of.isError) return null;
   return (
     <p role="alert" className={styles.error}>

@@ -4,11 +4,15 @@
 // file's metadata, the GPS position of the user's home among it, which is wanted. The one fact
 // kept is the day it was taken, read from the EXIF before anything is redrawn. A crop the user
 // drew is cut from the decoded picture before it is shrunk, so a tight crop keeps its detail.
+// A Document's image is redrawn the same way, larger and finer, so a receipt's small print stays
+// readable, and with neither a thumbnail nor a date.
 
 export const PHOTO_EDGE = 1600;
 export const PHOTO_QUALITY = 0.8;
 export const THUMB_EDGE = 320;
 export const THUMB_QUALITY = 0.75;
+export const DOCUMENT_EDGE = 2400;
+export const DOCUMENT_QUALITY = 0.85;
 
 export interface PreparedPhoto {
   /** The Photo itself: at most 1600 px on its long edge, as a JPEG. */
@@ -16,6 +20,13 @@ export interface PreparedPhoto {
   thumb: Blob;
   /** When it was taken, YYYY-MM-DD, when the file says. */
   takenOn?: string;
+  /** The whole picture's size, upright, when it could be decoded: what a crop is measured in. */
+  size?: { width: number; height: number };
+}
+
+/** A Document's image: at most 2400 px on its long edge, as a JPEG. */
+export interface PreparedImage {
+  file: Blob;
   /** The whole picture's size, upright, when it could be decoded: what a crop is measured in. */
   size?: { width: number; height: number };
 }
@@ -37,19 +48,44 @@ export interface CropArea {
 export async function preparePhoto(picked: File, crop?: CropArea): Promise<PreparedPhoto> {
   const takenOn = await takenOnOf(picked);
   const dated = takenOn ? { takenOn } : {};
+  // The thumbnail is drawn from the 1600 px canvas: a smaller step down, and a sharper result.
+  const redrawn = await redraw(picked, PHOTO_EDGE, PHOTO_QUALITY, crop, async (full) => ({
+    thumb: await jpeg(drawn(full, THUMB_EDGE), THUMB_QUALITY),
+  }));
+  return redrawn ? { ...redrawn, ...dated } : { file: picked, thumb: picked, ...dated };
+}
+
+/**
+ * A Document's image as core takes it, cut to `crop` when one is given. A file the browser cannot
+ * decode goes as it is, for core to refuse by name, as a Photo's does.
+ */
+export async function prepareDocumentImage(picked: File, crop?: CropArea): Promise<PreparedImage> {
+  const redrawn = await redraw(picked, DOCUMENT_EDGE, DOCUMENT_QUALITY, crop, async () => ({}));
+  return redrawn ?? { file: picked };
+}
+
+/**
+ * The picture decoded upright, cut to `crop`, and saved as a JPEG at most `edge` on its long side,
+ * with whatever `more` makes from that canvas; nothing when the browser cannot decode it.
+ */
+async function redraw<More>(
+  picked: File,
+  edge: number,
+  quality: number,
+  crop: CropArea | undefined,
+  more: (full: HTMLCanvasElement) => Promise<More>,
+): Promise<({ file: Blob; size: { width: number; height: number } } & More) | undefined> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(picked, { imageOrientation: "from-image" });
   } catch {
-    return { file: picked, thumb: picked, ...dated };
+    return undefined;
   }
   try {
     const size = { width: bitmap.width, height: bitmap.height };
-    // The thumbnail is drawn from the 1600 px canvas: a smaller step down, and a sharper result.
-    const full = drawn(bitmap, PHOTO_EDGE, crop && within(crop, size));
-    const file = await jpeg(full, PHOTO_QUALITY);
-    const thumb = await jpeg(drawn(full, THUMB_EDGE), THUMB_QUALITY);
-    return { file, thumb, size, ...dated };
+    const full = drawn(bitmap, edge, crop && within(crop, size));
+    const file = await jpeg(full, quality);
+    return { file, size, ...(await more(full)) };
   } finally {
     bitmap.close();
   }

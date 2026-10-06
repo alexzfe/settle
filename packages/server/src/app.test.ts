@@ -353,6 +353,140 @@ describe("Photos", () => {
   });
 });
 
+describe("Documents", () => {
+  it("takes a Document by multipart, serves it inline under its name, and edits and deletes by JSON", async () => {
+    const fixture = await createFixtureHome();
+    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const post = (operation: string, body: unknown) =>
+      withFixture.request(`/api/${operation}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const pdf = new TextEncoder().encode("%PDF-1.7\n%fake receipt\n");
+    const upload = (fields: Record<string, string | Uint8Array>) => {
+      const form = new FormData();
+      for (const [name, value] of Object.entries(fields)) {
+        form.set(
+          name,
+          typeof value === "string"
+            ? value
+            : new File([new Uint8Array(value)], "receipt.pdf", { type: "application/pdf" }),
+        );
+      }
+      return withFixture.request("/api/add_document", { method: "POST", body: form });
+    };
+    try {
+      const added = await upload({
+        home: fixture.home,
+        item: "sofa",
+        kind: "receipt",
+        file: pdf,
+        name: "IKEA receipt",
+      });
+      expect(added.status).toBe(200);
+      const { documents } = (await added.json()) as {
+        documents: { id: number; version: string }[];
+      };
+      expect(documents).toEqual([
+        {
+          id: expect.any(Number),
+          kind: "receipt",
+          name: "IKEA receipt",
+          type: "application/pdf",
+          bytes: pdf.length,
+          version: expect.any(String),
+        },
+      ]);
+      const [{ id, version }] = documents as [{ id: number; version: string }];
+      const url = (v?: string) =>
+        `/api/get_document?home=${fixture.home}&item=sofa&document=${id}${v ? `&v=${v}` : ""}`;
+
+      const got = await withFixture.request(url(version));
+      expect([got.status, got.headers.get("content-type")]).toEqual([200, "application/pdf"]);
+      expect(got.headers.get("content-disposition")).toBe('inline; filename="IKEA receipt.pdf"');
+      expect(got.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+      expect(new Uint8Array(await got.arrayBuffer())).toEqual(pdf);
+      expect((await withFixture.request(url())).headers.get("cache-control")).toBe("no-cache");
+
+      const heic = new Uint8Array(64);
+      heic.set([0, 0, 0, 0x18, ...new TextEncoder().encode("ftypheic")]);
+      const refused = await upload({
+        home: fixture.home,
+        item: "sofa",
+        kind: "receipt",
+        file: heic,
+      });
+      expect(refused.status).toBe(400);
+      expect(await refused.json()).toEqual({
+        error: {
+          code: "unsupported_file",
+          message: expect.stringContaining("Export it as a JPEG"),
+        },
+      });
+      // Its own route, so JSON is refused as add_photo's is.
+      const asJson = await post("add_document", { home: fixture.home, item: "sofa" });
+      expect(asJson.status).toBe(415);
+
+      const edited = await post("edit_document", {
+        home: fixture.home,
+        item: "sofa",
+        document: id,
+        kind: "warranty",
+        name: "",
+      });
+      expect(await edited.json()).toEqual({
+        documents: [{ id, kind: "warranty", type: "application/pdf", bytes: pdf.length, version }],
+      });
+      expect((await withFixture.request(url())).headers.get("content-disposition")).toBe(
+        'inline; filename="warranty.pdf"',
+      );
+      const deleted = await post("delete_document", {
+        home: fixture.home,
+        item: "sofa",
+        document: id,
+      });
+      expect(await deleted.json()).toEqual({ documents: [] });
+      expect((await withFixture.request(url())).status).toBe(404);
+
+      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      expect(tools.map((tool) => tool.name).filter((name) => name.includes("document"))).toEqual(
+        [],
+      );
+    } finally {
+      fixture.core.close();
+    }
+  });
+
+  it("answers 413 to a body plainly over 50 MB without reading it", async () => {
+    let read = false;
+    // No high-water mark, so nothing is pulled until something reads the body.
+    const body = new ReadableStream(
+      {
+        pull() {
+          read = true;
+          throw new Error("The body was read");
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await app.request("/api/add_document", {
+      method: "POST",
+      headers: {
+        "content-type": "multipart/form-data; boundary=x",
+        "content-length": String(60 * 1024 * 1024),
+      },
+      body,
+      duplex: "half",
+    } as RequestInit);
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      error: { code: "validation", message: expect.stringContaining("Manual link") },
+    });
+    expect(read).toBe(false);
+  });
+});
+
 describe("the MCP endpoint", () => {
   it("answers initialize with the server's name and its instructions under 512 characters", async () => {
     const response = await mcp("any", "initialize", {

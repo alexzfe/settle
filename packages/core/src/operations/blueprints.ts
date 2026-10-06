@@ -1,7 +1,7 @@
 import { basename, join } from "node:path";
 import { CoreError } from "../errors.js";
 import type { BlueprintDocument, RenderedImage } from "../files.js";
-import { heicMessage, isHeif } from "../images.js";
+import { heicMessage, isHeif, isPdf } from "../images.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { renderViewedPages } from "../render.js";
 import { uniqueSlug } from "../slug.js";
@@ -267,9 +267,7 @@ function fileTypeOf(bytes: Uint8Array, fileName: string): BlueprintFileType {
   }
   if (startsWith(bytes, PNG_SIGNATURE)) return "png";
   if (startsWith(bytes, JPEG_SIGNATURE)) return "jpeg";
-  // A PDF may have a few bytes of junk before its header.
-  const head = new TextDecoder("latin1").decode(bytes.subarray(0, 1024));
-  if (head.includes("%PDF-")) return "pdf";
+  if (isPdf(bytes)) return "pdf";
   if (isHeif(bytes) || /\.hei[cf]$/i.test(fileName)) {
     throw new CoreError("unsupported_file", heicMessage(fileName, "upload the plan as a PDF"));
   }

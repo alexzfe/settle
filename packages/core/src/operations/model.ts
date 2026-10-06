@@ -5,6 +5,7 @@ import type {
   BlueprintPageRow,
   BlueprintRow,
   ConstraintRow,
+  DocumentRow,
   DoorRow,
   FeatureRow,
   HomeRow,
@@ -23,6 +24,7 @@ import {
   type Blueprint,
   type BlueprintPage,
   type Constraint,
+  DOCUMENT_KINDS,
   type Door,
   type Feature,
   type Item,
@@ -55,6 +57,8 @@ export interface HomeModel {
   blueprintPages: BlueprintPageRow[];
   /** Every Item's Photos, newest first by taken date, then by upload. */
   photos: PhotoRow[];
+  /** Every Item's Documents, by kind (receipt, warranty, manual, other), then oldest first. */
+  documents: DocumentRow[];
 }
 
 export function loadHome(store: Store, home: HomeRow): HomeModel {
@@ -72,6 +76,7 @@ export function loadHome(store: Store, home: HomeRow): HomeModel {
     blueprints: store.list("blueprints", home.id),
     blueprintPages: store.list("blueprint_pages", home.id),
     photos: newestFirst(store.list("photos", home.id)),
+    documents: byKind(store.list("documents", home.id)),
   };
 }
 
@@ -80,6 +85,12 @@ export function newestFirst(photos: PhotoRow[]): PhotoRow[] {
   return photos.sort((a, b) =>
     a.takenOn === b.takenOn ? b.id - a.id : a.takenOn < b.takenOn ? 1 : -1,
   );
+}
+
+/** Documents by kind, in DOCUMENT_KINDS' order, then oldest first, so a kind's papers stay together. */
+export function byKind(documents: DocumentRow[]): DocumentRow[] {
+  const rank = (row: DocumentRow) => DOCUMENT_KINDS.indexOf(row.kind);
+  return documents.sort((a, b) => rank(a) - rank(b) || a.id - b.id);
 }
 
 const active = <T extends { archivedAt: string | null }>(row: T) => row.archivedAt === null;

@@ -104,6 +104,11 @@ export function isHeif(bytes: Uint8Array): boolean {
   return head.slice(0, 4) === "ftyp" && HEIF_BRANDS.has(head.slice(4, 8));
 }
 
+/** Whether the bytes are a PDF: "%PDF-" in the head, since a PDF may have a little junk before it. */
+export function isPdf(bytes: Uint8Array): boolean {
+  return new TextDecoder("latin1").decode(bytes.subarray(0, 1024)).includes("%PDF-");
+}
+
 /** The refusal of a HEIC image, which `name` is; `otherwise` offers another way, after a comma. */
 export function heicMessage(name: string, otherwise?: string): string {
   return (

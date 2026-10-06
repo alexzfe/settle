@@ -4,6 +4,8 @@ import { AgentActivity } from "./agent-activity.js";
 import {
   handleApi,
   handleBlueprintPage,
+  handleDocument,
+  handleDocumentUpload,
   handleHomeFolderScript,
   handleListingPhoto,
   handleListingPhotoUpload,
@@ -50,6 +52,9 @@ export function createApp({ core, port, webDist, publicOrigin, auth }: AppOption
   // An Item's Photos: the photo and its thumbnail in through a multipart form, each served back.
   app.post("/api/add_photo", (c) => handlePhotoUpload(core, c));
   app.get("/api/get_photo", (c) => handlePhoto(core, c));
+  // An Item's Documents: a PDF or an image in through a multipart form, served back inline.
+  app.post("/api/add_document", (c) => handleDocumentUpload(core, c));
+  app.get("/api/get_document", (c) => handleDocument(core, c));
   // The exports as files, for a link to open; POST gives the same as JSON.
   app.get("/api/export_shopping_list", (c) => handleExport(core, c, "export_shopping_list"));
   app.get("/api/export_guides", (c) => handleExport(core, c, "export_guides"));

@@ -183,6 +183,7 @@
 }
 
 .addForm input,
+.addForm select,
 .captionForm input {
   width: 100%;
   min-height: 2.75rem;
@@ -317,6 +318,80 @@
 .captionLine p {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* A Document upload's progress: the bar and how much is going. */
+.sending {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+/* The Documents: one row each, its icon, kind and name opening it, and its pencil. */
+.documents {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.documents > li {
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+/* The pencil's form, as narrow as the add form. */
+.documents .addForm {
+  max-width: 24rem;
+  padding-block: var(--space-2);
+}
+
+.documents > li:last-child {
+  border-bottom: 0;
+}
+
+.documentRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.documentOpen {
+  display: flex;
+  flex: 1;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.documentLabel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.documentOpen:hover {
+  border: 0;
+  background: none;
+}
+
+.documentOpen:hover .documentLabel {
+  text-decoration: underline;
+}
+
+.documentIcon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-ink-muted);
 }
 
 /* Delete, asked once: permanent, said plainly before it happens. */

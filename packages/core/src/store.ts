@@ -11,6 +11,8 @@ import type {
   Condition,
   DecisionKind,
   DecisionState,
+  DocumentKind,
+  DocumentType,
   DoorSideBKind,
   EvidenceKind,
   FeatureKind,
@@ -375,6 +377,25 @@ export interface PhotoRow {
   createdAt: string;
 }
 
+/** A Document of an Item: a receipt, warranty, manual or other paper the user added. */
+export interface DocumentRow {
+  id: number;
+  homeId: number;
+  itemId: number;
+  kind: DocumentKind;
+  /** The optional one-line name; null shows the kind alone. */
+  name: string | null;
+  /** uploads/<home>/documents/<id>.<ext>, under the data dir. */
+  path: string;
+  /** The file's media type, sniffed from its bytes. */
+  type: DocumentType;
+  /** The file's length. */
+  bytes: number;
+  /** Changes exactly when the file's bytes do, so the web can defeat the browser cache. */
+  version: string;
+  createdAt: string;
+}
+
 export interface ListingCheckRow {
   id: number;
   homeId: number;
@@ -508,6 +529,7 @@ export interface HomeTables {
   listing_checks: ListingCheckRow;
   deviations: DeviationRow;
   photos: PhotoRow;
+  documents: DocumentRow;
 }
 
 export type HomeTable = keyof HomeTables;
@@ -555,6 +577,8 @@ export interface Store {
   removeListing(id: number): void;
   /** Deletes a Photo's row; its files are the caller's to remove. Nothing refers to a Photo. */
   removePhoto(id: number): void;
+  /** Deletes a Document's row; its file is the caller's to remove. Nothing refers to a Document. */
+  removeDocument(id: number): void;
 
   insertSession(session: Omit<SessionRow, "id">): SessionRow;
   /** Looks across every Home: Session slugs are unique app-wide. */
@@ -789,6 +813,9 @@ export function openStore(path: string): Store {
     },
     removePhoto(id) {
       run("DELETE FROM photos WHERE id = ?", id);
+    },
+    removeDocument(id) {
+      run("DELETE FROM documents WHERE id = ?", id);
     },
 
     insertSession(session) {

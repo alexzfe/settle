@@ -195,7 +195,7 @@ it("renders the view_images text block, which comes before the images", async ()
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("view_images"));
 });
 
-it("renders find_items lines, with an Item's Photos by day and caption, and the Room Sheet without them", async () => {
+it("renders find_items lines, with an Item's Photos by day and caption and its Documents by kind and name, and the Room Sheet without them", async () => {
   const session = await openSession();
   // The user's Photos of the sofa: the Agent is told they exist, and never sees them.
   const jpeg = new Uint8Array(64);
@@ -208,6 +208,18 @@ it("renders find_items lines, with an Item's Photos by day and caption, and the 
       "add_photo",
       { caller: { kind: "web" } },
       { home: fixture.home, item: "sofa", file: jpeg, thumb: jpeg, ...photo },
+    );
+  }
+  // The bookcase's papers, added out of order: the line lists them by kind, then oldest first.
+  for (const document of [
+    { kind: "warranty" },
+    { kind: "manual", name: "User guide" },
+    { kind: "receipt", name: "IKEA receipt" },
+  ] as const) {
+    await fixture.core.run(
+      "add_document",
+      { caller: { kind: "web" } },
+      { home: fixture.home, item: "oak-bookcase", file: jpeg, ...document },
     );
   }
   const find = async (title: string, filter: Record<string, unknown>) => {
@@ -227,6 +239,7 @@ it("renders find_items lines, with an Item's Photos by day and caption, and the 
     room: "living-room",
   });
   expect(toolText("get_room_sheet", sheet)).not.toContain("photos:");
+  expect(toolText("get_room_sheet", sheet)).not.toContain("documents:");
 });
 
 it("renders search_notes lines", async () => {

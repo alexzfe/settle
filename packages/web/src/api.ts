@@ -90,13 +90,41 @@ export interface Photo {
 /** An Item, with its main (newest) Photo when it has any, for the lists' thumbnails. */
 export type Item = CoreItem & { photo?: Pick<Photo, "id" | "version"> };
 
-/** One Item's page, with its Photos newest first, empty when it has none. */
-export type ItemPage = Omit<CoreItemPage, "item"> & { item: Item; photos: Photo[] };
-
 /** What every Photo write answers: the Item's Photos as they now stand, newest first. */
 export interface PhotosResult {
   photos: Photo[];
 }
+
+// Documents, as the item-documents handoff's contract gives them, declared here as Photos were
+// until core's schemas carry them; core's own types, once they do, must agree with these.
+
+export type DocumentKind = "receipt" | "warranty" | "manual" | "other";
+
+/** A file kept with an Item: a PDF or an image, of a kind, with an optional one-line name. */
+export interface Document {
+  id: number;
+  kind: DocumentKind;
+  name?: string;
+  type: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
+  bytes: number;
+  /** Changes whenever the stored bytes do; passed to get_document so the browser caches for good. */
+  version: string;
+}
+
+/** What every Document write answers: the Item's Documents as they now stand, in page order. */
+export interface DocumentsResult {
+  documents: Document[];
+}
+
+/**
+ * One Item's page, with its Photos newest first and its Documents by kind then oldest first, each
+ * empty when it has none.
+ */
+export type ItemPage = Omit<CoreItemPage, "item"> & {
+  item: Item;
+  photos: Photo[];
+  documents: Document[];
+};
 
 /** An operation's input and output, as core's registry declares them. */
 interface Shapes<Name extends CoreOperationName> {
@@ -140,6 +168,21 @@ export interface Operations {
     output: PhotosResult;
   };
   delete_photo: { input: { home: string; item: string; photo: number }; output: PhotosResult };
+  // A Document's kind and name, and its removal: web-only too. An empty or null name clears it.
+  edit_document: {
+    input: {
+      home: string;
+      item: string;
+      document: number;
+      kind?: DocumentKind;
+      name?: string | null;
+    };
+    output: DocumentsResult;
+  };
+  delete_document: {
+    input: { home: string; item: string; document: number };
+    output: DocumentsResult;
+  };
 }
 
 export type OperationName = keyof Operations;
@@ -151,6 +194,8 @@ export interface Uploads {
   set_listing_photo: ListingResult;
   /** A Photo of an Item: home, item, file and thumb (both JPEGs made here), takenOn, caption. */
   add_photo: PhotosResult;
+  /** A Document of an Item: home, item, kind, file (a PDF as picked, or an image made here), name. */
+  add_document: DocumentsResult;
 }
 
 export type UploadName = keyof Uploads;
@@ -214,6 +259,21 @@ export function photoUrl(
     v: photo.version,
   });
   return `/api/get_photo?${query}`;
+}
+
+/** Where the server serves a Document's file, with its version so the browser keeps it for good. */
+export function documentUrl(
+  home: string,
+  item: string,
+  document: Pick<Document, "id" | "version">,
+): string {
+  const query = new URLSearchParams({
+    home,
+    item,
+    document: String(document.id),
+    v: document.version,
+  });
+  return `/api/get_document?${query}`;
 }
 
 /** Where the server serves one page of a Blueprint, rendered as a PNG. */

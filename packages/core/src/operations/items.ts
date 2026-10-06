@@ -89,11 +89,18 @@ export const findItems = defineOperation({
     );
     return {
       items: items.map((item) => {
-        // From the Photos the model already holds, newest first: no query per Item.
+        // From the Photos and Documents the model already holds, in order: no query per Item.
         const photos = model.photos
           .filter((each) => each.itemId === item.id)
           .map((each) => ({ takenOn: each.takenOn, ...optional({ caption: each.caption }) }));
-        return { ...toItem(model, item), ...(photos.length > 0 ? { photos } : {}) };
+        const documents = model.documents
+          .filter((each) => each.itemId === item.id)
+          .map((each) => ({ kind: each.kind, ...optional({ name: each.name }) }));
+        return {
+          ...toItem(model, item),
+          ...(photos.length > 0 ? { photos } : {}),
+          ...(documents.length > 0 ? { documents } : {}),
+        };
       }),
     };
   },

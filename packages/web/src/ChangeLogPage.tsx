@@ -157,6 +157,14 @@ function photoDay(photo: unknown): string | undefined {
   return typeof takenOn === "string" ? formatPartialDate(takenOn) : undefined;
 }
 
+/** A logged Document, `receipt "IKEA receipt"`, from its { kind, name }. */
+function documentLabel(document: unknown): string {
+  if (typeof document !== "object" || document === null) return "document";
+  const { kind, name } = document as Record<string, unknown>;
+  const label = typeof kind === "string" ? kind : "document";
+  return typeof name === "string" ? `${label} "${name}"` : label;
+}
+
 /** What happened, after the record's name: "length ~3.70 → 3.62 m (Measured)". */
 export function changeText(change: ChangeEntry): ReactNode {
   const { field, old, new: next } = change;
@@ -168,6 +176,12 @@ export function changeText(change: ChangeEntry): ReactNode {
     const photo = next ?? old;
     const day = photoDay(photo);
     return `photo ${next ? "added" : "deleted"}${day ? ` (${day})` : ""}`;
+  }
+  // A Document is named by its kind and name, never by its id.
+  if (change.recordKind === "item" && field === "document") {
+    if (!old) return `document added: ${documentLabel(next)}`;
+    if (!next) return `document deleted: ${documentLabel(old)}`;
+    return `document changed: ${documentLabel(old)} → ${documentLabel(next)}`;
   }
   if (change.recordKind === "session" && field === "closed_at") return "closed";
   if (change.recordKind === "session" && field === "summary") return "summary written";

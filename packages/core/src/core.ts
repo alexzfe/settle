@@ -27,6 +27,7 @@ import {
   saveDecision,
   setDecisionState,
 } from "./operations/decisions.js";
+import { addDocument, deleteDocument, editDocument, getDocument } from "./operations/documents.js";
 import { findIndex } from "./operations/find-index.js";
 import {
   createHome,
@@ -97,6 +98,10 @@ const operations = {
   edit_photo: editPhoto,
   delete_photo: deletePhoto,
   get_photo: getPhoto,
+  add_document: addDocument,
+  edit_document: editDocument,
+  delete_document: deleteDocument,
+  get_document: getDocument,
   edit_item: editItem,
   open_session: openSession,
   get_room_sheet: getRoomSheet,

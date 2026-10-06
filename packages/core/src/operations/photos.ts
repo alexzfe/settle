@@ -216,7 +216,7 @@ function tomorrow(day: string): string {
 }
 
 /** An Item of the Home by slug, Archived ones too. */
-function requireItem(context: OperationContext, home: HomeRow, slug: string): ItemRow {
+export function requireItem(context: OperationContext, home: HomeRow, slug: string): ItemRow {
   const item = context.store.list("items", home.id).find((each) => each.slug === slug);
   if (!item) throw new CoreError("not_found", `This Home has no Item "${slug}".`);
   return item;

@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Home, Item, ItemPage, Photo } from "./api";
+import type { Document, Home, Item, ItemPage, Photo } from "./api";
 import { recordPath } from "./decisions";
 import { changedFields, draftOf } from "./ItemEdit";
 import { historySummary } from "./ItemPage";
-import { preparePhoto } from "./photoPrep";
+import { prepareDocumentImage, preparePhoto } from "./photoPrep";
 import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 // jsdom can neither decode nor draw a picture; the compression has its own tests.
-vi.mock("./photoPrep", () => ({ preparePhoto: vi.fn() }));
+vi.mock("./photoPrep", () => ({ preparePhoto: vi.fn(), prepareDocumentImage: vi.fn() }));
 // The crop box is the library's; here it hands back a box around the middle quarter.
 vi.mock("./PhotoCrop", () => ({
   default: ({
@@ -83,6 +83,7 @@ const created = (at: string, origin: string, skills?: string[]): ItemPage["histo
 const bare: ItemPage = {
   item: rosemary,
   photos: [],
+  documents: [],
   decisions: [],
   history: [created("2026-09-15T16:21:00Z", "home-intake-r4qu", ["home-intake"])],
 };
@@ -93,6 +94,7 @@ const rich: ItemPage = {
   replacedBy: { slug: "new-mattress", name: "New mattress" },
   picture: { listing: "drimer-aero", photoVersion: "abc123" },
   photos: [],
+  documents: [],
   decisions: [
     {
       relation: "relies-on",
@@ -777,5 +779,281 @@ describe("Photos", () => {
     expect(historySummary([{ field: "photo", old: { takenOn: "2026-03-14" } }])).toBe(
       "photo deleted",
     );
+  });
+
+  it("reads a Document's history as added, changed, and deleted, by its kind", () => {
+    expect(historySummary([{ field: "document", new: { kind: "receipt", name: "IKEA" } }])).toBe(
+      "receipt added",
+    );
+    expect(
+      historySummary([{ field: "document", old: { kind: "receipt" }, new: { kind: "warranty" } }]),
+    ).toBe("warranty changed");
+    expect(historySummary([{ field: "document", old: { kind: "manual" }, new: null }])).toBe(
+      "manual deleted",
+    );
+  });
+});
+
+describe("Documents", () => {
+  const receipt: Document = {
+    id: 4,
+    kind: "receipt",
+    name: "IKEA receipt",
+    type: "image/jpeg",
+    bytes: 640_000,
+    version: "d4e5",
+  };
+  const manual: Document = {
+    id: 9,
+    kind: "manual",
+    type: "application/pdf",
+    bytes: 31_000_000,
+    version: "f6a7",
+  };
+  const withDocuments: ItemPage = { ...bare, documents: [receipt, manual] };
+
+  function useBlobUrls() {
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
+    );
+  }
+
+  /** Opens "Add document" and picks `file` from the camera or the file chooser. */
+  async function pick(file: File, from: "camera" | "chooser") {
+    fireEvent.click(await screen.findByRole("button", { name: "Add document" }));
+    const input = screen.getByLabelText(
+      from === "camera" ? "Document from the camera" : "Document file",
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+  }
+
+  it("shows no section and no empty line with none, only Add document", async () => {
+    stubItem(() => bare);
+    renderRoutes("/homes/flat/items/rosemary");
+    expect(await screen.findByRole("button", { name: "Add document" })).toBeDefined();
+    expect(headings()).not.toContain("Documents");
+    expect(document.body.textContent).not.toMatch(/No documents/i);
+  });
+
+  it("lists each Document by kind, with its name when it has one, before the Decisions", async () => {
+    stubItem(() => ({ ...rich, documents: [receipt, manual] }));
+    renderRoutes("/homes/flat/items/drimer-queen-mattress");
+    await screen.findByRole("heading", { name: "Documents" });
+    const titles = headings();
+    expect(titles.indexOf("Documents")).toBeLessThan(titles.indexOf("Decisions"));
+    expect(screen.getByRole("button", { name: "Receipt · IKEA receipt" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Manual" })).toBeDefined();
+  });
+
+  it("opens a PDF in a new tab from get_document, and an image in the dialog", async () => {
+    stubItem(() => withDocuments);
+    renderRoutes("/homes/flat/items/rosemary");
+    const link = await screen.findByRole("link", { name: "Manual" });
+    expect(link.getAttribute("href")).toBe(
+      "/api/get_document?home=flat&item=rosemary&document=9&v=f6a7",
+    );
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener");
+    fireEvent.click(screen.getByRole("button", { name: "Receipt · IKEA receipt" }));
+    const dialog = screen.getByRole("dialog", { name: "Receipt · IKEA receipt" });
+    expect(within(dialog).getByRole("img").getAttribute("src")).toBe(
+      "/api/get_document?home=flat&item=rosemary&document=4&v=d4e5",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("offers the camera for a paper, and PDFs or images from the file chooser", async () => {
+    stubItem(() => bare);
+    renderRoutes("/homes/flat/items/rosemary");
+    fireEvent.click(await screen.findByRole("button", { name: "Add document" }));
+    // Photos' own pair is still there beside it, so the names come in twos.
+    expect(screen.getAllByRole("button", { name: "Take photo" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Choose file" })).toBeDefined();
+    const camera = screen.getByLabelText("Document from the camera");
+    expect(camera.getAttribute("accept")).toBe("image/*");
+    expect(camera.getAttribute("capture")).toBe("environment");
+    const file = screen.getByLabelText("Document file");
+    expect(file.getAttribute("accept")).toBe("application/pdf,image/*");
+    expect(file.hasAttribute("capture")).toBe(false);
+  });
+
+  it("adds a chosen PDF as it is, named after the file, as the kind picked", async () => {
+    let sent: FormData | undefined;
+    const fetch = stubItem(() => bare, undefined, {
+      add_document: (form) => {
+        sent = form;
+        return { documents: [manual] };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    const pdf = new File(["%PDF-1.7"], "User guide.pdf", { type: "application/pdf" });
+    await pick(pdf, "chooser");
+    const form = await screen.findByRole("form", { name: "Add a document" });
+    expect(prepareDocumentImage).not.toHaveBeenCalled();
+    expect(within(form).queryByRole("img")).toBeNull();
+    expect(within(form).queryByRole("button", { name: "Crop" })).toBeNull();
+    expect(within(form).getByText("User guide.pdf · 1 KB")).toBeDefined();
+    expect(within(form).getByLabelText<HTMLSelectElement>("Kind").value).toBe("receipt");
+    expect(within(form).getByLabelText<HTMLInputElement>("Name (optional)").value).toBe(
+      "User guide",
+    );
+    fireEvent.change(within(form).getByLabelText("Kind"), { target: { value: "manual" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("form", { name: "Add a document" })).toBeNull());
+    const posted = sent as FormData;
+    expect(posted.get("home")).toBe("flat");
+    expect(posted.get("item")).toBe("rosemary");
+    expect(posted.get("kind")).toBe("manual");
+    expect(posted.get("name")).toBe("User guide");
+    expect(await (posted.get("file") as File).text()).toBe("%PDF-1.7");
+    await waitFor(() => expect(inputsTo(fetch, "get_item")).toHaveLength(2));
+  });
+
+  it("adds a camera shot shrunk here, with no name unless one is typed", async () => {
+    useBlobUrls();
+    const shrunk = new Blob(["shrunk"], { type: "image/jpeg" });
+    vi.mocked(prepareDocumentImage).mockResolvedValue({
+      file: shrunk,
+      size: { width: 3024, height: 4032 },
+    });
+    let sent: FormData | undefined;
+    stubItem(() => bare, undefined, {
+      add_document: (form) => {
+        sent = form;
+        return { documents: [receipt] };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    const shot = new File(["big"], "IMG_2041.jpg", { type: "image/jpeg" });
+    await pick(shot, "camera");
+    const form = await screen.findByRole("form", { name: "Add a document" });
+    expect(prepareDocumentImage).toHaveBeenCalledWith(shot);
+    expect(within(form).getByRole("img").getAttribute("src")).toBe("blob:preview");
+    expect(within(form).getByRole("button", { name: "Crop" })).toBeDefined();
+    expect(within(form).getByLabelText<HTMLInputElement>("Name (optional)").value).toBe("");
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent).toBeDefined());
+    const posted = sent as FormData;
+    expect(posted.get("kind")).toBe("receipt");
+    expect(posted.has("name")).toBe(false);
+    expect(await (posted.get("file") as Blob).text()).toBe("shrunk");
+  });
+
+  it("crops a Document image from the whole picture before it is sent", async () => {
+    useBlobUrls();
+    const size = { width: 4000, height: 3000 };
+    vi.mocked(prepareDocumentImage).mockImplementation(async (_, crop) => ({
+      file: new Blob([crop ? "cut" : "whole"]),
+      size,
+    }));
+    let sent: FormData | undefined;
+    stubItem(() => bare, undefined, {
+      add_document: (form) => {
+        sent = form;
+        return { documents: [receipt] };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    const shot = new File(["big"], "IMG_2041.jpg", { type: "image/jpeg" });
+    await pick(shot, "camera");
+    let form = await screen.findByRole("form", { name: "Add a document" });
+    fireEvent.click(within(form).getByRole("button", { name: "Crop" }));
+    const crop = await screen.findByRole("region", { name: "Crop the photo" });
+    fireEvent.click(within(crop).getByRole("button", { name: "Done" }));
+    form = await screen.findByRole("form", { name: "Add a document" });
+    await waitFor(() =>
+      expect(prepareDocumentImage).toHaveBeenLastCalledWith(shot, {
+        x: 1000,
+        y: 1500,
+        width: 2000,
+        height: 750,
+      }),
+    );
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent).toBeDefined());
+    expect(await ((sent as FormData).get("file") as Blob).text()).toBe("cut");
+  });
+
+  it("refuses a file over 50 MB here, before any upload", async () => {
+    const fetch = stubItem(() => bare);
+    renderRoutes("/homes/flat/items/rosemary");
+    const huge = new File(["%PDF-"], "Service manual.pdf", { type: "application/pdf" });
+    Object.defineProperty(huge, "size", { value: 51 * 1024 * 1024 });
+    await pick(huge, "chooser");
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/over 50 MB/);
+    expect(alert.textContent).toMatch(/Manual link/);
+    expect(screen.queryByRole("form", { name: "Add a document" })).toBeNull();
+    expect(fetch.mock.calls.some(([url]) => url === "/api/add_document")).toBe(false);
+    // The buttons stay, to pick another.
+    expect(screen.getByRole("button", { name: "Choose file" })).toBeDefined();
+  });
+
+  it("shows core's refusal of a file it could not take", async () => {
+    vi.mocked(prepareDocumentImage).mockImplementation(async (file) => ({ file }));
+    const message = "This is a HEIC photo, which the app cannot read. Export it as a JPEG.";
+    stubItem(() => bare, undefined, {
+      add_document: () =>
+        Response.json({ error: { code: "unsupported_file", message } }, { status: 400 }),
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    const heic = new File(["ftypheic"], "IMG_0002.HEIC", { type: "image/heic" });
+    await pick(heic, "chooser");
+    const form = await screen.findByRole("form", { name: "Add a document" });
+    expect(within(form).queryByRole("button", { name: "Crop" })).toBeNull();
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    expect((await within(form).findByRole("alert")).textContent).toBe(message);
+  });
+
+  it("changes a kind and clears a name with the pencil, sending only what changed", async () => {
+    const fetch = stubItem(() => withDocuments, undefined, {
+      edit_document: () => ({ documents: [receipt, manual] }),
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Receipt · IKEA receipt" }));
+    const form = screen.getByRole("form", { name: "Edit Receipt · IKEA receipt" });
+    fireEvent.change(within(form).getByLabelText("Kind"), { target: { value: "warranty" } });
+    fireEvent.change(within(form).getByLabelText("Name (optional)"), { target: { value: " " } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(inputsTo(fetch, "edit_document")).toHaveLength(1));
+    expect(inputsTo(fetch, "edit_document")[0]).toEqual({
+      home: "flat",
+      item: "rosemary",
+      document: 4,
+      kind: "warranty",
+      name: null,
+    });
+    await waitFor(() => expect(screen.queryByRole("form")).toBeNull());
+  });
+
+  it("deletes a Document only once armed, and drops the section with the last one", async () => {
+    let documents = [manual];
+    const fetch = stubItem(() => ({ ...bare, documents }), undefined, {
+      delete_document: () => {
+        documents = [];
+        return { documents };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Manual" }));
+    const form = screen.getByRole("form", { name: "Edit Manual" });
+    fireEvent.click(within(form).getByRole("button", { name: "Delete" }));
+    expect(within(form).getByText("Deletes this document for good.")).toBeDefined();
+    fireEvent.click(within(form).getByRole("button", { name: "Keep it" }));
+    expect(within(form).queryByText("Deletes this document for good.")).toBeNull();
+    expect(inputsTo(fetch, "delete_document")).toEqual([]);
+
+    fireEvent.click(within(form).getByRole("button", { name: "Delete" }));
+    fireEvent.click(within(form).getByRole("button", { name: "Delete it" }));
+    await waitFor(() => expect(inputsTo(fetch, "delete_document")).toHaveLength(1));
+    expect(inputsTo(fetch, "delete_document")[0]).toEqual({
+      home: "flat",
+      item: "rosemary",
+      document: 9,
+    });
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Documents" })).toBeNull());
+    expect(screen.getByRole("button", { name: "Add document" })).toBeDefined();
   });
 });
