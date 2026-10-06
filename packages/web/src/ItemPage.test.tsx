@@ -9,6 +9,32 @@ import { FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport"
 
 // jsdom can neither decode nor draw a picture; the compression has its own tests.
 vi.mock("./photoPrep", () => ({ preparePhoto: vi.fn() }));
+// The crop box is the library's; here it hands back a box around the middle quarter.
+vi.mock("./PhotoCrop", () => ({
+  default: ({
+    src,
+    initial,
+    onDone,
+    onCancel,
+  }: {
+    src: string;
+    initial?: unknown;
+    onDone: (crop: unknown) => void;
+    onCancel: () => void;
+  }) => (
+    <section aria-label="Crop the photo" data-src={src} data-initial={JSON.stringify(initial)}>
+      <button
+        type="button"
+        onClick={() => onDone({ unit: "%", x: 25, y: 50, width: 50, height: 25 })}
+      >
+        Done
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </section>
+  ),
+}));
 
 const flat: Home = { slug: "flat", name: "Flat", country: "Peru", city: "Lima", latitude: -12 };
 
@@ -487,7 +513,7 @@ describe("Photos", () => {
     );
   });
 
-  it("shows no strip for one Photo, and nothing of Photos but Add photo for none", async () => {
+  it("shows no strip for one Photo, and nothing of Photos but the add buttons for none", async () => {
     stubItem(() => ({ ...bare, photos: [january] }));
     renderRoutes("/homes/flat/items/rosemary");
     await screen.findByRole("heading", { name: "Rosemary" });
@@ -498,7 +524,25 @@ describe("Photos", () => {
     await screen.findByRole("heading", { name: "Rosemary" });
     expect(screen.queryByRole("img")).toBeNull();
     expect(document.body.textContent).not.toMatch(/No photos/i);
-    expect(screen.getByRole("button", { name: "Add photo" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Take photo" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Choose photo" })).toBeDefined();
+  });
+
+  it("offers the camera first, and the library through a plain file input", async () => {
+    stubItem(() => bare);
+    renderRoutes("/homes/flat/items/rosemary");
+    const take = await screen.findByRole("button", { name: "Take photo" });
+    const choose = screen.getByRole("button", { name: "Choose photo" });
+    expect(take.compareDocumentPosition(choose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const camera = screen.getByLabelText("Photo from the camera") as HTMLInputElement;
+    expect(camera.getAttribute("accept")).toBe("image/*");
+    expect(camera.getAttribute("capture")).toBe("environment");
+    const file = screen.getByLabelText("Photo file") as HTMLInputElement;
+    expect(file.getAttribute("accept")).toBe("image/*");
+    expect(file.hasAttribute("capture")).toBe(false);
+    const clicked = vi.spyOn(camera, "click").mockImplementation(() => {});
+    fireEvent.click(take);
+    expect(clicked).toHaveBeenCalled();
   });
 
   it("adds a Photo through a plain file input: made ready, previewed, captioned, sent", async () => {
@@ -517,15 +561,16 @@ describe("Photos", () => {
       },
     });
     renderRoutes("/homes/flat/items/rosemary");
-    await screen.findByRole("button", { name: "Add photo" });
+    await screen.findByRole("button", { name: "Choose photo" });
     const input = screen.getByLabelText("Photo file") as HTMLInputElement;
-    expect(input.getAttribute("accept")).toBe("image/*");
-    expect(input.hasAttribute("capture")).toBe(false);
     const picked = new File(["big"], "IMG_0001.jpg", { type: "image/jpeg" });
     fireEvent.change(input, { target: { files: [picked] } });
     const form = await screen.findByRole("form", { name: "Add a photo" });
     expect(preparePhoto).toHaveBeenCalledWith(picked);
     expect(within(form).getByRole("img").getAttribute("src")).toBe("blob:preview");
+    // Crop is offered, never opened unasked.
+    expect(within(form).getByRole("button", { name: "Crop" })).toBeDefined();
+    expect(screen.queryByRole("region", { name: "Crop the photo" })).toBeNull();
     fireEvent.change(within(form).getByLabelText("Caption (optional)"), {
       target: { value: " under the window " },
     });
@@ -550,14 +595,93 @@ describe("Photos", () => {
         Response.json({ error: { code: "unsupported_file", message } }, { status: 400 }),
     });
     renderRoutes("/homes/flat/items/rosemary");
-    await screen.findByRole("button", { name: "Add photo" });
+    await screen.findByRole("button", { name: "Choose photo" });
     fireEvent.change(screen.getByLabelText("Photo file"), { target: { files: [original] } });
     const form = await screen.findByRole("form", { name: "Add a photo" });
-    // Not decoded here, so not previewed either: its name stands in.
+    // Not decoded here, so not previewed or cropped either: its name stands in.
     expect(within(form).queryByRole("img")).toBeNull();
     expect(within(form).getByText("IMG_0002.HEIC")).toBeDefined();
+    expect(within(form).queryByRole("button", { name: "Crop" })).toBeNull();
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
     expect((await within(form).findByRole("alert")).textContent).toBe(message);
+  });
+
+  it("crops a Photo before it is sent, and reopens the crop from the whole picture", async () => {
+    const whole = {
+      file: new Blob(["whole"]),
+      thumb: new Blob(["w"]),
+      size: { width: 4000, height: 3000 },
+    };
+    const cut = {
+      file: new Blob(["cut"]),
+      thumb: new Blob(["c"]),
+      size: { width: 4000, height: 3000 },
+    };
+    vi.mocked(preparePhoto).mockImplementation(async (_, crop) => (crop ? cut : whole));
+    let urls = 0;
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: () => `blob:${++urls}`, revokeObjectURL: vi.fn() }),
+    );
+    let sent: FormData | undefined;
+    stubItem(() => bare, undefined, {
+      add_photo: (form) => {
+        sent = form;
+        return { photos: [march] };
+      },
+    });
+    renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("button", { name: "Choose photo" });
+    const picked = new File(["big"], "IMG_0001.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText("Photo file"), { target: { files: [picked] } });
+    let form = await screen.findByRole("form", { name: "Add a photo" });
+    fireEvent.change(within(form).getByLabelText("Caption (optional)"), {
+      target: { value: "the lamp" },
+    });
+
+    // Cancel keeps the photo as it was.
+    fireEvent.click(within(form).getByRole("button", { name: "Crop" }));
+    let crop = await screen.findByRole("region", { name: "Crop the photo" });
+    expect(crop.dataset.src).toBe("blob:1");
+    fireEvent.click(within(crop).getByRole("button", { name: "Cancel" }));
+    form = await screen.findByRole("form", { name: "Add a photo" });
+    expect(within(form).getByRole("img").getAttribute("src")).toBe("blob:1");
+    expect(preparePhoto).toHaveBeenCalledTimes(1);
+
+    // Done cuts the box from the whole picture, in its own pixels, and previews the result.
+    fireEvent.click(within(form).getByRole("button", { name: "Crop" }));
+    crop = await screen.findByRole("region", { name: "Crop the photo" });
+    fireEvent.click(within(crop).getByRole("button", { name: "Done" }));
+    form = await screen.findByRole("form", { name: "Add a photo" });
+    await waitFor(() => expect(within(form).getByRole("img").getAttribute("src")).toBe("blob:2"));
+    expect(preparePhoto).toHaveBeenLastCalledWith(picked, {
+      x: 1000,
+      y: 1500,
+      width: 2000,
+      height: 750,
+    });
+
+    // Reopened, it shows the whole picture again with the last box.
+    fireEvent.click(within(form).getByRole("button", { name: "Crop" }));
+    crop = await screen.findByRole("region", { name: "Crop the photo" });
+    expect(crop.dataset.src).toBe("blob:1");
+    expect(JSON.parse(crop.dataset.initial ?? "null")).toEqual({
+      unit: "%",
+      x: 25,
+      y: 50,
+      width: 50,
+      height: 25,
+    });
+    fireEvent.click(within(crop).getByRole("button", { name: "Cancel" }));
+
+    form = await screen.findByRole("form", { name: "Add a photo" });
+    expect(within(form).getByLabelText<HTMLInputElement>("Caption (optional)").value).toBe(
+      "the lamp",
+    );
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent).toBeDefined());
+    expect(await ((sent as FormData).get("file") as Blob).text()).toBe("cut");
+    expect(await ((sent as FormData).get("thumb") as Blob).text()).toBe("c");
   });
 
   it("opens a Photo full size, steps to the next, and edits and clears its caption", async () => {

@@ -16,6 +16,7 @@
     "exifr": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-image-crop": "catalog:",
     "react-router": "catalog:"
   },
   "devDependencies": {

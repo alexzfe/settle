@@ -46,8 +46,9 @@ function stubDrawing(size: { width: number; height: number } | "undecodable") {
     return { ...size, close: vi.fn() };
   });
   vi.stubGlobal("createImageBitmap", decode);
+  const drawImage = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    () => ({ drawImage: vi.fn() }) as unknown as CanvasRenderingContext2D,
+    () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
   );
   vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (
     this: HTMLCanvasElement,
@@ -59,7 +60,7 @@ function stubDrawing(size: { width: number; height: number } | "undecodable") {
     saved.set(blob, { width: this.width, height: this.height, type, quality });
     callback(blob);
   });
-  return decode;
+  return { decode, drawImage };
 }
 
 const picked = (bytes: BlobPart = "not really a photo") =>
@@ -72,10 +73,11 @@ afterEach(() => {
 
 describe("preparePhoto", () => {
   it("redraws a phone photo at 1600 px as a JPEG, with a 320 px thumbnail", async () => {
-    const decode = stubDrawing({ width: 4032, height: 3024 });
+    const { decode } = stubDrawing({ width: 4032, height: 3024 });
     const file = picked();
     const prepared = await preparePhoto(file);
     expect(decode).toHaveBeenCalledWith(file, { imageOrientation: "from-image" });
+    expect(prepared.size).toEqual({ width: 4032, height: 3024 });
     expect(saved.get(prepared.file)).toEqual({
       width: 1600,
       height: 1200,
@@ -113,6 +115,48 @@ describe("preparePhoto", () => {
     expect(prepared.file).toBe(file);
     expect(prepared.thumb).toBe(file);
     expect(prepared.takenOn).toBeUndefined();
+    expect(prepared.size).toBeUndefined();
+  });
+
+  it("cuts the crop from the whole picture before shrinking it", async () => {
+    const { drawImage } = stubDrawing({ width: 4000, height: 3000 });
+    const prepared = await preparePhoto(picked(), { x: 1500, y: 1000, width: 1000, height: 1000 });
+    // 1000 px square is within 1600, so it keeps every pixel of the crop.
+    expect(saved.get(prepared.file)).toMatchObject({ width: 1000, height: 1000 });
+    expect(drawImage.mock.calls[0]?.slice(1)).toEqual([1500, 1000, 1000, 1000, 0, 0, 1000, 1000]);
+    expect(saved.get(prepared.thumb)).toMatchObject({ width: 320, height: 320 });
+    // The size is still the whole picture's, so the crop can be reopened over it.
+    expect(prepared.size).toEqual({ width: 4000, height: 3000 });
+  });
+
+  it("shrinks a crop larger than 1600 px after cutting it", async () => {
+    const { drawImage } = stubDrawing({ width: 3024, height: 4032 });
+    const prepared = await preparePhoto(picked(), { x: 0, y: 32, width: 3024, height: 2000 });
+    expect(drawImage.mock.calls[0]?.slice(1)).toEqual([0, 32, 3024, 2000, 0, 0, 1600, 1058]);
+    expect(saved.get(prepared.file)).toMatchObject({ width: 1600, height: 1058 });
+  });
+
+  it("keeps a crop inside the picture, in whole pixels", async () => {
+    const { drawImage } = stubDrawing({ width: 800, height: 600 });
+    await preparePhoto(picked(), { x: -3.4, y: 400.6, width: 900, height: 300 });
+    expect(drawImage.mock.calls[0]?.slice(1)).toEqual([0, 401, 800, 199, 0, 0, 800, 199]);
+  });
+
+  it("draws the whole picture when there is no crop", async () => {
+    const { drawImage } = stubDrawing({ width: 4000, height: 3000 });
+    await preparePhoto(picked());
+    expect(drawImage.mock.calls[0]?.slice(1)).toEqual([0, 0, 4000, 3000, 0, 0, 1600, 1200]);
+  });
+
+  it("reads the date from the original when cropping", async () => {
+    stubDrawing({ width: 4032, height: 3024 });
+    const prepared = await preparePhoto(picked(jpegTakenOn("2026:03:14 10:22:01")), {
+      x: 10,
+      y: 10,
+      width: 100,
+      height: 100,
+    });
+    expect(prepared.takenOn).toBe("2026-03-14");
   });
 
   it("reads the day it was taken from the EXIF", async () => {

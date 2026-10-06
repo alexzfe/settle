@@ -2,7 +2,8 @@
 // and caps an upload at 2 MB, and a phone photo is 3–8 MB. The picture is redrawn upright at a
 // long edge of 1600 px as a JPEG, with a 320 px thumbnail for the lists. Redrawing also drops the
 // file's metadata, the GPS position of the user's home among it, which is wanted. The one fact
-// kept is the day it was taken, read from the EXIF before anything is redrawn.
+// kept is the day it was taken, read from the EXIF before anything is redrawn. A crop the user
+// drew is cut from the decoded picture before it is shrunk, so a tight crop keeps its detail.
 
 export const PHOTO_EDGE = 1600;
 export const PHOTO_QUALITY = 0.8;
@@ -15,14 +16,25 @@ export interface PreparedPhoto {
   thumb: Blob;
   /** When it was taken, YYYY-MM-DD, when the file says. */
   takenOn?: string;
+  /** The whole picture's size, upright, when it could be decoded: what a crop is measured in. */
+  size?: { width: number; height: number };
+}
+
+/** A rectangle of the picture to keep, in its own pixels, upright. */
+export interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /**
- * The picked file as core takes it: the date it was taken, then the Photo and its thumbnail. A
- * file the browser cannot decode (a HEIC in a browser without HEIC) goes as it is, as both, so
- * core's refusal, which names HEIC and says what to do, is the one the user reads.
+ * The picked file as core takes it: the date it was taken, then the Photo and its thumbnail, cut
+ * to `crop` when one is given. A file the browser cannot decode (a HEIC in a browser without
+ * HEIC) goes as it is, as both, so core's refusal, which names HEIC and says what to do, is the
+ * one the user reads.
  */
-export async function preparePhoto(picked: File): Promise<PreparedPhoto> {
+export async function preparePhoto(picked: File, crop?: CropArea): Promise<PreparedPhoto> {
   const takenOn = await takenOnOf(picked);
   const dated = takenOn ? { takenOn } : {};
   let bitmap: ImageBitmap;
@@ -32,11 +44,12 @@ export async function preparePhoto(picked: File): Promise<PreparedPhoto> {
     return { file: picked, thumb: picked, ...dated };
   }
   try {
+    const size = { width: bitmap.width, height: bitmap.height };
     // The thumbnail is drawn from the 1600 px canvas: a smaller step down, and a sharper result.
-    const full = drawn(bitmap, PHOTO_EDGE);
+    const full = drawn(bitmap, PHOTO_EDGE, crop && within(crop, size));
     const file = await jpeg(full, PHOTO_QUALITY);
     const thumb = await jpeg(drawn(full, THUMB_EDGE), THUMB_QUALITY);
-    return { file, thumb, ...dated };
+    return { file, thumb, size, ...dated };
   } finally {
     bitmap.close();
   }
@@ -48,6 +61,18 @@ export function fitWithin(width: number, height: number, edge: number) {
   return {
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/** A crop held to whole pixels inside the picture, at least one pixel each way. */
+export function within(crop: CropArea, size: { width: number; height: number }): CropArea {
+  const x = Math.min(Math.max(0, Math.round(crop.x)), size.width - 1);
+  const y = Math.min(Math.max(0, Math.round(crop.y)), size.height - 1);
+  return {
+    x,
+    y,
+    width: Math.min(Math.max(1, Math.round(crop.width)), size.width - x),
+    height: Math.min(Math.max(1, Math.round(crop.height)), size.height - y),
   };
 }
 
@@ -85,15 +110,19 @@ async function takenOnOf(picked: Blob): Promise<string | undefined> {
   }
 }
 
-function drawn(source: ImageBitmap | HTMLCanvasElement, edge: number): HTMLCanvasElement {
-  const { width, height } = fitWithin(source.width, source.height, edge);
+function drawn(
+  source: ImageBitmap | HTMLCanvasElement,
+  edge: number,
+  crop: CropArea = { x: 0, y: 0, width: source.width, height: source.height },
+): HTMLCanvasElement {
+  const { width, height } = fitWithin(crop.width, crop.height, edge);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser cannot draw the photo.");
   context.imageSmoothingQuality = "high";
-  context.drawImage(source, 0, 0, width, height);
+  context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
   return canvas;
 }
 

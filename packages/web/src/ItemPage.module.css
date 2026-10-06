@@ -190,6 +190,22 @@
   min-height: 2.75rem;
 }
 
+.crop {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.cropImage {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+.crop button {
+  min-height: 2.75rem;
+}
+
 .preview {
   display: block;
   max-width: 100%;

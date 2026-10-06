@@ -4,7 +4,8 @@
 // reads that they exist. The date is when the photo was taken, so it is never edited.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, useEffect, useId, useRef, useState } from "react";
+import { type ChangeEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import type { PercentCrop } from "react-image-crop";
 import styles from "./App.module.css";
 import { call, type Photo, photoUrl, upload } from "./api";
 import sheet from "./ItemPage.module.css";
@@ -323,28 +324,52 @@ function DeletePhoto({
   );
 }
 
+/** A picture made ready to send, and its preview when the browser could decode it. */
+interface Ready {
+  prepared: PreparedPhoto;
+  preview?: string;
+}
+
 type Adding =
   | { step: "preparing" }
-  | { step: "ready"; picked: File; prepared: PreparedPhoto; preview?: string }
+  | {
+      step: "ready";
+      picked: File;
+      /** The whole picture, kept so the crop can be reopened from it. */
+      whole: Ready;
+      /** The picture cut to the box last drawn, in percent of the whole, when one was. */
+      cropped?: Ready & { crop: PercentCrop };
+    }
   | { step: "failed"; message: string };
 
+const PhotoCrop = lazy(() => import("./PhotoCrop"));
+
 /**
- * "Add photo": a plain file input, with no `capture`, so a phone offers its own camera, library,
- * and files. A picked photo is made ready here, then shown with a caption box, Save and Cancel.
+ * "Take photo" goes straight to a phone's camera (`capture`); "Choose photo" has no `capture`, so
+ * a phone offers its own library and files, for the best-lit older shot. A computer opens a file
+ * chooser for both. A picked photo is made ready here, then shown with Crop, a caption box, Save
+ * and Cancel.
  */
 export function AddPhoto({ home, item }: { home: string; item: string }) {
+  const camera = useRef<HTMLInputElement>(null);
   const chooser = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState<Adding>();
+  const [cropping, setCropping] = useState<"open" | "cutting">();
   const [caption, setCaption] = useState("");
   const id = useId();
   const save = usePhotoWrite(home, item, (form: FormData) => upload("add_photo", form));
-  const preview = adding?.step === "ready" ? adding.preview : undefined;
+  const whole = adding?.step === "ready" ? adding.whole.preview : undefined;
+  const cut = adding?.step === "ready" ? adding.cropped?.preview : undefined;
   useEffect(() => {
-    if (preview) return () => URL.revokeObjectURL(preview);
-  }, [preview]);
+    if (whole) return () => URL.revokeObjectURL(whole);
+  }, [whole]);
+  useEffect(() => {
+    if (cut) return () => URL.revokeObjectURL(cut);
+  }, [cut]);
 
   const close = () => {
     setAdding(undefined);
+    setCropping(undefined);
     setCaption("");
     save.reset();
   };
@@ -357,20 +382,49 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
     setAdding({ step: "preparing" });
     try {
       const prepared = await preparePhoto(picked);
-      // A file sent as it is could not be decoded here, so it cannot be previewed either.
-      const decoded = prepared.file !== picked;
-      setAdding({
-        step: "ready",
-        picked,
-        prepared,
-        ...(decoded ? { preview: URL.createObjectURL(prepared.file) } : {}),
-      });
+      setAdding({ step: "ready", picked, whole: ready(picked, prepared) });
     } catch (error) {
-      setAdding({
-        step: "failed",
-        message: error instanceof Error ? error.message : "The photo could not be read.",
-      });
+      fail(error);
     }
+  }
+
+  /** The whole picture cut to the box drawn over it; a box around all of it is no crop. */
+  async function onCropped(
+    picked: File,
+    size: { width: number; height: number },
+    crop: PercentCrop,
+  ) {
+    if (crop.x <= 0 && crop.y <= 0 && crop.width >= 100 && crop.height >= 100) {
+      setAdding((current) =>
+        current?.step === "ready" ? { ...current, cropped: undefined } : current,
+      );
+      setCropping(undefined);
+      return;
+    }
+    setCropping("cutting");
+    try {
+      const prepared = await preparePhoto(picked, {
+        x: (crop.x / 100) * size.width,
+        y: (crop.y / 100) * size.height,
+        width: (crop.width / 100) * size.width,
+        height: (crop.height / 100) * size.height,
+      });
+      setAdding((current) =>
+        current?.step === "ready"
+          ? { ...current, cropped: { ...ready(picked, prepared), crop } }
+          : current,
+      );
+    } catch (error) {
+      fail(error);
+    }
+    setCropping(undefined);
+  }
+
+  function fail(error: unknown) {
+    setAdding({
+      step: "failed",
+      message: error instanceof Error ? error.message : "The photo could not be read.",
+    });
   }
 
   function send(picked: File, prepared: PreparedPhoto) {
@@ -385,13 +439,29 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
     save.mutate(form, { onSuccess: close });
   }
 
+  const shown = adding?.step === "ready" ? (adding.cropped ?? adding.whole) : undefined;
   return (
     <div className={sheet.addPhoto}>
       {adding === undefined || adding.step === "failed" ? (
-        <button type="button" className="secondary" onClick={() => chooser.current?.click()}>
-          Add photo
-        </button>
+        <div className={styles.actions}>
+          <button type="button" className="secondary" onClick={() => camera.current?.click()}>
+            Take photo
+          </button>
+          <button type="button" className="secondary" onClick={() => chooser.current?.click()}>
+            Choose photo
+          </button>
+        </div>
       ) : null}
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className={sheet.chooser}
+        onChange={onChoose}
+        aria-label="Photo from the camera"
+        tabIndex={-1}
+      />
       <input
         ref={chooser}
         type="file"
@@ -411,19 +481,56 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
           {adding.message}
         </p>
       )}
-      {adding?.step === "ready" && (
+      {adding?.step === "ready" && cropping === "open" && adding.whole.preview && (
+        <Suspense
+          fallback={
+            <p role="status" className={styles.muted}>
+              Opening the crop…
+            </p>
+          }
+        >
+          <PhotoCrop
+            src={adding.whole.preview}
+            {...(adding.cropped ? { initial: adding.cropped.crop } : {})}
+            onDone={(crop) => {
+              const { size } = adding.whole.prepared;
+              if (size) void onCropped(adding.picked, size, crop);
+            }}
+            onCancel={() => setCropping(undefined)}
+          />
+        </Suspense>
+      )}
+      {adding?.step === "ready" && shown && cropping !== "open" && (
         <form
           className={sheet.addForm}
           aria-label="Add a photo"
           onSubmit={(event) => {
             event.preventDefault();
-            send(adding.picked, adding.prepared);
+            send(adding.picked, shown.prepared);
           }}
         >
-          {adding.preview ? (
-            <img className={sheet.preview} src={adding.preview} alt="Ready to add" />
+          {shown.preview ? (
+            <img className={sheet.preview} src={shown.preview} alt="Ready to add" />
           ) : (
             <p className={styles.muted}>{adding.picked.name}</p>
+          )}
+          {/* An undecoded file cannot be cut either: it goes as it is, for core to refuse. */}
+          {adding.whole.preview && (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className="secondary"
+                disabled={cropping === "cutting" || save.isPending}
+                onClick={() => setCropping("open")}
+              >
+                Crop
+              </button>
+            </div>
+          )}
+          {cropping === "cutting" && (
+            <p role="status" className={styles.muted}>
+              Cropping the photo…
+            </p>
           )}
           <label htmlFor={`${id}-caption`}>Caption (optional)</label>
           <input
@@ -433,10 +540,15 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
             onChange={(event) => setCaption(event.target.value)}
           />
           <div className={styles.actions}>
-            <button type="submit" disabled={save.isPending}>
+            <button type="submit" disabled={save.isPending || cropping === "cutting"}>
               {save.isPending ? "Saving…" : "Save"}
             </button>
-            <button type="button" className="secondary" disabled={save.isPending} onClick={close}>
+            <button
+              type="button"
+              className="secondary"
+              disabled={save.isPending || cropping === "cutting"}
+              onClick={close}
+            >
               Cancel
             </button>
           </div>
@@ -450,6 +562,13 @@ export function AddPhoto({ home, item }: { home: string; item: string }) {
       )}
     </div>
   );
+}
+
+/** A file sent as it is could not be decoded here, so it cannot be previewed either. */
+function ready(picked: File, prepared: PreparedPhoto): Ready {
+  return prepared.file === picked
+    ? { prepared }
+    : { prepared, preview: URL.createObjectURL(prepared.file) };
 }
 
 /** A refusal from a Photo write, in the reader's words, where it happened. */
