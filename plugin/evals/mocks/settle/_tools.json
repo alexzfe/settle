@@ -36,7 +36,7 @@
     {
       "name": "get_room_sheet",
       "title": "Get room sheet",
-      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; one line per Decision about it that is Candidate, Leaning, or Settled but not yet Fulfilled; and its Gaps. Values marked ~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
+      "description": "Returns the Room Sheet: everything recorded about one Room of this Home: its functions, ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, woodwork); its Features; its lights; one line per Item in it; one line per Decision about it that is Candidate, Leaning, or Settled but not yet Fulfilled; its Photos, by id, when it has any; and its Gaps. Values marked ~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: the receipts of later writes keep your picture current. Don't fetch every Room up front; the opening lists them all, and find_items finds an Item elsewhere. Values printed on a Blueprint render plain; withSources adds after each one its Blueprint, page, and the text exactly as printed, for when a question needs them. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -277,6 +277,41 @@
           }
         },
         "required": ["session", "blueprint", "pages"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "view_photos",
+      "title": "View photos",
+      "description": "Shows the user's own Photos of this Home's Rooms and Items as images, so you can look at them: first a text block with one line per Photo (its id, the Room or Item it is of, the Wall it shows, the day it was taken, its caption), then one image per Photo, as stored, in that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: at most 4 per call, and the fewest that answer the question, usually the newest or the one of the Wall in question. Call this only when the user has asked you to look or said yes to looking: each Photo stays in the Session's context for every later turn. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "photos": {
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "description": "The Photos' ids, as the Room Sheet's Photos line and find_items' photos list them: at most 4, and the fewest that answer the question."
+          }
+        },
+        "required": ["session", "photos"]
       },
       "annotations": {
         "readOnlyHint": true,

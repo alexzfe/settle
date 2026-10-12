@@ -894,12 +894,30 @@ export const blueprintSchema = z.object({
   pages: z.array(blueprintPageSchema),
 });
 
+/** A Photo as the web sees it. The web builds /api/get_photo?…&photo=<id>&size=…&v=<version>. */
+export const photoSchema = z.object({
+  id: z.number(),
+  version: z.string(),
+  /** When it was taken, YYYY-MM-DD. */
+  takenOn: z.string(),
+  caption: z.string().optional(),
+  /** For a Room's Photo, the Wall it shows, when the user named one; Archived Walls too. */
+  wall: z
+    .object({ position: z.number(), label: z.string().optional(), archived: z.boolean() })
+    .optional(),
+});
+
 /** A Room as the Home lists it. */
 export const roomSchema = z.object({
   slug: z.string(),
   name: z.string(),
   /** The slug of the Level the Room is on. */
   level: z.string(),
+  /**
+   * The main Photo, the newest, for the Room's tile. The web builds
+   * /api/get_photo?home=<home>&room=<slug>&photo=<id>&size=thumb&v=<version>.
+   */
+  photo: z.object({ id: z.number(), version: z.string() }).optional(),
 });
 
 export const surfaceSchema = z.object({
@@ -1013,11 +1031,13 @@ export const itemSchema = z.object({
 });
 
 /**
- * An Item as find_items gives it to the Agent: with each Photo's date and caption, newest first,
- * so it knows a Photo exists and what it notes. Never the image.
+ * An Item as find_items gives it to the Agent: with each Photo's id, date, and caption, newest
+ * first, so it knows a Photo exists, what it notes, and what to name to view_photos.
  */
 export const foundItemSchema = itemSchema.extend({
-  photos: z.array(z.object({ takenOn: z.string(), caption: z.string().optional() })).optional(),
+  photos: z
+    .array(z.object({ id: z.number(), takenOn: z.string(), caption: z.string().optional() }))
+    .optional(),
   /** Each Document's kind and name, in the Item page's order. Never the file. */
   documents: z
     .array(z.object({ kind: z.enum(DOCUMENT_KINDS), name: z.string().optional() }))
@@ -2341,10 +2361,14 @@ export const decisionReceiptResult = z.object({
   decision: decisionSummarySchema,
 });
 
-/** get_room: the Room, and its Candidate, Leaning, and Settled-but-not-Fulfilled Decisions. */
+/**
+ * get_room: the Room, its Candidate, Leaning, and Settled-but-not-Fulfilled Decisions, and its
+ * Photos, newest first.
+ */
 export const getRoomResult = z.object({
   room: roomDetailSchema,
   decisions: z.array(decisionSummarySchema),
+  photos: z.array(photoSchema),
 });
 
 export type ListDecisionsResult = z.infer<typeof listDecisionsResult>;
@@ -2537,16 +2561,7 @@ export const itemHistoryEntrySchema = z.object({
 });
 
 /** get_item: an Item's page. */
-// ─── Photos: add_photo, edit_photo, delete_photo, get_photo (web only) ──────────────────────
-
-/** A Photo as the web sees it. The web builds /api/get_photo?…&photo=<id>&size=…&v=<version>. */
-export const photoSchema = z.object({
-  id: z.number(),
-  version: z.string(),
-  /** When it was taken, YYYY-MM-DD. */
-  takenOn: z.string(),
-  caption: z.string().optional(),
-});
+// ─── Photos: add_photo, edit_photo, delete_photo, get_photo (web only); view_photos ─────────
 
 const PHOTO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -2575,41 +2590,88 @@ const photoCaption = z
 
 const photoIdInput = z.number().int().positive().describe("The Photo's id.");
 
+/** Whose Photo it is: exactly one of the two, which the handler checks. */
+const photoOwner = {
+  item: itemSlugInput.optional().describe("The Item's slug, for an Item's Photo."),
+  room: slugInput.optional().describe("The Room's slug, for a Room's Photo."),
+};
+
+/** A Wall by its position in the Photo's Room: wall 1, wall 2, clockwise. */
+const wallPositionInput = z.coerce
+  .number()
+  .int()
+  .positive()
+  .describe("The Wall's position in the Room, for a Room's Photo only.");
+
 /** add_photo, as multipart/form-data. Both files are made by the browser, both validated here. */
 export const addPhotoInput = z.object({
   home: homeInput,
-  item: itemSlugInput,
+  ...photoOwner,
+  wall: wallPositionInput.optional(),
   file: bytes.describe("The photo, shrunk by the browser: a JPEG, PNG, or WebP."),
   thumb: bytes.describe("Its thumbnail, made by the browser: a JPEG, PNG, or WebP."),
   takenOn: photoDay.optional().describe("When it was taken; today when left out."),
   caption: photoCaption.optional(),
 });
 
-/** edit_photo: the caption only; null or an empty string clears it. */
+/**
+ * edit_photo: the caption, and for a Room's Photo the Wall. Each left out stays as it is; null,
+ * or an empty caption, clears it.
+ */
 export const editPhotoInput = z.object({
   home: homeInput,
-  item: itemSlugInput,
+  ...photoOwner,
   photo: photoIdInput,
-  caption: photoCaption.nullable(),
+  caption: photoCaption.nullable().optional(),
+  wall: wallPositionInput.nullable().optional(),
 });
 
 export const deletePhotoInput = z.object({
   home: homeInput,
-  item: itemSlugInput,
+  ...photoOwner,
   photo: photoIdInput,
 });
 
 /** get_photo: the stored bytes. `v` is the Photo's version, for the browser cache. */
 export const getPhotoInput = z.object({
   home: homeInput,
-  item: itemSlugInput,
+  ...photoOwner,
   photo: z.coerce.number().int().positive().describe("The Photo's id."),
   size: z.enum(["full", "thumb"]),
   v: z.string().optional().describe("Ignored by the server; it is there for the browser cache."),
 });
 
-/** add_photo, edit_photo, and delete_photo: the Item's Photos as they now are, newest first. */
+/** add_photo, edit_photo, and delete_photo: the owner's Photos as they now are, newest first. */
 export const photosResult = z.object({ photos: z.array(photoSchema) });
+
+/** The most Photos one view_photos call returns: each stays in the Session's context. */
+export const MAX_PHOTOS_PER_VIEW = 4;
+
+export const viewPhotosInput = z.object({
+  session: sessionInput,
+  photos: z
+    .array(z.number().int().positive())
+    .min(1)
+    .max(MAX_PHOTOS_PER_VIEW)
+    .describe(
+      "The Photos' ids, as the Room Sheet's Photos line and find_items' photos list them: at " +
+        "most 4, and the fewest that answer the question.",
+    ),
+});
+
+/** One Photo view_photos shows: whose it is, its Wall, date, and caption, then its bytes. */
+export const viewedPhotoSchema = photoSchema.omit({ version: true }).extend({
+  /** The Room or Item it is of. */
+  of: z.object({ kind: z.enum(["room", "item"]), slug: z.string(), name: z.string() }),
+  mimeType: z.enum(PHOTO_TYPES),
+  data: bytes,
+});
+
+/** view_photos: over MCP, one text block naming the Photos, then one image block per Photo. */
+export const viewPhotosResult = z.object({
+  /** In the order asked for. */
+  photos: z.array(viewedPhotoSchema),
+});
 
 export const getPhotoResult = z.object({
   mimeType: z.enum(PHOTO_TYPES),
@@ -2622,6 +2684,9 @@ export type EditPhotoInput = z.input<typeof editPhotoInput>;
 export type DeletePhotoInput = z.input<typeof deletePhotoInput>;
 export type GetPhotoInput = z.input<typeof getPhotoInput>;
 export type PhotosResult = z.infer<typeof photosResult>;
+export type ViewPhotosInput = z.input<typeof viewPhotosInput>;
+export type ViewedPhoto = z.infer<typeof viewedPhotoSchema>;
+export type ViewPhotosResult = z.infer<typeof viewPhotosResult>;
 export type GetPhotoResult = z.infer<typeof getPhotoResult>;
 
 // ─── Documents: add_document, edit_document, delete_document, get_document (web only) ───────

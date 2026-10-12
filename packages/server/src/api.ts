@@ -32,9 +32,11 @@ const OWN_ROUTES: Record<string, string> = {
     "either file or url",
   get_listing_photo: "GET /api/get_listing_photo?home=<slug>&listing=<slug>&v=<photoVersion>",
   add_photo:
-    "POST /api/add_photo, as multipart/form-data with the fields home, item, file, thumb, and " +
-    "optionally takenOn and caption",
-  get_photo: "GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>",
+    "POST /api/add_photo, as multipart/form-data with the fields home, item or room, file, " +
+    "thumb, and optionally takenOn, caption, and with room a wall (its position)",
+  get_photo:
+    "GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>, or " +
+    "with room=<slug> in place of item for a Room's Photo",
   add_document:
     "POST /api/add_document, as multipart/form-data with the fields home, item, kind, file, and " +
     "optionally name",
@@ -174,9 +176,10 @@ export async function handleListingPhoto(core: Core, c: Context): Promise<Respon
 }
 
 /**
- * POST /api/add_photo: a Photo of an Item, as multipart/form-data with the fields `home`, `item`,
- * `file` (the photo, shrunk by the browser), `thumb` (its thumbnail), and optionally `takenOn`
- * (YYYY-MM-DD) and `caption`. Answers { photos } as JSON, the Item's Photos newest first.
+ * POST /api/add_photo: a Photo of a Room or an Item, as multipart/form-data with the fields `home`,
+ * `room` or `item`, `file` (the photo, shrunk by the browser), `thumb` (its thumbnail), and
+ * optionally `takenOn` (YYYY-MM-DD), `caption`, and for a Room `wall` (the Wall's position).
+ * Answers { photos } as JSON, the owner's Photos newest first.
  */
 export async function handlePhotoUpload(core: Core, c: Context): Promise<Response> {
   if (!c.req.header("content-type")?.startsWith("multipart/form-data")) {
@@ -201,11 +204,16 @@ export async function handlePhotoUpload(core: Core, c: Context): Promise<Respons
     const value = form.get(name);
     return typeof value === "string" ? value : undefined;
   };
+  const item = text("item");
+  const room = text("room");
+  const wall = text("wall");
   const takenOn = text("takenOn");
   const caption = text("caption");
   const input = {
     home: text("home"),
-    item: text("item"),
+    ...(item ? { item } : {}),
+    ...(room ? { room } : {}),
+    ...(wall ? { wall } : {}),
     file: new Uint8Array(await file.arrayBuffer()),
     thumb: new Uint8Array(await thumb.arrayBuffer()),
     ...(takenOn ? { takenOn } : {}),
@@ -217,16 +225,18 @@ export async function handlePhotoUpload(core: Core, c: Context): Promise<Respons
 }
 
 /**
- * GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>: one Photo's
- * bytes, or its thumbnail's. `v` is ignored here, as for a Listing's picture: with it the browser
- * may keep the bytes for a year, since a Photo's bytes never change.
+ * GET /api/get_photo?home=<slug>&item=<slug>&photo=<id>&size=full|thumb&v=<version>, or with
+ * room=<slug> in place of item: one Photo's bytes, or its thumbnail's. `v` is ignored here, as for
+ * a Listing's picture: with it the browser may keep the bytes for a year, since a Photo's bytes
+ * never change.
  */
 export async function handlePhoto(core: Core, c: Context): Promise<Response> {
-  const { home, item, photo, size, v } = c.req.query();
+  const { home, item, room, photo, size, v } = c.req.query();
   return answer(c, async () => {
     const { data, mimeType } = await core.run("get_photo", web, {
       home,
       item,
+      room,
       photo,
       size,
       v,

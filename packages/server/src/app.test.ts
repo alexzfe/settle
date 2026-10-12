@@ -198,7 +198,7 @@ describe("the search index", () => {
       });
 
       const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
-      expect(tools).toHaveLength(19);
+      expect(tools).toHaveLength(20);
       expect(tools.map((tool) => tool.name)).not.toContain("find_index");
     } finally {
       fixture.core.close();
@@ -246,7 +246,7 @@ describe("the Item page", () => {
       expect(renamed.status).toBe(400);
 
       const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
-      expect(tools).toHaveLength(19);
+      expect(tools).toHaveLength(20);
       expect(tools.map((tool) => tool.name)).not.toContain("get_item");
       expect(tools.map((tool) => tool.name)).not.toContain("edit_item");
     } finally {
@@ -345,8 +345,66 @@ describe("Photos", () => {
       expect(await deleted.json()).toEqual({ photos: [] });
       expect((await withFixture.request(url("full"))).status).toBe(404);
 
+      // A Room's Photo: room and wall beside the files, served with room= in place of item.
+      const ofRoom = await upload({
+        home: fixture.home,
+        room: "living-room",
+        wall: "2",
+        file: jpeg(3),
+        thumb: jpeg(4),
+        takenOn: "2026-03-14",
+      });
+      expect(ofRoom.status).toBe(200);
+      const [roomPhoto] = ((await ofRoom.json()) as { photos: { id: number; wall?: unknown }[] })
+        .photos;
+      expect(roomPhoto?.wall).toEqual({ position: 2, archived: false });
+      const served = await withFixture.request(
+        `/api/get_photo?home=${fixture.home}&room=living-room&photo=${roomPhoto?.id}&size=thumb`,
+      );
+      expect(new Uint8Array(await served.arrayBuffer())).toEqual(jpeg(4));
+      const both = await upload({
+        home: fixture.home,
+        room: "living-room",
+        item: "sofa",
+        file: jpeg(3),
+        thumb: jpeg(4),
+      });
+      expect(both.status).toBe(400);
+
+      // The Agent looks at it over MCP: the text block, then the stored bytes, unchanged.
+      const tool = async (name: string, args: unknown) => {
+        const response = await withFixture.request(`/mcp/homes/${fixture.home}`, {
+          method: "POST",
+          headers: {
+            host: `127.0.0.1:${PORT}`,
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name, arguments: args },
+          }),
+        });
+        return ((await response.json()) as { result: { content: Record<string, string>[] } })
+          .result;
+      };
+      const opened = await tool("open_session", { skill: "home-intake" });
+      const session = /^Session: (\S+)$/m.exec(opened.content[0]?.text ?? "")?.[1];
+      const viewed = await tool("view_photos", { session, photos: [roomPhoto?.id] });
+      expect(viewed.content.map((block) => block.type)).toEqual(["text", "image"]);
+      expect(viewed.content[0]?.text).toContain(
+        `- #${roomPhoto?.id}: Room Living room (living-room), wall 2`,
+      );
+      expect(viewed.content[1]?.mimeType).toBe("image/jpeg");
+      expect(new Uint8Array(Buffer.from(viewed.content[1]?.data ?? "", "base64"))).toEqual(jpeg(3));
+
       const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
-      expect(tools.map((tool) => tool.name).filter((name) => name.includes("photo"))).toEqual([]);
+      // Only looking: adding, editing, and deleting Photos stay the user's, on the web.
+      expect(tools.map((tool) => tool.name).filter((name) => name.includes("photo"))).toEqual([
+        "view_photos",
+      ]);
     } finally {
       fixture.core.close();
     }
@@ -521,6 +579,7 @@ describe("the MCP endpoint", () => {
       ["get_decision", true],
       ["search_notes", true],
       ["view_images", true],
+      ["view_photos", true],
       ["save_home", false],
       ["save_room", false],
       ["save_items", false],

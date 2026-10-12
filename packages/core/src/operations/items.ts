@@ -92,7 +92,11 @@ export const findItems = defineOperation({
         // From the Photos and Documents the model already holds, in order: no query per Item.
         const photos = model.photos
           .filter((each) => each.itemId === item.id)
-          .map((each) => ({ takenOn: each.takenOn, ...optional({ caption: each.caption }) }));
+          .map((each) => ({
+            id: each.id,
+            takenOn: each.takenOn,
+            ...optional({ caption: each.caption }),
+          }));
         const documents = model.documents
           .filter((each) => each.itemId === item.id)
           .map((each) => ({ kind: each.kind, ...optional({ name: each.name }) }));

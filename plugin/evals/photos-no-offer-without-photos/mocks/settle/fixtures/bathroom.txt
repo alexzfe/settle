@@ -1,0 +1,21 @@
+Room: Bathroom (bathroom)
+Level: First (storey 1)
+Functions: bathroom
+Ceiling height: 2.40 m
+Times of use: morning, night
+
+Walls, clockwise:
+- bathroom/wall-1: 1.90 m
+- bathroom/wall-2: 2.40 m; faces N; outside
+- bathroom/wall-3: 1.90 m
+- bathroom/wall-4: 2.40 m
+
+Windows:
+- bathroom-window: in bathroom/wall-2; width 0.60 m; obscured glass
+
+Surfaces:
+- walls: plaster, color ~pale sage green, satin finish
+- ceiling: plaster, color ~white
+- floor: vinyl, color ~grey
+
+Gaps: woodwork Surface

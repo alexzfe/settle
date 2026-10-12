@@ -38,6 +38,7 @@ describe("migrate", () => {
       { id: 14 },
       { id: 15 },
       { id: 16 },
+      { id: 17 },
     ]);
     db.close();
   });
@@ -46,7 +47,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 17 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 18 });
     db.close();
   });
 
@@ -283,6 +284,67 @@ describe("migrate", () => {
     expect(() =>
       db.prepare("UPDATE homes SET token = ? WHERE slug = 'cottage'").run(tokens[0]?.token ?? ""),
     ).toThrow(/UNIQUE/);
+    db.close();
+  });
+
+  it("gives Photos a Room and a Wall beside the Item, keeping every Item Photo and its id", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = ON");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0017")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude, token)
+        VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4, 'abc');
+      INSERT INTO levels (id, home_id, slug, name, storey) VALUES (1, 1, 'ground', 'Ground', 0);
+      INSERT INTO rooms (id, home_id, level_id, slug, name) VALUES (2, 1, 1, 'lounge', 'Lounge');
+      INSERT INTO walls (id, home_id, room_id, slug, position, beyond_kind)
+        VALUES (4, 1, 2, 'lounge/wall-1', 1, 'unknown');
+      INSERT INTO items (id, home_id, slug, name, category) VALUES (3, 1, 'lamp', 'Lamp', 'lighting');
+      INSERT INTO photos
+        (id, home_id, item_id, path, thumb_path, type, version, taken_on, caption, created_at)
+      VALUES
+        (5, 1, 3, 'uploads/flat/photos/5.jpg', 'uploads/flat/photos/5-thumb.jpg', 'image/jpeg',
+          'v5', '2026-03-14', 'scratch', ''),
+        (9, 1, 3, 'uploads/flat/photos/9.jpg', 'uploads/flat/photos/9-thumb.jpg', 'image/jpeg',
+          'v9', '2026-01-02', NULL, '');
+    `);
+    early.close();
+
+    const db = migrate(path);
+    expect(
+      db.prepare("SELECT id, item_id, room_id, wall_id, caption FROM photos ORDER BY id").all(),
+    ).toEqual([
+      { id: 5, item_id: 3, room_id: null, wall_id: null, caption: "scratch" },
+      { id: 9, item_id: 3, room_id: null, wall_id: null, caption: null },
+    ]);
+    const insert = (item: number | null, room: number | null, wall: number | null) =>
+      db
+        .prepare(
+          `INSERT INTO photos (home_id, item_id, room_id, wall_id, path, thumb_path, type, version,
+             taken_on, created_at)
+           VALUES (1, ?, ?, ?, '', '', 'image/jpeg', 'v', '2026-10-12', '')`,
+        )
+        .run(item, room, wall);
+    expect(() => insert(null, 2, 4)).not.toThrow();
+    expect(() => insert(null, 2, null)).not.toThrow();
+    expect(() => insert(3, 2, null)).toThrow(/CHECK/);
+    expect(() => insert(null, null, null)).toThrow(/CHECK/);
+    expect(() => insert(3, null, 4)).toThrow(/CHECK/);
+    expect(
+      db
+        .prepare("SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name = 'photos'")
+        .all()
+        .map((row) => row.name)
+        .sort(),
+    ).toEqual(["photos_item", "photos_room"]);
+    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
     db.close();
   });
 

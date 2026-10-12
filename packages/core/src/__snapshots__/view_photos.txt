@@ -1,0 +1,3 @@
+2 Photos follow, the user's own, one image each, in this order:
+- #5: Room Main bedroom (main-bedroom), wall 2, taken 2026-09-12, "the bed and both bedside tables"
+- #2: Item Sofa (sofa), taken 2026-03-14, "scratch on the left leg"

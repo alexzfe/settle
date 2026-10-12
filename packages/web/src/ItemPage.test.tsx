@@ -573,6 +573,9 @@ describe("Photos", () => {
     // Crop is offered, never opened unasked.
     expect(within(form).getByRole("button", { name: "Crop" })).toBeDefined();
     expect(screen.queryByRole("region", { name: "Crop the photo" })).toBeNull();
+    // An Item's Photo names no Wall, and comes with no tips.
+    expect(within(form).queryByLabelText("Wall")).toBeNull();
+    expect(screen.queryByText(/good room photo/i)).toBeNull();
     fireEvent.change(within(form).getByLabelText("Caption (optional)"), {
       target: { value: " under the window " },
     });

@@ -1,0 +1,24 @@
+Room: Main bedroom (main-bedroom)
+Level: First (storey 1)
+Functions: bedroom
+Times of use: night
+
+Walls, clockwise:
+- main-bedroom/wall-1: ~3.60 m; faces W; beyond Balcony (balcony), outdoor
+- main-bedroom/wall-2
+- main-bedroom/wall-3
+- main-bedroom/wall-4
+
+Windows:
+- main-bedroom-window: in main-bedroom/wall-1; width ~1.20 m; sill ~0.90 m
+
+Doors:
+- main-bedroom-balcony-door: in main-bedroom/wall-1, to Balcony (balcony), outdoor; glazed
+
+Features:
+- Fireplace (main-bedroom-fireplace): blocked-up chimney breast; on main-bedroom/wall-3
+
+Items:
+- Double bed (double-bed): beds; against main-bedroom/wall-2; 1.60 × 2.10 m (W × D)
+
+Gaps: wall lengths (main-bedroom/wall-2, main-bedroom/wall-3, main-bedroom/wall-4), ceiling height, walls Surface, ceiling Surface, floor Surface, woodwork Surface

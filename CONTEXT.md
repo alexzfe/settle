@@ -68,9 +68,9 @@ _Avoid_: Finish, decoration
 
 **Photo**:
 A dated picture of one Room or of a single Item, taken and added by the user and kept by the
-platform, with an optional caption. Its date is when it was taken. The Agent knows a Photo exists
-and reads its caption, but does not see it. A Listing's picture and inspiration images are not
-Photos.
+platform, with an optional caption; a Room's Photo may name the Wall it shows. Its date is when it
+was taken. The Agent knows a Photo exists and reads its caption, and looks at it only when the
+user asks. A Listing's picture and inspiration images are not Photos.
 _Avoid_: Image, picture
 
 **Document**:

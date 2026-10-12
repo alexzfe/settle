@@ -193,7 +193,7 @@ it("lists beside the page the values recorded from it, read from every Room", as
       unplacedItems: 0,
     }),
     list_blueprints: () => ({ blueprints: [agentPlan] }),
-    get_room: () => ({ room: kitchen(), decisions: [] }),
+    get_room: () => ({ room: kitchen(), decisions: [], photos: [] }),
   });
   renderRoutes("/homes/flat/blueprints/estate-agent-plan/2");
   await screen.findByText(/Wall 1 length/);

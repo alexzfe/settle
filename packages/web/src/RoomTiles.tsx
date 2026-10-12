@@ -4,7 +4,14 @@
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "react-router";
 import styles from "./App.module.css";
-import { call, type DecisionSummary, type Level, type Room, type RoomDetail } from "./api";
+import {
+  call,
+  type DecisionSummary,
+  type Level,
+  photoUrl,
+  type Room,
+  type RoomDetail,
+} from "./api";
 import { sentence } from "./format";
 import { queryKeys, useDecisions } from "./queries";
 import page from "./RoomTiles.module.css";
@@ -134,6 +141,15 @@ function RoomTile({
         />
       ) : (
         <span className={`${page.strip} ${page.noStrip}`} />
+      )}
+      {/* A trial (room-photos Q13): the main Photo's thumbnail, only when the Room has one. */}
+      {room.photo && (
+        <img
+          className={page.thumb}
+          src={photoUrl(home, { room: room.slug }, room.photo, "thumb")}
+          alt=""
+          loading="lazy"
+        />
       )}
       <div className={page.tileBody}>
         <p className={page.tileName}>

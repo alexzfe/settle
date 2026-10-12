@@ -55,6 +55,14 @@
   background: var(--color-hairline);
 }
 
+/* A trial (room-photos Q13): the main Photo's thumbnail across the top of the tile. */
+.thumb {
+  display: block;
+  width: 100%;
+  height: 7rem;
+  object-fit: cover;
+}
+
 .tileBody {
   padding: var(--space-3) var(--space-4) var(--space-4);
 }

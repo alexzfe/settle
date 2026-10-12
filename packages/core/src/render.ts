@@ -4,7 +4,8 @@
 // touches that Room, and everything else (history, Archived records, one Decision in full) only
 // on request. The change log is never rendered. Every tier follows the same rules: leave out empty
 // fields, mark Estimated values with ~ and Listed ones (the maker's or shop's figures) with *, and
-// name records by their names with their readable slugs in brackets, never database ids.
+// name records by their names with their readable slugs in brackets, never database ids. A Photo
+// is the one exception: it has no name, so it goes by #<id>, which is what view_photos takes.
 import { type DaylightOpening, daylightOpenings } from "./daylight.js";
 import type {
   Blueprint,
@@ -34,6 +35,7 @@ import type {
   Measurement,
   Note,
   PaletteColor,
+  Photo,
   PlannedStay,
   Provenance,
   QuickGuideLine,
@@ -41,6 +43,7 @@ import type {
   RoomDetail,
   Surface,
   ViewImagesResult,
+  ViewPhotosResult,
   Wall,
   Window,
 } from "./operations/schemas.js";
@@ -237,7 +240,11 @@ function openingText(opening: DaylightOpening): string {
  */
 export function renderRoomSheet(
   room: RoomDetail,
-  { sources = false, decisions = [] }: { sources?: boolean; decisions?: DecisionSummary[] } = {},
+  {
+    sources = false,
+    decisions = [],
+    photos = [],
+  }: { sources?: boolean; decisions?: DecisionSummary[]; photos?: Photo[] } = {},
 ): string {
   const lines = [`Room: ${named(room)}`, `Level: ${room.level.name} (storey ${room.level.storey})`];
   if (room.archivedAt) {
@@ -288,6 +295,7 @@ export function renderRoomSheet(
     "Items",
     room.items.map((item) => itemLine(item, { where: false, register: false, sources })),
   );
+  if (photos.length > 0) lines.push("", `Photos: ${photoList(photos)}`);
   section(
     lines,
     "Decisions",
@@ -432,8 +440,8 @@ export function itemLine(
 
 /**
  * The register facts recorded for an Item, a Listed one marked *, like its sizes; then its Photos,
- * newest first, each by the day taken and its caption, and its Documents, each by kind and name,
- * so the Agent knows they exist.
+ * newest first, each by its id, the day taken, and its caption, and its Documents, each by kind
+ * and name, so the Agent knows they exist.
  */
 function registerParts(item: FoundItem): (string | undefined)[] {
   const listed = (field: ListedField, value: string | undefined) =>
@@ -445,11 +453,7 @@ function registerParts(item: FoundItem): (string | undefined)[] {
     item.warrantyUntil && `warranty until ${item.warrantyUntil}`,
     item.serialNumber && `serial ${item.serialNumber}`,
     item.manualLink && `manual ${item.manualLink}`,
-    item.photos?.length
-      ? `photos: ${item.photos.length} (${item.photos
-          .map((photo) => join(" ", [photo.takenOn, photo.caption && `"${photo.caption}"`]))
-          .join("; ")})`
-      : undefined,
+    item.photos?.length ? `photos: ${photoList(item.photos)}` : undefined,
     item.documents?.length
       ? `documents: ${item.documents
           .map((document) => join(" ", [document.kind, document.name && `"${document.name}"`]))
@@ -918,6 +922,51 @@ export function renderViewedPages({ blueprint, pages }: ViewImagesResult): strin
       `- ${what}: ${join("; ", [
         page.level ? `shows ${named(page.level)}` : "no Level mapped yet",
         page.hasText ? "has a text layer" : "no text layer (an image or a scan)",
+      ])}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Photos, newest first, as the Room Sheet and the register name them: how many, then each by its
+ * id, its Wall, the day taken, and its caption: 2 (#12 wall 2 2026-10-12 "by the sofa"; #9 2026-10-01).
+ */
+function photoList(photos: Pick<Photo, "id" | "takenOn" | "caption" | "wall">[]): string {
+  const each = photos.map((photo) =>
+    join(" ", [
+      `#${photo.id}`,
+      photo.wall && `wall ${photo.wall.position}`,
+      photo.takenOn,
+      photo.caption && `"${photo.caption}"`,
+    ]),
+  );
+  return `${photos.length} (${each.join("; ")})`;
+}
+
+/**
+ * view_photos' text block, which comes before the images: one line per Photo in the images'
+ * order, with the Room or Item it is of, the Wall it shows, the day taken, and its caption.
+ */
+export function renderViewedPhotos({ photos }: ViewPhotosResult): string {
+  const lines = [
+    `${photos.length === 1 ? "One Photo follows" : `${photos.length} Photos follow`}, ` +
+      "the user's own, one image each, in this order:",
+  ];
+  for (const photo of photos) {
+    const wall =
+      photo.wall &&
+      join(" ", [
+        `wall ${photo.wall.position}`,
+        photo.wall.label && `"${photo.wall.label}"`,
+        photo.wall.archived && "(archived)",
+      ]);
+    lines.push(
+      `- #${photo.id}: ${join(", ", [
+        `${photo.of.kind === "room" ? "Room" : "Item"} ${named(photo.of)}`,
+        wall,
+        `taken ${photo.takenOn}`,
+        photo.caption && `"${photo.caption}"`,
       ])}`,
     );
   }

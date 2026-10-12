@@ -174,7 +174,7 @@ function stubRoom(room: () => RoomDetail, decisions: () => DecisionSummary[] = (
       rooms,
       unplacedItems: 0,
     }),
-    get_room: () => ({ room: room(), decisions: decisions() }),
+    get_room: () => ({ room: room(), decisions: decisions(), photos: [] }),
   });
 }
 

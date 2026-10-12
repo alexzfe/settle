@@ -40,7 +40,7 @@ import {
 import { editItem, getItem } from "./operations/item-page.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
 import { listNotes, saveNote, searchNotes } from "./operations/notes.js";
-import { addPhoto, deletePhoto, editPhoto, getPhoto } from "./operations/photos.js";
+import { addPhoto, deletePhoto, editPhoto, getPhoto, viewPhotos } from "./operations/photos.js";
 import {
   dropListing,
   getListingPhoto,
@@ -110,6 +110,7 @@ const operations = {
   get_decision: getDecision,
   search_notes: searchNotes,
   view_images: viewImages,
+  view_photos: viewPhotos,
   save_home: saveHome,
   save_room: saveRoom,
   save_items: saveItems,

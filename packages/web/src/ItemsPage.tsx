@@ -216,7 +216,7 @@ function Thumb({ home, item, className }: { home: string; item: Item; className?
   return (
     <img
       className={className}
-      src={photoUrl(home, item.slug, item.photo, "thumb")}
+      src={photoUrl(home, { item: item.slug }, item.photo, "thumb")}
       alt=""
       loading="lazy"
     />

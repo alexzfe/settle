@@ -358,11 +358,17 @@ export interface ListingRow {
   recordedAt: string;
 }
 
-/** A Photo of an Item, taken and added by the user. Its files live under the data dir. */
+/**
+ * A Photo of a Room or of an Item, exactly one, taken and added by the user. Its files live under
+ * the data dir.
+ */
 export interface PhotoRow {
   id: number;
   homeId: number;
-  itemId: number;
+  itemId: number | null;
+  roomId: number | null;
+  /** A Wall of the Photo's Room, the one it shows; only ever set on a Room's Photo. */
+  wallId: number | null;
   /** uploads/<home>/photos/<id>.<ext>, under the data dir. */
   path: string;
   /** uploads/<home>/photos/<id>-thumb.<ext>: the browser's small copy, for lists. */

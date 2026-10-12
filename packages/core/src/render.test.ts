@@ -195,9 +195,9 @@ it("renders the view_images text block, which comes before the images", async ()
   await expect(texts.join("\n\n")).toMatchFileSnapshot(snapshot("view_images"));
 });
 
-it("renders find_items lines, with an Item's Photos by day and caption and its Documents by kind and name, and the Room Sheet without them", async () => {
+it("renders find_items lines, with an Item's Photos by id, day, and caption and its Documents by kind and name, and the Room Sheet without them", async () => {
   const session = await openSession();
-  // The user's Photos of the sofa: the Agent is told they exist, and never sees them.
+  // The user's Photos of the sofa: the Agent is told they exist, and looks only when asked.
   const jpeg = new Uint8Array(64);
   jpeg.set([0xff, 0xd8, 0xff, 0xe0]);
   for (const photo of [
@@ -240,6 +240,39 @@ it("renders find_items lines, with an Item's Photos by day and caption and its D
   });
   expect(toolText("get_room_sheet", sheet)).not.toContain("photos:");
   expect(toolText("get_room_sheet", sheet)).not.toContain("documents:");
+});
+
+it("renders a Room Sheet's Photos line, and view_photos' text block, which comes before the images", async () => {
+  const session = await openSession();
+  const jpeg = new Uint8Array(64);
+  jpeg.set([0xff, 0xd8, 0xff, 0xe0]);
+  const ids: number[] = [];
+  for (const photo of [
+    { takenOn: "2026-09-01", wall: 1 },
+    { takenOn: "2026-09-12" },
+    { takenOn: "2026-09-12", wall: 2, caption: "the bed and both bedside tables" },
+  ]) {
+    const { photos } = await fixture.core.run(
+      "add_photo",
+      { caller: { kind: "web" } },
+      { home: fixture.home, room: "main-bedroom", file: jpeg, thumb: jpeg, ...photo },
+    );
+    ids.push(photos[0]?.id ?? 0);
+  }
+  const { sheet } = await fixture.core.run("get_room_sheet", agent(session), {
+    session,
+    room: "main-bedroom",
+  });
+  await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-main-bedroom-photos"));
+  // A Room Photo with a Wall, then an Item's (the sofa's newest, from the test above).
+  const web = { caller: { kind: "web" } } as const;
+  const { photos } = await fixture.core.run("get_item", web, { home: fixture.home, item: "sofa" });
+  const sofa = photos[0]?.id ?? 0;
+  const viewed = await fixture.core.run("view_photos", agent(session), {
+    session,
+    photos: [ids[2] ?? 0, sofa],
+  });
+  await expect(toolText("view_photos", viewed)).toMatchFileSnapshot(snapshot("view_photos"));
 });
 
 it("renders search_notes lines", async () => {

@@ -8,6 +8,7 @@ import type {
   Item as CoreItem,
   ItemPage as CoreItemPage,
   OperationName as CoreOperationName,
+  Room as CoreRoom,
   DecisionReceiptResult,
   EditItemInput,
   ExportGuidesInput,
@@ -61,7 +62,6 @@ export type {
   QuickGuideLine,
   Requirement,
   Resolution,
-  Room,
   RoomDetail,
   Session,
   ShoppingEntry,
@@ -73,11 +73,21 @@ export type {
 // Surface record in the package's exports; the record's type is taken from the Room detail.
 export type Surface = RoomDetail["surfaces"][number];
 
-// Photos, as the item-photos handoff's contract gives them. Core builds them alongside this page,
-// so their shapes are declared here until its schemas carry them; core's own types, once they do,
-// must agree with these.
+// Photos, as the item-photos and room-photos handoffs' contracts give them. Core builds them
+// alongside this page, so their shapes are declared here until its schemas carry them; core's own
+// types, once they do, must agree with these.
 
-/** A Photo of an Item: a dated picture the user took and added, with an optional caption. */
+/** Whose a Photo is: one Item or one Room, named by slug. */
+export type PhotoOwner = { item: string } | { room: string };
+
+/** A Room Photo's Wall: its position in the Room, its label, and whether it is now archived. */
+export interface PhotoWall {
+  position: number;
+  label?: string;
+  archived: boolean;
+}
+
+/** A Photo of an Item or a Room: a dated picture the user took and added, with an optional caption. */
 export interface Photo {
   id: number;
   /** Changes whenever the stored bytes do; passed to get_photo so the browser caches for good. */
@@ -85,15 +95,26 @@ export interface Photo {
   /** When it was taken, YYYY-MM-DD: from the photo's EXIF, else the day it was added. */
   takenOn: string;
   caption?: string;
+  /** The Wall a Room Photo shows; absent for the whole Room, and always for an Item's. */
+  wall?: PhotoWall;
 }
 
 /** An Item, with its main (newest) Photo when it has any, for the lists' thumbnails. */
 export type Item = CoreItem & { photo?: Pick<Photo, "id" | "version"> };
 
-/** What every Photo write answers: the Item's Photos as they now stand, newest first. */
+/** A Room, with its main (newest) Photo when it has any, for its tile's thumbnail. */
+export type Room = CoreRoom & { photo?: Pick<Photo, "id" | "version"> };
+
+/** What every Photo write answers: the owner's Photos as they now stand, newest first. */
 export interface PhotosResult {
   photos: Photo[];
 }
+
+/** get_home, its Rooms carrying their main Photo. */
+export type HomeResult = Omit<OperationOutput<"get_home">, "rooms"> & { rooms: Room[] };
+
+/** get_room: the Room Sheet and its Decisions, with the Room's Photos newest first. */
+export type RoomResult = OperationOutput<"get_room"> & { photos: Photo[] };
 
 // Documents, as the item-documents handoff's contract gives them, declared here as Photos were
 // until core's schemas carry them; core's own types, once they do, must agree with these.
@@ -136,10 +157,10 @@ interface Shapes<Name extends CoreOperationName> {
 export interface Operations {
   list_homes: Shapes<"list_homes">;
   create_home: Shapes<"create_home">;
-  get_home: Shapes<"get_home">;
+  get_home: { input: OperationInput<"get_home">; output: HomeResult };
   home_folder_setup: Shapes<"home_folder_setup">;
   list_sessions: Shapes<"list_sessions">;
-  get_room: Shapes<"get_room">;
+  get_room: { input: OperationInput<"get_room">; output: RoomResult };
   list_items: Shapes<"list_items">;
   /** One Item's page: its register, the Decisions tied to it, and its history. Web-only. */
   get_item: { input: OperationInput<"get_item">; output: ItemPage };
@@ -162,12 +183,18 @@ export interface Operations {
   // The board's own writes: the first Listings have ever had from the web.
   drop_listing: Shapes<"drop_listing">;
   hold_listing: Shapes<"hold_listing">;
-  // A Photo's caption and its removal: web-only, the user's own hand. An empty caption clears it.
+  // A Photo's caption, a Room Photo's Wall, and its removal: web-only, the user's own hand. An
+  // empty caption clears it; a null Wall makes it the whole Room's.
   edit_photo: {
-    input: { home: string; item: string; photo: number; caption: string | null };
+    input: PhotoOwner & {
+      home: string;
+      photo: number;
+      caption?: string | null;
+      wall?: number | null;
+    };
     output: PhotosResult;
   };
-  delete_photo: { input: { home: string; item: string; photo: number }; output: PhotosResult };
+  delete_photo: { input: PhotoOwner & { home: string; photo: number }; output: PhotosResult };
   // A Document's kind and name, and its removal: web-only too. An empty or null name clears it.
   edit_document: {
     input: {
@@ -192,7 +219,10 @@ export interface Uploads {
   upload_blueprint: UploadBlueprintResult;
   /** The board's paste box: the bytes the user pasted, or an image URL for the app to fetch. */
   set_listing_photo: ListingResult;
-  /** A Photo of an Item: home, item, file and thumb (both JPEGs made here), takenOn, caption. */
+  /**
+   * A Photo: home, item or room (and with a room, an optional wall position), file and thumb (both
+   * JPEGs made here), takenOn, caption.
+   */
   add_photo: PhotosResult;
   /** A Document of an Item: home, item, kind, file (a PDF as picked, or an image made here), name. */
   add_document: DocumentsResult;
@@ -247,13 +277,13 @@ export function listingPhotoUrl(home: string, listing: string, v?: string): stri
  */
 export function photoUrl(
   home: string,
-  item: string,
+  owner: PhotoOwner,
   photo: Pick<Photo, "id" | "version">,
   size: "full" | "thumb",
 ): string {
   const query = new URLSearchParams({
     home,
-    item,
+    ...owner,
     photo: String(photo.id),
     size,
     v: photo.version,

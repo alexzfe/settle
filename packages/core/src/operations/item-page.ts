@@ -50,7 +50,7 @@ export const getItem = defineOperation({
       ...(replaces.length > 0 ? { replaces: replaces.map(ref) } : {}),
       ...(replacedBy ? { replacedBy: ref(replacedBy) } : {}),
       ...(picture ? { picture } : {}),
-      photos: model.photos.filter((each) => each.itemId === item.id).map(toPhoto),
+      photos: model.photos.filter((each) => each.itemId === item.id).map((row) => toPhoto(row)),
       documents: model.documents.filter((each) => each.itemId === item.id).map(toDocument),
       decisions: [
         ...reliesOn(context.store.list("requirements", home.id), decisions, item),

@@ -6,7 +6,7 @@ import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
-import type { HomeRow, LevelRow, RoomRow, SessionRow } from "../store.js";
+import type { HomeRow, LevelRow, PhotoRow, RoomRow, SessionRow } from "../store.js";
 import { randomToken } from "../token.js";
 import {
   blueprintName,
@@ -16,6 +16,7 @@ import {
   requirePage,
   requireSources,
 } from "./lookup.js";
+import { newestFirst } from "./model.js";
 import {
   type blueprintPageLevelInput,
   type GetHomeResult,
@@ -111,20 +112,23 @@ export const listHomes = defineOperation({
 
 export const getHome = defineOperation({
   name: "get_home",
-  description: "One Home with its Levels, in storey order, and its Rooms.",
+  description:
+    "One Home with its Levels, in storey order, and its Rooms, each with its main Photo.",
   input: z.object({ home: homeInput }),
   readOnly: true,
   surface: "web",
   handler(context): GetHomeResult {
     const home = requireHome(context);
     const levels = context.store.levels(home.id);
+    const photos = newestFirst(context.store.list("photos", home.id));
+    const mainPhoto = (room: RoomRow) => photos.find((photo) => photo.roomId === room.id);
     return {
       home: toHome(home),
       levels: levels.map(toLevel),
       rooms: context.store
         .rooms(home.id)
         .filter((room) => room.archivedAt === null)
-        .map((room) => toRoom(room, levels)),
+        .map((room) => toRoom(room, levels, mainPhoto(room))),
       unplacedItems: context.store
         .list("items", home.id)
         .filter((item) => item.archivedAt === null && item.roomId === null).length,
@@ -365,10 +369,16 @@ export function toLevel({ slug, name, storey }: LevelRow): Level {
   return { slug, name, storey };
 }
 
-export function toRoom(row: RoomRow, levels: LevelRow[]): Room {
+/** A Room as the Home lists it, with its main Photo, the newest, when it has one. */
+export function toRoom(row: RoomRow, levels: LevelRow[], photo?: PhotoRow): Room {
   const level = levels.find((candidate) => candidate.id === row.levelId);
   if (!level) throw new Error(`Room ${row.slug} is on a Level its Home does not have`);
-  return { slug: row.slug, name: row.name, level: level.slug };
+  return {
+    slug: row.slug,
+    name: row.name,
+    level: level.slug,
+    ...(photo ? { photo: { id: photo.id, version: photo.version } } : {}),
+  };
 }
 
 export function toSession(row: SessionRow): Session {

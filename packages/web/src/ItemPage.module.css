@@ -147,6 +147,24 @@
   object-fit: cover;
 }
 
+/* A Room's Photos, all of them, as thumbnails grouped by the day they were taken. */
+.dated {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.dated .strip {
+  margin-top: var(--space-1);
+}
+
+.datedHead {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Add photo: the button, or the picked photo with its caption box. The input itself is hidden. */
 .addPhoto {
   display: grid;

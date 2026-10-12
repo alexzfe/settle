@@ -117,7 +117,12 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
         {pictured && (
           <div className={sheet.media}>
             {photos.length > 0 ? (
-              <PhotoFigure home={home} item={item.slug} name={item.name} photos={photos} />
+              <PhotoFigure
+                home={home}
+                owner={{ item: item.slug }}
+                name={item.name}
+                photos={photos}
+              />
             ) : (
               picture && (
                 <figure className={sheet.picture}>
@@ -129,7 +134,7 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
                 </figure>
               )
             )}
-            <AddPhoto home={home} item={item.slug} />
+            <AddPhoto home={home} owner={{ item: item.slug }} />
           </div>
         )}
         {editing ? (
@@ -152,7 +157,7 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
           </Card>
         )}
       </div>
-      {!pictured && <AddPhoto home={home} item={item.slug} />}
+      {!pictured && <AddPhoto home={home} owner={{ item: item.slug }} />}
 
       <ItemDocuments home={home} item={item.slug} documents={documents} />
 

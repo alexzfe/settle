@@ -19,6 +19,7 @@ const TOOLS = {
     "find_items",
     "search_notes",
     "view_images",
+    "view_photos",
     "save_home",
     "save_room",
     "save_items",
@@ -33,6 +34,7 @@ const TOOLS = {
     "find_decisions",
     "get_decision",
     "search_notes",
+    "view_photos",
     "save_decision",
     "set_decision_state",
     "record_fulfilment",
@@ -48,6 +50,8 @@ const TOOLS = {
     "find_decisions",
     "get_decision",
     "search_notes",
+    "view_photos",
+    "save_room",
     "save_decision",
     "set_decision_state",
     "record_fulfilment",
@@ -63,6 +67,7 @@ const TOOLS = {
     "find_decisions",
     "get_decision",
     "search_notes",
+    "view_photos",
     "save_home",
     "save_room",
     "save_decision",
@@ -667,6 +672,69 @@ function bedFrameIdeas(context: HistoryContext): Turn[] {
   ];
 }
 
+// ─── Photo cases ────────────────────────────────────────────────────────────────────────────
+// The Fixture Home with Photos: the cases' own living room Sheet lists three, #12 of Wall 6 "by
+// the sofa", #11 of the whole Room, and #9 of Wall 1, and their own find_items gives the Double
+// bed one Item Photo, #4. A mock can't return images, so each case's view_photos mock says in
+// words what the Photo shows.
+
+const SIDE_TABLE_ROUND = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, and your Palette, **Warm clay**, are both Settled. There are also two flags and a Conflict waiting, none of them about this.
+
+The sofa stands against the living room's Wall 6, which is 3.90 m and also holds the door in from the hallway. The sofa is 2.10 m wide, so a side table has the rest of that wall to share with the doorway. You have two cats. First round:
+
+1. **Which end.** *(Recommended: the end away from the door, so the way in stays clear.)*
+2. **Height.** *(Recommended: about level with the sofa's arm, roughly 0.55–0.60 m; the arm's height isn't recorded, so measure it.)*
+3. **Size.** *(Recommended: no more than 0.45 m across, so it doesn't crowd the door.)*
+4. **Material.** *(Recommended: oak, one of the Direction's key materials.)*
+
+There's a photo of Wall 6 from 12 Oct, "by the sofa". Want me to look at it before we go on? It uses a bit of context.`;
+
+const LIVING_ROOM_LOOK_OFFER = `Working on Fixture Home, in London. Your Design Direction, **Warm minimalism**, is Settled, and there's no Palette yet, so the living room's colours start there. A Conflict on *Keep the original floors* and a flag on the *Wool rug* are waiting, and can wait.
+
+What the living room already has: oak boards at the living end and terracotta tiles at the dining end, a teal leaf-print wallpaper on the chimney wall, white gloss woodwork, and the warm-grey linen sofa. It faces south and west, and you use it in the evening. The one thing the record doesn't say is the colour of the walls themselves.
+
+There's a photo of Wall 6 from 12 Oct, "by the sofa". Want me to look at it, to see the walls before I propose anything? It uses a bit of context.`;
+
+const LIVING_ROOM_SEEN = `Here's Wall 6: the warm-grey linen sofa against it, a low oak stool with a lamp at its left end, and the hallway door to its right. The walls are a plain, light off-white that reads warm, a little pink where the lamp falls on it, and it sits comfortably with the oak boards and the grey of the sofa.
+
+That's enough to propose Palettes that work with what stays. One question first: keep the walls this light, or are you open to something deeper for the evenings? *(Recommended: a shade or two deeper and warmer, since you're in there mostly under lamps.)*`;
+
+const WALL_COLOUR = `A warm off-white: light, with a slightly pink, creamy undertone rather than a grey one. That's my read of a photo, so treat it as an estimate: the phone's camera and the lamplight both shift colours.
+
+The record has no colour for the living room walls. Want me to note them as warm off-white, as an estimate?`;
+
+/**
+ * A Color Session on the living room, whose walls have no recorded colour: the opening, the
+ * Room's Sheet, the Rejected Palettes, the offer to look at #12, and the look on the user's yes.
+ */
+function livingRoomLooked(context: HistoryContext): Turn[] {
+  const { turns, session } = opening(
+    context,
+    "thinking of repainting the living room, what would go with whats there?",
+    "color",
+  );
+  const sheet = { session, room: "living-room" };
+  const lookup = { session, kind: "palette", state: "rejected" };
+  const look = { session, photos: [12] };
+  return [
+    ...turns,
+    { tool: "get_room_sheet", input: sheet, result: context.answer("get_room_sheet", sheet) },
+    { tool: "find_decisions", input: lookup, result: context.answer("find_decisions", lookup) },
+    { assistant: LIVING_ROOM_LOOK_OFFER },
+    { user: "yes go ahead" },
+    { tool: "view_photos", input: look, result: context.answer("view_photos", look) },
+    { assistant: LIVING_ROOM_SEEN },
+  ];
+}
+
+const BALCONY_ROUND = `Working on Fixture Home, in London.
+
+The Balcony is the last Room with a Gap: when you use it. *(Recommended: tell me roughly, such as summer evenings, or rarely.)*`;
+
+const BALCONY_DONE = `Recorded: the Balcony is used in the evening, and it has no Gaps left.
+
+That's every Room we've been through. Is there any other Room to add, or is that the whole house?`;
+
 export const HISTORIES: Record<string, (context: HistoryContext) => Turn[]> = {
   // Graded turn: the user says the landlord forbids drilling into any wall. A Constraint needs
   // the user's yes first.
@@ -994,4 +1062,49 @@ The Hallway has lengths for six of its eight Walls, its three Doors, and the und
   // Each is recorded once, with a Rating, its reason, and the picture from its own page; nothing
   // else is recorded.
   "purchase-offers-to-record-what-it-showed": bedFrameIdeas,
+
+  // Graded turn: the user says yes to the offer of #12, made in the side table's first round. It
+  // is looked at alone, once.
+  "photos-looks-at-the-one-offered": (context) => [
+    ...purchaseRoomStart(
+      context,
+      "i need a side table for next to the couch",
+      "living-room",
+      "side table",
+    ).turns,
+    { assistant: SIDE_TABLE_ROUND },
+  ],
+
+  // Graded turn: the user says the Rooms are all done. The reply never asks for Photos.
+  "photos-never-asks-for-photos": (context) => {
+    const { turns, session } = opening(context, "lets finish going through the rooms");
+    const sheet = { session, room: "balcony" };
+    const save = { session, room: "balcony", timesOfUse: ["evening"] };
+    return [
+      ...turns,
+      { tool: "get_room_sheet", input: sheet, result: context.answer("get_room_sheet", sheet) },
+      { assistant: BALCONY_ROUND },
+      { user: "summer evenings mostly, we eat out there" },
+      // The case has no save_room mock of its own, so the write gets its receipt in core's
+      // wording here.
+      {
+        tool: "save_room",
+        input: save,
+        result: "Balcony (balcony): times of use evening\nBalcony (balcony): no Gaps left",
+      },
+      { assistant: BALCONY_DONE },
+    ];
+  },
+
+  // Graded turn: after the look at #12 and the Agent's read of the walls as warm off-white, the
+  // user says to save it. The walls Surface gets a plain name, Estimated, with no hex, code or brand.
+  "photos-records-a-seen-color-as-estimated": (context) => [
+    ...livingRoomLooked(context),
+    { user: "what colour would you say the walls are" },
+    { assistant: WALL_COLOUR },
+  ],
+
+  // Graded turn: after the look at #12, the user asks for the exact paint. A photo can't tell it,
+  // and no hex or code is guessed.
+  "photos-no-exact-paint-from-a-photo": livingRoomLooked,
 };

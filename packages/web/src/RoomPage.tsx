@@ -16,7 +16,7 @@ import type {
 import { type ReactNode, useState } from "react";
 import { Link, useParams } from "react-router";
 import styles from "./App.module.css";
-import type { DecisionSummary, Room, Surface } from "./api";
+import type { DecisionSummary, Photo, Room, Surface } from "./api";
 import { decisionPath, itemPath, KIND_LABEL } from "./decisions";
 import {
   compass,
@@ -31,6 +31,7 @@ import {
 import { ItemList } from "./ItemsPage";
 import { useHome, useRoom } from "./queries";
 import page from "./RoomPage.module.css";
+import { RoomPhotos } from "./RoomPhotos";
 import { LrvBar } from "./Swatch";
 import { AskAgent, buildPrompt } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
@@ -82,7 +83,7 @@ const OBSTRUCTION: Record<Obstruction, string> = {
 /** The height a Wall is drawn at when the Room's ceiling height is not recorded, in millimetres. */
 export const DEFAULT_CEILING_MM = 2500;
 
-/** Everything on one Room's Room Sheet, read-only. Changes come through the Agent. */
+/** Everything on one Room's Room Sheet, read-only but for its Photos. Changes come through the Agent. */
 export function RoomPage() {
   const { home = "", room = "" } = useParams();
   const sheet = useRoom(home, room);
@@ -94,6 +95,7 @@ export function RoomPage() {
     <RoomSheet
       room={sheet.data.room}
       decisions={sheet.data.decisions}
+      photos={sheet.data.photos ?? []}
       home={homeRead.data?.home}
       rooms={homeRead.data?.rooms ?? []}
     />
@@ -103,11 +105,13 @@ export function RoomPage() {
 function RoomSheet({
   room,
   decisions,
+  photos,
   home,
   rooms,
 }: {
   room: RoomDetail;
   decisions: DecisionSummary[];
+  photos: Photo[];
   home: Home | undefined;
   rooms: Room[];
 }) {
@@ -127,13 +131,22 @@ function RoomSheet({
           <ArchivedNote at={room.archivedAt} reason={room.archivedReason} />
         </p>
       )}
-      <dl className={`${styles.facts} ${page.roomFacts}`}>
-        <Fact term="Outdoor">{room.outdoor && "Yes"}</Fact>
-        <Fact term="Ceiling height">
-          {room.ceilingHeight && <Length value={room.ceilingHeight} />}
-        </Fact>
-        <Fact term="Times of use">{room.timesOfUse.join(", ")}</Fact>
-      </dl>
+      <div className={page.top}>
+        <RoomPhotos
+          home={homeSlug}
+          room={room.slug}
+          name={room.name}
+          photos={photos}
+          walls={walls}
+        />
+        <dl className={`${styles.facts} ${page.roomFacts}`}>
+          <Fact term="Outdoor">{room.outdoor && "Yes"}</Fact>
+          <Fact term="Ceiling height">
+            {room.ceilingHeight && <Length value={room.ceilingHeight} />}
+          </Fact>
+          <Fact term="Times of use">{room.timesOfUse.join(", ")}</Fact>
+        </dl>
+      </div>
 
       <Section heading="label" title="Walls" id="walls">
         {walls.length === 0 ? (

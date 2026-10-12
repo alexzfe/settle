@@ -17,6 +17,7 @@ import {
   requireWall,
 } from "./lookup.js";
 import { type HomeModel, loadHome, roomById, roomDetail, toItem, wallSlug } from "./model.js";
+import { toPhoto } from "./photos.js";
 import {
   type doorInput,
   type featureInput,
@@ -24,6 +25,7 @@ import {
   type GetRoomSheetResult,
   getRoomInput,
   getRoomSheetInput,
+  type Photo,
   type ReceiptResult,
   SURFACE_PARTS,
   type SurfaceInput,
@@ -120,7 +122,8 @@ export const getRoomSheet = defineOperation({
     "ceiling height, and times of use; its Walls in clockwise order with their lengths, facings, " +
     "and what lies beyond; its Windows and Doors; its Surfaces (walls, ceiling, floor, " +
     "woodwork); its Features; its lights; one line per Item in it; one line per Decision about " +
-    "it that is Candidate, Leaning, or Settled but not yet Fulfilled; and its Gaps. Values marked " +
+    "it that is Candidate, Leaning, or Settled but not yet Fulfilled; its Photos, by id, when it " +
+    "has any; and its Gaps. Values marked " +
     "~ are Estimated; an Item's values marked * are Listed, the maker's or shop's figures. Fetch it the first time the Session's work touches a Room, and not again: " +
     "the receipts of later writes keep your picture current. Don't fetch every Room up front; " +
     "the opening lists them all, and find_items finds an Item elsewhere. Values printed on a " +
@@ -138,6 +141,7 @@ export const getRoomSheet = defineOperation({
       sheet: renderRoomSheet(roomDetail(model, room), {
         sources: input.withSources === true,
         decisions: roomDecisions(model, room),
+        photos: roomPhotos(model, room),
       }),
     };
   },
@@ -148,8 +152,8 @@ export const getRoom = defineOperation({
   name: "get_room",
   description:
     "One Room with everything on its Room Sheet, for the Room page: its Candidate, Leaning, and " +
-    "Settled-but-not-Fulfilled Decisions too, and its Archived Items after the live ones, marked " +
-    "archivedAt, for the page's Show Archived switch.",
+    "Settled-but-not-Fulfilled Decisions too, its Archived Items after the live ones, marked " +
+    "archivedAt, for the page's Show Archived switch, and its Photos, newest first.",
   input: getRoomInput,
   readOnly: true,
   surface: "web",
@@ -166,9 +170,17 @@ export const getRoom = defineOperation({
     return {
       room: { ...detail, items: [...detail.items, ...archived] },
       decisions: roomDecisions(model, room),
+      photos: roomPhotos(model, room),
     };
   },
 });
+
+/** A Room's Photos, newest first, each with its Wall. */
+function roomPhotos(model: HomeModel, room: RoomRow): Photo[] {
+  return model.photos
+    .filter((photo) => photo.roomId === room.id)
+    .map((photo) => toPhoto(photo, model.walls));
+}
 
 /** Creates or changes the Room itself, and returns its row. */
 function saveRoomRecord(

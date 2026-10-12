@@ -82,7 +82,7 @@ it("shows every Room by Level under a summary line, titled for the Home", async 
     get_room: (input) => {
       const room = [kitchen, living, bedroom].find((each) => each.slug === input.room);
       if (!room) throw new Error(`No Room ${input.room}`);
-      return { room: roomDetail(room, gaps[room.slug] ?? []), decisions: [] };
+      return { room: roomDetail(room, gaps[room.slug] ?? []), decisions: [], photos: [] };
     },
     list_decisions: () => ({
       decisions: [
