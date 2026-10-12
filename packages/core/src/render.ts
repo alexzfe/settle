@@ -295,7 +295,11 @@ export function renderRoomSheet(
     "Items",
     room.items.map((item) => itemLine(item, { where: false, register: false, sources })),
   );
-  if (photos.length > 0) lines.push("", `Photos: ${photoList(photos)}`);
+  // The user sees these on the Room page themselves; said here, not only in the Skills, because a
+  // plain question can reach the Room Sheet without any Skill running.
+  if (photos.length > 0) {
+    lines.push("", `Photos, which the user sees on this Room's page: ${photoList(photos)}`);
+  }
   section(
     lines,
     "Decisions",

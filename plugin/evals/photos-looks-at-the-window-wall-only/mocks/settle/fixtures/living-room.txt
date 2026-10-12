@@ -39,6 +39,6 @@ Items:
 - Pendant lamp (pendant-lamp): lighting; on the ceiling point
 - Bookcase (bookcase): storage; against living-room/wall-4; ~0.80 × ~0.30 × ~1.80 m (W × D × H); IKEA Billy
 
-Photos: 3 (#12 wall 6 2026-10-12 "by the sofa"; #11 2026-10-12; #9 wall 1 2026-10-01)
+Photos, which the user sees on this Room's page: 3 (#12 wall 6 2026-10-12 "by the sofa"; #11 2026-10-12; #9 wall 1 2026-10-01)
 
 Gaps: none
