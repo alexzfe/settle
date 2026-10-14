@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3a4dd2c957545a94ad24b83c2e1aacae5542535d4c7dc6b80d15b2b04d27d488",
+  "claims": [
+    {
+      "id": "claim_3b3251e390de4f01b07928393c59a311",
+      "statement": "A Requirement's reason can point at a Decision, Constraint, Note, or a Home, Room, Wall, Window, Door, Feature, Surface or Item, optionally narrowed to one field from REASON_FIELDS.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/reasons.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:d7b1f9ce74e6ce24f3c8b8771d104d3a9de8a2c63d83436355602968332c10e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NWRmZjEwYWFmY2IyMTljMmQwNjczNTY3Y2IyZGI1ODMxYzAzOWQ3YWMzZGEwYzhiNTJiNTBlODY5MmJmYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjYjJmZmFkMGRjN2Y0Mjc3YmJmMjdjY2U3MGNhNDMzYzE3MGY1MjAxZDRjYWQ1YWZiYWViMmRlZGIzZDYyMjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg0Y2U4NjM2MGQ5ZmIxZDM2NDE0MDM2NjFlMmM0MmIwM2FmOGNjYjQ2NTc1YTdhNmE1OThhYWM1NmIwN2QzOGYifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/schemas.ts#L1240-L1254",
+          "version": "repo-lines-v1:sha256:68ab9a0f0e1dc37fa51cb90053fe033e628938db709e25c78fa76eebb9f3ce07:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjYjFlOWFlZGJjYTZhYjYwYmFhOWY2YmRlMjhlZDFkZjQzZDhlYmQ0ZjQxYmVmOTNjY2M0NzlmNTE2OTZjNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZGM3NmQxMmU1MzA0ZDMwNzllZGI1Zjg5MDAwN2VhMDVmMjI2ZTRkOTNiNjk1Njg0NjBjYWZhZjgwMDc0NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2MDY4ODMyYzBlZTFkYjRkNjFmZTdiM2MxNTBmZGY2NDRkYzk5YWZmMTQ5ZDc1ZWExOTA1YzZhNTJiNDljY2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhMjNlMjYxYzRjNjE0MGFjZGY0MjEyYWI4NzQxZDFjNjI5MjA3OGFkN2MxNGZlMjM0Mjc1MWU5NWFhNTRhMTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3ade79b893454f34aef5bbc3886a2b00",
+      "statement": "The Quick Guide is assembled on read from the looking-for line, Measure-first lines, musts, avoids, prefers, tests and asks, never stored whole, so it cannot go stale when a Requirement changes.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchase-views.ts#L24-L27",
+          "version": "repo-lines-v1:sha256:3cb7d7ea38abe71b912420823472a24d95ad047d98bbdc49d80c546245d1b21e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmYyYTdiZWM5YmRjZjQwYzk2YzIxZjhlMTQ1YmE2YzIxY2U5YTUxYjFmYmYwZTZjNWY4MDk1MDdiODE1NGFkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTc2Y2FhMjcwNTY1YzkzNTZmMzNkZDk0NTVhNjU1NzkzZWQ5NzJmYjNiNjUyYjMzYTVkMjZiYjM0ZGZkYTc3OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTEwNmVkZDNlNTc2NDY3NGY4OWU2YzE0ZTUxYTE0MjI0NzQ1ZjAwNmRmOTIxMjY2N2E1MGVmMDhjNDVkNjdmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzI0NjYzMmQyMDdmNDhhMDBkY2JiOWNmZWMzMTQ5ODRlM2U0Zjk1NTg0YjUyZjc1OTJmODBmYTE1NWZmZmJhMiJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L45-L64",
+          "version": "repo-lines-v1:sha256:c133dcdfd1d449bc40f89e6043480e1a8f233c030c398d2037f8abd304adf7fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNTE5MjZkNDY3MGZlN2Y2ZTU2NWE2ZWY1MjBmMGMyNTMyYWIwN2QzNWEyODgzNTVmYTJmZjA1YmRiMjFlMzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1NjY2OTg5NDY1OGZmZmFhYjI4NTBmODE0OTQzMjhiNmNhNDdkMmM2MzgxZTIyNTZiN2U1ODhlODkwZGNhN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2ZDM4NWRlMGRmODVmZWNiOGU0YzdhNWRiNjdkYzJhNzNkNTgzNjY1MjI1YzkxMmEyZmE0MWU1NTkwOWRlNmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8f40adcfdde04b9eba20b925941ae38a",
+      "statement": "Measure-first lines are produced for every value a must Requirement rests on that is Estimated or unrecorded, skipping Archived records.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchase-views.ts#L41-L60",
+          "version": "repo-lines-v1:sha256:7edf9c9cdacb9f8960d4b652a54063312c625a25049e1457c2233203e8487986:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3MjdmMTNhNmQyZDNkZjVhYTdkNGRjMDI1YTA5NDIzMmEwNDk5MjAxZDI5MzI2NjA1YTI1ZmE2Y2RhN2Q0NTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlYWIzMTJiMzdjOWEzNThhYmU4YjZiMGM4MTlmYzNkNDg4NTA4NzM4NzdjMjhhMDk5Yjk0ZWFlZTk4Y2NkZTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OTI5ZTkxZTBmOTljM2U4MjVkZTY5YjQzNWZiNjQ4NGQxYjBhMWRmMmY0NjU2MWFiZjFhMjlmMDQxODhiODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmOGVjNmQxZTZiOWMwY2ZkYTE5OGZkYzYxYTljYTNkODU0YTMwYWExMjY5MjkwMWMxMThlN2I0NGI0MWNkOTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c88c81a5ab5f40fba13abbcff3881a50",
+      "statement": "save_guides accepts lookingFor, at most 8 avoid/test/ask quickLines and a Markdown fullGuide, replacing each given one, marks the Full Guide out of date when a Requirement changes later, and refuses a Rejected Purchase.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L45-L102",
+          "version": "repo-lines-v1:sha256:82ad51ab5a88c928b16e57bc339ddc1cc0b4b7cd62a1a1c269bf8acc8563af9f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1NjY2OTg5NDY1OGZmZmFhYjI4NTBmODE0OTQzMjhiNmNhNDdkMmM2MzgxZTIyNTZiN2U1ODhlODkwZGNhN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1ZTc0ODZhNzg3NWE0YzMxZmNkMGE3MDI0OWQwOTE2YjY4OTUyNzQ1MGFkN2U1MmRmNTZlY2QxMGYyY2RkNTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b1c63ac28dd54d9582453f1dabb435ed",
+      "statement": "record_listing requires a check for every non-Archived Requirement, a 1-5 star Rating with a ratingNote that is never lowered for a failed must, and fetches the picture before the write; a Listing never changes the Purchase's state.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L104-L135",
+          "version": "repo-lines-v1:sha256:82c6d061cb644d55090faf3a125ef8d5160355bbdd6a83d5a38431cba097302c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1OWUwYjZmYTQ5OGNhYjE0YmJkYTFjOGZkMjZhY2RhN2E4Y2RhYjY4NmRkMGJiYWEzYzE0NTgyYzk2YzU3NGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZGY4N2E0NzMxNmM3MDhjNTUwMjA5OGU5YWY2YzQ0NTM0ZWI4MGJlYWRjZjYwNjMwMjhlZmNhODU5MzdhYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0YzI2MDYxM2NhZjE0ODg4OTkxYTgxMmY0ZWM3YjNjZDY1ZTAwNGEzY2ZmMzM4N2Q3MzIxZjAzZmUzY2Q4M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmZDJkODAwMGJiMThlMWY3OWZhNjFkYWJmZmNlMTBjMWYzYTQzNGE2NzY5NDc2YTI3N2NkN2UyYzIzNDExOWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_35728808a3ee46289d9cd68555993709",
+      "statement": "drop_listing removes a Listing with its checks and picture but refuses the Listing a Fulfilment names as bought; hold_listing stamps the hold date and keeps the Rating and checks.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L505-L560",
+          "version": "repo-lines-v1:sha256:40de8a55caa6a81306d45e1c3f6979d0533d3a2f19fc20e42dcf9db919afe3ab:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMmMzN2IwODBkN2QwNGZkZWRmZmViZDhiNGQxMDU1Y2Y2OWIzZmMyNmFkYWJiY2QxNTdmMWRhOTlkYjQwODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ODBjYTFjZjNjNThkOTYwNTI0M2U5ZDZkZDU0OWRkZGJhODdhOTk0ODdiMzIxMmQzM2RkYTRlMjNiOTY2ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5N2EyYmJiNWQ2YjUyNWVhNzg2YzJlZjU2MWZmYzAzYTY5ZGYyYjBjYWM0OThmNmM3ZjQwODM1MjE0M2NmYjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5NjZmY2U4Zjg1ODNjNzQ3OTI2ODczZjA3YjE0YjllMmE1YmMzNWIxYmFiNzI4Njg2YjE0MWRmYjQyMmQ1MzEifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/schemas.ts#L1768-L1777",
+          "version": "repo-lines-v1:sha256:207a5c39aeb24b8ca37a6d5f0138d91221491478f09c9b32990ed9ba1b4d5030:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzYmI4MzExYTBiNDFmZmE4MjM0Mzc0ODNmMjYyNTdiNjA1MzQ4MzA2MmJmMWQzZDVkMTdjNGQ4NTY4NDZjZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkNDQ1YjI0MTQyNTVlMjRlNDYyYmM2ZGY3NGQ2MjY0ZjQ1YmUwZTliMjQzZTkxYTJiNWVmZmE1YTI1YmNlZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMTMwMzRhNTg2NmUyNGRhNDI2MzJmOTFiZTYwYmI3YWQ1Mzk0ZTQ1ZDZmNzQ3NTNmZjdiNDQyZWE5MWIyYmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_30bd9bbfc6674e4ca6a5d884b76d0b9a",
+      "statement": "Exports and the Quick Guide phone page are rendered from stored data only as static HTML without JavaScript, escaping every stored text.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/exports.ts#L11-L16",
+          "version": "repo-lines-v1:sha256:5d91a9846477c4a281eabf7602f3e88ed1b0982b12a54baef21ab62529709411:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDVmOTEyMWY2MjM4M2VkZjFiMWQ4Y2IzNGFiMTdjMDJhMjQ3MGM2MzU0ZjVhYTgxZWY3ZmMzN2YyMWZlZWQxZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGJjNmQ1N2U4ZDNjNDk4ODVhZDYxMjA0ODMxNzQyY2RlNmNhMTc4YTk4MTlmZTZkMjZmZTJlOWUzYmMxMTJjNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDA3OWQ4ZGYzNjY1NmE1YzU5ZDE3ZmE0YmE4M2UzMTM2ODc4NDIxODk3NmY4ZDA3MWQ4NmEwODc5ZWNhMzRhZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWI3YjRiYmRmYjVhYjBhZDZhODdmMzUwNTMwZTRiN2IyZmNmZDlkNzJiNzQyMjBmYWVkYmYxNjg0Y2Q2NWQ2YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f29e2ac05af4951863f15ce57154fa4",
+      "statement": "The Quick Guide phone page is served by decision and home for the web UI or by an unguessable token without login, where every miss reads the same.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/shopping.ts#L131-L190",
+          "version": "repo-lines-v1:sha256:8a0c4c014da86e5b64817666d32a6b5b5441535c1dd0b1730e5e5aecdaa580fe:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMzcyNmQ1OGJlMzVjMmVkYWMxNmMxYzVjYmY4OWQ0NjY1YjM5NmI5OTczM2I5YTRjMjliMDhkZTU1OWZhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ODYwNGNjYmVhMzkxZjNmMmE3MTM4ZWRjNjVkNWE1MDA5NWRjNzU0MGI1ZTMwNjgzYjViNjZjMDZlN2Q2ZTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NWMzMjQwNjVlOWZlMGVjMTVkNzg4ODU1MjI4OTc5MGFjMGJiMmU5ZDVmYTY2MWQxZDczYzkzNmFmODlmMmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTI5ZTkxZTBmOTljM2U4MjVkZTY5YjQzNWZiNjQ4NGQxYjBhMWRmMmY0NjU2MWFiZjFhMjlmMDQxODhiODgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0811828f1b0342a1b68c40c4546252ea",
+      "statement": "get_shopping returns the Shopping List (Settled, not Fulfilled Purchases) and Considering (Candidate and Leaning Purchases).",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/shopping.ts#L48-L56",
+          "version": "repo-lines-v1:sha256:9f5aece7cf92da2904f7c55b958cb070dd1108112e9f90c8c0fd7f64799967bd:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDJjYTNhN2YwOGZmYjAyZjZjNjg4NTQ3NDVmNzNlMzg3OTFhNTFhMjRkNzk1OTQ0Mzk0MmYyYjBkZjI3ODAyZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDI4NjI5ZGFjODQ0Yjc1YmY0NWYyNDA1ZmVhNjdhMTE2ZDkzZjYwMzg5MGY3NDhlMDIxM2FlZDgwMDkzMDgwMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjFlMGYzMGY3YWNkNTUwNDc1YmJhZjNjNGE0MGVjYmNjM2E0NjA5MTNkYjlmYzFmMTNiZjY3NDExNGM4MTcxMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE2ZDdjZWE4M2UxMmQ5N2Q1MTgxNTllN2Y3NzE2MzFjMzEzOWNlOTE2MTdhMjExODMzMmQwZWM3Mzk5ZGRkMCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

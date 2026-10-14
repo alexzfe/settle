@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:646a65bbee7443651ab6af50c867b5a8e2017daf5924d93a75bb88cbc0301ab9",
+  "claims": [
+    {
+      "id": "claim_eb07a7be42ad46df9665024985c83dc1",
+      "statement": "Settle runs as a local server at http://127.0.0.1:4380 after pnpm install, build and start, with an MCP endpoint the user's own Claude session works through.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L13-L26",
+          "version": "repo-lines-v1:sha256:74f7361180389cfc6d225756ce5a800362c77c010c67e9abb1a3f1d3d2845ec2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2MWY3YzcyZmVhOGYyNzUwOGY4MzViM2E5NDY1MTI0ZjlkZjUzN2E4NWJjZTViNzA4MmY5MTJiMjJjYjQ1NDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzNDk3OGI3ZWMzNWM4MTFmNmUwNDRlMTE3Yzg0MTY2YTNmZDQ0MjE5N2UxMTc1MjcyMjQ1MDY2Y2NjNDExZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0NTUxYjZjZmFiYjEzODAyY2U4OTE4ZWYyM2M5Y2YzZDMzNTE3NjRlZTM2ZWRjOTdmZDIxNGJlYjY3ZDgyMTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5b4cca7f9004452b842eab318ebb0f58",
+      "statement": "pnpm dev runs the server and the Vite web dev server together via concurrently.",
+      "evidence": [
+        {
+          "resource": "repo://package.json#L9-L11",
+          "version": "repo-lines-v1:sha256:d7b15b16e1082306e4c279f45c64542bb26fd27cb33eb42e77b68be43405244f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTJlYTA5Y2IzN2EwNjk5ZDYzN2U1YTgxNDc4MzI0OGM3YWUwMWI0YmYyMDg4ZDRjOWRhNzU4YzU2ZTAwZWM4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzIwMTJkNTY2ZTUyMDcwMmIyOTY5MTBlOGEyOTY0MGFhMGRhZjc1M2ZjMmIxODYwMjM2MWRhMDI2NzEwZjZiNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjJkOGUxYTdjYTllODczNGQ3M2U5NzM1MTEyYmYyZjhlMzk2NTlhOWE0OGUyY2Q1NTcwMmUzMzk5ZWIxOTFlYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_131f8a293ed54b71be9f3f6b91d691ad",
+      "statement": "CONTEXT.md defines the domain vocabulary (Home, Room, Decision, Settled, Requirement, Quick Guide, …) with words to avoid for each.",
+      "evidence": [
+        {
+          "resource": "repo://CONTEXT.md",
+          "version": "repo-file-v1:sha256:eb02145e019fb66ad273bb80322b8a793ced369d109902d450eb20e91746b7f0"
+        }
+      ]
+    },
+    {
+      "id": "claim_57391bd760f64b1686e37c23e2a2c45c",
+      "statement": "Lengths are shown and entered in metres and centimetres but stored in millimetres.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L44-L48",
+          "version": "repo-lines-v1:sha256:aa69dd6a0fd6b0720d1746103476ddcaa04c40d15dcbe0db6849314c23be410e:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmUyNTgwNjdmMmM2MTY3ZTM3MzMzMTMzOGNlODI4ODAxOGZiYTI4Y2EwYzY3NDM1OTJhZmE4MzgyMTM3Y2Q4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmU5NmE0OWNlNjhkZDUyMzMxZjc4ZmJjYzE0ODlmMDE5YjlkMWI2OTAyMTAwOTliNzMxMDdmYjEyZTFhNGU4ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjhmNDI2NzVmMDIxOWE1NDZkNTY3Y2Y3MTkyMzA3MDM4MmI1ZDIxM2JlNDZiODk2Mjg0NTUyNzdhZjg1MjI0YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_480e2c2ebe914a8a9bea3b42e434582c",
+      "statement": "Settle is licensed AGPL-3.0-or-later, a consequence of its AGPL mupdf dependency.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L52-L56",
+          "version": "repo-lines-v1:sha256:2435ba3d7fd0a28e374efa7ff90f7fe06eee850c95c553ae92ad9deedeb20210:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJiNTUzMzNkMDc0ZTRiNjliNTIwNGNmOTJmMzcxMWYyMDE5NDM2MjhhMTMzMzUxNDQzMjgwYmU3M2NkYTVkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzFmNzA1YjM3NjAyMWFmM2JlYjM4OGY1YWY2MTU2MjgwYzBkMTVkNGE2ZmE5N2RkMTY3OWJjNDEwZWRjMTJkNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjhmNDI2NzVmMDIxOWE1NDZkNTY3Y2Y3MTkyMzA3MDM4MmI1ZDIxM2JlNDZiODk2Mjg0NTUyNzdhZjg1MjI0YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmZlZjg3YTA0ZWIxNjVhZGMxYzQyNTJlNTU2NTU2YjZjYjg5MjE4MWEzMWEyZTgyMzdjNTZjNzdlNDAxY2UyNCJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/files.ts#L52-L60",
+          "version": "repo-lines-v1:sha256:11522a04258ff8fdc3613b9ad4ca56eb37f2e1631eefac5c06ace008b8fc94aa:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmZmZjAwNWM2ZGIxYjA4ZmJmYjM1NjIwYTI2MWMyNGE1NWVkMmI0MzU1NTJjYTY3Y2RmNjE5OWY5NDA2ZDkxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmI1ODBlOTY0ZjgzYTQ3M2Y0M2Q0NDM4NDYyOTQ5ZDY4YjU2MDBmZGE3ODdmMTYzNzQ1ZDAwZGU4OWNiZjM2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2M0MGI5N2RmYjZkM2NkMjBmNjdmMDJhMzI5ODNiMGRkNmFiYWMyNTE0NDBiMmU5NGExZWRmODI4YzVkZjAxMCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

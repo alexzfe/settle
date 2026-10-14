@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3c93c94774a50aec3953968a3a9c3443ccf05a041f6151fd5d1ac772cc914d57",
+  "claims": [
+    {
+      "id": "claim_54a53d00efaa43698fb33b29fb4faa59",
+      "statement": "Home Intake's opening holds the overview and flags blocks, while design-direction, color and purchase also get the Home-wide decisions block.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L12-L21",
+          "version": "repo-lines-v1:sha256:cddff01992ff68a4211e65223ac99210f2b5c3e004fc434e6cd62e6e9e7e6213:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNmNjFmYjVhYTYwM2I3YzgzOWJjMzNkODA3MDU1NGQ2OGZlMGUzYjYwMDdmNTI0YTA5ODcyNzllMDc5NzM5ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0OGZlMDVmZmZmNDAwNGU3ZTc0MzUxYWM5NTI0ZTUyMTMwZTU2MmZhZTE3OWYzYWQ2ZjE2ZDFhMzFiMjQzZmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9b5432df274a433cb57439f3f5f8bff9",
+      "statement": "open_session without a session creates a Session slugged <skill>-<4 chars> from an alphabet without look-alike characters, records it, and returns the id, Home name and rendered opening without changing the Home.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L191-L201",
+          "version": "repo-lines-v1:sha256:8c521e102b501ddaed06d9a45684810d632501dde7bd58c6b839b5f1c6a037b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZTE2NjFmMTNhZDQxNGQ5YjQwY2U5Y2MyYjdhZGQwNGUwZmVmZDlmMmMwMzVjY2FjOTMzMTVjZjMyNzFiYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2OGNjOWM4ZDhkMTU4NjAxZWJjZTUyYTkxNWNkMmYwOTVmYzBlNTk4MWY5YjA3YzMwOGQ0OGUxZjgxZDdjYjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L23-L105",
+          "version": "repo-lines-v1:sha256:16436368692f112eba4daefeeba099e97b1ac1a4916770725333a369b3d43ff5:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwOTAxMDNmMmUyYzUxMDI3MGU5NDdlNjBhYWFjMGNhZmQ0ZmZmMGJjY2VhMDY1OTc0MTYwYTZlMDhlY2I5YzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhY2RhN2Q3N2ZkMmQ1MDQ5NjJlZjYxMTFmZGM2MzljM2JmNzEwNGE2ZGYxMGMyNzdkMDg2ZGQwOTQ5NjU5YjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU0ZTliNWY5OWY4ODQ4NDRmNGUyMmY3YTc3ZjI5YTZmYWQ5MWY1ZDA3ZTgzZDlkYTgyZjg3YmRkNTYyNWJlZDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4202cfebdfb548a6ad4a397d6c1f62d7",
+      "statement": "Joining a Session adds the new Skill and returns only opening blocks not yet sent, unless resend is true.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L107-L142",
+          "version": "repo-lines-v1:sha256:4edfc6512a17eaba35d6737cb1ee79b509d4425226d7bd04f01da968b94b2b92:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTM5ZTBlNjlmMDVhZDExNmY5YjlkYzc5YjY5NmNmMWRmNjE2NDIyN2Q3ZDMxMDdmNjFkOWRhYjRmYTk5ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZGJjNTM5NjI5MTU4Y2ZhYTU3Y2I5NjNlNTgzZmU3NWIzNDRiYzhkODFmN2M3NTY3Y2M0MmVjNTFmNTRhZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM4YTA2OWM0ZTI2ZjNhYTc1MDlmMGZjNDY1NzEwMmRhYTZlMDA4MjExYWYwZjU3OGYxZGMyYmRmYjUyMTFjMjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0955bc93531c40b5b3355c5f575c034d",
+      "statement": "close_session takes a changed/open/next summary for the user only, after which the Session refuses every write.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L144-L177",
+          "version": "repo-lines-v1:sha256:95d988c95d3069703cc408456fb4f92818f410b5b7f065eccf3397ac9c310b94:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwOWUxYWIzNDk5MGU5ZmM4MTg2YjVhMjdkMGE0NzI0ZjIwNWZiZWNlZWQyZDAxNjcwODU1ZGI5OTFmYmZiNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxNDA2ODk5NGUyYjg0MzI4MzQ1ZDcwNGEzY2RlMzIwZGVkMmVmMTM1NDk2YjM5NTc5NmExZDQxMWQ3NDM2NTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlYTMxMzliNjNlNjUzOWZkMzVmZWExYzFkYTk3N2QwNmU4N2JiMTgwZGNjMzhlMjEyMzA0ODk4MzgxNTg2ZTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_46c52ceb89c74a00915bf2e331b9083e",
+      "statement": "Agent text follows context tiers (opening at start, a Room Sheet when work first touches a Room, everything else on request), never renders the change log, omits empty fields, marks Estimated with ~ and Listed with *, and names records by name and slug rather than ids, except Photos by #<id>.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/render.ts#L1-L8",
+          "version": "repo-lines-v1:sha256:3580e62c3d37df75f30dfce6db514954910cc3567d05f010cfc6fd42d8522538:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWEwMGVkNzM0NDgyOTVjYWJkNjIwMDg3ODBiZDA2MDg0ZDNkNjJlYjg4MzhiZDZhNTUxY2U5MTE1NGE4YmJjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2VlODJmYzZjZmQ4M2Y2ZTY3MmEzZTQ2Y2I4YjdlYTgyM2ZiNzc2NWM2Njg0NWI5MmNkY2IwZmRjYWI5OWQ5NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmQwNDExNjZlNmUyMWRjYjk1ODQ0ZjNmZDJmZDQ1N2VlMDM2OTlkYTI4MWY5ZDk4ZTU4NmI1OWQxNDZkNjc5MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b1e3dfa904e04a0b9589746ec898d2a4",
+      "statement": "get_room_sheet returns everything recorded about one Room including open Decisions, Photos and Gaps, and its description tells the Agent to fetch it once per Room and rely on later receipts.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/rooms.ts#L118-L140",
+          "version": "repo-lines-v1:sha256:b2cf6d9343511787d462b9a7835f32650b54c61117610b1331727eefcf1fc8a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhMWUwZjdmMDcwYmNjMTExZGMzZGRmMWVjY2ExYjdlMjQ5NmU2ZGM1Y2U2NzQyNGNiY2Q5N2E0MzUyMjJkYzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2NzdmZTFmMWNkMWJhMmNmY2M3MGE2NjFlZWIxYWI4YTljMmY0ZTJkMTJhOWVmMjRkNTE5ODY2NDJjMDE3OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0YzI2MDYxM2NhZjE0ODg4OTkxYTgxMmY0ZWM3YjNjZDY1ZTAwNGEzY2ZmMzM4N2Q3MzIxZjAzZmUzY2Q4M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjNWZkOTkyMzE5Yzk0MjNiYTk2OTM2NGNhMDA3ODYxYTQwMDhlNTM0MjVkYWNjY2E4MDlkYzE2MWRiYzlmNjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_327a63e45a9f46cfbe701e41ae68c45d",
+      "statement": "find_index is web-only, returning a flat list of Rooms, Decisions, Items, Listings and Features that the browser matches on each keystroke by name only, accent-insensitive.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/find-index.ts#L11-L40",
+          "version": "repo-lines-v1:sha256:a382c0656a47cbea174a08bfb4a33656183a30b382ab7786469eba3775be5ea9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkM2JlY2MwODU5YThiYjhhYTY2NjBjODA1NjMwNmY1NWUxYzQwZjI5MGYzNzJkMjQ4YjFjMTg5MzA0MzcxNmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwZjhkMGVkYWZjYTA3Y2Y5OWU4NDEwZDQ2ZTNhMDAxOTU0ZWYzYWRjYWYyZGI1MDc0NWMxZTAxZDk5ZWI2MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkMWY1MzY3ZmY2YjYxYjBjZTIyNzhkOWI2NGMwMmZiOWQ0MWMxYjg2OWZhZGViNDM1MDdkNDJiN2IzZjQyOGUifQ"
+        },
+        {
+          "resource": "repo://packages/web/src/find/match.ts#L1-L12",
+          "version": "repo-lines-v1:sha256:a50e30c5502d1478702c377bc33a2708e3278a39ab288582d2dbe57b48961b5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0YzEwNWU5MTBiN2FjMGY2OGYxMjNiYjcxNjNjY2VhNTJiYzllMjA4MzI1YTdiN2I1MTU1OGY1OGU5YzFmM2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiNmI1YmJmMThiOTRmNzRmMzM0NGE4YTA5YmVjMTI0ZmQ2ZmU4ZjRjNjJkNDk5NWE1ZDM1ZjI2MWYxM2RlZGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2NmRmMzkxZTlmOTZhODdmMzNiNWI2ZDE0NjljMDlmYTM0MDYwYzIzOTlmOGEwMDdkNWJjODk3MjljM2Y2MzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a2fa51b3df454c09847b6bd6b6bee7d6",
+      "statement": "render.test.ts pins the Agent-facing text of operations with toMatchFileSnapshot files under packages/core/src/__snapshots__.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/render.test.ts#L32-L60",
+          "version": "repo-lines-v1:sha256:127edbf5b5023583491c662c2b21c3e8d408127889363f8139cc6d40ba6e5772:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTMyNzgxMzRlOGM0YWZlNWYzMmRiNWNiZGQ1M2EzMGI2NzY0ZTMxMjllMDQwMGM2NzMyNjMzZmQxODM2YmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyNWQ0NWM4Zjk5ZjE1ODZjM2NjYTYxZWMyNWMyNGU5MTBjYWU4ZTZjZjNmZmRkYjA1NzM3YWU2YWExZWI0NzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlNjM5NDFhZWI2ZTAyMWVlYjMzNTI3YjIzZjc0NzM5NjdmZWExOGNiMmM4ZmVjNTUzZTk3MTEzOTI3MWU5MWMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

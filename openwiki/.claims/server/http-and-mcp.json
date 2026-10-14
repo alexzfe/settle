@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ac2949ff43c8be8923165ebe7a40edce0fc1e3a1c2acd4cd5cb29aae3c20a57d",
+  "claims": [
+    {
+      "id": "claim_89091694cf954981b95c59a015473668",
+      "statement": "createApp installs the front-door guard and login before registering health, multipart upload/download routes, exports, the Home Folder script, POST /api/:operation, /guide, /events, the per-Home MCP endpoint and the web UI.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/app.ts#L35-L84",
+          "version": "repo-lines-v1:sha256:c8aeddcd3e8de8c5867634fd163beff53764692268a20138620dcbe4241c3e08:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjZTQyNjk0NzM5MzkxOWZlYmZhZGUxNzUxZDFjOGFmYTllZDI5OTY4ZmJkOGRmMWU3ODk1YWUzOGM5ZWY4ZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzNzc5Y2U4N2E4NGYzM2IxZTdjZTRiOGYwOTYzYzZiMTVhOGNjNTZkMjgzZjc1NGE0MzhmMjM2M2RiOGNkODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiOTA1MmM1ZDk5YTJiYWFmNzg4NGZmNmUxNjQzYzFjNTM3ZWM3YjYzMTUwZTc4MzljMzI0MjRmZjI2NGY4ZWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_13a5482e3560421393043833db755a5d",
+      "statement": "The web API refuses unknown and Agent-only operations with 404, operations with their own route with 405, and non-JSON bodies with 415, and maps CoreError codes to HTTP statuses defaulting to 409.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/api.ts#L358-L372",
+          "version": "repo-lines-v1:sha256:d0097509790bf44220dc73ff35b09c8bacad9e244aedcc5e838c1422648a08ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjOGMwZGU3MzM2MTIxYWJhMjkwNTk3YjYwZDg5NDE1MGUxMzk5NWY0ZGM0NjExZDA4Nzg5YWI5YTZhNDFlZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/server/src/api.ts#L51-L84",
+          "version": "repo-lines-v1:sha256:b54a839b7ffdd99565667077ce072e436594df536d602ccb1ffa3689451a67e8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxMWM2ZjRmNjg0NTA1ZTkxZDhlMjE5NWY3ZTM0ZjUzMmZjMjdhMWU3MzQ0MGZiMDI3ZTBhZGIyYTI0ZDZmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyOTdhN2QzMTVmODA3ZDBiYjU2NDRkZWMzNWJhMjFkZTkyYmJlZTFhZDJkZTVhYjAyMjQ3YjQzNTRiMmRiMjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e4418404b58d454e8474ed00a3f867b1",
+      "statement": "The MCP endpoint is stateless: each POST builds a fresh McpServer and transport bound to the URL's Home with JSON responses and DNS-rebinding protection, and non-POST methods get 405.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/mcp.ts#L31-L80",
+          "version": "repo-lines-v1:sha256:3754da99cd3e7870d4c069ae0bf7589e2c26da6267b7e034daca94cb2408ce3c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ4ZDg0NmM1OTdiOWVmNTcxMTAxNTJiMjc4NDQ2MWMyYzEwOTAwZjQ4NDE1MTAyY2I1MjM5ZTU5YTkxOGM3NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjUwZGUyNTY1YjNhYTcwNWJmOTk4NzQwZjk2N2QzNmE3OGFlMzQyNzE2ZjgxODk1YTIxNTQ4ZjNlNGUzYzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_302e76a45f944995a7f25c0134e84ba5",
+      "statement": "Each MCP tool call records Agent activity, runs core with a Session caller, returns a text block then image blocks without structuredContent, and turns CoreErrors into isError results.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/mcp.ts#L82-L124",
+          "version": "repo-lines-v1:sha256:a13f7da4dd2e08ae2f565f11403ddd87b6dc9a0b2a1158698d05bb5201f68075:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMTI0YzI3YWNkYjgzMWY0NjAzZjYzNWRhN2UzMmEyMDdkNjg5MGU5NmVmNmMzOTJjZmZhZWU5ZGU0Njc1NjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiNTgwZTk2NGY4M2E0NzNmNDNkNDQzODQ2Mjk0OWQ2OGI1NjAwZmRhNzg3ZjE2Mzc0NWQwMGRlODljYmYzNmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiYTBmOGU0NTJjNTllOTJkZWRkNDc2NjFkZWI1MTJlN2IyZTZjMDI1YmIxMTNmMGIxNWVhN2ExODk1MDA0YzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c0f2bfade10541d296061587d607d535",
+      "statement": "/events sets X-Accel-Buffering: no, sends change and agent events for the requested Home plus the last agent event on connect, and sends a keep-alive every 25 s.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/events.ts#L1-L52",
+          "version": "repo-lines-v1:sha256:7d6ebe88ada48139e2b8625e755977ae0cca26a656f247bcbde7e2dcb9d7072d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlNDQ2YzUwOGJkMGUxYmYxN2EwZmZiYzdjYmM5MmRiNDM1N2Q0NTEwNDliZWI4ZDUzZThlYWViYTEzNWE1YjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5d8c956533a04c4e8a4030811f6834b9",
+      "statement": "AgentActivity keeps the last tool call per Home in memory only, because the stateless MCP endpoint cannot know whether an Agent is connected.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/agent-activity.ts#L1-L46",
+          "version": "repo-lines-v1:sha256:abdc6efd11d95df97f75ca48663b5f8048a08c8175eff3c38ac6c2c000036889:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ac4269f764df4034b1e07cd3a472bcf0",
+      "statement": "Server shutdown closes all connections because open /events streams would otherwise keep close() waiting.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/server.ts#L119-L130",
+          "version": "repo-lines-v1:sha256:bb62495280bd299fbf7dd7505aedb34f48225be661289d1dc7dd55ee69184038:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkOGQ2NjEwZGEzNDllNTA0NDk2ZDc2YmY4YWE5YTQ2ZmFlZDg3NTRhNzJhZjExMWM0MWU4N2ExNDk5OTlhNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3NjM2ZWQyOWVjYmM0YTM2ZDA2ODM3OWExNTYyOTc3YTQyOTVlMGZlY2UxNGJkOTg0MDhlZmU4ZTA5MDFmMzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a548c0cb707a4a1297947ae85858145d",
+      "statement": "Rendered pages are served with a CSP forbidding scripts and form actions plus nosniff, no-referrer and no-store.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/pages.ts#L14-L21",
+          "version": "repo-lines-v1:sha256:69234bdf827668aee819c24d008cf2380934a2d1115a7893ed56d68cded45ecc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTJmNjg0NzgxZWQyMzZjOWZmMjUwZWMwMzdkYmQ4YTM1NzNiZTAwOTZiNzBhNWJmY2UyN2RjNjBiM2MwMzAyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWExZDFhNjMzOTAyMjljNzk4MzQ3ZTgzYTA0MDU0NDFjOTQwMDAzNTI4NGFkMTY4YzFiZjZjZGYxZDcwYTM3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGJjYzk0MWJjMTkyMzhjNmQ0MGRhYzI0YmUzMjljZjhkOGQ3ZWMxMjZjYmFkNzQzOGRiOGZiODNjZTllN2I5NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGFmOWJhOTM0MDg5NWQyYjNmNWYxN2MxOWE3NDViNTNlZjNmZWMyZTYwOTU1NmMwMjY0MzliZTc0NTM4NWViZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_53e0062ba7494d72ae4c525e2ed78cef",
+      "statement": "The web UI is served from packages/web/dist with a history fallback that never swallows server paths, re-reading index.html each request, and a placeholder page when unbuilt.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/web.ts#L1-L43",
+          "version": "repo-lines-v1:sha256:ed9185d8bdca17579333cf38b1d65c353df7b554510ed1d70bae9f5783bdf8b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyOTk0ZTU2MTI1MGU0NTZjZDk3YzVjMjcyNzcwOGUzOWEwZmYyYzI1NmQxNDYyMGE0NmM3OTc3NTY1NTQyYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

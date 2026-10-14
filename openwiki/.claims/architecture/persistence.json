@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e9fec5337c3969c188a8e37adf4a4a9dde88e78c62006189aa9e2b2e8030ba57",
+  "claims": [
+    {
+      "id": "claim_959af83957eb490fbd20900be1fb5218",
+      "statement": "Every SQL statement core runs lives in store.ts, which maps camelCase row keys to snake_case columns and stores a Measurement as the column triple <field>_mm, <field>_prov, <field>_src.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/store.ts#L43-L46",
+          "version": "repo-lines-v1:sha256:eedb4bdbc2625892c986d56d5878315427386a5aa91cc53347b5fd7a35de753d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjRlZGFmYWUyZjc3ZTMyZjFhZDIxMmU0ODM3NGQ0NDkyYTEzNGY1MThmMTk5MTg1NGRkY2UzMzJlZWVjYjE0MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjYyZmVlNTJmMjE5YTk2YWExNDZjZTM5ZjgyZDQ2ZTBlMjAzMzIzZTkyMjBlZWU5NTQ3MjgwZWYwMWFiYzY1YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzMxYTdlNjE1MzIyY2UyZWU0M2ZjMGVkYmNjNGRhZTFmYTlkNzA2ZjgxZjczNWQzMTY5ZjMxMWMxMWNlNzVkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2I3ZTg2OGFhNzIyZGI0Y2U0N2NmOTNmYzFmYzQ4MDc2ZWEwZTIyNGI3ZTViYzgyZTBmNmFhZWExYTUyOWVjYiJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/store.ts#L666-L715",
+          "version": "repo-lines-v1:sha256:556829b4386f1322d1af92217903999dfe8e528f5d3e2a22d08ca3035ae82ebd:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZmU2MDc5MWQ2NGIxNDlkNWZlZjViYTA1NTJiNmY1NjYxZWI2MTVlYTZjMWZlNzJiZTI0ZTk3N2E1ZGY4NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5NTM1ZTEyZjlhMzFlNDBmOTRmY2ZmNWI3MGU1MGRhMDZmOWQwYTAxODEyNGM1YWFjZDNjZWZhMTZjZDdhMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFhMTBiNjFkY2E3NmY4NTgyZDMxZDU3ZTMxNzE2ZGIyNGY4ZmUxZjkyMDliNmI1YWY0OWU4YzdkZjk5YWMwYmUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ebbf92b1d8d249a18d0a824d58594ac5",
+      "statement": "Store.transaction runs BEGIN IMMEDIATE and COMMIT, rolling back on a throw, and requires a synchronous function.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/store.ts#L550-L551",
+          "version": "repo-lines-v1:sha256:af354c4f800c355de92a43664c64ceabb4dae981f9f1a379c06b43884b88d960:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjE5YzdhMDBiYTA3YTcwZTZmMjU3NTFkNzE2ZTViYzJiY2RkNDRlMWE1NGYzYjQ1MTY3NzE2YzhkNjdmYTNhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJiNWI1OWE3ODMxMzZhMWVlZWEwM2I1ZGRmMDVlYjhkYzMzYjVjYjQxNDU0N2RmN2FlMWMxYWQ4M2RlNjJkNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTk5NWZkMzQzODRlNWI3NzBlNTliMTcwM2ViNGIyY2Q0OWY4ZjcwZTRmMDM1Y2Q2NmVjNjI5MTVhYmFkOTY1MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTMxMzBmMzViNTJlZDY4MzM3MDRmODlhMmNjZTgwODkwMDM4MTAyM2ZhMWU5YTIxYTFkNDRhNDk1OGIwZDY4MSJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/store.ts#L767-L777",
+          "version": "repo-lines-v1:sha256:20ad53ff711c6807b6b3998cc3588e884fc233b383bf3aceca087803dbc842f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NWZhMGYxMTE3YjVlYTQwNDM0MTQwZGRlMWEzNDBjNzIwZGRiZjMyNjIxMmUxOTE4MzhkNGIxNTZkMzE2YmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNjJmNjBkODU5MGE1NzljZjQ2ZjhkNjczNzhjNGM1NzJiOTYyY2VjY2RiOTBjN2E1ZjdiNDJiOTYwNzgyYTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFkYjNlN2NkMGMzYTYyMzA0NzY2ODE2MWQxMDRlOTlkODYyMDljYTNlNzc1NGEyNWIxMTlhNDkwNzg3ODA0MjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmZTQ5ZGI4MTU0ZmFiZDhiYWZhMWU4MmUxZDBlMjAwYTBjMDhmNmE3NjA0YjEyYTNlYzUzNzhmOWM5MDZiODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1918b9f3fab0437d8e159ac4d7cce2ad",
+      "statement": "migrate() enables WAL and foreign keys and applies all pending NNNN_snake_case.sql migrations in a single transaction, rolling back and closing on failure; malformed names and duplicate numbers are errors.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/migrate.ts#L1-L60",
+          "version": "repo-lines-v1:sha256:c5b41c3c021be450b9054a46ee8c5763971bbc3332f462e4af8ff4783c980a66:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjM2FjNGY3ZjRkM2U3NTg1NWNjODAyYWE2ZWI1MWVlMjZiNDRmMjJkN2VkYjE5MWMyNDZkNDM2YTYxYWYzMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwYTBlY2RiYmU4MjU1M2I5ZjhlNzZmZTIwNjNiMmU0ZTczYWI1MGZlMmRhYmQxODFhYzY2YmQ0MWQ0NjM2ZTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d47a6137db3a4fd6828cb941e0e0ea8e",
+      "statement": "Data migrations are tested against prior-version databases, e.g. renaming stored Locked to Settled and giving every existing Home a unique token.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/migrations/0014_home_token.sql",
+          "version": "repo-file-v1:sha256:22c786d19edbec80c67910e534b5378e44c84aaeda08368fa3c4e7934cbae362"
+        },
+        {
+          "resource": "repo://packages/core/src/migrate.test.ts#L187-L290",
+          "version": "repo-lines-v1:sha256:d4561fda181cd4f3a187698f51607a6a813e5b5d399301e5cf8b6fdb8682482f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiYzIyOWMzMjBiNzQ0NGEwNmY5YzQ2OWI4NGE4N2U5ZWRmMTg3M2Y2YmM0YTMwMWE1OTJlMzkxOTg5Nzc1YjJjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYmY0ODI2NzVkNDc1NTRlNDYxM2I1ODNhNDBiNTFhY2FkMjZlZjZiOWVmNTQ4MjI1NDBhNjYxZWZkNzViNTI1IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlMmUzZDUwMTE4OGYyMzQ3YWYwNTIxNGM3MTQ1OGIxNDVhNTk5MmVhODJkNTMzNTllYzg3MDc4NmExZmFiMmY3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzYTIxY2EyMzhiMDMzYTE4MGZlZjFjYjYxYzU2YzYzNjk4MDg1YTY0ZmFiNzVmMTFmZGY3MTViNDRhNDQxMjk3In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_62142789bbba4fc8aa232b11a5670f6c",
+      "statement": "The Provenance rule orders measured > blueprint > listed > estimated and returns set, unchanged, refused or overridden; a weaker different value is refused without an override.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/provenance.ts#L1-L40",
+          "version": "repo-lines-v1:sha256:af79146b56e6f046ae855d1fdcc89cbbaa7fa2e3d1b0f48b58a33c2424dbd033:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3MzdjNjcyODhkMzk1YzFjMzA1NTQxMmNmYjQzMWYzNjMzYjI4YTkxNTQ0ZTg0ZTgwNThjNWZkMGNkZWY5ZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwNWNiMDM0YWMxMDk0MDM1NjE0MDQyN2Y5YzJkYTE3YzUwMjI5YjMwYjcwYjBhZjg2NjYyNzNkMmU2M2UxYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjOTIxOTEwNTBkY2Y2Nzk3ZWE2ZTI5YzA3Y2JlMmNjMjU1MmIzODcwMzFhY2UyNDc2ZWRjY2IyYmI3ZTM4NmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f686bb2fb8a7485091934c1d06fbea48",
+      "statement": "Core reaches the disk only through the FileStore port, and the PdfRenderer port isolates the AGPL mupdf dependency so it could be swapped.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/files.ts#L5-L60",
+          "version": "repo-lines-v1:sha256:911c99154de1e3b2739a325fa7be4aba8bc90e26362d93bd42152ad1d90094ea:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjNjI4Zjc3NjUzNzYyMjFkNzJiMTZmNzFiMzQ5MDRhOWMzNDkxOTRjNmEyNjdlZjA0YTY3ZTIyNmUwZjA1MTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjNDBiOTdkZmI2ZDNjZDIwZjY3ZjAyYTMyOTgzYjBkZDZhYmFjMjUxNDQwYjJlOTRhMWVkZjgyOGM1ZGYwMTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4ad9bcded3714dbc9287500e9e13b59a",
+      "statement": "Blueprints are stored under uploads/<home>/ with rendered pages under rendered/<home>/<blueprint>/, Photos under uploads/<home>/photos/ and Documents under uploads/<home>/documents/.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/blueprints.ts#L56-L68",
+          "version": "repo-lines-v1:sha256:9c8d52a7b0fd9621dff98105ec0044824c83431e1e4725c5382dde4775a6e604:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZWM5ZTVmNTIyYzc1NTFjYmE4MzkxYjc4ZWZhZTcyMmVmZDI5ZWQzMDcxNTVmZWQ0MmM1MjI2NmQ1ZGIwMTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjN2ZiNmQ1NzM5MjliOGE4ODU5YTk2ZmM5ODZkMTNkMmNhNDk5YjM3ODgxYjYwYTM0YjExMTAwZmI4MTEyOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjODM1MTI5NzE3N2YwYmI5MjBjYWJjNmVjYmY4ZTdjNTlkOGI5ODkxZDE4MWRmNWUxYTM3ZjM0ZjMzNTRhMzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhYWQyMDgxZTc3MmViZmM2MjMyMmYxOGM3ZTI2OGNlOTQ2ZWI1MDQ3ZDk5MzYyZGQ5ZjkwOTFjMTA2ZjgyNTgifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/documents.ts#L96-L96",
+          "version": "repo-lines-v1:sha256:e81eaeff1467e109df0608b1e51f8f1183b5e1eae6be925528ee6bffa5ea281e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTgxZWFlZmYxNDY3ZTEwOWRmMDYwOGIxZTUxZjhmMTE4M2I1ZTFlYWU2YmU5MjU1MjhlZTZiZmZhNWVhMjgxZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTgxZWFlZmYxNDY3ZTEwOWRmMDYwOGIxZTUxZjhmMTE4M2I1ZTFlYWU2YmU5MjU1MjhlZTZiZmZhNWVhMjgxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODczMTY4M2FmZGQ4MDdhOTAwNDE5ZjNhMjYzNGJkZjI5MDFhZTBiODlkMWM1MzAxNDQ1YTQwMTJhYTlhYjE1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTA3MTMwMjllY2ZiNDdiOGYzOTM1NmE1MmE1NDY3YjU2NjFjNGMzY2UxMWMwNzhmNTY4NzgzNzNkMmU0MDE0ZiJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/photos.ts#L287-L287",
+          "version": "repo-lines-v1:sha256:99d6ca11063c3cfb1129f4d08da3c8717a9431cf1b152a0f4764ada91f384843:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTlkNmNhMTEwNjNjM2NmYjExMjlmNGQwOGRhM2M4NzE3YTk0MzFjZjFiMTUyYTBmNDc2NGFkYTkxZjM4NDg0MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTlkNmNhMTEwNjNjM2NmYjExMjlmNGQwOGRhM2M4NzE3YTk0MzFjZjFiMTUyYTBmNDc2NGFkYTkxZjM4NDg0MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTYyYTZmYTA4ZTlmM2IzMDMzYTNkYTc1NGJjMDk5MWQxMjdkODMyZTQ4YWQ4ZTRiNWVhOTFjZWI3NDk5N2NiMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmIyZDIyODU1OTYyNDQ1ZDU0MGIzMmZlNjk4NjJiYzMwZmZhMmMxODc0ZGJiNTM1MGE3NTdlNzg4NTcxMGM0NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_25b84c16b29a49b5bf6922e08efb348b",
+      "statement": "Tokens are 24 characters from an alphabet without look-alike characters, used as Home bearer keys and Quick Guide phone-page tokens.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/token.ts",
+          "version": "repo-file-v1:sha256:7f118ce9a76a8cf8ac363d23e882f8919116600e07c6ffec9ffd66130596a7e7"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

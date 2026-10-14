@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f298298d3ced312901430d371d9117753cda84a6e472baaecfb0d9a0e171735c",
+  "claims": [
+    {
+      "id": "claim_ef86b5d3e6114e6885d80252c3fe52b2",
+      "statement": "Core recognises exactly four Skills (home-intake, design-direction, color, purchase), and open_session's skill argument is an enum of them.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L54-L54",
+          "version": "repo-lines-v1:sha256:4527945ee4ef45d40153fe2b47150b1a8465344097ef4f1ed87fc71f2303abf3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDUyNzk0NWVlNGVmNDVkNDAxNTNmZTJiNDcxNTBiMWE4NDY1MzQ0MDk3ZWY0ZjFlZDg3ZmM3MWYyMzAzYWJmMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDUyNzk0NWVlNGVmNDVkNDAxNTNmZTJiNDcxNTBiMWE4NDY1MzQ0MDk3ZWY0ZjFlZDg3ZmM3MWYyMzAzYWJmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTE5ZDM3Y2I3MjBiYTRkY2NiZDliYzQzNDRmYTY3OGMyYmQyMDBlZjQ0Y2NlY2EwYTM4Y2IzZTZjNThmZmE3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWY1MmNhNDE0NmE0OThjNzNmMGUyMjU3NmI2ZDJiYjJjMDgzODY2NzAyZWY3M2Q2YzY0YTlhZTA2NzdiODFkYyJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/sessions.ts#L9-L10",
+          "version": "repo-lines-v1:sha256:34fe9416614f09e6cc8a679adcacaccb77e7e1a9946eeb1b6b402fb89d3ebf0f:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTE2MWIzYjJmNmY1YTRkZDBiMDg3YjBkNzcyZDdmYzNiZDJkYmE3OTQ1ZTJiYTQ5ZDQ2ZjcyZTY3NGQzODE5ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWI3ZjE5YjM1OThlMzhhODZmZWUwY2U3ZDA5M2Y5NDI2YzBjNDRkZWNjNzM4OTJlOWIzMTczOWQwMzJmNTRkNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzg1NWJjMmVkMmM1ZWQzYWNjYTBlNTUzYTc1ZjcxY2NmMTFlYzdiNjU0ZGNlNDRiYzA4YmRmNzBjZmNmZWM2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGRkOTk1ZDE0NjIxMmY0MDkzNDZhNGYyYTRiMTY0ZTcwZjY3MTI3ODU3ZjNhZmQ1MGZhZGRmMTkxMjU2ZDA3ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6c1d5bb5c497446d9a2c7447c05698da",
+      "statement": "The skills build validates each Skill's frontmatter (only name and description, kebab-case name matching its folder), forbids the protocol heading in the body and shallow headings in protocol.md, and appends protocol.md under '## Session protocol'.",
+      "evidence": [
+        {
+          "resource": "repo://packages/skills/src/render.ts#L4-L47",
+          "version": "repo-lines-v1:sha256:684a9a2dd87b2fa440db3f99370843fa0405224fd0e9d1a3eb6b39444beb42a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MWYwMDUwMDk5ZmQ0YzM0YzQzYmRlNTE3MjNiYzRjNzZlOTA4ZDgzYzM1NTYyNGRiYmI2NGI5NmQwNWE3ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0ZmI4OTViMWNjY2IwNTMyNmZiNzNkN2FjZDExNWZhODFkMzgyZTViMWYxZDM1OTU0M2I1YjczNWQ3MTZjZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f8f9b3ff80604204a30a84e9b6dcb351",
+      "statement": "build.ts renders all Skills before touching output, then deletes and rewrites plugin/skills, and also writes each replay eval's history.jsonl from eval-histories.ts.",
+      "evidence": [
+        {
+          "resource": "repo://packages/skills/src/build.ts#L1-L52",
+          "version": "repo-lines-v1:sha256:bc8d0308766af1d10c0d2abca781e7882d077b51d7206973e0adb283e2161b4b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NGJjMWYyMGI0NGQ3ZTkzZTllY2UxMTRjMmNkOTM2OTVhYWIzZTI3Yzk4MmI0MTdmNjY1N2M4ZTcwMzg2YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3MjMzNmI2MDk2MDI4MmQ0YmU4ODM0MjIyNjMwOWRiYWQ5NGFjMDRjNDE0MmE0MDhhM2M5NTNmYmFiYzRhZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1c2a70fe161145928a3dee303bc35c5a",
+      "statement": "The repository root is a plugin marketplace named settle whose single plugin is sourced from ./plugin.",
+      "evidence": [
+        {
+          "resource": "repo://.claude-plugin/marketplace.json",
+          "version": "repo-file-v1:sha256:802ce78c6b29bc93c8d649ad72245a543de84dd3fb104409d652d688ac464ac9"
+        },
+        {
+          "resource": "repo://plugin/.claude-plugin/plugin.json",
+          "version": "repo-file-v1:sha256:e70c9b89bf44609cc4e435f4c1b8c5352171902f5c0fe3eec9d4a447ef941bf6"
+        }
+      ]
+    },
+    {
+      "id": "claim_31b8de9d2fd34c61ab93247532e5e2f1",
+      "statement": "Every non-web operation becomes an MCP tool, and the server throws at startup if a writing tool's input has no session field, because the endpoint is stateless and the Session travels as a tool argument.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/mcp.ts#L18-L29",
+          "version": "repo-lines-v1:sha256:20522b91e0fb3e5ddf3ea3906446802f1c926997b7ab38172d1324859fa924ed:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2ZDM0OTY5NDgwMTJkY2UxY2NkMjk1ZTNkZWJhZGVhNmYwOTdhMmU0MDI1ZDI2ZGI5ZWY1NmNkOTI3MTJlMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhMTZhYWEyMWIyNjliZTgxY2JmOTRkYzM2MDc5OGJkN2M2ZmYwMzNmZTAwNDRhNDRiOWY1MWIzM2I3NjhmZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1NDgyMGE2MmFjZGU3M2Y2MTEwYmNmYTQxZTBjY2U5NjQzMGM5ZDMxYzhkOWFjMmQxMjFkYTkwZGE1MDY3YzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b9be5615882470082e1cc6bdd36fe10",
+      "statement": "The MCP server sends SERVER_INSTRUCTIONS restating core rules as a backstop in case compaction drops the Skill text.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/mcp.ts#L6-L16",
+          "version": "repo-lines-v1:sha256:c5820592c6f89052683fbdaf719db459794b686df4c1abcade81cee17653fe91:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkNTY0MmM4NjM5MWI5ZWUwMTZiZWQ3MTkxOTQ0YzUyYzBjNTVjZjk2OGQ0MTk0ZTQ2ODUxYWRlMWY5YjU2MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4NzM0OGU0YjgxNGNhM2YxNDc4MDU2YzcyZDRmMzlkZDIwNGYxZTgwNTU3YmNjNzg4OGIzZDI4NTNiZmNmNzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b6681618409a4c43a57bd9aa599834c4",
+      "statement": "A Home Folder's .mcp.json names an http MCP server keyed settle at <origin>/mcp/homes/<slug> with the Home's bearer token, and .claude/settings.json enables the settle plugin, registers the alexzfe/settle marketplace, and pre-approves the settle MCP server.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/home-folder.ts#L11-L79",
+          "version": "repo-lines-v1:sha256:9512d54b194129ccadb9805f161eac21f4418b1860ce7ff36d89f9194133207b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0ZWZlNGZkMTk3MzA1MjU1NTdkNDQyZDUyN2E3ZTc3N2NmNWNmMjJmZTU4ZTY0Y2EyYmVjNGEwODBjMWNlM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwZTc3OWJjODE0YWFlZjc2YjM0MjdmYjY4MGQ5ZjAyZGVhM2ExMDJjYTc4Y2Q2NzMyYjg3ZjEwMDNhNTFhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzYzgwNmM3ZDNhN2JlNDljY2RiM2JmMjc4NTIyYjc0ZTI2ZGQ2ZjBjMmU5NDMxOGVlZjc0Y2Q5ZDViZDhmMjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_684f7e8408904a2dbcadee6ebf3a4240",
+      "statement": "The Home Folder script refuses a folder whose .mcp.json points at another Home, backs up differing files as <file>.before-settle, writes both files and prints the project-scope plugin install command.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/home-folder.ts#L81-L146",
+          "version": "repo-lines-v1:sha256:8ccff8ad2ccce014e1f587932f5600b8b7c00001def8de19e17717089359edca:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0MDA1MjRmZDJjOWUwNzVhNzQ2YjM3MTc0M2EwMjFmNDY0ODlkNjYwYTMxNjA1YjkzNTA2MjcyODZjM2M2OGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyZjg0YjJhYzQ4MTZiOTcyODdmYmY4YmRjMDg1NDg1NjMxN2JhOWM0NWYzZmEzYTUzZDcxOTFkMDY1NGI5NjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef65953520f547d2baf06e042779a5e2",
+      "statement": "GET /api/home_folder_script serves the script with the Home's token after running home_folder_setup, returning core refusals as plain text with an error status.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/api.ts#L338-L357",
+          "version": "repo-lines-v1:sha256:0b32546efd983df4e1f7374bec4eeddb4500c0ea5cde5b30269a0b4268629acc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkMGYyZDNhM2FhZGEyNzU4NjQ1NzhkMGE0MzkxNTYzOGQ1NDNmZWNhMmM5NDg1OGRiOTQxMjExZTg2Y2VmMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlYmEyYzc1NGE0MmE0MGRhY2ZmNGQ4ZmFhOTJjNTVmMTc1MDlmYzcwOGUyNTE2MTJiMGVhYTgwZWU1ZDA5NzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e8df06dc76324b2e8cb85fc134b0ad6b",
+      "statement": "pnpm --filter @settle/server tools:json rewrites plugin/evals/mocks/settle/_tools.json from the live tools/list so eval mocks carry real tool names and schemas.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/scripts/write-tools-json.ts",
+          "version": "repo-file-v1:sha256:ba5986930c36d0864dea96c0bf83a986a83cdc00bf7dc0ff16cd96eec1f0b5b0"
+        },
+        {
+          "resource": "repo://packages/server/src/tools-list.ts#L1-L20",
+          "version": "repo-lines-v1:sha256:2719c6deecc9939765ea9834cc47ff37aef2c5abffab66f2c26cb8469b1bbce2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyYjRjMDAxZjgzOWQxYTZlM2NmNzY1MDY4YjU0ZWIzZGI3NWUxOGYyODQ3MTAzZjA2OWEzNWJhZGQyZDBjM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1Y2RkZDUwYjY5NTFlOWIyYzQ0ZGRlMGU0OWVjNGIzZmE3NzQ3MGNlNDAwMGYxNDZjMzE2ZGU0MjRmZGExYjMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}
