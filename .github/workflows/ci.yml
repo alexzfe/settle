@@ -1,14 +1,25 @@
-# Check every pull request and every push to main; on main, also build the image for amd64 and
-# arm64 and push it to ghcr.io/alexzfe/settle.
+# Check every pull request and every push to main; release by tag, in infra's flow
+# (alexzfe/infra templates/app-release.yml):
+#
+#   pull request  -> check
+#   push to main  -> check, build ghcr.io/alexzfe/settle:<sha> for amd64 and arm64, deploy to staging
+#   push tag v*   -> tag the image main already built for that commit vX.Y.Z and latest, deploy it
+#                    to prod, then cut a GitHub Release
+#
+# Prod never rebuilds: the tag points at a commit main already built and staging already ran. The
+# deploys take the Tailscale CI secrets TS_CI_OAUTH_CLIENT_ID and TS_CI_OAUTH_SECRET, and the
+# repository variables SETTLE_STAGING_URL and SETTLE_PROD_URL, the public addresses each deploy is
+# smoke-tested at.
 name: ci
 
 on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*"]
 
 # One run per branch at a time. A newer push to a pull request cancels its older check; on main
-# nothing is cancelled half-way, runs queue instead.
+# and on tags nothing is cancelled half-way, runs queue instead.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -24,6 +35,7 @@ env:
 
 jobs:
   check:
+    if: github.ref_type != 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -56,14 +68,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # The full SHA is what infra's deploy runs; sha-<short> and main are for people.
       - id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
+            type=sha,format=long,prefix=
             type=sha,prefix=sha-,format=short
             type=raw,value=main
-            type=raw,value=latest
       - uses: docker/build-push-action@v7
         with:
           context: .
@@ -74,3 +87,55 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  staging:
+    needs: image
+    uses: alexzfe/infra/.github/workflows/deploy-app.yml@main
+    with:
+      app: settle
+      env: staging
+      tag: ${{ github.sha }}
+      url: ${{ vars.SETTLE_STAGING_URL }}
+    secrets: inherit
+
+  # A release: the image main built for this commit, under the version and as latest, so
+  # self-hosters following latest move only on a release.
+  promote:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag ${{ github.sha }} as ${{ github.ref_name }} and latest
+        run: |
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${GITHUB_REF_NAME}" \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:${GITHUB_SHA}"
+
+  prod:
+    needs: promote
+    uses: alexzfe/infra/.github/workflows/deploy-app.yml@main
+    with:
+      app: settle
+      env: prod
+      tag: ${{ github.sha }}
+      url: ${{ vars.SETTLE_PROD_URL }}
+    secrets: inherit
+
+  release:
+    needs: prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

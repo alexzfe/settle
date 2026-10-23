@@ -3,10 +3,9 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
-import { type Core, createCore } from "@settle/core";
+import { type Core, type CoreOptions, createCore } from "@settle/core";
 import type { Hono } from "hono";
 import { createApp } from "./app.js";
-import { sessionSecret } from "./auth.js";
 import type { Config } from "./config.js";
 import { createLanApp, lanAddress, NoLanAddressError } from "./lan.js";
 import { WEB_DIST } from "./web.js";
@@ -22,12 +21,19 @@ export interface RunningServer {
   origin: string;
   /** In LAN mode: the LAN listener's address, which serves only the Quick Guide pages. */
   lanUrl?: string;
+  /**
+   * While there is no Account: a new one-time setup link, which makes the Admin and claims every
+   * Home. Each start makes a new one and voids the last.
+   */
+  setupUrl?: string;
   close(): Promise<void>;
 }
 
 export interface ServerOptions {
   /** The built web UI to serve; packages/web/dist by default. */
   webDist?: string;
+  /** Internal seam: scrypt's cost; a test gives a cheap one. */
+  passwordCost?: CoreOptions["passwordCost"];
 }
 
 type Fetch = Parameters<typeof serve>[0]["fetch"];
@@ -38,7 +44,7 @@ type Fetch = Parameters<typeof serve>[0]["fetch"];
  */
 export async function startServer(
   config: Config,
-  { webDist = WEB_DIST }: ServerOptions = {},
+  { webDist = WEB_DIST, passwordCost }: ServerOptions = {},
 ): Promise<RunningServer> {
   mkdirSync(config.dataDir, { recursive: true });
   const lanHost = config.lan && (config.lan.host ?? lanAddress());
@@ -73,6 +79,7 @@ export async function startServer(
       port,
       ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
       ...(lanUrl ? { lanUrl } : {}),
+      ...(passwordCost ? { passwordCost } : {}),
     });
     core = open;
     app = createApp({
@@ -80,15 +87,15 @@ export async function startServer(
       port,
       webDist,
       ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
-      ...(config.password
-        ? { auth: { password: config.password, secret: sessionSecret(config.dataDir) } }
-        : {}),
+      ...(config.trustedProxy ? { auth: { trustedProxy: config.trustedProxy } } : {}),
     });
     if (lanHost) lanApp = createLanApp({ core: open });
+    const setupUrl = open.accounts.makeSetupLink();
     return {
       url: `http://${urlHost(config.host)}:${port}`,
       origin: config.publicOrigin ?? `http://127.0.0.1:${port}`,
       ...(lanUrl ? { lanUrl } : {}),
+      ...(setupUrl ? { setupUrl } : {}),
       close: () => closeAll(servers).finally(() => open.close()),
     };
   } catch (error) {

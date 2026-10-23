@@ -3,11 +3,31 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { z } from "zod";
+import { type Accounts, createAccounts, PASSWORD_COST, type PasswordCost } from "./accounts.js";
 import { mupdfRenderer } from "./blueprints/mupdf.js";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
 import { type FileStore, nodeFileStore, type PdfRenderer } from "./files.js";
 import { type ImageFetcher, nodeImageFetcher } from "./images.js";
+import {
+  adminDeleteAccount,
+  cancelInvite,
+  changeEmail,
+  changePassword,
+  createInvite,
+  createResetLink,
+  deleteAccount,
+  disableAccount,
+  enableAccount,
+  endLogins,
+  exportAccount,
+  getAccount,
+  listAccounts,
+  listInvites,
+  listLogins,
+  rotateGuideLink,
+  rotateHomeKey,
+} from "./operations/accounts.js";
 import {
   getBlueprintPage,
   listBlueprints,
@@ -50,6 +70,7 @@ import {
   setListingPhoto,
 } from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
+import { ownedHome } from "./operations/scope.js";
 import { closeSession, openSession } from "./operations/sessions.js";
 import {
   exportGuides,
@@ -123,6 +144,23 @@ const operations = {
   record_fulfilment: recordFulfilment,
   flag_conflict: flagConflict,
   close_session: closeSession,
+  get_account: getAccount,
+  change_password: changePassword,
+  change_email: changeEmail,
+  list_logins: listLogins,
+  end_logins: endLogins,
+  export_account: exportAccount,
+  delete_account: deleteAccount,
+  create_invite: createInvite,
+  list_invites: listInvites,
+  cancel_invite: cancelInvite,
+  create_reset_link: createResetLink,
+  list_accounts: listAccounts,
+  disable_account: disableAccount,
+  enable_account: enableAccount,
+  admin_delete_account: adminDeleteAccount,
+  rotate_home_key: rotateHomeKey,
+  rotate_guide_link: rotateGuideLink,
 };
 
 type Operations = typeof operations;
@@ -166,6 +204,8 @@ export interface CoreOptions {
   random?: (max: number) => number;
   /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
   lanUrl?: string;
+  /** Internal seam: scrypt's cost for new password hashes; OWASP's unless a test gives a cheap one. */
+  passwordCost?: PasswordCost;
 }
 
 export interface Core {
@@ -182,9 +222,17 @@ export interface Core {
   subscribe(listener: ChangeListener): () => void;
   /**
    * The bearer key of the Home with this slug, for the server to check a request against;
-   * undefined when there is no such Home. No operation returns it to the Agent.
+   * undefined when there is no such Home, or it has no Account yet, or its Account is disabled.
+   * No operation returns it to the Agent.
    */
   homeToken(home: string): string | undefined;
+  /**
+   * The ownership check, for a route that reads a Home without running an operation (the
+   * events): refuses a Home the caller can't reach exactly as a Home that doesn't exist.
+   */
+  checkHome(context: CallContext, home: string): void;
+  /** Logins, passwords and the one-time links, for the server's login pages and cookie check. */
+  readonly accounts: Accounts;
   close(): void;
 }
 
@@ -212,6 +260,7 @@ export function createCore(options: CoreOptions = {}): Core {
     },
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
+    passwordCost: options.passwordCost ?? PASSWORD_COST,
     origin: options.publicOrigin ?? `http://127.0.0.1:${options.port ?? 4380}`,
     ...optional({ publicOrigin: options.publicOrigin, lanUrl: options.lanUrl }),
     write<T>(origin: string, fn: Parameters<OperationContext["write"]>[1]): T {
@@ -254,6 +303,15 @@ export function createCore(options: CoreOptions = {}): Core {
     async run(name: string, context: CallContext, input: unknown): Promise<never> {
       const operation = registry.get(name);
       if (!operation) throw new CoreError("not_found", `There is no operation "${name}".`);
+      if (context.caller.kind === "guide" && name !== "get_guide_page") {
+        throw new CoreError("not_found", `There is no operation "${name}".`);
+      }
+      // The web caller is refused another Account's Home before its input is even read, so no
+      // operation's validation can tell a Home that exists from one that doesn't.
+      const named = context.home ?? (input as { home?: unknown } | undefined)?.home;
+      if (context.caller.kind !== "session" && typeof named === "string" && named !== "") {
+        ownedHome(store, context.caller, named);
+      }
       const schema =
         context.caller.kind === "web" && operation.webInput ? operation.webInput : operation.input;
       const parsed = schema.safeParse(input ?? {});
@@ -272,7 +330,20 @@ export function createCore(options: CoreOptions = {}): Core {
       return (await operation.handler(operationContext, parsed.data)) as never;
     },
     subscribe: (listener) => bus.subscribe(listener),
-    homeToken: (home) => store.home(home)?.token,
+    homeToken(slug) {
+      const home = store.home(slug);
+      const owner = home?.accountId == null ? undefined : store.account(home.accountId);
+      return owner && owner.disabledAt === null ? home?.token : undefined;
+    },
+    checkHome(context, home) {
+      ownedHome(store, context.caller, home);
+    },
+    accounts: createAccounts({
+      store,
+      origin: base.origin,
+      cost: base.passwordCost,
+      clock,
+    }),
     close() {
       store.close();
       if (temporaryDataDir) rmSync(temporaryDataDir, { recursive: true, force: true });

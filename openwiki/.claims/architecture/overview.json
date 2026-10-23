@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5d995ba1e81d6e9eb6810a4bc3ec1eed3ddddd33c0e605955b944d78f6c784db",
+  "claims": [
+    {
+      "id": "claim_8f27ac5c644d4ab1a1ef42cfea06d1d6",
+      "statement": "The repository is a pnpm workspace of packages/* with a shared dependency catalog, requiring Node 26+ and pnpm 12+.",
+      "evidence": [
+        {
+          "resource": "repo://package.json#L5-L8",
+          "version": "repo-lines-v1:sha256:b4fce49f3ceb373b79a8006b0a5a4d87670cf20c2fa6ffe231d0ac2d29d1323e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWY2MDE1NTQxMjJlZmU4NTVkNTZlMTBjYzliYWYyMDMxY2EzZjRhYjExY2RiYTIyZjFlYmM1ZDM5YTc1NTgyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjhiMmFkY2RhNDFiMDYyM2UwNjJlODFiOWY2OWQyMTY5MGJhM2Q3N2Y5ZTEzZTQ5NTVmNjU1YjQ2YmI4NGZhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDdiMTViMTZlMTA4MjMwNmU0YzI3OWY0NWM2NDU0MmJiMjZmZDI3Y2IzM2ViNDJlNzdiNjhiZTQzNDA1MjQ0ZiJ9"
+        },
+        {
+          "resource": "repo://pnpm-workspace.yaml#L1-L10",
+          "version": "repo-lines-v1:sha256:9f2bf641f4e73671c6dea99fcc36d24af3df9dc8735127cf2a5d009618e3b081:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkYjA3NmViODBhZGUxOWZlYTNlMGE0MzE5ODZiNjU1ZjVmYTU5ZWQ2MjY3ZTEwN2Q2ODhiNjFjM2Y0MjE3OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0ZDIzMjNhZDExMjlmZGE1MWU1YjI5MmE0NGQxZDQyODNhMmY2ZDllYTJhNDY4OTRkZTFjNzIzZTRjYmYyOGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlN2RjM2E2OTM1NGU3NDdlZjVkMmMxOGEwMDFkODE1Y2ZlN2Y3OTdiODg2MTdkNzk5YmY4MTY4ZjVmMTEwMjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c9a36d1b36d480494dc7ab9410d35c9",
+      "statement": "@settle/core exports a @settle/source condition pointing at src/index.ts, which the server's dev and tools:json scripts use to run against core sources.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/package.json#L6-L12",
+          "version": "repo-lines-v1:sha256:8ae59c2e3c4d749609658eace7940d7d6f2167054da147ffa4eeec8f877990a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2MwNWJiOWY0YThiOTg0NTEwZjgxNWE1ZmM0MDc4ZDc3YzVhMjBlOTNmMzM3M2RjNWRkZTRhMzQxZDFiNDBjOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTc4Njg4ODc1OWM1YzdkOWQ1ZDZiMGE4ODY2YmQ5ZmJhNzMzZDY3NTdhMjY5MThhZWYxZWJhNDRkMzFjZjlkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWUxMmRkZDRjZWVlN2VmYThhNzI1YjM4NDc3NGE3MzJmMDQ5ZWM4ZTE4MzQzZTFhODQ3YjcwMDk3MDU1YTgzZSJ9"
+        },
+        {
+          "resource": "repo://packages/server/package.json",
+          "version": "repo-file-v1:sha256:c797759d26994e9d5877a7bcdc1be4f8d4d80938c6c1957690c57697b6fb6e24"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec63ed2931724a359e48fd0c93865ff0",
+      "statement": "startServer listens first (answering 503 until ready) because the bound port is needed for MCP Host checks, then opens core on <dataDir>/settle.sqlite and builds the app and, in LAN mode, a LAN app.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/server.ts#L35-L80",
+          "version": "repo-lines-v1:sha256:08bf05ecca7d8d01cdb5081491ffc0ce8e972cb7082f8e88a645eab7412f9ad3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMWYwMjBmNmRjMDg1ZDQxNDA2MzUzY2Y5YjAyMTcyODMwNGIyNjdlZTJkMDk2ODVmMzRjNGU5NGY4OWM1MTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyY2I5NzMxODM2ZTRhMTU1OTE4ZmJkNzI4ODNjNTRkMmNlMTk5YTJkYTViYmY4Y2U2ZWRmNzUzNGRjOWNlZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3N2QyZDRlZjFmODZiZGIyMjE0YzhlM2VjZWY1OGJhOGQ5OWJmMzhmOWU1ZjM4YTQwODJmNzUxNThhODZlMjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b960f48189aa4558a269a229177b5dd3",
+      "statement": "main.ts exits with a plain message on bad configuration, a missing LAN address, or a port already in use, and closes the server on SIGINT/SIGTERM.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/main.ts",
+          "version": "repo-file-v1:sha256:8dbb45095fdd353d5b584a795c02d79282e0681785a56811fd4fbf92d93bec8e"
+        }
+      ]
+    },
+    {
+      "id": "claim_0074796c18fa459ead906663af0a2ca6",
+      "statement": "The /events SSE stream sends a change event for each record a committed write changed in the requested Home and an agent event for each MCP tool call, plus the last agent event on connect.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/events.ts#L9-L52",
+          "version": "repo-lines-v1:sha256:04af8f1164c2e341b9e30c02ba381bb9b3de668b3e9f576b18a2ecb4d73f9cc0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2NTQ1YWU2MWYyMjkyMDBiYjFmY2Y2ZTJlZGRlZTkxYTQ0MjE4N2ExNmQ1ZWFkZWMwNWMzOTc0ZmQxOWQ3YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b08487dc3414c668ce59df9dcd2e404",
+      "statement": "The web UI refetches only the react-query keys that show a changed record kind, plus the change log.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/liveUpdates.ts#L7-L14",
+          "version": "repo-lines-v1:sha256:4c8a4be55092769b4ed9258ff6c688dd0aba0ac066068a34630b183884d35030:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWFmMjJjZjA3MzI1OTJjMjQ3MTQxY2JlNjFlZmExMTAxMjYxMmY1YTMxMjJiOWFmOWJiYWY1MmY1NzI0ZDE5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzg3ZDRlNjIxMDBmOTU5OWE1ZjMyZWNmMDgxOTFjYTFlODQ1YWExN2NhYmE1NDUwNDdhOGFlZTZkOWQxMjFlMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGE0ZjU3ZjgzYzk3MmNhYmI1ZjliMzIxMTRmNjZiMTY2MTI3MTc5YTNmNGJmNDQyZjEyMTMyMGZiZGM0N2ZiOSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_406c4860bbaa406fac8e9e1bd12ba4d3",
+      "statement": "The web API client calls every operation as POST /api/<name> with JSON, treating core's zod schemas as the single source of truth for shapes.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/api.ts#L1-L5",
+          "version": "repo-lines-v1:sha256:a581304670091f5302749a5d36067980240be08aadcefc61e511eca1e9a5afb0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDY0MzQ1YzYxNTliODhiNTU5ZmI2YWI5NjRhYTljZTIyNDRjNjU1NjJlNTUyMGZkYjQ0Zjc3OWQ0NGQ0Y2QzMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjhmYjBjNjExMzFmMmQ3ODQ3ODdhMDI1MWEwNGFiZDIxOTI5MGViNzk5MGRkMTIxZmY1OGFlYmE2OTZmZTYxMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmY3MTMwNWI1OGU0ODg1NzMwM2IwZGRiNWMyODkwNzM3NDA3YWFjOWEzODgwOWZhYTUxYjE2MTI5NTc0NTYyZiJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

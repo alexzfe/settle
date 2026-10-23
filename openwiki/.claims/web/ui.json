@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ba82a35d1cecc456d802e99610bfecdd0fbbe821ea3ffd166a42c4fc83d6a124",
+  "claims": [
+    {
+      "id": "claim_fc8918e541fd4bd7a65b600b0ee4576f",
+      "statement": "The web app defines routes for the Home list and, per Home, the Overview, About, Rooms, Room, Decisions, Decision, Blueprint page, Shopping, Items, Item, change log and Session pages.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/App.tsx#L40-L70",
+          "version": "repo-lines-v1:sha256:510644fbc00e320b2ae5bae806d682f5f70d867845d9bbc99fcdeb803e94f8c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYmM3MDExZWE4NzY2NmNmOTYwMGJlNjc1NzdmMjdiMmE0OGVkNTQ1ODhhNzY0OTJlMDYzY2ZkMWYzNWNkYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwMmQyYzBkNmRjNWU3NGQ5MmZhMTRiOTFkYmVhMjY0MDkwYmViMzVmZGI5MTg4ZDliMzQxMTgxZGNlOWY0Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFjODBhNjJmMTlkNmY2NWY2Y2VlNzJmNDkyYmUxNzM5Yzc1MWM1YzU5ZDc5MTliOGQ1NDhlMTE5NTQxNTdjYTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0N2I2MzEyYzk4MWVhYWFjNjIzMmY3ZTVlYTI3OGM1YjUxOTAyMWRmYWJmOTk5M2NiNjhjNjU2NTJhMjJiMzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_824dce2c22fe4a2abd840b76b5d3c6fa",
+      "statement": "react-query keys form one family per record kind, where a shorter key prefixes the longer ones so invalidating it refreshes all matching pages.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/queries.ts#L4-L31",
+          "version": "repo-lines-v1:sha256:f1bd752a33de83686cb2249ab01e622c545a717eb4db62ab8036f262d0265f09:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3NGVlOGE4ZDFhYTg0NTM5MWJjNjc5ZWI3MGNlN2Y0NmEzY2Q2ZmIyZDE2ZmNjYTY3ZmExNzhmNGY4YzFlMGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkYmNmNmM2M2YwNGE2MWQ5N2Y3OTdiNTczYmYwNjlmNmMyODJhOWZlOTQ5NDI0MWU0ZWU3ZDJhMjU2YmMyMmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjZGExYTkwMTNjYTM2YTY0MzY4NjY4OTU2NDFjZjRkOGQyNjM0YmM2NzNiMzE5YmE3NjQ3MmEwNjA1OTIwMTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_34650b83c60841c392ab738729e3f7bd",
+      "statement": "useLiveUpdates invalidates the queries showing each changed record kind, stores the Agent's last call time from agent events, refetches the whole Home after a reconnect, and probes auth when the stream stops.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/liveUpdates.ts#L152-L187",
+          "version": "repo-lines-v1:sha256:34bce26ff07f8ba87a6f9cfb1755a490883cceab5d15739936d2679efb0dcbfb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMGQ2MDllNDBmZGIzMzcwNDcyYTYwZjAyOWJlYjM0N2UwODIyNjg5NGRhMzFmMjhkN2NlZmUyNzA5NzViZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1ZDhjMjM0N2QzOGM0ZTJjYTlhZDk0NmRiYTBmOWI5MWRkZjkzZWU0N2ExNzY5Mjk1YTdiODBkZjczMjIxZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9192838cf5934bdb9ccde6c0ac426f31",
+      "statement": "AgentStatus infers the Agent's state from the last tool call and open Sessions (working within 5 minutes, left open after 30), because a stateless MCP endpoint cannot know whether an Agent is connected.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/ui/AgentStatus.tsx#L1-L40",
+          "version": "repo-lines-v1:sha256:e45c4ad8c178f189961e8b5a2a4e8e92cb19ab8d7c616864f1b6053dd626763e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwYTk3Y2Y5MmNmNDg0MmExOWM0NzA5NjNkZjMwMGIxM2U4MjZiOGJkNjlhZTViYzU1MDMxNTlmZTZlMjE0MDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZjVlZGY2ZDEzMDcxNDlhYWMwNjE4Mzk1Zjc3OTdkM2JjMmM3MDkwODFhMDk0ZTAzOWRhZTQ5ZTY5NzdlYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyZjIyN2FlMTk2Njg5ZDY4NzU4YTg1MDM4YjVkMDg1ZGEwMjBhMzY0ZDlhZDA3NDRhNGFjOTBiYTA0NzM4ZTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a82a0664be9f4ca2b257727823e0676c",
+      "statement": "AskAgent copies a shell-escaped claude command naming the Skill, the task and a slug so the user can hand work back to the Agent.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/ui/AskAgent.tsx#L1-L25",
+          "version": "repo-lines-v1:sha256:0baa2bbed312ab330f98558b8f449057d66b2e8581d9f0b64299ad79a1987baa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5YTg3Y2E1YzRhNjYxYzhkOTk5MGUxZTFlYmU0M2NhMWVkNDBhYzY4NzdiMzFlNjE0MWNmNjY3NTc3MjNmYzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNDg2Nzg0NWFkZDZiNTFkMDQ1MTg0Y2Q0MWEwZDdmYThiZjU0NTgwNGQ1MDVhYzk3ZGMyZWYzZmMxMGQ0MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmNTgyMTUyMzYwNDJkM2Y2MmQwNWQxNmM1OTE5MWFmYTY1ZGYzMGFiNDgwMTM1YjRlMTc4Nzc2MGM3Yjc1N2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7e93060094c3437c9911e65722d0e789",
+      "statement": "The API client sends the browser to /login with a next path whenever a call is answered 401.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/api.ts#L335-L360",
+          "version": "repo-lines-v1:sha256:342e213669b849b4265ab244e67a1b550efa44d5625fa6fff98abefecdd2dc17:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxZDM4OWJkZDIzZmU0YWQ4NTUwYjYwMTZmOGU3YWIzMjU2NmUwNjExMjljMzU3NGU4ZGU5ZjBiYjg2NTJjMmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhNTI5OWUxNGZjOGQ0NGU0N2VjMWJhZDVhZTQ2YjNjOWY0NDJiOWU5NGY5YWRjMjIwNmYzOGYyMDhjMmVhNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzZDhiODI0M2E2N2U1NTM3NmJkYTI4NzU2ZmQxMjZmNmI0MTViZTIyYjk2ZTVlMDc0NmE1MzNiYjU1OGM2M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYmQ5ZTE5YTkwNmQzNTcwYTRlNDdiOTM3NmU3YTA1ODYxOGIwYTNmN2M4NGQzOWU0YjBmZWUyNmEzM2IxMDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_24d72ec7e2a14353bd3dbe513aaf15ac",
+      "statement": "The Vite dev server proxies /health, /api, /events, /guide, /login and /logout to the Settle server on SETTLE_PORT, and tests run in jsdom.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/vite.config.ts",
+          "version": "repo-file-v1:sha256:3fc9f87281a73b078244c31d3bb7e1ef6349efc3869246015e3636b6a9f84e72"
+        }
+      ]
+    },
+    {
+      "id": "claim_4ce44a90718f41f4800a94e5fae05a85",
+      "statement": "tokens.css defines the paper-and-ink look with one olive accent reserved for the Settled state and current nav item, light by default and dark following the system unless the user picks a theme.",
+      "evidence": [
+        {
+          "resource": "repo://packages/web/src/tokens.css#L1-L30",
+          "version": "repo-lines-v1:sha256:e03743582e0280952d72e3213f7a6f0b389d73a92e98df497dc98279f52cf0e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3MzI3NzVlZWU3NzAwMThkYjdkNzlkMDM1YTAxNjMwMTVhMDE2ZGUxN2ViYmY4ODg0OTAyZWM2ZDFkOWZjZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwYzVhM2YxNTJiOTJiYjM3ZTI3YTc5YzJiMDIxYmRiZTJlYmRlOTc0ZTk3YzVlZGEyM2UwNjU3NDdhNzlkY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmZGRhZTIwMTU0ODMwZWFjYzQwZDg1YjczZjdlNWE2ODI4MTg0YmViN2FlYzBmYjQ0NGQyNjNmZmM4ZGM5ODMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

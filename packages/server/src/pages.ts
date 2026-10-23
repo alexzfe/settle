@@ -1,11 +1,10 @@
 import { type Core, CoreError, type ExportResult } from "@settle/core";
 import type { Context } from "hono";
 import { answer, statusOf } from "./api.js";
+import { callerOf } from "./caller.js";
 
 // The pages and files the server serves as they are, rendered by core from stored data: the
 // Quick Guide's phone page and the Shopping section's exports.
-
-const web = { caller: { kind: "web" } } as const;
 
 /**
  * Nothing on these pages may run or load (no JavaScript, no outside resources, no forms), and
@@ -64,7 +63,7 @@ export async function handleGuidePage(core: Core, c: Context): Promise<Response>
   const home = c.req.query("home");
   const input = { ...(home === undefined ? {} : { home }), decision: c.req.param("slug") ?? "" };
   try {
-    return fileResponse(c, await core.run("get_guide_page", web, input));
+    return fileResponse(c, (await core.run("get_guide_page", callerOf(c), input)) as ExportResult);
   } catch (error) {
     if (!(error instanceof CoreError)) throw error;
     return c.html(messagePage(error.message), statusOf(error.code), FILE_HEADERS);
@@ -86,7 +85,7 @@ export async function handleExport(
   // Core validates the query: a missing or unknown field is refused with 400.
   const input = { home, format, ...(decision === undefined ? {} : { decision }) };
   return answer(c, async () => {
-    const result = (await core.run(name, web, input)) as ExportResult;
+    const result = (await core.run(name, callerOf(c), input)) as ExportResult;
     const inline = result.mimeType.startsWith("text/html");
     return fileResponse(c, result, inline ? "inline" : "attachment");
   });

@@ -3,7 +3,8 @@ import { type Core, CoreError } from "@settle/core";
 import { type Context, Hono } from "hono";
 import { FILE_HEADERS, fileResponse, messagePage } from "./pages.js";
 
-const web = { caller: { kind: "web" } } as const;
+/** Whoever holds the link: a phone, logged in or not, which reaches the guide and nothing else. */
+const phone = { caller: { kind: "guide" } } as const;
 
 /**
  * The LAN listener's app (SETTLE_LAN=1): each Quick Guide's phone page by its unguessable token,
@@ -25,7 +26,7 @@ export function createLanApp({ core }: { core: Core }): Hono {
  */
 export async function handleGuideByToken(core: Core, c: Context, token: string): Promise<Response> {
   try {
-    return fileResponse(c, await core.run("get_guide_page", web, { token }));
+    return fileResponse(c, await core.run("get_guide_page", phone, { token }));
   } catch (error) {
     if (!(error instanceof CoreError)) throw error;
     return notFound(c);

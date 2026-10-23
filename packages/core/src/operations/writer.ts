@@ -13,11 +13,13 @@ import {
   renderReceipt,
   renderRefused,
 } from "../render.js";
-import type { HomeRow, HomeTables, Store } from "../store.js";
+import type { HomeRow, HomeTable, Store, Tables } from "../store.js";
 import type { Color } from "./schemas.js";
 import { flagValueChanges } from "./value-changes.js";
 
-type Rows = HomeTables & { homes: HomeRow };
+type Rows = Tables;
+/** The tables a write of the Home model touches: the Home's own and each table of it. */
+type ModelTable = HomeTable | "homes";
 type Row = { id: number; slug: string };
 
 /**
@@ -65,7 +67,7 @@ export class Writer {
   }
 
   /** Adds a row and logs it as created, with `logged` as what the change log shows. */
-  create<T extends keyof Rows>(
+  create<T extends ModelTable>(
     table: T,
     recordKind: RecordKind,
     row: Omit<Rows[T], "id">,
@@ -82,7 +84,7 @@ export class Writer {
    * receipt changes. A length or color that would replace a stronger one is refused, unless the
    * write carries overrideProvenance, and becomes a refused part of `subject`.
    */
-  patch<T extends keyof Rows>(
+  patch<T extends ModelTable>(
     table: T,
     recordKind: RecordKind,
     row: Rows[T],
@@ -141,7 +143,7 @@ export class Writer {
    * Points a row's links (Level, Room, or Wall ids) somewhere else when the labels differ,
    * logging and reporting the change by its labels (slugs) rather than by database ids.
    */
-  link<T extends keyof Rows>(
+  link<T extends ModelTable>(
     table: T,
     recordKind: RecordKind,
     row: Rows[T],
@@ -164,7 +166,7 @@ export class Writer {
   }
 
   /** Archives a row, or with `archive` false restores it; returns what happened, if anything. */
-  archive<T extends keyof Rows>(
+  archive<T extends ModelTable>(
     table: T,
     recordKind: RecordKind,
     row: Rows[T] & { archivedAt: string | null },

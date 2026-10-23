@@ -138,6 +138,15 @@
   border-top: 1px solid var(--color-hairline);
 }
 
+/* The Account, the Admin's page, and logging out, in a row under the theme switch. */
+.accountLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
 .menuIcon {
   width: 1.15rem;
   height: 1.15rem;

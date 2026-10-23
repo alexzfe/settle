@@ -44,12 +44,11 @@ describe("loadConfig", () => {
   });
 
   it("takes SETTLE_PUBLIC_ORIGIN as an origin only, with no path or trailing slash", () => {
-    const locked = { SETTLE_PASSWORD: "open sesame" };
-    expect(
-      loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com", ...locked }).publicOrigin,
-    ).toBe("https://settle.example.com");
-    expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: "http://box:8080", ...locked }).publicOrigin).toBe(
-      "http://box:8080",
+    expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" }).publicOrigin).toBe(
+      "https://settle.example.com",
+    );
+    expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://box:8443" }).publicOrigin).toBe(
+      "https://box:8443",
     );
     expect(loadConfig({}).publicOrigin).toBeUndefined();
     expect(() => loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com/" })).toThrow(
@@ -60,37 +59,36 @@ describe("loadConfig", () => {
     }
   });
 
-  it("binds SETTLE_HOST, beyond loopback only with SETTLE_PUBLIC_ORIGIN and SETTLE_PASSWORD", () => {
+  it("refuses a plain http public origin, but on localhost and 127.x", () => {
+    for (const value of ["http://box:8080", "http://settle.example.com", "http://192.168.1.20"]) {
+      expect(() => loadConfig({ SETTLE_PUBLIC_ORIGIN: value })).toThrow(
+        new RegExp(`SETTLE_PUBLIC_ORIGIN="${value}" is plain http, so passwords would cross`),
+      );
+    }
+    for (const value of ["http://localhost:4380", "http://127.0.0.1:4380", "http://127.1.2.3"]) {
+      expect(loadConfig({ SETTLE_PUBLIC_ORIGIN: value }).publicOrigin).toBe(value);
+    }
+  });
+
+  it("binds SETTLE_HOST, beyond loopback only with SETTLE_PUBLIC_ORIGIN", () => {
     const hosted = { SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" };
     expect(loadConfig({ SETTLE_HOST: "127.0.0.2" }).host).toBe("127.0.0.2");
     expect(loadConfig({ SETTLE_HOST: "::1" }).host).toBe("::1");
     expect(() => loadConfig({ SETTLE_HOST: "0.0.0.0" })).toThrow(/SETTLE_PUBLIC_ORIGIN/);
-    expect(
-      loadConfig({ SETTLE_HOST: "0.0.0.0", SETTLE_PASSWORD: "open sesame", ...hosted }).host,
-    ).toBe("0.0.0.0");
+    expect(loadConfig({ SETTLE_HOST: "0.0.0.0", ...hosted }).host).toBe("0.0.0.0");
   });
 
-  it("refuses to listen beyond loopback without SETTLE_PASSWORD, an empty one included", () => {
-    const hosted = { SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" };
-    for (const host of ["0.0.0.0", "::", "192.168.1.20"]) {
-      expect(() => loadConfig({ SETTLE_HOST: host, ...hosted })).toThrow(
-        new RegExp(`SETTLE_HOST="${host}" listens beyond this computer, so set SETTLE_PASSWORD`),
-      );
-      expect(() => loadConfig({ SETTLE_HOST: host, SETTLE_PASSWORD: "", ...hosted })).toThrow(
-        /SETTLE_PASSWORD/,
+  it("ignores SETTLE_PASSWORD, which accounts replaced", () => {
+    expect(loadConfig({ SETTLE_PASSWORD: "open sesame" })).toEqual(loadConfig({}));
+  });
+
+  it("takes the client IP from Cloudflare only with SETTLE_TRUSTED_PROXY=cloudflare", () => {
+    expect(loadConfig({ SETTLE_TRUSTED_PROXY: "cloudflare" }).trustedProxy).toBe("cloudflare");
+    expect(loadConfig({}).trustedProxy).toBeUndefined();
+    for (const value of ["nginx", "Cloudflare", "1"]) {
+      expect(() => loadConfig({ SETTLE_TRUSTED_PROXY: value })).toThrow(
+        new RegExp(`SETTLE_TRUSTED_PROXY must be "cloudflare".*not "${value}"`),
       );
     }
-  });
-
-  it("refuses a public origin without SETTLE_PASSWORD on loopback too, behind a reverse proxy", () => {
-    expect(() => loadConfig({ SETTLE_PUBLIC_ORIGIN: "https://settle.example.com" })).toThrow(
-      /SETTLE_PUBLIC_ORIGIN="https:\/\/settle.example.com" means the app is reached from other computers, so set SETTLE_PASSWORD/,
-    );
-  });
-
-  it("takes SETTLE_PASSWORD on any host, and none on loopback means no login", () => {
-    expect(loadConfig({ SETTLE_PASSWORD: "open sesame" }).password).toBe("open sesame");
-    expect(loadConfig({}).password).toBeUndefined();
-    expect(loadConfig({ SETTLE_PASSWORD: "" }).password).toBeUndefined();
   });
 });

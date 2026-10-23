@@ -1,13 +1,14 @@
-import type { Core } from "@settle/core";
+import { type Core, CoreError } from "@settle/core";
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { AgentActivity } from "./agent-activity.js";
+import { callerOf } from "./caller.js";
 
 // Well under the idle timeouts of proxies and of Node's own server.
 const KEEP_ALIVE_MS = 25_000;
 
 /**
- * GET /events?home=<slug>: Server-Sent Events, one "change" event with data
+ * GET /events?home=<slug>, for a Home of the Account logged in: Server-Sent Events, one "change" event with data
  * { home, recordKind, recordSlug } for each record a committed write changed in that Home, and
  * one "agent" event with data { home, at } for each MCP tool call the Agent makes for it. The
  * last "agent" event, when there is one, is also sent on connect.
@@ -17,6 +18,13 @@ export function streamChanges(core: Core, activity: AgentActivity, c: Context): 
   if (!home) {
     const message = "Pass the Home's slug, as /events?home=<slug>.";
     return c.json({ error: { code: "validation", message } }, 400);
+  }
+  // Its own ownership check, since no operation runs: another Account's Home is not found.
+  try {
+    core.checkHome(callerOf(c), home);
+  } catch (error) {
+    if (!(error instanceof CoreError)) throw error;
+    return c.json({ error: { code: error.code, message: error.message } }, 404);
   }
   // A reverse proxy (nginx, as on the homeserver) would otherwise hold the stream in its buffer
   // and deliver events late or in bursts; this header tells it to pass each one through at once.

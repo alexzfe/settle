@@ -11,9 +11,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
 import { nodeFileStore } from "./files.js";
+import { addAccount, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import { MAX_IMAGE_BYTES } from "./images.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 
 const JPEG = image([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46], 1);
 const THUMB = image([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46], 2);
@@ -57,6 +58,7 @@ beforeEach(async () => {
   failing = undefined;
   dataDir = mkdtempSync(join(tmpdir(), "settle-photos-"));
   core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
     dataDir,
     clock: () => new Date("2026-10-05T10:00:00.000Z"),
     files: {
@@ -67,6 +69,7 @@ beforeEach(async () => {
       },
     },
   });
+  web = await addAccount(core);
   home = (await core.run("create_home", web, { name: "My flat", country: "CL", city: "Santiago" }))
     .home.slug;
   session = (

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:59a3dcecf7feacb9becd4a8a14eac806de07a1a62128cce7102d94913e4d30d7",
+  "claims": [
+    {
+      "id": "claim_bf03077b5d8a40ceb0920fcaed871a1c",
+      "statement": "A non-loopback SETTLE_HOST requires both SETTLE_PUBLIC_ORIGIN and SETTLE_PASSWORD, and a public origin requires a password even on loopback, otherwise the server refuses to start.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/config.ts#L32-L55",
+          "version": "repo-lines-v1:sha256:b4720534528aa295d172d4f552ac426acf743a2bd93acfd5234102e89f0132ec:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1OTEyMmNlNTY4MjRmZTZmMmFmYjVmZjlkNmNlYTI3MTEzN2EwNTUyMDg2ZTY2N2M0ODYxMTU1MzZhMWMwNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmOTE1ZDc4MDViOTI4MTdlMzNkY2Q0ZWJhZTk3Njk3ZjIzNGYxNWY5YjQyMTZkNWJiNWM1OTZmZTYxNTIxNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlOTQwZjg0YTlhYmIxZDZlNWQwNDYzMGM1ZjlkZDQyZTAzYzI5ZWRkMTRiMDQwOGRhY2FjNWQ2MzZjZTYwZmEifQ"
+        },
+        {
+          "resource": "repo://packages/server/src/config.ts#L74-L100",
+          "version": "repo-lines-v1:sha256:f5c0f3ea7c081b671961dff0a3cf6b4b659db9238c46083ede8742798f2c5543:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2OWViZTMyZjA2YmFjYzA2ODY1Mjg1NGQ0NGM5ZDljZDk5YjNkY2YxMDUwOTJkZGViNWM2MWIwZmViMWVhOWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_afb63f6770674c5d94f82868e38d1680",
+      "statement": "SETTLE_PUBLIC_ORIGIN must be exactly scheme://host[:port] with no path or trailing slash, and SETTLE_LAN_HOST may not be a wildcard address.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/config.ts#L115-L127",
+          "version": "repo-lines-v1:sha256:1bbe670522aff5b6293e0ad4e5715e1134f0536250f7b7a9ef36b1543e608d5a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZDcyYmI4YWZjYjNhOWZiMWZiZjZlOWQ4Y2I0ZTdmMmE4ZWJjNWNiNGQ1NWNiOGVhMmY2MWZmYmIyY2FkODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlZDFkZDllZGY2OTM1MTkzNTI1N2YyYjdkYzFmMDJiYTdiNDNmZDU0ZjliNWVjNmIyMDJmMTIxZTZkNTJkMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packages/server/src/config.ts#L57-L72",
+          "version": "repo-lines-v1:sha256:c0cf51979aba8302f54913b9f65eb6b415a0d766d62a665078ac0ebf4598f4f8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5NzExYzhhYzY1OWFjY2EyYmI3NzA5MDQzOTg3ZDljNTNhYmQ4ZjYxM2M3MGFmNDMxOTRkMDc4ZGY5ZDkyMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiNzM4MWM1YjFmOWMzNTBjM2E0YmFjMDg1NTRmODk2ODg2NmQ2MjJlZjFjNTRlYmIyN2ViOTEzNzJlMmQ0MzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cea9d6b488c141108697ac3434044b5a",
+      "statement": "LAN mode runs a second listener on the private-network address that serves only Quick Guide pages by token, returning the same 404 for every miss.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/lan.ts#L8-L58",
+          "version": "repo-lines-v1:sha256:d798ccf460e5509d4bd55233e025b3eeb9dee3ed9f47513e52b00c7f96684168:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlNjEzYmIyZmVjMGRkYzg3YTA0ZTY3ZTEwOTA4NGIyNDVkNmM5MDU2YTQ0N2ExZjM1MmQ3NmMzNjcxMTM3ZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxMWM2ZjRmNjg0NTA1ZTkxZDhlMjE5NWY3ZTM0ZjUzMmZjMjdhMWU3MzQ0MGZiMDI3ZTBhZGIyYTI0ZDZmMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiNjAwN2FhMTJiZTk1ZTBiY2JkOWQ5N2Y4YmIxNzQ3M2RkZTVlYjZlN2Y1MDc3Njk5MjE1NGEwZDQ3MjNkNTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4ad352c76cd44f388f3f8dcbb25f03c",
+      "statement": "The front door rejects with 403 any request whose Host is not local or the public origin's host, or whose browser Origin is not local or exactly the public origin.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/app.ts#L86-L117",
+          "version": "repo-lines-v1:sha256:cc2707407e83684b1959047d98813da602637a5a931891523ea466fd952e86fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5YzRjNzE2MjkzMTcwNDU1OGY5YjdlN2M5MjUyZmE1MTJlNjAyMzI3YTAzMzc5NjZhZjVkOTljZjYzM2JmNWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjZDgzMDdkYjAyZDMzMTUyZGFmYTdmNDhkOTBmMTk1ZTZjYzUxY2EyODljM2FlMzVjNWM0MTZkYTQ1Y2JkMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3bcbb968fa1a4e6e9a55ec83c99151c0",
+      "statement": "With a password, every route needs a signed session cookie except /health, /login, /logout and Quick Guide pages by token; the signing key mixes a data-dir secret with the password, so sessions survive restarts and a password change logs everyone out.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/auth.ts#L22-L77",
+          "version": "repo-lines-v1:sha256:1dc91726d62f72885b11f79d78b5006c14df27db1f1de508d87216b89e5cf0eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZDJjNmQ5NmVkZjU2NWJiMjU4Njg2YTVmYmYzMzJjNGY4NjE5NzhmOGVhZDFmNzE2ZDQ3Mjc4OGEyMjkyMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0NDkxMDM2NWJlYzVjOGRlZmM4YzM5N2I5NDAxYWY0MTkyMTYxZjNiY2Y1YTZiNTg4ZDRhMjYxYzQ5YjViMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmNzk2MDEwYzg3ZTliNmEzMTY1Y2Q0NDI5MTkyNDhiODI1YjIyN2VkMWJkMWE3ODk5NmY2YjAzYWI0OTA2ZTcifQ"
+        },
+        {
+          "resource": "repo://packages/server/src/auth.ts#L79-L139",
+          "version": "repo-lines-v1:sha256:569a83f68a2973c7310d93d17ff53eb41312c00d5196fa1fbefa843e83e391b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjMwZTViZTZiMGVjMGRiMmVlNDY4YzU5M2Q4MTQ2Yjk1NGM4Yzg4ZjEyNjRkYzBlNTY0OTY5MjhiMGZmODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlNzQxNjc2ZGMxMWFlYjc5ZWZlOWVjZDExN2NkOGZlMTIyNzY2ZDAwZGQ0MDNhZmI5ZGU2MTUxODBlMjE3OTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_69fec187b65a43db8e5e4e10d3ba367a",
+      "statement": "The MCP endpoint and the Home Folder script accept that Home's bearer token in place of a cookie, and the key opens nothing else; unauthorised MCP requests get 401 with WWW-Authenticate: Bearer.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/auth.ts#L141-L174",
+          "version": "repo-lines-v1:sha256:e1855e288b9e7ddad1ab58cf31edacc92d40b2ffa2ec088a2d98a35cce707647:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxYmUyNmNhY2M2YTliZTIyZmI4MTBkM2Y3Y2RhNmFhMDExZTIyOGNhNjYwMTU0ZjYzNjA5ZmFiNDBmYjNhZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1MDYwOWZjYWRiOTZhMTRkYTFiOWRlMjhkNTMwMjkwZTRlM2MwYThjM2I5YzM4YTZhMzZjYjU3ZDdmNWVlYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0OTg0NzI3NzM0ZTk3MTkyYmU2MzkyYjdiMmIxNGYxZTFjYjZkZTdjMTcyNTBhNzFkMTQ4OTI4OTY1MzdkMWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ea7c605acdd5474a9a76c50644669717",
+      "statement": "Failed logins are delayed 1 s, comparisons use timingSafeEqual, and post-login redirects are restricted to same-site paths.",
+      "evidence": [
+        {
+          "resource": "repo://packages/server/src/auth.ts#L176-L181",
+          "version": "repo-lines-v1:sha256:e229cfb739798a9432c7f4cbef0f8c59fa33f8fe716abc7f5b666fb50ef95fb5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDZiMzQ4ZjdlZTFlMjViNWNhYWViNGVmZTk5NzliY2Y1OWE5YWEwYWVmOGZjMDdiZDFiZGI0YjE1YTdiODVlNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTNkZjkzNmMxZDIyZjQxN2MzN2Q1N2Q2NWUzNTA0MTRkY2NiYmNhOGIxMGIwZTRhMjc3ZDA1ZDlhZWM0MDVmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDM0NWI2N2NjY2Q5NWRhNTAwNGQ3ZWYxMTJjZmIyYzI4MzJiNjYwYjY4MGM3NmYxMWI4YjM1YzM4ZjJlYThmYSJ9"
+        },
+        {
+          "resource": "repo://packages/server/src/auth.ts#L90-L120",
+          "version": "repo-lines-v1:sha256:87d1d5aa8532c77fcfe14f58085f1f687fd78742e8fb37f7d4d769a209166482:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NmNjMzQ2OTAzMWIyMzcxMmY0YzlmNTBkZDA0NGVkM2M4NWJjOTIyMWIyMjEyNjhjOGFjZjRlZTg0ZDEyZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhM2U0NmY5NDI3NmI2ZjZmNGVkMWYwMmFmNzhiZWY2YTJlZTFjNDM5ZGQ1NTg0Yjk3Mzk0ODMxMzIxNGQyYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzM2VjMWM5OWFkNjhkYTJjMGNkMmZlMTk4ZDJiOGJkODBkMTI2MmRiMjNiNmZkMmYzZTlkMzNiNDZmNmY3OWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQwNzQwYWFmMGYxZDYzZjFjZTVlNTYwNGJjMWExOGExMjU1NmFkMmUwM2M2MTM5OTY1ODU1ZTU1NmMwMjBiOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7ad0e62d5ebd463bbaa7f1ae7206ddaa",
+      "statement": "The Docker image keeps the workspace layout so the server finds the web dist and core finds migrations and data, sets SETTLE_DATA_DIR=/data and SETTLE_HOST=0.0.0.0, runs as node, and health-checks /health.",
+      "evidence": [
+        {
+          "resource": "repo://Dockerfile",
+          "version": "repo-file-v1:sha256:23a3b63372eec0a3c2c8e0d61c3a8fab19c0bf51a68b9f57a8206c875b47833a"
+        }
+      ]
+    },
+    {
+      "id": "claim_3b0bff9a1be94f9d875063d2bd0ad323",
+      "statement": "compose.yaml refuses to start without SETTLE_PUBLIC_ORIGIN and SETTLE_PASSWORD and stores data in a named volume at /data.",
+      "evidence": [
+        {
+          "resource": "repo://deploy/compose.yaml",
+          "version": "repo-file-v1:sha256:a0e4214d1267624e6263695d78e05c5c683f7eee1319ceac291895c53e64f96c"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4b108d69d6048e5907a98ce5ba135cf",
+      "statement": "CI lints, tests and builds on every PR and push to main, and on main builds and pushes a multi-arch image to ghcr.io/alexzfe/settle tagged sha-<short>, main and latest; nothing deploys automatically.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:0c683c3564f9808f8ced4d0301a19234d7478ab03b13b605f41d4e671b7931b3"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

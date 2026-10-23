@@ -23,7 +23,8 @@ Needs Node 26+, pnpm 12+ and [Claude Code](https://claude.com/claude-code).
 pnpm install && pnpm build && pnpm start
 ```
 
-The app opens at <http://127.0.0.1:4380>. Create a Home, then open its About page: it gives you the
+The first start prints a setup link, `http://127.0.0.1:4380/setup/…`: open it and make your
+account, with an email and a password. Create a Home, then open its About page: it gives you the
 command to set up a folder for that Home. In that folder, add the plugin and run `claude` there.
 
 ```sh
@@ -35,14 +36,16 @@ To look around before entering your own home, create a Home called "Lisbon flat"
 from the screenshots:
 
 ```sh
-node scripts/seed-demo-home.mjs http://127.0.0.1:4380/mcp/homes/lisbon-flat
+SETTLE_EMAIL=you@example.com SETTLE_PASSWORD='your password' \
+  node scripts/seed-demo-home.mjs http://127.0.0.1:4380/mcp/homes/lisbon-flat
 ```
 
 ## On a server
 
-Run locally as above, Settle asks for no password and listens on `127.0.0.1` only. To run it on a
-server, use the Docker image and follow [SELF-HOSTING.md](SELF-HOSTING.md); there it requires a
-password, and won't start without one.
+Run locally as above, Settle listens on `127.0.0.1` only. Everyone logs in with their own account,
+locally too, and one account never sees another's Homes. To run it on a server for your household
+or a few others, use the Docker image and follow [SELF-HOSTING.md](SELF-HOSTING.md): you invite
+each person, and it needs HTTPS in front.
 
 ## Notes
 

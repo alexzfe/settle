@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:256195dee746c236763deed451428353868ac3f04a6d571c850ffdc5bc4f9618",
+  "claims": [
+    {
+      "id": "claim_1e693c55df42468ea533213ee3fd525d",
+      "statement": "The root package defines test (vitest across packages), lint/format (Biome), build, plugin:build, plugin:eval (claude plugin eval ./plugin with claude-sonnet-5) and plugin:eval:live scripts.",
+      "evidence": [
+        {
+          "resource": "repo://package.json#L9-L20",
+          "version": "repo-lines-v1:sha256:3af7fdc71ddf8410dcc2bf26b48ac812da4314d790aa24adc42a2fc4a4e39c24:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ODMzZDU5NDljMDNhNDBjYTk1MjQ5MTYxMGE2NjU5NjQ0YjNhYTQ2NjM2MmY3OTkwMjBkYmYxOTgxNTQ3ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkYzRkZTdlZDM1YTIzMzY0NTM5ODY0ZGFkYjkzOGI4NzIzMzM3OTE3OWQ2MjkyYjlmZjVmNjE5YTZjMTMxNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMyMDEyZDU2NmU1MjA3MDJiMjk2OTEwZThhMjk2NDBhYTBkYWY3NTNmYzJiMTg2MDIzNjFkYTAyNjcxMGY2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4ZTg5NmZjYzJhYjQ5NDVmM2E0YWFhNGM5YWZmY2UxYmFiMjE0ZjM2NjFhMzVlZTFlNjQyMTgxZjg4MDk2MzMifQ"
+        },
+        {
+          "resource": "repo://vitest.config.ts",
+          "version": "repo-file-v1:sha256:da59eee9fed6604e5de6cc0953d27cf1ecc80f4629dc47055e36953bbc4f145f"
+        }
+      ]
+    },
+    {
+      "id": "claim_8f3e04cb7c274c20a6439fcc93c4bb4b",
+      "statement": "Core's Vitest config runs only src/**/*.test.ts because tsc also compiles tests into dist.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/vitest.config.ts",
+          "version": "repo-file-v1:sha256:411fdd1c57d1c7661a6b7f021aa255555adbd077603024d133e4f5633d1f609a"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b842e6cabd6481893239e01a0766e59",
+      "statement": "The fixture Home is fictional, built from code on every run, backs every renderer snapshot, and shares its name and city with the Home the live suite creates.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/fixture/fixture-home.ts#L13-L30",
+          "version": "repo-lines-v1:sha256:5971a656be848c5e8a8102c896205ad962bca509393f3b76a9c9fc6c32713ada:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNiYThhN2IxNjkyNWE0NDM2MWU3YWM0NGU3Yzg1MTE3Y2E4ZDlkNzI2Y2RkNmQ2M2U2MDM4NzBjZGRmNDVkNGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3NGZhODdmODI0NTI3MWI4OTcyMmY1MTI1MTE4ODg2NTRjY2Q2NDM2OTcyNTUwZjFkYWQyMGVhZjNkNDZhZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyNDAzYzZkNzQ2ZTA2ZWVlZWNjN2YwODY5ZDY0NzI4N2QzMjU1M2FjMjc2MmFhNWZiNDk3OTM3MDdlMTYyNmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_095d1dd86ae846c08a0858b0af95de98",
+      "statement": "Replay eval histories are generated from eval-histories.ts as Claude Code transcripts so they always carry the current Skill text and the same answers the case's mocks give.",
+      "evidence": [
+        {
+          "resource": "repo://packages/skills/src/eval-histories.ts#L1-L12",
+          "version": "repo-lines-v1:sha256:2adb74d6ad6aff7ca7821bdfaa6b873fc42d48ffe27c0bfbdd33d101f4ee23dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MTcxOWJmMTNlMzM5Yjg5MjVhNjc5YWJlNDUxZmVhODYwMmQyZDY3MzZlNTdjMDA2Zjk0MGI0MTAzNGFiOGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1N2JhYWM2YjlkOWI1MzM2YmIxNTYxODM3ZWYzMGQ2NDg1MzNhOTYyY2QwYjRiODNkNDhiNmM4MjA4ZTNhZTIifQ"
+        },
+        {
+          "resource": "repo://packages/skills/src/transcript.ts#L1-L25",
+          "version": "repo-lines-v1:sha256:6fb934b8c4168fd44def3ff8bc2df343a4721196e01e1222006a5eba1344b046:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwMWRlNTg4Y2IyZWEzNDRhZmFlOTU1MjY2N2Y0ZTM5YmUyMTFkY2EyOGVmMmE3MmRlMWU3OGUzODBlODU0MGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxOGFiM2QwNjk1ZGIyNWY4OTY0M2FiZmZmNjlhZjkwZjE2YmMwYTVhM2VjMDJkNTg2YjU1NWNlYWJhY2ZlNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyN2MyOGRiZDJhNjRiMzE1OTlkMjBkMzcwZjZlODY5NzBiYzU5MTgyZTdlYzg4MzQyYzY1NWIzN2JkNDNiNzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b9440ab3d1f44beb92f44afe69728540",
+      "statement": "A replay case names its history in case.yaml, mocks Settle tools with per-case or suite-wide Markdown answers using file and input templating, and grades with LLM rubrics that can focus on mock calls.",
+      "evidence": [
+        {
+          "resource": "repo://plugin/evals/mocks/settle/save_guides.md",
+          "version": "repo-file-v1:sha256:dbddf2781fb9d1aacd567cc91d4e28f0422fdd274a3111579a7982020798f009"
+        },
+        {
+          "resource": "repo://plugin/evals/purchase-shop-lines-are-actions/case.yaml",
+          "version": "repo-file-v1:sha256:95e66ef7b155d101dd19889e4f534473b04be714e5c4a92ea972c70ec503115d"
+        },
+        {
+          "resource": "repo://plugin/evals/purchase-shop-lines-are-actions/graders/lines-are-actions.md",
+          "version": "repo-file-v1:sha256:eb25b4524bf4bd0ddeca1515ef19bb69f07b40b6ec777a0798626b129231951f"
+        }
+      ]
+    },
+    {
+      "id": "claim_cc52dfe24a37402894510684394ef8ce",
+      "statement": "The live smoke suite starts a freshly built server on port 4390 with a throwaway data dir, creates fixture-home, uploads the fixture Blueprint, seeds extra Homes for Color and Purchase cases, and cleans up on exit.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/plugin-eval-live.sh",
+          "version": "repo-file-v1:sha256:01e690471700419a56917edbddc7d83cb2341657496811a653ce367425e1dbaa"
+        }
+      ]
+    },
+    {
+      "id": "claim_cd832c28b5604e6face54c6bd24ccff4",
+      "statement": "seed-demo-home.mjs seeds the invented Lisbon flat through the MCP endpoint with Rooms, Items and Decisions in every state, and refuses a Home that already has Rooms.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/seed-demo-home.mjs#L1-L25",
+          "version": "repo-lines-v1:sha256:df9825ff05a1f2e152a28760639f54d5e2bac0abc7feb2f63c1c9f7a7369e9a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlOGU3MDJhYzRlYzgxOGY4ZjE0NzIwYTE4MjFlOTFlN2UzMTIzZmM1NjE1ZjUwNjMzZWE1MzE1YzFmMjU4OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkNjFiY2IwNDRlNTRkZDRkYzU3YTgzZGYzNjVlZTI3YWQxNDYwY2EyOWNkYTY0Mjg5NWNhYmViYTFjYWRkNzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNmE5NTE4MzFlZjBkMWQ0NTBjMzdiOGI4YjAzNTAzODE0N2FjNjZlY2FmYjQzMTJjOGNmMGY3OTZjMWMxYTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6459273069954c1a805a5e9d65934f88",
+      "statement": "Biome formats with 2-space indentation and 100-column lines and lints with the recommended preset, excluding .claude and docs/design.",
+      "evidence": [
+        {
+          "resource": "repo://biome.json",
+          "version": "repo-file-v1:sha256:7a0fbdaa93f7abdfe4209a0627a5d251c34437897f363f5637e21a0d297c9c25"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

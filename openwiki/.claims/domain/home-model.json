@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:57abc5087b94b5a5342b6485e07d05709786e9f8bf11579e113c8bcc46353dbf",
+  "claims": [
+    {
+      "id": "claim_2d556fb041404dab8e5d65db8c714ffc",
+      "statement": "save_room records a Room with all its Walls, Windows, Doors, Features and Surfaces in one call, updates a same-name Room rather than duplicating it, numbers Walls clockwise as <room>/wall-<position>, and shares one Door between the two Rooms it joins.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/home-model-rules.test.ts#L336-L400",
+          "version": "repo-lines-v1:sha256:c6e643c1d99913ae062fc3aabd28bb0a9980881ae47a5a93bceb27744a5a2b47:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZDA4N2JjZDZjMmYwYWUwNjA5MzU4MmZiYTJlMzI5YjFlMDI4OWFmZTc1ZGQxYzBiZTc4MGRhNDEwMTM1OWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NzlkMTE4ZDZlM2NiZjQ1MDUzOTc0OGRlZTdhNDMwN2FjYmU2NDQ2Y2JhMjk3ZjI3NjBmYTVkMGJiYTFiYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkNzg0MGIwNDMzYjM2YjEyYjNmY2UwYjc1ZWMyYmI0MDVjOWE1NjM5ZDFjMGViZTEwZWNjNDNjMjM2ZWMxM2YifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/rooms.ts#L47-L72",
+          "version": "repo-lines-v1:sha256:d983e7a69de484add120f91bdc6288830fa63ee587ae4beca5e72e0a4c892e86:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2YTgyNWE5MzNhNmViNTM1YjdjNzA0MWE2ZTZjZjFhNTIxZDhlNjcxNmZkZjA0MzBmMjViYmNkZmZlZTE3OTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMjI1YzM1MmZlNjE1ZDExNjhjMDQxOTk3YWZlZGI2NjhhODAwODI5Yjg2NWRlNzk4YWM5OTFlMjI1MDMyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NDNmN2IxN2UyZDY2NjQ0MGEwYjc3NmY4ZjQ4ZjM5Y2VkY2FhNDQ5NGQzMzUzNTUwZGU4ZDM5YmNjNzM3MjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1ZjNiYTIzYmYzYWMzNTE1MDY5Y2U1MDFlYzhhMjcyMjM1MTc4YmJlYmU5MDYzOTU4ZTg4MmE0NmJlZDM2ZTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b04c6717199944ef8223aa89869a8204",
+      "statement": "create_home takes the latitude from the bundled GeoNames cities15000 table rounded to 0.1°, accepts a given latitude when the city is missing, refuses an unknown city with city_not_found, and adds the Ground Level.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/cities.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:5e56f56acebd7ca9c4fb0fb85f69c2fb56ada97ae96defe7912a66f817060a32:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhYzc0OTEyNDRiZjJiMGY5YWMwNjIyNWQ1OTFkODYxMjQ0N2VmZDRhYWI3ZTIyYmRlMzI4OTc2ZmEzYmQ4OGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3MmE0MjkzODJiMmUxNDcxOGUwZTM3YjA1NzBhOGExNzAyOTkxZmNkODQ5OGNkODQwNjBhOGJmNGYwNTAxN2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3ZjczY2NiZDFjYzg0NjNiODcyYjlhYzI2MzU4NTYwZGQ5MTI2OTBjYmI1YTVmZDc5ZmM0ZmJlNGRiM2JiMGIifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations.test.ts#L42-L98",
+          "version": "repo-lines-v1:sha256:8976e2bf5925303ec6a0a7ba63f84936241e3cebf0174338bc26a9ff11da96c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmYzk4OWQwOGNlNzhhMjI2NzE5MTI4MTVkODI4OGU0OGM1NTllMWQ5ZWQzMmE3MmY1ZTA4MWY2ODEyY2QwYzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmZWQ1YmMyODEyODg1ZjY0YTc5YWVhNjI2ZjliZjY3Zjg1ODI0MGMwOTcxNDI2ZjY0YzRmMmVmMTAwZTMwMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4OWMzMjVjZDEyOTA0YTlkY2Q2NTEzMWQzZjkzOTMyMmU1NjY1MDBmNTAzYjMwMGZiNGY5YWI1OTkwMjUyNDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_27a0c06164164752a7790c0fadad0c28",
+      "statement": "Removing a Constraint requires a reason quoting the user's permission and Archives it; Constraints bind every Skill like a Settled Decision while Notes are softer.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/constraints.ts#L17-L31",
+          "version": "repo-lines-v1:sha256:0f771477d475a7bf5006f056f57c96367d80acf795f57e968951f39e7b8e10ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2YzRkMWVlNTMyODc5MjNiNTFhNDllZTg2MDFmMWNhZDJiNTYwZTg2MmUwMDVkYmYwMTA2MjRiNjY0ZGUwNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZjllNGVmOTNlZjFhOGE5NzI5ZjU2OGE1YzU0NmUxMGNmMTJmMzMzNjMwYzdmMzg5YTFiZTVmNjdlNGNjZGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5ZDg0YTdhNTcyNjc1NmIwZDlmOTQyNjlhMDU1ZTc1NzgwNWM3MmJiODRjMzllYTk3NjY4OTUxZjQxNTMyOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2ZmE3MjFmY2YxZDM2OTBlYjkzNWQxOWRkYWUwYTk5MzFkZmQ0ODEyNDMyOTk3ZWY4NmE3M2YxMTRhOTI4OGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6d3e623d342f4f4fbb4aca36dc37318a",
+      "statement": "save_items treats identical pieces as one Item with a quantity, an Item with no Room as Unplaced, and records the register only when the user mentions it.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/items.ts#L25-L47",
+          "version": "repo-lines-v1:sha256:806e970bb3152a6ee48dd7389c676ae75e239d61245f397f6f7a90e4b82872d8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5NmExYWM5NmU0Y2IxNWQ3NDBmMTc3MWNmMDUzYWQ0MjAxM2RiYWM4M2RiMWE0ZTEzZGVjMDZlZThjNzJkNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZjllNGVmOTNlZjFhOGE5NzI5ZjU2OGE1YzU0NmUxMGNmMTJmMzMzNjMwYzdmMzg5YTFiZTVmNjdlNGNjZGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ZGE4MWY2ZTYyYzEyNDM5NjIzYmZiMmNlYzRkOGMzNmFjMTk4ODI0NzU4ZDY1NmU0ODcwMDEwNDE5ZWFjMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2YWI1YjVmYjU4ZjY5MjI3ODdhMzMyOWE2ZWZhMzAxYTNkZWYwOTk1MGRiMGEyZDk1MzY5ZDliMDA0Yjk5NzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f75ee6e1102b42c980c6c35d6bd6db26",
+      "statement": "edit_item is the web Item page's edit, overriding any Provenance because the user typed it, flagging Purchases resting on changed values, and leaving name, category, quantity, Room, Wall and archiving to a Session.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/item-page.ts#L70-L80",
+          "version": "repo-lines-v1:sha256:6c4553cede3eb1d1afeffa1b6f0838ce35de2f2dcc0a9527b74075e24ca983be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlZTBlYzNmYmU4NGE0Zjk5MGJhODljM2Q2MjY3NjJkZmQzNDAwYmI4ZTRhZmU0MmViYTg3NjkzNDlhOTM2MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1ZjllNGVmOTNlZjFhOGE5NzI5ZjU2OGE1YzU0NmUxMGNmMTJmMzMzNjMwYzdmMzg5YTFiZTVmNjdlNGNjZGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzODNhYzE5OThhZDg4Mjg4NDVjNzBlZGZmOWQyNWZjYzc4OTU3ZjU1MzBhNzk4MzhkNTE4NGExZTE3MGZlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1MzhkYzE1MWIwMWEwYzc5ZWQ3NzY2OGE4MzdkNWQ1NTY3NjMyYTJjMjkwMDkxM2UwODM0ZmZmYjcwYzRiMzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5cef6b36e39040aebd035fe81b568e9b",
+      "statement": "A Room's Gaps are wall lengths, ceiling height, Windows or windowless, facing of Walls with daylight openings, times of use and the four Surfaces; an outdoor Room is checked only for times of use and floor Surface.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/gaps.ts#L4-L45",
+          "version": "repo-lines-v1:sha256:6e45358ff643050731798de59c4972f0f9587cb4bf5ac0e71f6cc169f96f98f5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkZDljZjFmNDNiNzQ0YTFhZjY2ZGE1M2NhNDYzOGY0MTU4ZmI2Y2Y0MTJhYTI3YWUyMjcyZDAyZWNjMDFkOGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5118993e83f74aefbeba7ea39160320f",
+      "statement": "Daylight openings are Windows (including skylights with their own facing) and glazed Doors leading outside or onto an outdoor Room; glazed Doors between indoor Rooms are excluded.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/daylight.ts#L1-L40",
+          "version": "repo-lines-v1:sha256:6c74554d59e5064171fc8ea4a16c58ba9944ff4c7ec040b88650ff5706914591:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3Mjg2NTQyYmEyOTE5OTM3ZjRlOTFmNjdlMWUyOTBkZDA2ODYzZThjZjgzYjI2NWRmZmE1N2FhOWQ4YTY0NTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxN2FmMTEwMWM5N2I3YzJmNTI1NDA3ODJlNjM0Y2M0NDQwZjBlOTcwMzQxZTUyZjk3NTIzMTFkNzhiN2Q3ZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjY2RmYmI3OTBmOWE2MDRlZWViZTc0ZjNhM2RiMWI2NzQ2N2YyNTNmY2JhZjBkZWI5MTBjMTE3MjE1NmZmMDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d6ecb80ffea146e9b2dea1b369fe7cf7",
+      "statement": "Writes from a Session of another Home are refused and write nothing, references to another Home's records are not found, and slugs never change on rename.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/home-model-rules.test.ts#L401-L476",
+          "version": "repo-lines-v1:sha256:d56863dc54c8649ff2e6c31cd0960be4bc4a50a534f3e8b947688728c109349c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOWU0MzU5ZjI5OTcxZDY2ZTQ3Y2U3MTE1YzM5NzZlYTAxY2I1YWI1ZjhmZjAxMGE4ZjZmYmM5NDdkZmIzNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NzlkMTE4ZDZlM2NiZjQ1MDUzOTc0OGRlZTdhNDMwN2FjYmU2NDQ2Y2JhMjk3ZjI3NjBmYTVkMGJiYTFiYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjMDkxZjZiMjEzMGM3N2JmNTI4ZDNjZjY0ZTc2MzhhNWFhMzFkMGEwOTllYzE0NGM5MWNlNGRhNzUyNzY2OTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e9ad4cf4fd65465eb62043286e7d976a",
+      "statement": "A Room still holding Items cannot be archived, and a Level a Room is on cannot be removed.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/home-model-rules.test.ts#L305-L335",
+          "version": "repo-lines-v1:sha256:06858bd2f7b4fe148de6f3ee59f72961c2d025daec9bfdc9172a64e04656f754:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhYzlkOGQ0ZjQxNTJkMjA5MTA2M2M1YmI0MDk1Mzg0NDk4NzQ0YmVmM2ZmZTNiZGNlMTMzMTVmODhkZGM5NjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiZGJmMmE1NDcxNDIzNWI1N2ViNjg2YjI4NDhjYTk0MjU0YjhmZmE1ZjhkZDIzMjUwZTcyYzIxOTc0ZjE3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3OTA5NzEwMDcwMWZiNTExOWRkMzQ2MmRmMTBhNTFkZWY5ZTRhY2E1YjhkMTQ5NDU2MTRmODdjYzAyZWU3MWQifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

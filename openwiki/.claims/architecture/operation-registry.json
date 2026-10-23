@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:72a76a5e0624c4ed4176a54a5b22ecd0d613da380d7e6607107c1e2d72cb822c",
+  "claims": [
+    {
+      "id": "claim_194899d0b4eb4d4cbdee25c1c14530ae",
+      "statement": "An operation declares name, description, zod input, optional webInput, readOnly, surface (agent/web/both), a handler, and optional text and images renderers for the Agent.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/registry.ts#L71-L100",
+          "version": "repo-lines-v1:sha256:58b92b8095ab896895fb69e6ca9183c69ba968953d007529276fe4fbf96e0f0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZTI3MjFlZDdlYTc1MWQ1YTI4ZGFlZDk0YzFmZjZkODUyNDM3NzRmNDQ1ZTMwMzIwZjc1YjdkODJjMDgyZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5YWNlMTY5YmYxNDFmMDNhYWY5NmZjOGVhNzYwODNjMGUyOGY4Y2RlMjQ1NDk1NWJlNGU4MjA1OGZlZjY4ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmZWQ2MDY1MmQ4MTRhZDIwMjc4Yzg0NmZlYTEyY2RjZDI5ODk2OGRlNjAxZjBhMGFmODI4NDE4NmZkZTU4OTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f671fa2df3e74d9799640ba0d7f3ac8e",
+      "statement": "core.ts holds the single operation registry, whose declaration order is the order the Agent's tools are listed: reads, then writes, then close_session.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/core.ts#L65-L124",
+          "version": "repo-lines-v1:sha256:e5e962feabb3867e646b459e63dcabc65bdee480c0362fed5d0d8f79e8e90a20:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZjU4MWQxMTkwYzNkZGQ5NzgwNjYxMGVjNTgxNGUwMTU1YmRhZmE4NjU2MmJlNDE0MzVmZWFjMjhjZmZmNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkZmU4MjRhZDU2Yzk0ZWFlOTBmOTZkOTZlMGZmMzllOTJjYWE2M2Y3MGI5YTRhMDIwYTI1ZjJhNDdhOWI0MjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmMDFiMjllZjNkMzZmNjZiODVhYTVjNzUxNGY4ZGU1MGVjOTk2YjVmNjkyOWQ5Y2VlYjgxYWExMzQ4OWQyODgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8830b4f5ccfa463482ec5ee4e4b1c9ec",
+      "statement": "Core.run rejects unknown operations as not_found, uses webInput for web callers when present, validates with safeParse into a validation error naming each path, and resolves the Home from the adapter context or the input's home field.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/core.ts#L249-L269",
+          "version": "repo-lines-v1:sha256:f807f87d9fd64824ce1ac8c97c9c689cc8cfdeb41030fa1327af1699b6f5865a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMGNkYjk3MmE3YmZiN2VkMjQ2ZjlmZjY3MjM4NWU1NWY0OTY4ZmMxMTA0M2RjNWI2ODRkNTFkZmEzMWRiY2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0M2VjMmI5NGMwMjg5MjZlNDlmZmM4NDRjZmE1M2U0ZDMzM2VkODJkNmVjZWEyYWY2MDRkYWQ0YjViOGNhNDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5MTQ2OTRjNTk3YzM3YzlmMzRkMWUyNjE0NmIzMDc2YmZjOTJmNjg3NmRjNzEzMzkxNTNkNDEzNGZkYjczNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg4ZmYxZDk0MjgzNTgzZTMzZjY2MTBhNjljMTZmMjJhOTY5NGQxYmNkNjczNmE3Nzc4NThiOTZhYjJhMzg3YzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6194d86a517044a4a6b8795b603574d5",
+      "statement": "The Agent's Session is read from the tool's session argument, and a call naming two different Sessions is refused.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/core.ts#L281-L290",
+          "version": "repo-lines-v1:sha256:c0b38a1e129c38ec1602900aab02832e9040c69eb8ff430dd73ba867504809a3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxYjI3NjJkYmU2MDM1NDFhOWY4YjM3OTg3YjUzOWJhZjg0YWY5ZjZhZjk5Mjc1YTk2NjIwODAzZmM4NGI2Y2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkNTQ5NTRhODZmYWEzNTRkOThiMDFmYjIzMmY4OWFkZTdmZGU3NjczNWVhMmNjNTIwYzg3NDkwNzI4NWZkZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8bd87ea1b2e64d38ba70d398e6daef46",
+      "statement": "requireSession refuses web callers, missing Sessions, Sessions of another Home (reported as unknown so the Agent never learns of other Homes) and, for writes, closed Sessions.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/scope.ts#L27-L64",
+          "version": "repo-lines-v1:sha256:6be06062c40ded60158dc4f8aa58c9dadf4f9bcf766bb767943ab8f77a97058a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NDVkN2U1MjBiYmIzNTBmMzQ5NjI3NWNkZmQxODY1ZTc3MDcyMjFjNGI2MGNiYzdlNmU2NTFmYmU3NTQwZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2NjA1YjAzNGI0NTAxZjZiZTZhN2Y5MGRhZDZlOTgyMTFkMGEwZjYzMTcwOTc5MTMzYWNjY2E5NzkwZDIwNzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3cb42d92936b4993b515931471fc843e",
+      "statement": "context.write runs the write in one store transaction, logs each change with one shared timestamp and the origin, and after commit publishes one ChangeEvent per distinct changed record.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/core.ts#L213-L246",
+          "version": "repo-lines-v1:sha256:55f24f2f004513c1161ffc1301bd713d7eea9d845375cedf2310c3bb56750714:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNGUzZjNmYmY1MmM2MWQ2ZGQyZTIxZGM0NTdkYTAxMGZjNGEzMWUwNzFmMmJhOTNlYjg3ZGIxN2JiZjcxNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlZjY5MDA3YTdlNzVjY2RiMmMxOWVmYTlkOTVjNDNiZjc4N2YzM2EyYjljODI2NWM0YTVjZTY0MmZlNmRiZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1NmQyZmI4MDg4NTFhM2U2NWIwMGVlOTZjYTVjYTcxZGFkZmZlYjI5MzdjM2QzZmYxOTkyOWFiOWVjMjdlNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4MzRmMDE5NjE3OGJhMmM2NzBhZjBhMDM3NTliZWIwN2M4NzI3MjIwMDRhYjNkYzgyZDZkNmJmOWUyNjBjOTAifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/registry.ts#L59-L64",
+          "version": "repo-lines-v1:sha256:a6064cb0182e5e04c04854945e85c9f7e1232f6d680fffdde38f0720820417d4:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDNlMTY3ZjEwMWYwYzRiMjA0OWMzZTJlNGU3YjJjYjYzM2QwNWE4NWMyNGMyNTljMDViYzAzNWJiZDZmZmY2ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjAxYjM4ZjBlMjE5NWUyZTI4MjY0MGRhN2Q4NWQxZjdhMzFmOWIwN2YyMzZhMDA5YjBmZGIxZmQzYTM0NTk0ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzBiYjcyODAyZjdmOTFkMzk4M2ExNzQxY2RlNTI4MzlhMzEwNTI2MWM0ODQ2OTNmOWFmZWQ3YWI4ODUwMDU2ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmU5NzlmODg2Mjk2ZDVmZDVjMjIzMTc2NDdjNGQ0ODZkZTdjMjdmNjI4MTQ0NWE3MDAwZjhkNWVlZWFjNzU2ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ed386c73ecc94c9084bb49e1a83387f6",
+      "statement": "Store transactions are synchronous, so outbound fetches such as a Listing photo happen before the write rather than inside it.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/registry.ts#L38-L44",
+          "version": "repo-lines-v1:sha256:2b74311c7504757578af5d9a2762117df8dbbe5f446ca72857607b73261b6fe1:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGYyYTJmOTk2ZjA4ZTY4MGJkMjkyMTM1YTZmYTQ5NzhiZGEyNmU2MDJkODRmMzNjYjFkNTk0Nzc1ZDQzMDRiNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTQwNDQ3MDg0MjlmZTgyYjc0MTgzODYxYWFhNDgyNzZkZGUwNDc2MmJmMDNmYzQxNTdiZDI1NTYxYzI0YWNjNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzM2NWRmODg1NDY2MThiNWI2NmZjZmQ0MzA4OTgyOGYyNjRiNjkzYWI4ZGMyMDRhZTE4NDEzMTA5YjMyM2RlOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM3YTAzM2Y2ZmVlMTc1NWNlOGYxMjViNTQxM2Y3YmIzNmI0ODNhNmM2MTY1ZmQyMWExOGQ4YjNhYWJjZmE5MCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0e1568971c549e294f3cf95551d0219",
+      "statement": "EventBus.publish catches a failing listener so the other listeners still hear a committed change.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/events.ts#L28-L50",
+          "version": "repo-lines-v1:sha256:aefb587b21035f2a865c6d056e0fc2209ebc10997b4784ab55abcd9e425be0a6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkOWNmOTc1MWQxNzg1MGQ5YmE4MTRiMmE2ZjI4ZjIwZjFiOGE3Y2Q4MDU2Zjk0NmRkMzEzOTZjZjNiOTI4NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fd116ad4c9264a5c8ba3601feb0c8309",
+      "statement": "Writer.patch skips unchanged values and refuses a Measurement or Color of weaker Provenance unless the write carries an override reason, which is logged with the change.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/writer.ts#L84-L137",
+          "version": "repo-lines-v1:sha256:4e223da89027792c41b88ec96cd39534bdf40bf869217759050025fd1c3dc5fb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlNzExMjdmN2Y1ZjE3MTdiOTZlN2U5NzY5MGE3ZDE4MWE1MDcyMzdmY2FkMTg4NDBiYmIwOTM0MDIyYTkyMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhMjRmZGQ5ODY4YTQwZDU2YjQzNDBlNzI2ZWZjZjVkMDZhMmYzZTVjYWE3MDU2NzgxYWE2ZDFhYjE5NTdhMjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwNDg0MjQ3OGNjMTU5YmRlNzIzOThjMmQ0ZmZmZjJmYzRiNTBhNDgwNTFhYWEwOGFjZDM5MjJmM2ZlN2E1YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhOTI5M2ZkODA1NGI2ZTQ3MjQ4MzczZjM5ZjRkZDc3ODAwMTA1ZWI3NTgzNDg2ODcyNTQyODVjZDEyODJiNzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_05233b0520cd4381beb243ec612bb1db",
+      "statement": "CoreError carries a code for adapters to branch on and a message written for the reader saying what to do next.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/errors.ts",
+          "version": "repo-file-v1:sha256:e2429b04c569264612b1179a7b95dd474be4c5eeff2a2b19829e9c24248ed1b5"
+        }
+      ]
+    },
+    {
+      "id": "claim_b9f9810a4aa1491884a60a6ca878a6fd",
+      "statement": "The change log is exposed only to the web via get_change_log, newest first with a default limit of 200, and never given to the AI.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/changes.ts#L5-L34",
+          "version": "repo-lines-v1:sha256:ed5007d923d061e1b1181e9892cd846bc1c9e3d733f978d9b6857719b61b47bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4Nzc4YjNmZDg4ZTc0OWVmOTQ0MzU4ZDZlZDhmZTIzZjNlNjNmNDljZTZjZDYxYzJmMzg3MjkyYjQ5YTQ0MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwZjgzMGM2NWI0OWM5NjExMjM4YjJkOTNiNGU1MWI1ZWJiNDQzODUyMzhkMmQ1NTg4OTZjNDdiOWU4ZTk1YWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

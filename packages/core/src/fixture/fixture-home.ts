@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { hashPassword, type PasswordCost } from "../accounts.js";
 import {
   type CallContext,
   type Core,
@@ -62,6 +63,41 @@ export interface FixtureHome {
   home: string;
   /** The closed Session that recorded the Home. */
   session: string;
+  /** The web caller: the fixture's Account, which owns the Home. */
+  web: CallContext;
+}
+
+/** scrypt at a cost a test can afford, under a millisecond a hash: never for a real password. */
+export const TEST_PASSWORD_COST: PasswordCost = { N: 2 ** 10, r: 8, p: 1 };
+
+/** The password addAccount gives every Account unless told otherwise. */
+export const TEST_PASSWORD = "correct horse battery";
+
+/** Each core's first Account, the Admin, which makes the invites for the rest. */
+const admins = new WeakMap<Core, CallContext>();
+let accounts = 0;
+
+/**
+ * An Account to call core as from the web, made as a person makes one: the first through the
+ * setup link, which makes it the Admin and claims every Home without an Account; each after it
+ * through an invite from the first. Returns the web caller.
+ */
+export async function addAccount(
+  core: Core,
+  email = `account-${++accounts}@example.com`,
+  password = TEST_PASSWORD,
+): Promise<CallContext> {
+  const admin = admins.get(core);
+  const url = admin
+    ? (await core.run("create_invite", admin, {})).invite.url
+    : core.accounts.makeSetupLink();
+  if (!url) throw new Error("This core already has Accounts made some other way");
+  const kind = admin ? "invite" : "setup";
+  const token = url.slice(url.lastIndexOf("/") + 1);
+  const account = await core.accounts.redeem(kind, token, { email, password });
+  const web: CallContext = { caller: { kind: "web", account: account.id } };
+  if (!admin) admins.set(core, web);
+  return web;
 }
 
 const measured = (mm: number): Measurement => ({ mm, provenance: "measured" });
@@ -76,8 +112,17 @@ export async function createFixtureHome(
   options: Omit<CoreOptions, "store"> = {},
 ): Promise<FixtureHome> {
   const store = openStore(options.database ?? ":memory:");
-  const core = createCore({ ...options, store });
-  const web: CallContext = { caller: { kind: "web" } };
+  const core = createCore({ passwordCost: TEST_PASSWORD_COST, ...options, store });
+  // Stored as is, not through the setup link, which would read the clock and the snapshots with it.
+  const account = store.insert("accounts", {
+    email: "fixture@example.com",
+    passwordHash: await hashPassword(TEST_PASSWORD, TEST_PASSWORD_COST),
+    admin: true,
+    disabledAt: null,
+    createdAt: "2026-09-01T09:00:00.000Z",
+  });
+  const web: CallContext = { caller: { kind: "web", account: account.id } };
+  admins.set(core, web);
 
   const { home } = await core.run("create_home", web, {
     name: "Fixture Home",
@@ -735,7 +780,7 @@ export async function createFixtureHome(
       next: "Purchase again with a rug to check against the Requirements.",
     },
   });
-  return { core, home: home.slug, session };
+  return { core, home: home.slug, session, web };
 }
 
 /** The Wool rug's Full Guide: every must explains why. */

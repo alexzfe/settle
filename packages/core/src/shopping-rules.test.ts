@@ -8,10 +8,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
-import { createFixtureHome } from "./fixture/fixture-home.js";
+import { addAccount, createFixtureHome, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { Measurement } from "./operations/schemas.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const measured = (mm: number): Measurement => ({ mm, provenance: "measured" });
 const estimated = (mm: number): Measurement => ({ mm, provenance: "estimated" });
 const LAN_URL = "http://192.168.1.20:4380";
@@ -35,7 +35,8 @@ const call = (name: string, input: Record<string, unknown>) =>
   core.run(name, agent(session), { session, ...input });
 
 beforeEach(async () => {
-  core = createCore({ lanUrl: LAN_URL });
+  core = createCore({ passwordCost: TEST_PASSWORD_COST, lanUrl: LAN_URL });
+  web = await addAccount(core);
   home = (await core.run("create_home", web, { name: "My flat", country: "GB", city: "London" }))
     .home.slug;
   session = (
@@ -550,8 +551,9 @@ describe("LAN mode", () => {
   });
 
   it("gives no LAN URL when LAN mode is off", async () => {
-    const off = createCore();
+    const off = createCore({ passwordCost: TEST_PASSWORD_COST });
     try {
+      const web = await addAccount(off);
       const flat = (
         await off.run("create_home", web, { name: "Flat", country: "GB", city: "London" })
       ).home.slug;

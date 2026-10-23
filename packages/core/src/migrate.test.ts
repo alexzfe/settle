@@ -39,6 +39,7 @@ describe("migrate", () => {
       { id: 15 },
       { id: 16 },
       { id: 17 },
+      { id: 18 },
     ]);
     db.close();
   });
@@ -47,7 +48,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 18 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 19 });
     db.close();
   });
 
@@ -363,6 +364,8 @@ describe("migrate", () => {
       .all()
       .map((row) => row.name);
     expect(tables).toEqual([
+      "account_links",
+      "accounts",
       "blueprint_pages",
       "blueprints",
       "change_log",
@@ -382,6 +385,7 @@ describe("migrate", () => {
       "levels",
       "listing_checks",
       "listings",
+      "logins",
       "migrations",
       "notes",
       "photos",
@@ -394,6 +398,40 @@ describe("migrate", () => {
       "walls",
       "windows",
     ]);
+    db.close();
+  });
+
+  it("leaves every Home made before Accounts unclaimed, for the setup link to claim", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0018")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early.exec(
+      "INSERT INTO homes (slug, name, country, city, latitude, token) " +
+        "VALUES ('flat', 'Flat', 'CL', 'Santiago', -33.4, 'key')",
+    );
+    early.close();
+
+    const db = migrate(path);
+    expect(db.prepare("SELECT slug, token, account_id FROM homes").all()).toEqual([
+      { slug: "flat", token: "key", account_id: null },
+    ]);
+    const account = (email: string, admin: number) =>
+      db
+        .prepare(
+          "INSERT INTO accounts (email, password_hash, admin, created_at) VALUES (?, 'x', ?, '')",
+        )
+        .run(email, admin);
+    account("Sam@Example.com", 1);
+    // One email whatever its case, and one Admin.
+    expect(() => account("sam@example.com", 0)).toThrow(/UNIQUE/);
+    expect(() => account("kim@example.com", 1)).toThrow(/UNIQUE/);
     db.close();
   });
 

@@ -1,4 +1,14 @@
 export {
+  type Accounts,
+  type CurrentLogin,
+  LINK_MISS,
+  LOGIN_DAYS,
+  type LogInResult,
+  PASSWORD_MAX,
+  PASSWORD_MIN,
+  type PasswordCost,
+} from "./accounts.js";
+export {
   type AnyOperation,
   type CallContext,
   type Caller,
@@ -19,7 +29,14 @@ export type {
   RenderedImage,
   TextLine,
 } from "./files.js";
-export { createFixtureHome, FIXTURE_FILES, type FixtureHome } from "./fixture/fixture-home.js";
+export {
+  addAccount,
+  createFixtureHome,
+  FIXTURE_FILES,
+  type FixtureHome,
+  TEST_PASSWORD,
+  TEST_PASSWORD_COST,
+} from "./fixture/fixture-home.js";
 export {
   type HomeFolderFile,
   type HomeFolderSetup,
@@ -28,7 +45,16 @@ export {
   MCP_SERVER_KEY,
   PLUGIN_INSTALL,
 } from "./home-folder.js";
+export { MAX_IMAGE_BYTES } from "./images.js";
 export { migrate } from "./migrate.js";
+export type {
+  AccountExport,
+  AccountListEntry,
+  AccountSummary,
+  InviteSummary,
+  LoginSummary,
+  MadeLink,
+} from "./operations/accounts.js";
 export { DOCUMENT_TOO_BIG, MAX_DOCUMENT_BYTES } from "./operations/documents.js";
 export type { FindRow } from "./operations/find-index.js";
 export type { Session } from "./operations/homes.js";
@@ -60,3 +86,4 @@ export {
   renderRoomSheet,
   renderViewedPages,
 } from "./render.js";
+export type { AccountLinkKind, AccountRow } from "./store.js";

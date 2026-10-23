@@ -1,25 +1,38 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FIXTURE_FILES } from "@settle/core";
+import { FIXTURE_FILES, TEST_PASSWORD_COST } from "@settle/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { type RunningServer, startServer } from "./server.js";
+import { setUp } from "./testing.js";
 
 // Over real HTTP, as the Agent and the browser reach the server.
 
 let root: string;
 let server: RunningServer;
+/** The Login the setup link gave, as the Cookie header the browser sends. */
+let cookie: string;
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "settle-server-"));
-  server = await startServer({ host: "127.0.0.1", port: 0, dataDir: join(root, "data") });
+  server = await startServer(
+    { host: "127.0.0.1", port: 0, dataDir: join(root, "data") },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  cookie = await setUp(server.setupUrl as string);
+  expect(cookie).toMatch(/^settle_login=/);
 });
+
+/** A request from the browser logged in. */
+function browse(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), cookie } });
+}
 afterAll(async () => {
   await server.close();
   rmSync(root, { recursive: true, force: true });
 });
 
 async function api(operation: string, body: unknown): Promise<unknown> {
-  const response = await fetch(`${server.url}/api/${operation}`, {
+  const response = await browse(`${server.url}/api/${operation}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -28,7 +41,7 @@ async function api(operation: string, body: unknown): Promise<unknown> {
 }
 
 async function callTool(home: string, name: string, args: unknown): Promise<string> {
-  const response = await fetch(`${server.url}/mcp/homes/${home}`, {
+  const response = await browse(`${server.url}/mcp/homes/${home}`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
     body: JSON.stringify({
@@ -67,30 +80,40 @@ it("runs MCP tool calls end to end: open_session, then save_room", async () => {
   });
 });
 
-it("sends a change event on /events after a write to that Home", async () => {
+it("sends a change event on /events after a write to that Home, and only that Home", async () => {
+  await api("create_home", { name: "Other home", country: "GB", city: "London" });
+  await api("create_home", { name: "Live home", country: "GB", city: "London" });
   const controller = new AbortController();
-  const response = await fetch(`${server.url}/events?home=live-home`, {
+  const response = await browse(`${server.url}/events?home=live-home`, {
     signal: controller.signal,
   });
   expect(response.headers.get("content-type")).toMatch(/text\/event-stream/);
   const reader = (response.body as ReadableStream<Uint8Array>).getReader();
   try {
-    await api("create_home", { name: "Other home", country: "GB", city: "London" });
-    await api("create_home", { name: "Live home", country: "GB", city: "London" });
-    expect(await nextChange(reader)).toEqual({
-      home: "live-home",
-      recordKind: "home",
-      recordSlug: "live-home",
-    });
+    for (const home of ["other-home", "live-home"]) {
+      const opening = await callTool(home, "open_session", { skill: "home-intake" });
+      const session = /^Session: (\S+)$/m.exec(opening)?.[1] ?? "";
+      await callTool(home, "save_note", { session, text: "The hall is dark" });
+    }
+    expect(await nextChanges(reader, 2)).toMatchObject([
+      { home: "live-home", recordKind: "session" },
+      { home: "live-home", recordKind: "note" },
+    ]);
   } finally {
     controller.abort();
   }
 });
 
+it("refuses /events for a Home that doesn't exist, as not found", async () => {
+  const response = await browse(`${server.url}/events?home=nowhere`);
+  expect(response.status).toBe(404);
+  expect(((await response.json()) as { error: { code: string } }).error.code).toBe("not_found");
+});
+
 it("sends one change event per record a save_room writes, with the record's kind", async () => {
   await api("create_home", { name: "Parts home", country: "GB", city: "London" });
   const controller = new AbortController();
-  const response = await fetch(`${server.url}/events?home=parts-home`, {
+  const response = await browse(`${server.url}/events?home=parts-home`, {
     signal: controller.signal,
   });
   const reader = (response.body as ReadableStream<Uint8Array>).getReader();
@@ -143,7 +166,7 @@ it("sends decision, flag, and conflict events when a Reopen flags a Decision", a
   await tool("set_decision_state", { decision: "calm-evenings", to: "settled", reason });
 
   const controller = new AbortController();
-  const response = await fetch(`${server.url}/events?home=${home}`, {
+  const response = await browse(`${server.url}/events?home=${home}`, {
     signal: controller.signal,
   });
   const reader = (response.body as ReadableStream<Uint8Array>).getReader();
@@ -172,11 +195,11 @@ it("keeps an uploaded Blueprint and its rendered pages in the data dir", async (
     }),
   );
 
-  const response = await fetch(`${server.url}/api/upload_blueprint`, {
+  const response = await browse(`${server.url}/api/upload_blueprint`, {
     method: "POST",
     body: form,
   });
-  const page = await fetch(
+  const page = await browse(
     `${server.url}/api/get_blueprint_page?home=plan-home&blueprint=agent-plan&page=1`,
   );
 
@@ -200,6 +223,36 @@ it("names the port it listens on in the Home Folder command when started on port
   expect(files[0]?.content).toContain(`"${server.url}/mcp/homes/folder-home"`);
 });
 
+it("prints a setup link while there is no account, and none once one exists", async () => {
+  const again = await startServer(
+    { host: "127.0.0.1", port: 0, dataDir: join(root, "fresh") },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  const first = again.setupUrl as string;
+  expect(first).toMatch(new RegExp(`^${again.origin}/setup/[\\w-]{43}$`));
+  await again.close();
+  // Each start makes a new one, and voids the last.
+  const restarted = await startServer(
+    { host: "127.0.0.1", port: 0, dataDir: join(root, "fresh") },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  try {
+    const second = restarted.setupUrl as string;
+    expect(second).not.toBe(first);
+    const stale = await fetch(first.replace(again.origin, restarted.origin));
+    expect(stale.status).toBe(404);
+    await setUp(second.replace(again.origin, restarted.origin));
+  } finally {
+    await restarted.close();
+  }
+  const after = await startServer(
+    { host: "127.0.0.1", port: 0, dataDir: join(root, "fresh") },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  expect(after.setupUrl).toBeUndefined();
+  await after.close();
+});
+
 it("names itself by the public origin when hosted, and answers requests for its host", async () => {
   const hosted = await startServer({
     host: "127.0.0.1",
@@ -215,10 +268,6 @@ it("names itself by the public origin when hosted, and answers requests for its 
     await hosted.close();
   }
 });
-
-async function nextChange(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<unknown> {
-  return (await nextChanges(reader, 1))[0];
-}
 
 /** The next `count` change events on the stream. */
 async function nextChanges(

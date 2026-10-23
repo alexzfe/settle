@@ -9,12 +9,17 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
-import { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";
+import {
+  addAccount,
+  createFixtureHome,
+  type FixtureHome,
+  TEST_PASSWORD_COST,
+} from "./fixture/fixture-home.js";
 import { migrate } from "./migrate.js";
 import type { Item, Measurement } from "./operations/schemas.js";
 import { openStore } from "./store.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const measured = (mm: number) => ({ mm, provenance: "measured" as const });
 const listed = (mm: number): Measurement => ({ mm, provenance: "listed" });
 const estimated = (mm: number) => ({ mm, provenance: "estimated" as const });
@@ -128,7 +133,8 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
     (await core.run("get_decision", web, { home, decision: "bed-frame" })).decision.flags;
 
   beforeEach(async () => {
-    core = createCore();
+    core = createCore({ passwordCost: TEST_PASSWORD_COST });
+    web = await addAccount(core);
     home = (await core.run("create_home", web, { name: "My flat", country: "PE", city: "Lima" }))
       .home.slug;
     session = (
@@ -603,8 +609,9 @@ describe("the clutter rule's data: Archived records for the web's switches", () 
 
   it("list_decisions gives Archived Decisions only on request, marked archivedAt", async () => {
     const store = openStore(":memory:");
-    const core = createCore({ store });
+    const core = createCore({ store, passwordCost: TEST_PASSWORD_COST });
     try {
+      const web = await addAccount(core);
       const home = (
         await core.run("create_home", web, { name: "My flat", country: "GB", city: "London" })
       ).home.slug;

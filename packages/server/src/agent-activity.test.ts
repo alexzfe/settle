@@ -1,18 +1,25 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { TEST_PASSWORD_COST } from "@settle/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { AgentActivity } from "./agent-activity.js";
 import { type RunningServer, startServer } from "./server.js";
+import { setUp } from "./testing.js";
 
 // The Agent's last tool call per Home, as /events passes it on. Over real HTTP, as the Agent and
 // the browser reach the server.
 
 let root: string;
 let server: RunningServer;
+let cookie: string;
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "settle-activity-"));
-  server = await startServer({ host: "127.0.0.1", port: 0, dataDir: join(root, "data") });
+  server = await startServer(
+    { host: "127.0.0.1", port: 0, dataDir: join(root, "data") },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  cookie = await setUp(server.setupUrl as string);
 });
 afterAll(async () => {
   await server.close();
@@ -22,7 +29,7 @@ afterAll(async () => {
 async function api(operation: string, body: unknown): Promise<unknown> {
   const response = await fetch(`${server.url}/api/${operation}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie },
     body: JSON.stringify(body),
   });
   return response.json();
@@ -31,7 +38,11 @@ async function api(operation: string, body: unknown): Promise<unknown> {
 async function mcp(home: string, method: string, params: unknown): Promise<unknown> {
   const response = await fetch(`${server.url}/mcp/homes/${home}`, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      cookie,
+    },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   return response.json();
@@ -50,6 +61,7 @@ async function listen(home: string) {
   const controller = new AbortController();
   const response = await fetch(`${server.url}/events?home=${home}`, {
     signal: controller.signal,
+    headers: { cookie },
   });
   const reader = (response.body as ReadableStream<Uint8Array>).getReader();
   const decoder = new TextDecoder();

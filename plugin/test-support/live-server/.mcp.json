@@ -2,7 +2,8 @@
   "mcpServers": {
     "settle": {
       "type": "http",
-      "url": "http://127.0.0.1:4390/mcp/homes/${EVAL_SETTLE_HOME:-fixture-home}"
+      "url": "http://127.0.0.1:4390/mcp/homes/${EVAL_SETTLE_HOME:-fixture-home}",
+      "headers": { "Cookie": "settle_login=${EVAL_SETTLE_LOGIN}" }
     }
   }
 }

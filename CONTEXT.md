@@ -7,7 +7,7 @@ A workspace that keeps a persistent, detailed model of a user's Home and uses AI
 ### The Home
 
 **Home**:
-A dwelling the user designs and furnishes — a house, apartment, or similar. A user may have several.
+A dwelling the user designs and furnishes — a house, apartment, or similar. An Account may have several.
 _Avoid_: Property, house, apartment, space, unit
 
 **Active Home**:
@@ -229,3 +229,25 @@ _Avoid_: Room brief, room detail, room file
 **Gap**:
 A fact missing from a Room that advice needs, such as its ceiling height or which way its windows face. Gaps show in the Home Overview so that Skills ask only for what is missing.
 _Avoid_: Missing field, todo
+
+### Access
+
+**Account**:
+The login that owns Homes: one per household. Everything in an Account's Homes is invisible to
+every other Account, its Agent included.
+_Avoid_: User, profile, tenant
+
+**Admin**:
+The Account that runs the server: it invites new Accounts, makes reset links, and disables or
+deletes Accounts, but cannot see inside another Account's Homes.
+_Avoid_: Owner, superuser, root
+
+**Login**:
+One browser's signed-in state for an Account, kept until it expires or is ended. An Account sees its
+Logins and can end them all.
+_Avoid_: Session (taken), sign-in
+
+**Invite**:
+A one-time link, made by the Admin, that lets one person create an Account. It expires after seven
+days.
+_Avoid_: Sign-up link, code

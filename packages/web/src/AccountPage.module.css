@@ -1,0 +1,111 @@
+/* The Account and Admin pages: two columns on a wide screen, as the About page has. Values come
+   from tokens.css. */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 var(--space-10);
+}
+
+@media (min-width: 56rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.form p {
+  margin: 0;
+}
+
+.form input {
+  width: 100%;
+}
+
+.form button {
+  justify-self: start;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.list > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
+.list > li:last-child {
+  border-bottom: 0;
+}
+
+.agent {
+  font-weight: 500;
+}
+
+.when {
+  flex-basis: 100%;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* A link just made, shown once: the address to copy, and when it stops working. */
+.made {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+}
+
+.made code {
+  overflow-wrap: anywhere;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--color-ink-muted);
+  font-weight: 500;
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

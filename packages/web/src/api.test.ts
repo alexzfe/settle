@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, authStatus, call, login, unreachableMessage } from "./api";
+import { ApiError, call, login, unreachableMessage } from "./api";
 
 describe("call", () => {
   afterEach(() => {
@@ -83,18 +83,5 @@ describe("unreachableMessage", () => {
     expect(unreachableMessage("localhost")).toBe(start);
     expect(unreachableMessage("127.0.0.1")).toBe(start);
     expect(unreachableMessage("settle.example.com")).toBe("The server is not answering.");
-  });
-});
-
-describe("authStatus", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("asks GET /api/auth_status whether the server has a login", async () => {
-    const fetch = vi.fn(async () => Response.json({ auth: true }));
-    vi.stubGlobal("fetch", fetch);
-    await expect(authStatus()).resolves.toEqual({ auth: true });
-    expect(fetch).toHaveBeenCalledWith("/api/auth_status", { method: "GET" });
   });
 });

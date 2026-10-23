@@ -1,14 +1,19 @@
 import {
+  type CallContext,
   type Core,
   CoreError,
   type CoreErrorCode,
   DOCUMENT_TOO_BIG,
   homeFolderScript,
   MAX_DOCUMENT_BYTES,
+  MAX_IMAGE_BYTES,
   type OperationInput,
 } from "@settle/core";
-import type { Context } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { callerOf, keyedHomeOf } from "./caller.js";
+import { inWords, type UploadLimiter } from "./limits.js";
 
 // Every other refusal is a rule refusal: 409.
 const STATUS: Partial<Record<CoreErrorCode, ContentfulStatusCode>> = {
@@ -41,16 +46,30 @@ const OWN_ROUTES: Record<string, string> = {
     "POST /api/add_document, as multipart/form-data with the fields home, item, kind, file, and " +
     "optionally name",
   get_document: "GET /api/get_document?home=<slug>&item=<slug>&document=<id>&v=<version>",
+  export_account: "GET /api/export_account, as a .zip file",
 };
 
-/** A Document's cap plus room for the rest of the form: a body plainly over it is never read. */
-const MAX_DOCUMENT_FORM_BYTES = MAX_DOCUMENT_BYTES + 1024 * 1024;
-
-const web = { caller: { kind: "web" } } as const;
+const MB = 1024 * 1024;
 
 /**
- * POST /api/<operation>: the web API. JSON in and out, called as the web UI, so no Session is
- * needed and the change log records the origin as "web". A refusal answers
+ * Each upload route's cap on its whole body: what core stores at most, plus room for the rest of
+ * the form. A body over it is answered 413, before it is read when its length says so, and as soon
+ * as it passes the cap when it doesn't. A Blueprint has no cap in core; it gets a Document's.
+ */
+export const UPLOAD_CAPS = {
+  "/api/upload_blueprint": MAX_DOCUMENT_BYTES + MB,
+  "/api/set_listing_photo": MAX_IMAGE_BYTES + MB,
+  // The photo and its thumbnail.
+  "/api/add_photo": 2 * MAX_IMAGE_BYTES + MB,
+  "/api/add_document": MAX_DOCUMENT_BYTES + MB,
+} as const;
+
+/** The JSON API's cap: every web operation's input is a few fields. */
+export const JSON_CAP = MB;
+
+/**
+ * POST /api/<operation>: the web API. JSON in and out, called as the Account logged in, so no
+ * Session is needed and the change log records the origin as "web". A refusal answers
  * { error: { code, message } }.
  */
 export async function handleApi(core: Core, c: Context): Promise<Response> {
@@ -80,7 +99,7 @@ export async function handleApi(core: Core, c: Context): Promise<Response> {
   } catch {
     return c.json({ error: { code: "validation", message: "The body is not valid JSON." } }, 400);
   }
-  return answer(c, async () => c.json((await core.run(name, web, input)) as object));
+  return answer(c, async () => c.json((await core.run(name, callerOf(c), input)) as object));
 }
 
 /**
@@ -116,7 +135,9 @@ export async function handleUpload(core: Core, c: Context): Promise<Response> {
     ...(typeof label === "string" && label.trim() !== "" ? { label } : {}),
   };
   return answer(c, async () =>
-    c.json(await core.run("upload_blueprint", web, input as OperationInput<"upload_blueprint">)),
+    c.json(
+      await core.run("upload_blueprint", callerOf(c), input as OperationInput<"upload_blueprint">),
+    ),
   );
 }
 
@@ -150,7 +171,13 @@ export async function handleListingPhotoUpload(core: Core, c: Context): Promise<
     ...(typeof url === "string" && url.trim() !== "" ? { url } : {}),
   };
   return answer(c, async () =>
-    c.json(await core.run("set_listing_photo", web, input as OperationInput<"set_listing_photo">)),
+    c.json(
+      await core.run(
+        "set_listing_photo",
+        callerOf(c),
+        input as OperationInput<"set_listing_photo">,
+      ),
+    ),
   );
 }
 
@@ -162,7 +189,7 @@ export async function handleListingPhotoUpload(core: Core, c: Context): Promise<
 export async function handleListingPhoto(core: Core, c: Context): Promise<Response> {
   const { home, listing, v } = c.req.query();
   return answer(c, async () => {
-    const { data, mimeType } = await core.run("get_listing_photo", web, {
+    const { data, mimeType } = await core.run("get_listing_photo", callerOf(c), {
       home,
       listing,
       v,
@@ -220,7 +247,7 @@ export async function handlePhotoUpload(core: Core, c: Context): Promise<Respons
     ...(caption ? { caption } : {}),
   };
   return answer(c, async () =>
-    c.json(await core.run("add_photo", web, input as OperationInput<"add_photo">)),
+    c.json(await core.run("add_photo", callerOf(c), input as OperationInput<"add_photo">)),
   );
 }
 
@@ -233,7 +260,7 @@ export async function handlePhotoUpload(core: Core, c: Context): Promise<Respons
 export async function handlePhoto(core: Core, c: Context): Promise<Response> {
   const { home, item, room, photo, size, v } = c.req.query();
   return answer(c, async () => {
-    const { data, mimeType } = await core.run("get_photo", web, {
+    const { data, mimeType } = await core.run("get_photo", callerOf(c), {
       home,
       item,
       room,
@@ -251,13 +278,10 @@ export async function handlePhoto(core: Core, c: Context): Promise<Response> {
 /**
  * POST /api/add_document: a Document of an Item, as multipart/form-data with the fields `home`,
  * `item`, `kind`, `file` (a PDF as it came, or an image the browser shrank), and optionally
- * `name`. Answers { documents } as JSON, the Item's Documents by kind. A Content-Length plainly
- * over the cap is answered 413 before the body is read, since the whole form is held in memory.
+ * `name`. Answers { documents } as JSON, the Item's Documents by kind. A body plainly over the
+ * cap is answered 413 by uploadGuard, before it is read, since the whole form is held in memory.
  */
 export async function handleDocumentUpload(core: Core, c: Context): Promise<Response> {
-  if (Number(c.req.header("content-length")) > MAX_DOCUMENT_FORM_BYTES) {
-    return c.json({ error: { code: "validation", message: DOCUMENT_TOO_BIG } }, 413);
-  }
   if (!c.req.header("content-type")?.startsWith("multipart/form-data")) {
     return c.json(
       { error: { code: "validation", message: `Send it by ${OWN_ROUTES.add_document}.` } },
@@ -287,7 +311,7 @@ export async function handleDocumentUpload(core: Core, c: Context): Promise<Resp
     ...(name ? { name } : {}),
   };
   return answer(c, async () =>
-    c.json(await core.run("add_document", web, input as OperationInput<"add_document">)),
+    c.json(await core.run("add_document", callerOf(c), input as OperationInput<"add_document">)),
   );
 }
 
@@ -299,7 +323,7 @@ export async function handleDocumentUpload(core: Core, c: Context): Promise<Resp
 export async function handleDocument(core: Core, c: Context): Promise<Response> {
   const { home, item, document, v } = c.req.query();
   return answer(c, async () => {
-    const { data, mimeType, fileName } = await core.run("get_document", web, {
+    const { data, mimeType, fileName } = await core.run("get_document", callerOf(c), {
       home,
       item,
       document,
@@ -325,7 +349,7 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
   return answer(c, async () => {
     const { data, mimeType } = await core.run(
       "get_blueprint_page",
-      web,
+      callerOf(c),
       input as OperationInput<"get_blueprint_page">,
     );
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
@@ -337,15 +361,19 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
 
 /**
  * GET /api/home_folder_script?home=<slug>: the POSIX sh script the Home Folder command pipes into
- * sh, which writes the folder's two files (core's home-folder.ts). A refusal is plain text under
- * its status, which `curl -f` reports as the failed request.
+ * sh, which writes the folder's two files (core's home-folder.ts). Reached by the Home's key, or
+ * by a Login of the Account that owns the Home: its own ownership check, since core never sees the
+ * key. A refusal is plain text under its status, which `curl -f` reports as the failed request.
  */
 export async function handleHomeFolderScript(core: Core, c: Context): Promise<Response> {
-  const home = c.req.query("home");
+  const home = c.req.query("home") ?? "";
   try {
-    const { origin } = await core.run("home_folder_setup", web, { home } as { home: string });
-    const token = core.homeToken(home as string) as string;
-    return c.body(homeFolderScript(origin, home as string, token), 200, {
+    // The key opened this Home and no other; a Login opens only its Account's own.
+    const caller: CallContext =
+      keyedHomeOf(c) === home ? { caller: { kind: "session" } } : callerOf(c);
+    const { origin } = await core.run("home_folder_setup", caller, { home });
+    const token = core.homeToken(home) as string;
+    return c.body(homeFolderScript(origin, home, token), 200, {
       "content-type": "text/x-shellscript; charset=utf-8",
       "cache-control": "no-store",
     });
@@ -353,6 +381,56 @@ export async function handleHomeFolderScript(core: Core, c: Context): Promise<Re
     if (!(error instanceof CoreError)) throw error;
     return c.text(`${error.message}\n`, statusOf(error.code));
   }
+}
+
+/** GET /api/export_account: everything in the Account's Homes as one .zip, made as it is sent. */
+export async function handleAccountExport(core: Core, c: Context): Promise<Response> {
+  return answer(c, async () => {
+    const { fileName, mimeType, stream } = await core.run("export_account", callerOf(c), {});
+    return c.body(stream, 200, {
+      "content-type": mimeType,
+      "content-disposition": `attachment; filename="${fileName}"`,
+      "cache-control": "no-store",
+    });
+  });
+}
+
+/**
+ * Before an upload route reads its body: the route's cap, then the Account's upload limits. A
+ * refusal says when to try again, in plain words, with Retry-After.
+ */
+export function uploadGuard(cap: number, uploads: UploadLimiter): MiddlewareHandler {
+  const capped = bodyLimit({
+    maxSize: cap,
+    onError: (c) =>
+      c.json({ error: { code: "validation", message: tooBig(c.req.path, cap) } }, 413),
+  });
+  return async (c, next) => {
+    const length = Number(c.req.header("content-length"));
+    if (length > cap) {
+      return c.json({ error: { code: "validation", message: tooBig(c.req.path, cap) } }, 413);
+    }
+    const { caller } = callerOf(c);
+    if (caller.kind !== "web") throw new Error("An upload without a Login");
+    // Without a length, the body is held to the cap, so counting the cap is the most it can be.
+    const refused = uploads.take(
+      caller.account,
+      Number.isFinite(length) && length > 0 ? length : cap,
+    );
+    if (refused) {
+      c.header("Retry-After", String(Math.ceil((refused.retryAt - Date.now()) / 1000)));
+      const message =
+        "That's more uploading than this server allows in a while (300 files an hour, 5 GB a " +
+        `day, per account). Try again ${inWords(refused.retryAt)}.`;
+      return c.json({ error: { code: "rate_limited", message } }, 429);
+    }
+    return capped(c, next);
+  };
+}
+
+function tooBig(path: string, cap: number): string {
+  if (path === "/api/add_document") return DOCUMENT_TOO_BIG;
+  return `That upload is over ${Math.floor(cap / MB)} MB, the most this accepts.`;
 }
 
 /** Runs `respond`, turning core's refusal into { error: { code, message } } with its status. */

@@ -10,10 +10,10 @@ import {
   type OperationName,
 } from "./core.js";
 import { CoreError } from "./errors.js";
-import { FIXTURE_FILES } from "./fixture/fixture-home.js";
+import { addAccount, FIXTURE_FILES, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { BuildingMeasurement } from "./operations/schemas.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const agent = (home: string, session?: string): CallContext => ({
   caller: { kind: "session", session },
   home,
@@ -38,8 +38,12 @@ const blueprint = (mm: number): BuildingMeasurement => ({
 const estimated = (mm: number): BuildingMeasurement => ({ mm, provenance: "estimated" });
 
 let core: Core;
-beforeEach(() => {
-  core = createCore({ clock: () => new Date("2026-09-14T10:00:00.000Z") });
+beforeEach(async () => {
+  core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
+    clock: () => new Date("2026-09-14T10:00:00.000Z"),
+  });
+  web = await addAccount(core);
 });
 afterEach(() => core.close());
 

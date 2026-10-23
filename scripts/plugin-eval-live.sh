@@ -50,8 +50,28 @@ for _ in $(seq 1 50); do
 done
 curl -sf -o /dev/null "${BASE}/health" || fail "The server did not answer ${BASE}/health."
 
+# A fresh server has no account: the setup link in its log makes the Admin, whose Login every
+# call below sends, and so does the Agent: the live server's .mcp.json sends EVAL_SETTLE_LOGIN
+# as its cookie, which opens the MCP endpoint of the Admin's own Homes.
+echo "Making the Admin through the setup link..."
+setup_url=""
+for _ in $(seq 1 50); do
+  setup_url="$(grep -o "${BASE}/setup/[A-Za-z0-9_-]*" "${SERVER_LOG}" | tail -n 1 || true)"
+  [[ -n "${setup_url}" ]] && break
+  sleep 0.2
+done
+[[ -n "${setup_url}" ]] || fail "The server printed no setup link."
+COOKIES="${DATA_DIR}/cookies"
+curl -sS -o /dev/null -c "${COOKIES}" -X POST "${setup_url}" \
+  --data-urlencode "email=eval@example.com" \
+  --data-urlencode "password=eval live password" \
+  --data-urlencode "again=eval live password"
+EVAL_SETTLE_LOGIN="$(awk '$6 == "settle_login" { print $7 }' "${COOKIES}")"
+[[ -n "${EVAL_SETTLE_LOGIN}" ]] || fail "The setup link gave no Login."
+export EVAL_SETTLE_LOGIN
+
 echo "Creating the fixture Home..."
-response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
+response="$(curl -sS -b "${COOKIES}" -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
   -d '{"name":"Fixture Home","country":"GB","city":"London"}')"
 slug="$(node -e '
   try { process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).home?.slug ?? ""); }
@@ -64,7 +84,7 @@ slug="$(node -e '
 BLUEPRINT_FILE=packages/core/fixture/blueprint-a3.pdf
 BLUEPRINT_SLUG=ground-floor-plan
 echo "Uploading the fixture Blueprint..."
-response="$(curl -sS -X POST "${BASE}/api/upload_blueprint" -F "home=${HOME_SLUG}" \
+response="$(curl -sS -b "${COOKIES}" -X POST "${BASE}/api/upload_blueprint" -F "home=${HOME_SLUG}" \
   -F "label=Ground floor plan" -F "file=@${BLUEPRINT_FILE};type=application/pdf")"
 blueprint="$(node -e '
   try {
@@ -79,7 +99,7 @@ blueprint="$(node -e '
 # sees, since that case saves the Home's first Direction.
 COLOR_HOME_SLUG=fixture-flat
 echo "Creating ${COLOR_HOME_SLUG} with a Settled Design Direction..."
-response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
+response="$(curl -sS -b "${COOKIES}" -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
   -d '{"name":"Fixture Flat","country":"GB","city":"London"}')"
 slug="$(node -e '
   try { process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).home?.slug ?? ""); }
@@ -94,7 +114,7 @@ node scripts/seed-live-direction.mjs "${BASE}/mcp/homes/${COLOR_HOME_SLUG}" ||
 # case sees, since that case saves the Home's first Palette.
 PURCHASE_HOME_SLUG=fixture-loft
 echo "Creating ${PURCHASE_HOME_SLUG} with a Settled Design Direction and Palette..."
-response="$(curl -sS -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
+response="$(curl -sS -b "${COOKIES}" -X POST "${BASE}/api/create_home" -H "Content-Type: application/json" \
   -d '{"name":"Fixture Loft","country":"GB","city":"London"}')"
 slug="$(node -e '
   try { process.stdout.write(JSON.parse(require("node:fs").readFileSync(0, "utf8")).home?.slug ?? ""); }

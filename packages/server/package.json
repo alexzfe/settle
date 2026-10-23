@@ -11,6 +11,7 @@
     "tools:json": "tsx --conditions=@settle/source scripts/write-tools-json.ts"
   },
   "dependencies": {
+    "tar": "catalog:",
     "@hono/node-server": "catalog:",
     "@settle/core": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",

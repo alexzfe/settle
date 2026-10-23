@@ -2,10 +2,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
-import { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";
+import {
+  addAccount,
+  createFixtureHome,
+  type FixtureHome,
+  TEST_PASSWORD_COST,
+} from "./fixture/fixture-home.js";
 import { openStore, type Store } from "./store.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const agent = (home: string, session?: string): CallContext => ({
   caller: { kind: "session", session },
   home,
@@ -23,9 +28,14 @@ async function refusal(promise: Promise<unknown>): Promise<CoreError> {
 
 let store: Store;
 let core: Core;
-beforeEach(() => {
+beforeEach(async () => {
   store = openStore(":memory:");
-  core = createCore({ store, clock: () => new Date("2026-09-14T10:00:00.000Z") });
+  core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
+    store,
+    clock: () => new Date("2026-09-14T10:00:00.000Z"),
+  });
+  web = await addAccount(core);
 });
 afterEach(() => core.close());
 
@@ -382,8 +392,9 @@ describe("home_folder_setup", () => {
       [{ publicOrigin: "https://settle.example.com", port: 4380 }, "https://settle.example.com"],
       [{ port: 4390 }, "http://127.0.0.1:4390"],
     ] as const) {
-      const other = createCore(options);
+      const other = createCore({ passwordCost: TEST_PASSWORD_COST, ...options });
       try {
+        const web = await addAccount(other);
         const { home } = await other.run("create_home", web, {
           name: "My flat",
           country: "GB",

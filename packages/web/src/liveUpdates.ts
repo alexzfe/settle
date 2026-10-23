@@ -1,7 +1,7 @@
 import type { ChangeEvent, RecordKind } from "@settle/core";
 import { type QueryKey, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { authStatus } from "./api";
+import { call } from "./api";
 import { queryKeys } from "./queries";
 
 /**
@@ -171,9 +171,9 @@ export function useLiveUpdates(home: string): LiveState {
       dropped = true;
       const stopped = events.readyState === CLOSED;
       setState(stopped ? "stopped" : "reconnecting");
-      // The browser gives up on a refused stream without saying why. If the session ran out, an
+      // The browser gives up on a refused stream without saying why. If the Login ran out, an
       // ordinary call is answered 401, which goes to the login.
-      if (stopped) authStatus().catch(() => {});
+      if (stopped) call("get_account", {}).catch(() => {});
     });
     events.addEventListener("open", () => {
       setState("live");

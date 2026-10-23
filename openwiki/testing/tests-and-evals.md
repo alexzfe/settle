@@ -1,0 +1,119 @@
+---
+type: testing
+title: Tests, evals and demo data
+description: How Settle is verified — Vitest unit, rule and snapshot tests across the packages, the code-built fixture Home, replay behaviour and trigger evals for the Skills run with claude plugin eval against mocked tools, a live smoke suite against a throwaway server, and the demo seed scripts.
+tags: [testing, vitest, snapshots, evals, fixtures, biome, demo]
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-10-14T08:07:45.932Z
+sources:
+  - id: openwiki-source-59f729b67c0a733dbed55b7f
+    resource: repo://biome.json
+  - id: openwiki-source-5b54a58d1b51cd490b0e7162
+    resource: repo://package.json
+  - id: openwiki-source-0cf41223068d65462563aaef
+    resource: repo://packages/core/src/fixture/fixture-home.ts
+  - id: openwiki-source-1c53a59d367e22813b6fb932
+    resource: repo://packages/core/vitest.config.ts
+  - id: openwiki-source-8644a9e014940e19f914c1a0
+    resource: repo://packages/skills/src/eval-histories.ts
+  - id: openwiki-source-8181556504aca242f61aa093
+    resource: repo://packages/skills/src/transcript.ts
+  - id: openwiki-source-46ed4c62b7f86f7fd0526014
+    resource: repo://plugin/evals/mocks/settle/save_guides.md
+  - id: openwiki-source-c985a093d25d48429b369bf9
+    resource: repo://plugin/evals/purchase-shop-lines-are-actions/case.yaml
+  - id: openwiki-source-6ece34307a117bcbf164ff87
+    resource: repo://plugin/evals/purchase-shop-lines-are-actions/graders/lines-are-actions.md
+  - id: openwiki-source-ba0132194574f852625d8c74
+    resource: repo://scripts/plugin-eval-live.sh
+  - id: openwiki-source-f937bbe84014c54a28431c17
+    resource: repo://scripts/seed-demo-home.mjs
+  - id: openwiki-source-fbadcd8591b65031efaaedce
+    resource: repo://vitest.config.ts
+generated: { by: "claude-code", at: "2026-10-14T08:07:45.932Z" }
+---
+
+# Tests, evals and demo data
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `pnpm test` | Vitest across all packages (root `vitest.config.ts` → `projects: ["packages/*"]`) |
+| `pnpm lint` / `pnpm format` | Biome check / fix (2-space indent, 100 columns, recommended rules) |
+| `pnpm build` | `tsc --build` for core and server, `tsc && vite build` for web, Skills build |
+| `pnpm plugin:build` | Rebuild `plugin/skills` and every replay case's `history.jsonl` |
+| `pnpm plugin:eval` | `claude plugin eval ./plugin` on the replay and trigger cases, with `claude-sonnet-5` |
+| `pnpm plugin:eval:live` | The live smoke suite (`scripts/plugin-eval-live.sh`) |
+| `pnpm --filter @settle/server tools:json` | Refresh the mocks' `_tools.json` after a tool changes |
+
+CI runs lint, test and build only ([Self-hosting](../operations/hosting-and-security.md#ci-and-deployment));
+evals are run by hand because they call a model and cost money.
+
+Core's Vitest config includes only `src/**/*.test.ts`, because `tsc` also compiles tests into
+`dist/`. The web package tests with jsdom and Testing Library.
+
+## Core tests
+
+Core tests drive real operations through `createCore()` on an in-memory database, with injected
+clock, randomness, PDF renderer and image fetcher — no network, no real time. They are organised by
+rule rather than by file:
+
+- `*-rules.test.ts` — the domain rules: `home-model-rules`, `decision-rules`, `basis-rules`,
+  `fulfilment-rules`, `purchase-rules`, `listing-rules`, `shopping-rules`, `color-rules`,
+  `photo-rules`, `document-rules`, `item-register-rules`.
+- `operations.test.ts` — registry, Sessions, change log and event bus.
+- `migrate.test.ts` — each data migration against an older database.
+- `render.test.ts` — **file snapshots** (`toMatchFileSnapshot`) of the Agent-facing text and the
+  exports in `src/__snapshots__/`. These are the canonical record of what the Agent reads; update
+  with `vitest -u` and review the diff ([Sessions and Agent text](../domain/sessions-and-agent-text.md#snapshot-tests)).
+
+### The fixture Home
+
+`packages/core/src/fixture/fixture-home.ts` builds a fictional Home from code on every run: two
+Levels, Rooms of different shapes (L-shaped living room, T-shaped hallway, a mostly unmeasured
+bedroom, an outdoor balcony), shared Doors, Surfaces, Features, Items (one Unplaced, one Archived),
+Constraints, Notes, a Blueprint from `packages/core/fixture/blueprint-a3.pdf`, and Decisions added
+slice by slice. It backs every renderer snapshot, and its name and city match the Home the live
+suite creates (`fixture-home`).
+
+## Skill evals (`plugin/evals/`)
+
+Run by `claude plugin eval`. Each case is a folder with `prompt.md` (frontmatter: description,
+tags, `max_turns`, `timeout_seconds`, `allowed_tools`; body: the user's message) and `graders/`.
+
+- **Trigger cases** (`<skill>-fires-N`, `<skill>-skips-N`) check that a Skill's description makes it
+  fire for the right requests and not for near-misses.
+- **Replay behaviour cases** start partway into a conversation. `case.yaml` names
+  `context.history_file: history.jsonl`, a Claude Code transcript generated by `pnpm plugin:build`
+  from `packages/skills/src/eval-histories.ts` (encoded by `transcript.ts`), so the history always
+  carries the current Skill text. The Settle tools are **mocked**: `mocks/settle/<tool>.md` per
+  case, falling back to the suite's `plugin/evals/mocks/settle/`, with `{{file:…}}` and
+  `{{input.<field>}}` templating and fixtures such as receipts; `_tools.json` gives the mocks the
+  real tool names and schemas. Graders are mostly LLM-judged Markdown rubrics, often with
+  `focus: mock_calls` so the judge grades only the tool calls under test.
+
+Some cases use real Falabella product links (tag `network`) and let the Agent `WebFetch` them.
+
+## Live smoke suite (`plugin/evals-live/`)
+
+`scripts/plugin-eval-live.sh` builds the server, starts it on port **4390** with a throwaway data
+dir (so no write can reach the user's Homes on 4380), creates `fixture-home`, uploads the fixture
+Blueprint, creates further Homes seeded with a Settled Design Direction for the Color case
+(`scripts/seed-live-direction.mjs`) and a Palette for the Purchase case
+(`scripts/seed-live-palette.mjs`), then runs the live cases with the
+`plugin/test-support/live-server` plugin, whose `.mcp.json` points at that port. The server is
+stopped and the data dir removed on exit. Extra arguments go to `claude plugin eval` (e.g.
+`--case home-intake-opens-live`).
+
+## Demo data
+
+`scripts/seed-demo-home.mjs <MCP URL> [token]` seeds an invented "Lisbon flat" through the MCP
+endpoint as five Sessions would leave it — seven measured Rooms, twenty-two Items, Constraints and
+Notes, and Decisions in every state, including a Leaning sofa with four rated, pictured Listings
+(one Held) and Settled curtains flagged by a re-measured ceiling. It refuses a Home that already has
+Rooms. Its pictures are in `scripts/demo-home/`. It is used for the README screenshots; with a
+password set it needs the Home's key and `SETTLE_PASSWORD`.
+
+Related: [Skills and plugin](../agent/skills-and-plugin.md).

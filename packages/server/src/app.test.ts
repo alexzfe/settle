@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  addAccount,
+  type CallContext,
   type Core,
   createCore,
   createFixtureHome,
@@ -11,21 +13,30 @@ import {
   type GetRoomResult,
   type ItemPage,
   type ListDecisionsResult,
+  TEST_PASSWORD_COST,
 } from "@settle/core";
 import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import { mcpTools, SERVER_INSTRUCTIONS } from "./mcp.js";
+import { asLoggedIn, loginCookie } from "./testing.js";
 import { listTools, TOOLS_JSON } from "./tools-list.js";
 
 const PORT = 4380;
 
 let core: Core;
+let web: CallContext;
 let app: Hono;
-beforeEach(() => {
-  core = createCore();
-  app = createApp({ core, port: PORT });
+beforeEach(async () => {
+  core = createCore({ passwordCost: TEST_PASSWORD_COST });
+  web = await addAccount(core);
+  app = loggedIn(core, web, createApp({ core, port: PORT }));
 });
+
+/** `app`, every request of it logged in as the web caller's Account. */
+function loggedIn(of: Core, as: CallContext, app: Hono): Hono {
+  return asLoggedIn(app, loginCookie(of, as));
+}
 afterEach(() => core.close());
 
 const dirs: string[] = [];
@@ -87,7 +98,7 @@ describe("the web UI", () => {
     writeFileSync(join(dist, "index.html"), "<!doctype html><title>The UI</title>");
     mkdirSync(join(dist, "assets"));
     writeFileSync(join(dist, "assets", "app.js"), "console.log('ui')");
-    const withUi = createApp({ core, port: PORT, webDist: dist });
+    const withUi = loggedIn(core, web, createApp({ core, port: PORT, webDist: dist }));
 
     expect(await (await withUi.request("/assets/app.js")).text()).toBe("console.log('ui')");
     expect(await (await withUi.request("/")).text()).toContain("The UI");
@@ -174,7 +185,11 @@ describe("the web API", () => {
 describe("the search index", () => {
   it("answers POST /api/find_index for the fixture Home, and is not an Agent tool", async () => {
     const fixture = await createFixtureHome();
-    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const withFixture = loggedIn(
+      fixture.core,
+      fixture.web,
+      createApp({ core: fixture.core, port: PORT }),
+    );
     try {
       const response = await withFixture.request("/api/find_index", {
         method: "POST",
@@ -197,7 +212,9 @@ describe("the search index", () => {
         also: { label: "Quick Guide", path: "/homes/fixture-home/decisions/wool-rug#quick-guide" },
       });
 
-      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
+        tools: { name: string }[];
+      };
       expect(tools).toHaveLength(20);
       expect(tools.map((tool) => tool.name)).not.toContain("find_index");
     } finally {
@@ -209,7 +226,11 @@ describe("the search index", () => {
 describe("the Item page", () => {
   it("answers POST /api/get_item and /api/edit_item for the fixture Home, neither an Agent tool", async () => {
     const fixture = await createFixtureHome();
-    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const withFixture = loggedIn(
+      fixture.core,
+      fixture.web,
+      createApp({ core: fixture.core, port: PORT }),
+    );
     const post = (operation: string, body: unknown) =>
       withFixture.request(`/api/${operation}`, {
         method: "POST",
@@ -245,7 +266,9 @@ describe("the Item page", () => {
       });
       expect(renamed.status).toBe(400);
 
-      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
+        tools: { name: string }[];
+      };
       expect(tools).toHaveLength(20);
       expect(tools.map((tool) => tool.name)).not.toContain("get_item");
       expect(tools.map((tool) => tool.name)).not.toContain("edit_item");
@@ -258,7 +281,11 @@ describe("the Item page", () => {
 describe("Photos", () => {
   it("takes a photo and its thumbnail by multipart, serves both, and edits and deletes by JSON", async () => {
     const fixture = await createFixtureHome();
-    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const withFixture = loggedIn(
+      fixture.core,
+      fixture.web,
+      createApp({ core: fixture.core, port: PORT }),
+    );
     const post = (operation: string, body: unknown) =>
       withFixture.request(`/api/${operation}`, {
         method: "POST",
@@ -400,7 +427,9 @@ describe("Photos", () => {
       expect(viewed.content[1]?.mimeType).toBe("image/jpeg");
       expect(new Uint8Array(Buffer.from(viewed.content[1]?.data ?? "", "base64"))).toEqual(jpeg(3));
 
-      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
+        tools: { name: string }[];
+      };
       // Only looking: adding, editing, and deleting Photos stay the user's, on the web.
       expect(tools.map((tool) => tool.name).filter((name) => name.includes("photo"))).toEqual([
         "view_photos",
@@ -414,7 +443,11 @@ describe("Photos", () => {
 describe("Documents", () => {
   it("takes a Document by multipart, serves it inline under its name, and edits and deletes by JSON", async () => {
     const fixture = await createFixtureHome();
-    const withFixture = createApp({ core: fixture.core, port: PORT });
+    const withFixture = loggedIn(
+      fixture.core,
+      fixture.web,
+      createApp({ core: fixture.core, port: PORT }),
+    );
     const post = (operation: string, body: unknown) =>
       withFixture.request(`/api/${operation}`, {
         method: "POST",
@@ -507,7 +540,9 @@ describe("Documents", () => {
       expect(await deleted.json()).toEqual({ documents: [] });
       expect((await withFixture.request(url())).status).toBe(404);
 
-      const { tools } = (await listTools(withFixture, PORT)) as { tools: { name: string }[] };
+      const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
+        tools: { name: string }[];
+      };
       expect(tools.map((tool) => tool.name).filter((name) => name.includes("document"))).toEqual(
         [],
       );
@@ -545,7 +580,13 @@ describe("Documents", () => {
   });
 });
 
+/** A Home named Any, whose MCP endpoint the tests that need one ask: any Home lists the same. */
+async function anyHome(): Promise<void> {
+  await core.run("create_home", web, { name: "Any", country: "GB", city: "London" });
+}
+
 describe("the MCP endpoint", () => {
+  beforeEach(anyHome);
   it("answers initialize with the server's name and its instructions under 512 characters", async () => {
     const response = await mcp("any", "initialize", {
       protocolVersion: "2025-06-18",
@@ -1017,6 +1058,7 @@ describe("Blueprints", () => {
 });
 
 describe("DNS-rebinding protection", () => {
+  beforeEach(anyHome);
   it("refuses a Host that is not this machine, on every route", async () => {
     const evil = { host: `evil.example:${PORT}` };
     expect((await api("list_homes", {}, evil)).status).toBe(403);
@@ -1031,7 +1073,11 @@ describe("DNS-rebinding protection", () => {
   });
 
   it("accepts the public origin's host and origin when the app is hosted, and only then", async () => {
-    const hosted = createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" });
+    const hosted = loggedIn(
+      core,
+      web,
+      createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" }),
+    );
     const request = (headers: Record<string, string>) =>
       hosted.request("/api/list_homes", {
         method: "POST",
@@ -1054,7 +1100,11 @@ describe("DNS-rebinding protection", () => {
   });
 
   it("answers MCP tools/list through the public host when hosted", async () => {
-    const hosted = createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" });
+    const hosted = loggedIn(
+      core,
+      web,
+      createApp({ core, port: PORT, publicOrigin: "https://settle.example.com" }),
+    );
     const tools = (host: string, origin?: string) =>
       hosted.request("/mcp/homes/any", {
         method: "POST",
@@ -1087,18 +1137,19 @@ describe("the Home Folder script", () => {
   it("serves the sh script for a Home, naming the origin the app names itself by", async () => {
     await api("create_home", { name: "My flat", country: "GB", city: "London" });
     const publicOrigin = "https://settle.example.com";
-    const hostedCore = createCore({ publicOrigin });
+    const hostedCore = createCore({ publicOrigin, passwordCost: TEST_PASSWORD_COST });
     try {
-      await hostedCore.run(
-        "create_home",
-        { caller: { kind: "web" } },
-        {
-          name: "My flat",
-          country: "GB",
-          city: "London",
-        },
+      const hostedWeb = await addAccount(hostedCore);
+      await hostedCore.run("create_home", hostedWeb, {
+        name: "My flat",
+        country: "GB",
+        city: "London",
+      });
+      const hosted = loggedIn(
+        hostedCore,
+        hostedWeb,
+        createApp({ core: hostedCore, port: PORT, publicOrigin }),
       );
-      const hosted = createApp({ core: hostedCore, port: PORT, publicOrigin });
 
       const local = await app.request("/api/home_folder_script?home=my-flat");
       const remote = await hosted.request("/api/home_folder_script?home=my-flat", {

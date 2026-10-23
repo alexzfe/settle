@@ -23,35 +23,35 @@ export interface Config {
    */
   lan?: { host?: string };
   /**
-   * SETTLE_PASSWORD: the household's shared password. With one, every page and the API need a
-   * login, and the MCP endpoint a Home's key. Without one, on loopback, nothing asks.
+   * SETTLE_TRUSTED_PROXY=cloudflare: the visitor's IP is taken from CF-Connecting-IP, for the
+   * failed-login limits. Unset, it is the socket's, and the header is ignored.
    */
-  password?: string;
+  trustedProxy?: "cloudflare";
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const dataHome = env.XDG_DATA_HOME || join(homedir(), ".local", "share");
   const lan = parseLan(env.SETTLE_LAN, env.SETTLE_LAN_HOST);
   const publicOrigin = parsePublicOrigin(env.SETTLE_PUBLIC_ORIGIN);
-  // An empty password is no password.
-  const password = env.SETTLE_PASSWORD || undefined;
-  const host = parseHost(env.SETTLE_HOST, publicOrigin, password);
-  // A public origin on loopback is a reverse proxy in front: just as reachable, so just as locked.
-  if (publicOrigin && !password) {
-    throw new Error(
-      `SETTLE_PUBLIC_ORIGIN="${publicOrigin}" means the app is reached from other computers, so ` +
-        "set SETTLE_PASSWORD to the password your household will log in with; without one, " +
-        "anyone who can reach it could read and change every Home",
-    );
-  }
+  const host = parseHost(env.SETTLE_HOST, publicOrigin);
+  const trustedProxy = parseTrustedProxy(env.SETTLE_TRUSTED_PROXY);
   return {
     host,
     port: parsePort(env.SETTLE_PORT),
     dataDir: env.SETTLE_DATA_DIR || join(dataHome, "settle"),
     ...(publicOrigin ? { publicOrigin } : {}),
     ...(lan ? { lan } : {}),
-    ...(password ? { password } : {}),
+    ...(trustedProxy ? { trustedProxy } : {}),
   };
+}
+
+function parseTrustedProxy(value: string | undefined): Config["trustedProxy"] {
+  if (!value) return undefined;
+  if (value === "cloudflare") return value;
+  throw new Error(
+    `SETTLE_TRUSTED_PROXY must be "cloudflare", the one proxy whose visitor IP header Settle ` +
+      `trusts, or unset, not "${value}"`,
+  );
 }
 
 function parsePublicOrigin(value: string | undefined): string | undefined {
@@ -63,7 +63,18 @@ function parsePublicOrigin(value: string | undefined): string | undefined {
   } catch {
     // Reported below.
   }
-  if (origin === value) return value;
+  if (origin === value) {
+    const { protocol, hostname } = new URL(origin);
+    if (protocol === "http:" && !isLoopback(hostname)) {
+      throw new Error(
+        `SETTLE_PUBLIC_ORIGIN="${value}" is plain http, so passwords would cross the network ` +
+          "unencrypted; put HTTPS in front (a reverse proxy such as Caddy, Cloudflare, or " +
+          "tailscale serve) and use its https:// address. Plain http is only for localhost and " +
+          "127.x",
+      );
+    }
+    return value;
+  }
   throw new Error(
     "SETTLE_PUBLIC_ORIGIN must be the origin the app is reached at, scheme://host[:port] with " +
       `no path and no trailing slash, such as https://settle.example.com, not "${value}"` +
@@ -72,28 +83,16 @@ function parsePublicOrigin(value: string | undefined): string | undefined {
 }
 
 /**
- * Loopback unless a public origin says where the app is reached, since the host guard needs it,
- * and a password locks the app, since anyone who can reach it could otherwise read and change
- * every Home. There is no way around either.
+ * Loopback unless a public origin says where the app is reached, since the host guard needs it.
+ * There is no way around it.
  */
-function parseHost(
-  value: string | undefined,
-  publicOrigin: string | undefined,
-  password: string | undefined,
-): string {
+function parseHost(value: string | undefined, publicOrigin: string | undefined): string {
   if (!value || isLoopback(value)) return value || DEFAULT_HOST;
   if (!publicOrigin) {
     throw new Error(
       `SETTLE_HOST="${value}" listens beyond this computer, so set SETTLE_PUBLIC_ORIGIN to the ` +
         "address the app is reached at, such as https://settle.example.com; the server accepts " +
         "requests only for that address and this computer's own names",
-    );
-  }
-  if (!password) {
-    throw new Error(
-      `SETTLE_HOST="${value}" listens beyond this computer, so set SETTLE_PASSWORD to the ` +
-        "password your household will log in with; without one, anyone who can reach the server " +
-        "could read and change every Home",
     );
   }
   return value;

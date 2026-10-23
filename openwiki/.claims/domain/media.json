@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2fa30a9af08c71f2fc6593ed76edc8bf1d0d5ce7457379e134b0a3f58dc95ac9",
+  "claims": [
+    {
+      "id": "claim_20bebc57d69148de9bfd570a5e390a31",
+      "statement": "upload_blueprint renders every page to a 2000 px PNG under rendered/ and keeps the original under uploads/ before the write transaction, refusing pageless files with no_pages and other types with unsupported_file, and removing both on any failure.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/blueprints.ts#L37-L111",
+          "version": "repo-lines-v1:sha256:04ca208cbabad7c9f8357c921542f94851046b3c813787a8c2570028e03c6704:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMWM5ZDdkMjYxYmFhZTdmMzJiMWVmYjI1ZjJjMmRiM2IyMDhlZDcwODg1YmNhNjJmZTRhNmUwNmE1ZDQ2YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxZTZhODQwY2M3ODI4ZTRiYTQzYjU0Y2VjMDMxY2U2YWY5OGQ4NzgyYTY5NzliZmRlY2FkYjQ5MDA2ZWUyY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2YjRlYjI0MDA4Yjc0M2YwYTk3MWQ1ZGYxNTE0OGJhZWI5MzUyODhiZGQ2NWU3MzMwYTBhMjM2ZmUzMWM1YzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6554d2cfcee44a72ad711f334588c917",
+      "statement": "view_images returns at most 6 Blueprint pages per call as a text block then one image each, supports a quarter-page crop at double scale, and treats only printed text as Blueprint Provenance.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/blueprints.ts#L165-L181",
+          "version": "repo-lines-v1:sha256:d076dca431eac465b77b3b5525afa809e3b4d62d6599e71ac92f85d66a29aa3a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOGExZmQzZDlmYTNjNDU4ZmMxMmFjYmE1NTc0NDFlYzIxMGQzZmY1ODEyM2RmYTdlNmJjZDJmNzAyMmIxMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMjI1YzM1MmZlNjE1ZDExNjhjMDQxOTk3YWZlZGI2NjhhODAwODI5Yjg2NWRlNzk4YWM5OTFlMjI1MDMyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2MGJhY2MzM2JmODllYTI2NDE2ZWUyYzk1YWEzOTRiODdlNjkzMTg3OTdkN2ExMDVmY2E1OTQzOTliYzVjNTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjMjA2MTcxMTVjMzUyYzJhYmE4ZmYyOTEzMjkzMGVlNGFmMzllYWYxZTlkMTA3NTkyZGJlYjA2Y2VmYTNlNzYifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/schemas.ts#L92-L94",
+          "version": "repo-lines-v1:sha256:1524db3f75a5caef3f1153053a01888690c66f8905ba1fab47391aec3f5bd1a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmZmYTQzZWEzNTQxMTExN2YzNGE5YmYxY2Q2OWZlMzc1ZjgwZjdiNDI4MzdmNjE5Mjc0MmIzOTk2OTY2ZDAzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M5NTM4NmI3ZDcxMDUxMjdkMDdhNjYxNmMyZjk1NTVmMzc4YzAwNWE5MGU3ODE0NDdlZjZhMzkxZTE2NjM0OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODY5NjA4MmM4ODVkNmUxZmY1MDA4ZGQ3YmFkZTc1NmVhNjkxMDNkODBiY2E3NTM1MmM1YTI1MzY5YmQ1ZWFlMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGEyNjM3MDc0ZGY3Zjc5Mzc2NjdjMzMwMzg5NjZhYjE0MjQ0Mzk4NzBjZWUwOWE0NjQyZjJkNzVkNjBkMThlMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e6de7f6792fa484d9ad0fa3c9e70b4dc",
+      "statement": "Photos and Documents are web-only writes; the Agent is told they exist and may look at Photos via view_photos (at most 4) only when the user asks, and never reads Documents.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/documents.ts#L28-L35",
+          "version": "repo-lines-v1:sha256:4ffbcc87823f4d74a7e9c1d1cc62665152bbbdb78a12be51a67c42efce2e9278:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmE3YWQyZWNlMTU3ZDk4MDI4Yjg3Nzk4ODc5OWIyMDdhNDkyYWU2NTBlNDNhNTFhZWNmYjZmZTI2YTkxZWJiNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmE5MTM0MmFjNThjMjVhNmE4MzQ0NDczNTBmYjQyZmNhMDI3YWE4MmY0ZmY4Y2Q3MjMwNGY2MzJhZTdhYWE2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjJmOTg3MzNjNTkzN2MwZDdmMjRiMDJlMTQwNjQxNTYzYTdjMGM3Y2Y3OWZiNDA5MmUzZjY4OTg3MDlmMDRhOCJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/photos.ts#L202-L214",
+          "version": "repo-lines-v1:sha256:5092b67779f79e7a16d49ee733076e12f783e7e782c4f8064354cf8a8fd1f7dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4MjI2ZWI1Yjg3NWY3NmZkNmVmOTNmOWIwNWE1YjE2M2FiMmY0OGUyMzQyZDk2ZmViMjg5OTA2NmUyMjA5NGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMjI1YzM1MmZlNjE1ZDExNjhjMDQxOTk3YWZlZGI2NjhhODAwODI5Yjg2NWRlNzk4YWM5OTFlMjI1MDMyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY4NzJkZTYzZjcyZTNmZmU1MDQzMTk4MGIyYWFkMWE2MDAwYzEzMWIwNmI2M2JmMDcyZDNlNGI1ZTE2MDk5Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmZGJlYmEwYjRjZTc4YTI4OGUzMTc5ZGZhMmExYjExZjRlY2VmZmUzYWI4ODdiZGI4NTc3OGQxOTAzOTI2YjQifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/photos.ts#L30-L37",
+          "version": "repo-lines-v1:sha256:805e0b98b93a752d0fdfaad4046a13f851a356dfecaca37e8f4483598e4bd7b0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmUxNTAxYTVhMTE0YjFhZWRmMTg4NjVlNjhmOGIyYzg3NTdhYmMxYzFjN2U3YTE4MTMwZmZiMDA2ZGU2YzBkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmIxZDc3MWIzMmE2NGVjY2MxNThmYTkzMmY1ZjcwMGVhMWUyMzg4YmJhOTc4MWE0MGExM2RhZGQwYjVlMGQzNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2ZmMGViZDljNDUyMGQwZGY0ZTVlZDBkOTJjNTg2NTdhM2VhZjFmMjNhNWFjOTU3MjE4YTk3NTg4MDA1YjdkYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTc4YWMyYmRiMDg4MGJhYmFiYTU1M2I4OTAzNDBkZmFiYzAyMDQzNzFmNTlmMzkzYzFjZWVlMTg3MTc3NTQzNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_420505cf267f476fbb035f638b0b29bd",
+      "statement": "The browser prepares Photos (1600 px JPEG, 320 px thumbnail, EXIF date kept, metadata dropped) and Document images (2400 px), because core has no image library and caps image uploads at 2 MB.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/images.ts#L33-L35",
+          "version": "repo-lines-v1:sha256:8b9dea7384528af3014d214a344f81739f4f8ef72a50a51bcc2f0d168148147f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTc4N2E3Y2FiNmQ5OGI1ZWJkNDY1MjNiMzM1ZDdmM2NkOGNiMGViYmI4MzFkNzM4YmY3NzhkZTgyMGFlNTM5MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWQ5MmVhOWQzNThlMDZmNWU2YzYzNTA2NTU3OGU4ZjBmMTExMzQ5OGQ2YWU5NDJiMTU0MTA4YmQ0YTlmNTE5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTA3NDg4ZTBjMzMxNWE1OWRlMWRmNTY5YzA1ZGRmM2Q3MDY0YjVhODhjNDg1YTgzNmMxMjIxNTUyNWJkZWQ5NyJ9"
+        },
+        {
+          "resource": "repo://packages/web/src/photoPrep.ts#L1-L25",
+          "version": "repo-lines-v1:sha256:23df36f8da371eae5c201b96faf2f4ff4c4ee5c9465c7c2307345d26baa4b622:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllMzQzMjNlNGVjYmI1MmRjOTY0OTYyYzQwMmI3N2I4MmNmNDA1ZDNiMjlmMzVlMjcxN2VlZTIyNGJiYTg0MWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0MThkNTFhYjNhZWM1YjM0ZDFmOTdhNzk3ZDFiMTFiZmViNzMyZWY2YmU1NjZmODk5ODRmNTdkYjRiMThlMzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ae2402d101ed47d2900c23074e344d61",
+      "statement": "Uploaded images and Documents are validated by magic numbers rather than names, and HEIC files are refused by name with advice to export a JPEG.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/images.ts#L44-L125",
+          "version": "repo-lines-v1:sha256:db2b1cfbd5b418f9fbb4faa0fd28c2a579a58ed1380ec19c5c1a2f802bcf4db9:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5MTk0MDk1YmNmN2ZhODZhNmVlM2M1MWFiZDEzNDcyZjFlYWIzZmIwYzk4NmJkMWQwNjIxZTAxMzdjYmE0NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyODY3NmZkYjk4M2IzMTE3OWU1ZWVkZDM1MTkzYjkwNDEyMDJjNDBlNzNjZjk2YzRhM2Y5MGY4NjI5OTczODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMTZlZWI0ZTRlOTA2Y2IzMjdlNTU2ZjhlNjA2ZGRiOTczNTk4MTEwODAyNzRkYzU5YjU2YWVkMjMwYTU4NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczMDI2NjdlZGY3YjQ3ZmNmNTUxYTVlYWE5MGYzODg1NDFjNmMzYzg2Y2MzZGQ3ZGFkMmJmZGUwMGQ4MzhiZWIifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/documents.ts#L52-L64",
+          "version": "repo-lines-v1:sha256:a00876c0ba28900fd5febf5a866b3d0da66a23890a36ca79fd690d02373b8ac2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmZDFiZmJjZmFmNjhkZDY2YWNhNzg1MWZkZjIzZWJhZjhiZmEyNzRlMTRkMmYyMzkyN2RlZWVlYTM5YzVmMWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmNGY5Njk0MTk5OTAzNmYzMDY4OTg3MjBiODA2MzgxMGE3ZjZmOWI2OWI2ZTk4MGQ3YjBmYThjZDc4ZjIxMmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OTMzZjdjMzkzOGI2MGIyZGQzMGEwMmE2NzEyYTEzZjFiZGI5MzEyY2E2MDU5YTE4ZGUxNmQzZjdjNDM0MjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhNWQxZWNhZjZkMTM3OTc5NTdlMTVmOGU5ZGNiNGRmZjFhZTQ0YjY3NTA0OGE4NzUwODQxOWQwODMwNWNlNmUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2e9385f59f8456a9a7ed7971dd50a8a",
+      "statement": "Documents are capped at 50 MB, and the server answers 413 from content-length before reading a larger form.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/documents.ts#L39-L47",
+          "version": "repo-lines-v1:sha256:b5556a4ca5bff7cbab4120e94006c3be5b95ca7bdcfaf467a9ded6547c3ce2e7:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWFmMjJjZjA3MzI1OTJjMjQ3MTQxY2JlNjFlZmExMTAxMjYxMmY1YTMxMjJiOWFmOWJiYWY1MmY1NzI0ZDE5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTJjMzM2ZDc2OWM4NjI4MWUyMjdhNDZhODlkYWRkNzMxNmIwZGNlMjUyODNkOWFmZDc4NjVmNTY0MmU0YTg5MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjJmOTg3MzNjNTkzN2MwZDdmMjRiMDJlMTQwNjQxNTYzYTdjMGM3Y2Y3OWZiNDA5MmUzZjY4OTg3MDlmMDRhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDUxOTBmYTU2MjAyZmJmYWJhMWUwOGY1YWY1MDVlMWI1ZDAyMDE5YjAwYTMzNzE3MDhiZjlhMjYyYWUyNTkwMCJ9"
+        },
+        {
+          "resource": "repo://packages/server/src/api.ts#L253-L260",
+          "version": "repo-lines-v1:sha256:f7f648816fe2443796c1c665543dc2e8312c5ed46d191d2bea8016136d8f2ddf:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjliMDkyNGZlMTE5MGEzYWM3ZTc3YTRmZDVjYjhmOGE3ZTMxYzkwMmI3NGJkZDNjN2NjNzE5MzZmYTdmMDQ0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmI4MzYwMGIzYTZjMjJlMDc3M2Y4OWQ2NGQ4MDg5ZjM1ZGEwNTQzZDViOGMwYjg5YzBiNzI1MzNkYzI2YjdjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWVkZWM0NjZiZTJlNzdhOGFhNjdjNjc1Y2M5YTAxMWE4MDM0M2I0OGVlOTM5ZDM0MTNhM2MwZTJiN2VjYzdjNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1c7245f93385403c96e5c315348769a8",
+      "statement": "Fetching a Listing's photo is core's only outbound network call; it validates status 200, an image content-type, a JPEG/PNG/WebP magic number and a 2 MB cap with an 8 s timeout, and a failure never fails record_listing.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/images.ts#L1-L42",
+          "version": "repo-lines-v1:sha256:1ab48451ba466c429eca396c5d106f0a5ab7025f9e98aef2a38f2d657ec6c087:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlNTNhZTcwOWRiNTcyOTA5ZWQ4YjRjNjdhNzViYjE2ODkwMWFkNzk2ZDllYjQ2MzVmYTEyZjU5ZWIxNzI1MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmZjM5YjhhNWQ3YmU5YjFmMGUxYjJlYjJmZjU1ODkzMmRjNmU4MzVlMWY5ZmI1ZTM4OGE3Y2QxZDM2MGU5OTcifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L476-L500",
+          "version": "repo-lines-v1:sha256:2891f43c983b85f63e4bd97f301c3a089f58c8d0f2203763043e8ceecf2f36ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNmJiODVkZjI1ZTI1MDhjZjYzNjZlYWI2ZmI3YTJhY2JjOTI1NjdjOTMyYjRmNmZjODkxY2RkYWJiNjA2NmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4YjIwN2IxOWM4MmVkZDc5YTY4ZmMxNjVhZGE0ZTM1NzhiMjU1MTQ3ZTU3MzI4NGE5M2MzMmMwMjA0MjQ3ZTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljM2ViZDgzZmFjNTgwMDNmZTEyYzg4ZDcwYzU5ODY4MTVkZTFiOTUzZWRiYTFhMGQyZTc1MTBkNDFmNWEzNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlZGFiMzIzMTA5MDY1MTAxMDc1N2QxYjgwYTFjNzRkOGQ5YmNmZmI0Y2JiZDRmNmY5Njc3ZjkxY2NhMWU5ZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0de0233c29f94e07bd7295313a8fa4eb",
+      "statement": "set_listing_photo accepts pasted bytes or a URL with the same validation but reports failures to the waiting user.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/purchases.ts#L589-L605",
+          "version": "repo-lines-v1:sha256:2084270632396f256916aa1aa5999dd9145ed612e40be06a149329f68d3bd33d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhYTdkZGE2OThlNDBmNGRmNmM3NDFkMTdlZjQ3MDFmMzMxMjNmNWFhNzI4NzkzZjg4NDRiNGJmOTg4NTU0NmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZGY4N2E0NzMxNmM3MDhjNTUwMjA5OGU5YWY2YzQ0NTM0ZWI4MGJlYWRjZjYwNjMwMjhlZmNhODU5MzdhYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExOTBlOGFmMmUxNGI3YTY4MWFjOTkwY2Q1ZGNmNWY3OTY3ODcxNTg1NWYxOWMzZmVkYzk2NGEyN2I4ZGZhZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiNzdlYzUzMzIyYTliMmNmMDA2MjIyOTFhNzU4ZTI4ZWE2MGM2Y2U3ODhmM2E0OWI4MDI3YTQ1OTVkNWMwNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1861a431be6b436ab6ad5f08d85ef731",
+      "statement": "Versioned image and document URLs are served with an immutable one-year private cache header, unversioned ones with no-cache.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/images.ts#L68-L71",
+          "version": "repo-lines-v1:sha256:2336998abe1aefbd5507a9f79dacb47a4259ad442b9146bd4070c9d6acaf4e42:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGM3ZDA1MDlkOThhY2M3N2I4OTZlMTlmYWUzZTBmMGIyOGM2NjE0MWE3M2RmYWY4MDZmOTExMTA5YmE0ZmNjZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGZiODA0YzY3MzBhYzdlZTZkNjM3YmU3NDY3MGQ3Nzk1MWM5YjhjNGU5YTQ3YmU4ZDBjZjY0NTFlOTBhM2IwNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzc5MjllOTFlMGY5OWMzZTgyNWRlNjliNDM1ZmI2NDg0ZDFiMGExZGYyZjQ2NTYxYWJmMWEyOWYwNDE4OGI4OCJ9"
+        },
+        {
+          "resource": "repo://packages/server/src/api.ts#L162-L175",
+          "version": "repo-lines-v1:sha256:49f497d806208dc658e3fcdcf59e2be47ae1a4973302465b4eff63fdc3490645:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0ZTM1NDhiNmQyNjUzNDUxY2FlY2M2YWQ0Njc1YjhhMTM3MTg0OGYwMzU1OGJlYTI0MjQwMjNiYmI5NDQyMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhM2U0NmY5NDI3NmI2ZjZmNGVkMWYwMmFmNzhiZWY2YTJlZTFjNDM5ZGQ1NTg0Yjk3Mzk0ODMxMzIxNGQyYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxOTU2NGRkMTY0MjU1ZWFiNjdmMTdiZmMwMTU0MTc3MGUzZmQyNmQxMmQ4M2Q2OWZmZDljMmMwM2RjYTUyN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTI5ZTkxZTBmOTljM2U4MjVkZTY5YjQzNWZiNjQ4NGQxYjBhMWRmMmY0NjU2MWFiZjFhMjlmMDQxODhiODgifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

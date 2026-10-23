@@ -2,7 +2,7 @@
 // comes back as { error: { code, message } } with a message written for the reader. The shapes
 // are core's: the Zod schemas in packages/core/src/operations/ are their single source of truth.
 // Uploads are the exception to JSON: they post a multipart form, and answer the same way.
-// With a password set on the server, any call answered 401 sends the browser to its login page.
+// Any call answered 401, because the Login ran out or was ended, sends the browser to the login page.
 
 import type {
   Item as CoreItem,
@@ -210,6 +210,25 @@ export interface Operations {
     input: { home: string; item: string; document: number };
     output: DocumentsResult;
   };
+  // The Account page: the Account logged in, its password, email, Logins, and its deletion.
+  get_account: Shapes<"get_account">;
+  change_password: Shapes<"change_password">;
+  change_email: Shapes<"change_email">;
+  list_logins: Shapes<"list_logins">;
+  end_logins: Shapes<"end_logins">;
+  delete_account: Shapes<"delete_account">;
+  // The Admin page: invites, reset links, and the other Accounts, seen from outside.
+  create_invite: Shapes<"create_invite">;
+  list_invites: Shapes<"list_invites">;
+  cancel_invite: Shapes<"cancel_invite">;
+  create_reset_link: Shapes<"create_reset_link">;
+  list_accounts: Shapes<"list_accounts">;
+  disable_account: Shapes<"disable_account">;
+  enable_account: Shapes<"enable_account">;
+  admin_delete_account: Shapes<"admin_delete_account">;
+  // A new key for a Home's Agent, and a new phone link for a Quick Guide: each cancels the old.
+  rotate_home_key: Shapes<"rotate_home_key">;
+  rotate_guide_link: Shapes<"rotate_guide_link">;
 }
 
 export type OperationName = keyof Operations;
@@ -332,10 +351,8 @@ export function guidesExportUrl(
   return `/api/export_guides?${query}`;
 }
 
-/** Whether the server has a login, so there is one to log out of. */
-export function authStatus(): Promise<{ auth: boolean }> {
-  return send("/api/auth_status", { method: "GET" });
-}
+/** Where the server serves everything in the Account's Homes, as one .zip to download. */
+export const ACCOUNT_EXPORT_URL = "/api/export_account";
 
 /**
  * The way to the server's login page, which comes back here once logged in. An object, so a test
@@ -355,7 +372,7 @@ async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   } catch {
     throw new ApiError("unreachable", unreachableMessage());
   }
-  // Not logged in, or the session ran out: the page underneath is left as it is.
+  // Not logged in, or the Login ran out: the page underneath is left as it is.
   if (response.status === 401) login.go();
   const body: unknown = await response.json().catch(() => undefined);
   if (response.ok && body !== undefined) return body as Output;

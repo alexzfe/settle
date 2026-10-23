@@ -112,3 +112,13 @@
 .file pre {
   margin: 0;
 }
+
+.newKey {
+  margin-top: var(--space-4);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

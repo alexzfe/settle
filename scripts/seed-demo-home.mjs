@@ -14,16 +14,14 @@
 // Lisbon because it is metric, prices in euros read anywhere, and its latitude and a south-west
 // street front give the daylight machinery something real to say.
 //
-// Create the Home first, then seed it; it refuses a Home that already has Rooms:
-//   curl -X POST http://127.0.0.1:4391/api/create_home -H 'content-type: application/json' \
-//     -d '{"name":"Lisbon flat","country":"PT","city":"Lisbon"}'
-// Usage: node scripts/seed-demo-home.mjs http://127.0.0.1:4391/mcp/homes/lisbon-flat [token]
+// Create the Home first, in the app or with the web API, then seed it; it refuses a Home that
+// already has Rooms:
+//   SETTLE_EMAIL=you@example.com SETTLE_PASSWORD='…' \
+//     node scripts/seed-demo-home.mjs http://127.0.0.1:4391/mcp/homes/lisbon-flat [token]
 //
-// Against a server with SETTLE_PASSWORD, log in for the create_home call first (curl -c jar -d
-// password=… <origin>/login, then -b jar on the call above), and give the Home's key, from its
-// About page's .mcp.json, as the second argument or SETTLE_TOKEN; the script sends it on every
-// MCP call, and logs in with SETTLE_PASSWORD for the picture uploads. Without a password, on
-// loopback, neither is needed.
+// It logs in as the Account that owns the Home, with SETTLE_EMAIL and SETTLE_PASSWORD, for the
+// picture uploads, and for the MCP calls too unless the Home's key, from its About page's
+// .mcp.json, is given as the second argument or SETTLE_TOKEN.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -33,16 +31,18 @@ if (!url) throw new Error("Usage: node scripts/seed-demo-home.mjs <MCP endpoint 
 const { origin, pathname } = new URL(url);
 const home = pathname.split("/").at(-1);
 const token = tokenArgument ?? process.env.SETTLE_TOKEN;
-const authorization = token ? { authorization: `Bearer ${token}` } : {};
 
-/** The web API's session cookie, from logging in with SETTLE_PASSWORD; none without one. */
+/** A Login's cookie, from logging in with SETTLE_EMAIL and SETTLE_PASSWORD. */
 async function logIn() {
+  const email = process.env.SETTLE_EMAIL;
   const password = process.env.SETTLE_PASSWORD;
-  if (!password) return {};
+  if (!email || !password) {
+    throw new Error("Set SETTLE_EMAIL and SETTLE_PASSWORD to the account that owns the Home.");
+  }
   const response = await fetch(`${origin}/login`, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ password }),
+    headers: { "content-type": "application/x-www-form-urlencoded", origin },
+    body: new URLSearchParams({ email, password }),
     redirect: "manual",
   });
   const cookie = response.headers.get("set-cookie")?.split(";")[0];
@@ -53,6 +53,13 @@ async function logIn() {
 }
 
 let id = 0;
+let login;
+
+/** The Login's cookie, logging in on first use. */
+function loggedIn() {
+  login ??= logIn();
+  return login;
+}
 
 /** Calls one tool and returns its result; throws on a JSON-RPC error or a refused call. */
 async function call(name, args) {
@@ -61,7 +68,7 @@ async function call(name, args) {
     headers: {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
-      ...authorization,
+      ...(token ? { authorization: `Bearer ${token}` } : await loggedIn()),
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -957,7 +964,7 @@ await listing({
 });
 
 // Each sofa's picture, a drawing beside this script, sent the way the app's picture box sends one.
-const session = await logIn();
+const cookie = await loggedIn();
 for (const sofa of [
   "tejo-modular-sofa-3-seats",
   "linho-2-5-seat-sofa",
@@ -971,7 +978,7 @@ for (const sofa of [
   form.append("file", new Blob([bytes], { type: "image/png" }), `${sofa}.png`);
   const response = await fetch(`${origin}/api/set_listing_photo`, {
     method: "POST",
-    headers: session,
+    headers: cookie,
     body: form,
   });
   if (!response.ok) throw new Error(`set_listing_photo ${sofa}: ${await response.text()}`);

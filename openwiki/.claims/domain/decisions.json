@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:83b5bedab5d615db5ea60a55a63e2c7f444a6e09b11257ad674f2c101b4824d7",
+  "claims": [
+    {
+      "id": "claim_71bdd42f95e44a1db15ee924b7804091",
+      "statement": "Decision kinds are design-direction, room-direction, room-use, palette, room-color, purchase and other, with scopes home, room or either per kind.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/schemas.ts#L1220-L1290",
+          "version": "repo-lines-v1:sha256:9e41b9503193919fc53244948f5c625f82fc5b9f482f4adf7c614b02084cb940:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwMWVhZDkzNmEyMjgxZDUzZGNjMDY0YjdlMmEyYWIwZDUzYjkyZWYzZWY3YjM0YjY2ODY3MzAwNzg5NWM4NjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmMWUzODBkMzQ0NjA3ZWY2NmFmZWIzYjYxNzM2ODM2YjdmMTVjMTFlYjVjN2RiZjI0OTJiZmZkNTcyYjEyMjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkZjA1NDgyYmNkNzk4NzQ3MDk1MDMyMjk1ZGE1YTljYzQyMGY0NWM5NjJjYTAxNmFlNTI4ODkwNmEyNDFiNTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8cbb63403f5e49fbbb903af5e46f6bd5",
+      "statement": "Legal transitions are candidate→leaning/settled/rejected, leaning→candidate/settled/rejected, settled→leaning/rejected, rejected→candidate; any other move is refused.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1533-L1553",
+          "version": "repo-lines-v1:sha256:79810208f2a06c4de6414d7556fd456510793a0a14c6e9ec176fa9e698c37046:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTcyM2FhZWY3NGMwZTMzZmRhZDE5MjY0NmNjYjFhYzE0NTg2YzdkMzBkMDc0MTA3M2ZiZTBhYWVlNWI1YjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwOTQ3NGZhMjY1OWY0ZDQ4ZmQzOTY0Zjc2OWZhZDM1NDgxZDk1YWUyNDM2MjgwZDM1ZjczOTExNWY5MTk0MTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhNjJjNzFmOWFmZDc1Y2YzMDE1ZTRjOGUwNDA3MGEzMWE4NjYyODJlNWRkYzc2YzcyN2Y0N2QxMTQ2OWJkOTYifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/schemas.ts#L1270-L1279",
+          "version": "repo-lines-v1:sha256:d00c08c0b5ab36230fdcb72dcc6665ee252dbb7b9062257cc6a160e60423b29d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzMDJjNGZhOTRjZTUzZmFlMWI5ZDE2ODI4ZDdmZTVmMWY5MTQyNzM2N2M3ZjMyMjFjNjhhYTViMzY1M2IzNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmZDY1M2I4NzQwODVlYTY2MDgxZGNiMmVkN2ZkNTQ2ZDEwYWE5NzBkZTM2MjZjZDBmOWQ2MTMxYTcwMTE4MWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2a4026596f014954bab5a9aca88c1a6e",
+      "statement": "Only one Design Direction and one Palette per Home, and one Room Direction and one Room use per Room, may be Settled (and not Fulfilled) at a time.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1347-L1352",
+          "version": "repo-lines-v1:sha256:19ee27fa7933d46bf945da6ebaf95cc3e66dfa0cfd5be4d866c001ccc6ee5f1f:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjE1NzkyYmI1ZDk2ZjIxMDY4NDQ1YjhiZmQ3ZjFlZjIxYzY1MTg4MTgxYWQ4N2NhODcyYmJhMzQ2MjFiYmQyMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWExZDFhNjMzOTAyMjljNzk4MzQ3ZTgzYTA0MDU0NDFjOTQwMDAzNTI4NGFkMTY4YzFiZjZjZGYxZDcwYTM3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzk3ZTEyY2E1MjQ0ZmNhYjUyYjVlYjY2MzNhYWZiN2I2ZTNjNGQ2ZGZhMmNjNTA5NGQ2MDA3ZDRjYjE4OTcwMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGFmM2YwODI1OTYyZWY0NDhlYWNkYjBkY2NjZTExYjQ5YmE2ZmMyNmMyOWQ1YjgzOTg5NDJlMTkwODhiOTNkNCJ9"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1733-L1755",
+          "version": "repo-lines-v1:sha256:dbdb28fc8232e261821633664e518ed49e2c8de1bf33229fef5c73adc1c54285:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiZDJjYjIwNWQ2NzExYmU3NWNlNTViMWExNTU0ZGYzMDhlY2UwYThlNzA1NDQ3MWMwY2VjZmU3NDVhZTMzMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0ZTQyMDhjZDZmZmI4YzRhMzU0N2IyZjU0YWRhMTk5NzhjM2YzNjVlNzhmOTUwMmVmNTE0NWNkZDJhYTg1NDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3ODI5NjBhMjYxYzY5Y2NlZGFlMTVmNzVjNThkMTRhZWRlYjFjYjc0M2I2MmJmYmIxZWRjZmVjMThiNmQ5NGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2OWMzZmYxYzVmNjYwYzNiMDVlMWIyYWMzYmM1NmY5MjRkNDYwOWJlYzU2MDE5YjMwZjc1MTAyYTM3NmQwOGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a3b08bc32b444682b3d605a7f419a3dd",
+      "statement": "A state change from a Session requires a reason, and moving a Decision to its current state keeps it; a Fulfilled Decision can only be kept.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L152-L190",
+          "version": "repo-lines-v1:sha256:2eb2e75988e40272b2b4764bbc10ec441af86c0548bfaee73be9a91e7de04a12:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ZDlhZDg5ZDFhOTc0ZWY3ODc3NGUwYTE5ZDhkMzdkODQ1NTBlODA0ODQ5ODI1YzY3Y2YyYTI0NDQ2OTYyN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBkMWQ2ZDM2ZTY0Y2U0M2Y4ZGRjOTRiNzUwOGUwNDZmNTlkNjUxNmFlZDFjOTNhNTRjMjFkMTU4Mzk3MTdjZTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0YzI2MDYxM2NhZjE0ODg4OTkxYTgxMmY0ZWM3YjNjZDY1ZTAwNGEzY2ZmMzM4N2Q3MzIxZjAzZmUzY2Q4M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkNmIxMzRkYzNlYmRhMmFiMDA1YzAxNTBkOWI2NTY0ZDAzMzMzODkzZDA2MTNkZjI2NDk1NDk5OWNkZmQ2OGEifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1533-L1545",
+          "version": "repo-lines-v1:sha256:a24b03ce71b8d1afdd127a0804c800cd1ed5a1ea2940496aff5c5cc96005c63d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4OTcyM2FhZWY3NGMwZTMzZmRhZDE5MjY0NmNjYjFhYzE0NTg2YzdkMzBkMDc0MTA3M2ZiZTBhYWVlNWI1YjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwOTQ3NGZhMjY1OWY0ZDQ4ZmQzOTY0Zjc2OWZhZDM1NDgxZDk1YWUyNDM2MjgwZDM1ZjczOTExNWY5MTk0MTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1ZDk3NTFmZDg2YWMxZWQwODk0NGI0MjU0NWU1MDA1YzkwMWRmZWY3Y2NhNjBlZjVjNjdhNjk1ODM0ODA4MDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fcb7436d72246f4b5f37ae8a48fd7fd",
+      "statement": "Reopening or Rejecting a Decision clears its own flags and Conflicts and flags every active open Decision whose stored Basis contains it, without duplicating an open flag of the same cause and source.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1578-L1597",
+          "version": "repo-lines-v1:sha256:8179c24c193ad08a8ab56d62ee8a2184c17f5bd027e1f287de7ff00d25922bb0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0OTI5MzQ5N2ZkM2UzYzE5NmM5M2M5ZThhYjdlYTliNzAxNzFjMTVlN2ZmYWYzN2UzMTI2MDkwN2NjYzQ2OTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzMGY0MmI3OWZjYThiM2YzM2MzYjA4NjY3OTI2MzRjNDgwYWEyMzk4MGI4YTkxYjAyZGVkMzYzYWM2OTk3OWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjN2U2ZGIwODMzNmVmYTBkODJiN2VjYTIzZDhlN2FkNzQxZDY1YjlmMDYzNzQxYTFkMDUzYWZjNGRiZDk0YzYifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L1684-L1730",
+          "version": "repo-lines-v1:sha256:05a91060f0cbbe3f07a287c0961f99540390c1bfbbcc41fa8e01a79b04b4cec8:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiOTFlZTFlYzY0MzhjOTUxNzk2MGM4OGU0YzZmMjU1MGNjODQyYmUyZTFjYWViYjViZmU4ZTkxZDhiNjU5ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjMTg1NDUwZmFhYWM3MzEwY2EwNzNmNDUyMDVjNzU3NzI5MDMyNjgwNTJhMWM2YjE4ZGVhZjJhNmM5ZmRiYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1Njc5NDdlNzIzNDQwY2IzOTJiNzNlNGMwZGVkN2E4NTFmY2I3MmRhYjI2NTBjZTJmNTE5M2I2OWQwYTQ5YmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f848fe93e1074d459f314f3e2c9322cf",
+      "statement": "The Design Direction and Palette in force are stored as automatic Basis entries when a Decision is created or starts using the Palette, never moved silently, and re-based when the Decision is kept or Reopened after being flagged by them.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/basis-rules.test.ts#L1-L10",
+          "version": "repo-lines-v1:sha256:744654b3f767bd4c25bcfb0b139df38b11447c66546d7ea5750aa526dd7ae070:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5Nzk5NzEyZWVjYjJkNzA4NDA0MDY3MGYyMWM0MGQ3MGZmMWU1N2M2ZDhjYjE4MDJiZGJjMDAyMzMwYTU5ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2M2Y0MjQ2NTQwN2Q2YTVkZWM5YmM2YzNlNDAxZDQxZmFlOGE2MGM1NWIwYjg4MWI2NDZiZTA0MDMyNWQ4YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY0OGIzZGM1OTgzYTUwZTc3ZDgxMThiNTM2NTlhMjE1M2E3YjUxYzRhYzQ3MmM2YjAxOTU1ZTM0YThjMjY3ZDUifQ"
+        },
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L980-L1055",
+          "version": "repo-lines-v1:sha256:c0621b3efa20cc9861757ac9929edad8c7e395272c3d3d6c669dc74bb480da8c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMwODZjMmExYmZiNTJhNzkxOGVhYmFiMjhiYjA2Yjc3NzlkNGU4NjA1MmM0YWU0OWRlZmMxMTA3OThmNjZhY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiMjdmYjIyNmQ1Y2E1NTgxYmU0MjRmMzkzZDUwNzJmNzQwMzNjNTEyZTg4MjM5NzBhNGY3Y2RjZjBmOTdiYWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d9c42c3cd3c5413a942f43b58b73fb14",
+      "statement": "value_changed flags a Purchase when a value its Requirement's reason points at changes; a reason naming a field is flagged only by that field, and Item register fields do not flag reasons that don't name them.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/value-changes.ts#L1-L30",
+          "version": "repo-lines-v1:sha256:b09962552f1ebbc3c143a7596077fc7fd62db7dea418d3d446fde56b687d2850:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwOTBiYjEwY2U3Y2MxY2VlYTU0NjY5YmVmZDkyZWQzODJiYmU1MGQ1MDc3NzI3NjMwODgxMTFmZmFmMjY4ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjYjQzZmU0ODM5ZDkzMWU2NTc4MjFkOWFlYTkyZDYwM2QzYTNhOTU2NzEwYjUxNTVmNjZmNGM2MjVjMWI1MTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjNjVmN2Q2MTQwYWFlYzZkMWE4OGE3NGZhYzRiZTUyMTU4NmNmZTQ4ZjUyZTA3YjVhMDMxYTU4ZjdlOTdlNjUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_16585b9b98824e94be64d896a936ff2d",
+      "statement": "A Conflict can be raised only on a Settled, not-yet-Fulfilled Decision and changes nothing else; only the user resolves it.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L247-L309",
+          "version": "repo-lines-v1:sha256:3a753fe406ffcbe41681ba2514801b7a69088f2c583f7158dffb8d3bf5e23ae3:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjZTJjYTkyZWRlZjE1NWNkMjFmYjNlYTY3MTEwMGM5Y2U3NzY1Y2ExOTE0MzUwMzIxMWQzMWRjNjU4Y2FkMGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlMGU2NzZiMTI0YmY1OGIyMzMwYWMzYjVhYzg0YTQwN2Y0YTMwMWJkNDEzNjBkZDY5ZjU3OWFkOGM4NzliYTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0YzlmZjYxY2JjN2M2ZWM3ODA1YWRlZjA4ZTBkZmZmZjRjZGI3NjA2ZmMwMjNhZWUyNmUyZTQzNzZlNGIwMDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e99c56883fc1469a982ae0f6d19e20d0",
+      "statement": "Fulfilment is not a state: it is refused while the Decision has an open flag or Conflict, and it updates Room functions, a Surface's color, or Items and Features to match what was done; a Deviation from a must flags dependents.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L311-L395",
+          "version": "repo-lines-v1:sha256:2a55c62efffe06cb39f1e03f4149b40a9e636aa15385d823206edc4fcd68d552:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2OTdjZDMzYzg4YWFiMTNmYjU0NjgyZTdiZjQ0MjhmODhkNDM2Y2ZkYTEzYjgyZmQxNTVhODU0YjA3MWFlOGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlNzVjNzBkOTQ2MzYyNWUxMDc5ZmQ4ZmM4ZWU2MmFkMmU5MmM0MmJlYWFiZmQ4NWI3OGQ4ZTBhNDk3OWI5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc0YzI2MDYxM2NhZjE0ODg4OTkxYTgxMmY0ZWM3YjNjZDY1ZTAwNGEzY2ZmMzM4N2Q3MzIxZjAzZmUzY2Q4M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNDQwMWFjNzQ5ZDMyMTZjZWM5Y2VlNTg3OWFhOGNjNjRmMGI5ZGMxNTE0NjJkOTc2NGEwNTA4YWFlZmYzYjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_338942c426134db9a0151775b40c61af",
+      "statement": "resolve_flag and resolve_conflict are web-only operations that keep, Reopen or Reject the Decision.",
+      "evidence": [
+        {
+          "resource": "repo://packages/core/src/operations/decisions.ts#L819-L880",
+          "version": "repo-lines-v1:sha256:b7110a03df3edd47f6f1f640338d872d5bd81c693112a804f870287aef9eacde:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhOTZhNjc0ODZlYjllZjc2ZDQzYzA4N2Y3N2EzZDQ2ZjlhMzY3M2U5YjRmMjY5Y2ZkODhkYzgxYmIxMjhlZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzODNhYzE5OThhZDg4Mjg4NDVjNzBlZGZmOWQyNWZjYzc4OTU3ZjU1MzBhNzk4MzhkNTE4NGExZTE3MGZlNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZGUxYjFmYWQ2NzJjYjY5MzViZmE2Zjc2MzFjNzViZjQyYmI4YmQ4MWYyODE0NmEzYTc1NmM5Y2EyYzEwODAifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-14T08:07:45.932Z"
+  }
+}

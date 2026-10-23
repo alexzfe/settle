@@ -646,3 +646,9 @@ a.reason:hover {
 .cardChecks .result {
   white-space: normal;
 }
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
