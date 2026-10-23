@@ -25,6 +25,14 @@ export function CreateHomeForm() {
     },
   });
 
+  // A changed place may be one the server knows, so the latitude it asked for goes away with the
+  // refusal; the required field would otherwise keep the corrected city from ever being looked up.
+  function placeChanged() {
+    if (!askLatitude) return;
+    setAskLatitude(false);
+    createHome.reset();
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -44,10 +52,10 @@ export function CreateHomeForm() {
         Name <input name="name" required placeholder="Our flat" />
       </label>
       <label>
-        Country <input name="country" required />
+        Country <input name="country" required onChange={placeChanged} />
       </label>
       <label>
-        City <input name="city" required />
+        City <input name="city" required onChange={placeChanged} />
       </label>
       {askLatitude && (
         <label className={layout.wide}>

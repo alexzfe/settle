@@ -62,6 +62,43 @@ it("asks for the latitude when the server does not know the city, and sends it",
   ]);
 });
 
+it("drops the latitude it asked for when the city is corrected, and looks the new one up", async () => {
+  const flat: Home = {
+    slug: "flat",
+    name: "Flat",
+    country: "Portugal",
+    city: "Lisbon",
+    latitude: 38.7,
+  };
+  const fetch = stubApi({
+    create_home: (input) =>
+      input.city === "Lisbn"
+        ? Response.json(
+            { error: { code: "city_not_found", message: "No city Lisbn in Portugal." } },
+            { status: 400 },
+          )
+        : { home: flat },
+  });
+  const { router } = renderRoutes("/", formRoutes);
+
+  fill("Name", "Flat");
+  fill("Country", "Portugal");
+  fill("City", "Lisbn");
+  fireEvent.click(screen.getByRole("button", { name: "Create Home" }));
+  await screen.findByLabelText("Latitude");
+
+  fill("City", "Lisbon");
+  expect(screen.queryByLabelText("Latitude")).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Create Home" }));
+
+  await waitFor(() => expect(router.state.location.pathname).toBe("/homes/flat"));
+  expect(inputsTo(fetch, "create_home")).toEqual([
+    { name: "Flat", country: "Portugal", city: "Lisbn" },
+    { name: "Flat", country: "Portugal", city: "Lisbon" },
+  ]);
+});
+
 it("does not ask for the latitude when the server refuses for another reason", async () => {
   stubApi({
     create_home: () =>
