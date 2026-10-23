@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CoreError } from "../errors.js";
-import type { OperationContext } from "../registry.js";
-import type { HomeRow, SessionRow } from "../store.js";
+import type { Caller, OperationContext } from "../registry.js";
+import type { AccountRow, HomeRow, SessionRow, Store } from "../store.js";
 
 export const homeInput = z.string().min(1).describe("The Home's slug.");
 
@@ -10,18 +10,55 @@ export const sessionInput = z
   .min(1)
   .describe("The id of this conversation's open Session, as open_session returned it.");
 
-/** The Home the call is scoped to. */
+/** The Home the call is scoped to, which the web caller's Account must own. */
 export function requireHome(context: OperationContext): HomeRow {
   if (!context.home) throw new CoreError("validation", "Pass `home`, the slug of the Home.");
-  const home = context.store.home(context.home);
-  if (!home) {
-    throw new CoreError(
-      "not_found",
-      `The app has no Home "${context.home}". If this is a Home Folder, set it up again from the ` +
-        "Home's page in the app.",
-    );
-  }
+  return ownedHome(context.store, context.caller, context.home);
+}
+
+/**
+ * The ownership check, the one wall between Accounts: the Home with this slug, if the caller may
+ * reach it. The Agent's Session reaches the Home whose key the server checked; the web caller,
+ * only a Home its Account owns; a Quick Guide's link, none by slug. Every refusal is the refusal
+ * for a Home that doesn't exist, word for word, so nobody learns which Homes do.
+ */
+export function ownedHome(store: Store, caller: Caller, slug: string): HomeRow {
+  const home = store.home(slug);
+  const reachable =
+    home !== undefined &&
+    (caller.kind === "session" || (caller.kind === "web" && home.accountId === caller.account));
+  if (!reachable) throw noSuchHome(slug);
   return home;
+}
+
+/**
+ * The web caller's Account. The server lets only an enabled Account's Login through, but a call
+ * made as one disabled meanwhile is refused here too.
+ */
+export function requireAccount(context: OperationContext): AccountRow {
+  const { caller } = context;
+  const account = caller.kind === "web" ? context.store.account(caller.account) : undefined;
+  if (!account || account.disabledAt !== null) {
+    throw new CoreError("validation", "Only someone logged in to the app can do this.");
+  }
+  return account;
+}
+
+/** The web caller's Account, which must be the Admin's. */
+export function requireAdmin(context: OperationContext): AccountRow {
+  const account = requireAccount(context);
+  if (!account.admin) {
+    throw new CoreError("validation", "Only the Admin, who runs this server, can do this.");
+  }
+  return account;
+}
+
+export function noSuchHome(slug: string): CoreError {
+  return new CoreError(
+    "not_found",
+    `The app has no Home "${slug}". If this is a Home Folder, set it up again from the ` +
+      "Home's page in the app.",
+  );
 }
 
 /**

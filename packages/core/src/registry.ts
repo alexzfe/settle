@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { PasswordCost } from "./accounts.js";
 import type { RecordKind } from "./events.js";
 import type { FileStore, PdfRenderer } from "./files.js";
 import type { ImageFetcher } from "./images.js";
@@ -6,9 +7,15 @@ import type { HomeRow, Store } from "./store.js";
 
 /**
  * Who is calling. The Agent calls on behalf of a Session (absent only when open_session starts a
- * new one); the web UI calls as itself and needs no Session.
+ * new one), and the server has already checked its Home's key. The web UI calls as the Account
+ * logged in, from one of its Logins, and needs no Session: it reaches only that Account's Homes.
+ * Whoever holds a Quick Guide's link, a phone that is not logged in, may open that guide by its
+ * token and nothing else.
  */
-export type Caller = { kind: "session"; session?: string } | { kind: "web" };
+export type Caller =
+  | { kind: "session"; session?: string }
+  | { kind: "web"; account: number; login?: number }
+  | { kind: "guide" };
 
 /** What an adapter passes with each call. */
 export interface CallContext {
@@ -47,6 +54,8 @@ export interface OperationContext extends CallContext {
   now(): string;
   /** A random integer from 0 up to, not including, `max`. */
   random(max: number): number;
+  /** scrypt's cost for a new password hash (accounts.ts). */
+  passwordCost: PasswordCost;
   /**
    * The origin the app names itself by: the public origin when hosted, else
    * "http://127.0.0.1:<port>". The Home Folder's .mcp.json points the Agent at it.

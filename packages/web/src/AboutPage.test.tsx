@@ -204,3 +204,19 @@ it("shows the command that sets up the Home Folder, the plugin install line, and
   ]);
   expect(files.querySelector("figure pre")?.textContent).toBe(mcp);
 });
+
+it("makes a new key only after saying the old one stops and the Home Folder command must run again", async () => {
+  const fetch = stubAboutPage({ rotate_home_key: () => ({}) });
+  renderRoutes("/homes/flat/about");
+  fireEvent.click(await screen.findByRole("button", { name: "New key…" }));
+  const dialog = screen.getByRole("dialog", { name: "A new key for this Home" });
+  expect(dialog.textContent).toContain("The old key stops working at once");
+  expect(dialog.textContent).toContain("run the Home Folder command in that folder again");
+  fireEvent.click(screen.getByRole("button", { name: "Keep this one" }));
+  expect(inputsTo(fetch, "rotate_home_key")).toEqual([]);
+
+  fireEvent.click(screen.getByRole("button", { name: "New key…" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
+  await screen.findByText(/The Home has a new key\./);
+  expect(inputsTo(fetch, "rotate_home_key")).toEqual([{ home: "flat" }]);
+});

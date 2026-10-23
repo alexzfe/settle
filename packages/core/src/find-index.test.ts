@@ -2,11 +2,14 @@
 // as one flat list of FindRows, which the browser matches as the user types. A Home is small
 // enough (a few dozen records) that the whole index ships to the browser, with no search engine.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type CallContext, createCore } from "./core.js";
-import { createFixtureHome, type FixtureHome } from "./fixture/fixture-home.js";
+import { createCore } from "./core.js";
+import {
+  addAccount,
+  createFixtureHome,
+  type FixtureHome,
+  TEST_PASSWORD_COST,
+} from "./fixture/fixture-home.js";
 import type { FindRow } from "./operations/find-index.js";
-
-const web: CallContext = { caller: { kind: "web" } };
 
 let fixture: FixtureHome;
 // A clock that ticks a second on every read, so each write lands at its own time.
@@ -19,7 +22,7 @@ beforeAll(async () => {
 });
 afterAll(() => fixture.core.close());
 
-const index = () => fixture.core.run("find_index", web, { home: fixture.home });
+const index = () => fixture.core.run("find_index", fixture.web, { home: fixture.home });
 
 async function row(kind: FindRow["kind"], slug: string): Promise<FindRow> {
   const found = (await index()).find((each) => each.kind === kind && each.slug === slug);
@@ -58,7 +61,8 @@ describe("find_index", () => {
       path: "/homes/fixture-home/rooms/main-bedroom",
     });
 
-    const core = createCore();
+    const core = createCore({ passwordCost: TEST_PASSWORD_COST });
+    const web = await addAccount(core);
     const { home } = await core.run("create_home", web, {
       name: "My flat",
       country: "GB",
@@ -166,7 +170,7 @@ describe("find_index", () => {
       { caller: { kind: "session", session }, home: fixture.home },
       { session, items: [{ item: "sofa", positionNote: "under the window" }] },
     );
-    await fixture.core.run("hold_listing", web, {
+    await fixture.core.run("hold_listing", fixture.web, {
       home: fixture.home,
       listing: "hay-plain-rug",
       held: { reason: "out-of-stock" },
@@ -188,7 +192,8 @@ describe("find_index", () => {
     expect(operation).toMatchObject({ readOnly: true, surface: "web" });
     expect(operation?.text).toBeUndefined();
     const log = async () =>
-      (await fixture.core.run("get_change_log", web, { home: fixture.home, limit: 1000 })).changes;
+      (await fixture.core.run("get_change_log", fixture.web, { home: fixture.home, limit: 1000 }))
+        .changes;
     const changes = await log();
     await index();
     expect(await log()).toEqual(changes);

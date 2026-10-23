@@ -11,7 +11,12 @@ let id = 0;
 async function call(name, args) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      // The Login of the Account that owns the Home, as plugin-eval-live.sh made it.
+      cookie: `settle_login=${process.env.EVAL_SETTLE_LOGIN}`,
+    },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: ++id,

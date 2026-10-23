@@ -28,7 +28,22 @@ export const queryKeys = {
   shopping: (home: string) => ["shopping", home],
   /** The find box's index: every findable record of the Home, fetched once and matched locally. */
   findIndex: (home: string) => ["find-index", home],
+  /** The Account logged in, and its Logins. */
+  account: ["account"],
+  logins: ["account", "logins"],
+  /** The Admin's lists: waiting invites, and every Account. */
+  invites: ["admin", "invites"],
+  accounts: ["admin", "accounts"],
 } as const;
+
+/** The Account logged in: its email, and whether it is the Admin. */
+export function useAccount() {
+  return useQuery({
+    queryKey: queryKeys.account,
+    queryFn: () => call("get_account", {}),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
 
 export function useHomes() {
   return useQuery({ queryKey: queryKeys.homes, queryFn: () => call("list_homes", {}) });

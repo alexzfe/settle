@@ -28,7 +28,7 @@ import {
   type Room,
   saveHomeInput,
 } from "./schemas.js";
-import { homeInput, requireHome, requireSession } from "./scope.js";
+import { homeInput, requireAccount, requireHome, requireSession } from "./scope.js";
 import { Writer } from "./writer.js";
 
 export type { Home, Level, Room };
@@ -77,6 +77,7 @@ export const createHome = defineOperation({
       );
     }
     const latitude = Math.round(found * 10) / 10 || 0;
+    const account = requireAccount(context);
     const { store } = context;
     return context.write("web", (log) => {
       const slug = uniqueSlug(input.name, "home", (taken) => store.slugTaken("homes", taken));
@@ -87,6 +88,7 @@ export const createHome = defineOperation({
         city: input.city,
         latitude,
         token: randomToken(context.random),
+        accountId: account.id,
       });
       log({ home, recordKind: "home", record: home, new: toHome(home) });
       const ground = store.insertLevel({
@@ -103,11 +105,11 @@ export const createHome = defineOperation({
 
 export const listHomes = defineOperation({
   name: "list_homes",
-  description: "Every Home in the app, by name.",
+  description: "Every Home of the Account logged in, by name.",
   input: z.object({}),
   readOnly: true,
   surface: "web",
-  handler: (context) => ({ homes: context.store.homes().map(toHome) }),
+  handler: (context) => ({ homes: context.store.homesOf(requireAccount(context).id).map(toHome) }),
 });
 
 export const getHome = defineOperation({

@@ -174,7 +174,8 @@ export const getGuidePage = defineOperation({
 
 /**
  * The Purchase whose Guides carry `token`, in whichever Home it is. Every miss reads the same, so
- * a phone learns nothing from a wrong token; a Purchase Rejected since has no page.
+ * a phone learns nothing from a wrong token; a Purchase Rejected since has no page, and neither
+ * does one whose Home has no enabled Account.
  */
 function byToken(
   store: Parameters<typeof loadDecisions>[0],
@@ -182,7 +183,9 @@ function byToken(
 ): { model: DecisionModel; decision: DecisionRow } {
   const guide = store.guideByLanToken(token);
   const home = guide && store.homes().find((each) => each.id === guide.homeId);
-  const model = home && loadDecisions(store, home);
+  // A Home with no Account yet, or a disabled one's, opens to nobody, its links included.
+  const owner = home?.accountId == null ? undefined : store.account(home.accountId);
+  const model = home && owner?.disabledAt === null ? loadDecisions(store, home) : undefined;
   const decision = guide && model?.decisions.find((each) => each.id === guide.decisionId);
   if (!model || !decision || !active(decision) || decision.state === "rejected") {
     throw new CoreError("not_found", "There is no Quick Guide at this address.");

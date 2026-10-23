@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
-import { createFixtureHome } from "./fixture/fixture-home.js";
+import { addAccount, createFixtureHome, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const agent = (home: string, session?: string): CallContext => ({
   caller: { kind: "session", session },
   home,
@@ -20,8 +20,9 @@ async function refusal(promise: Promise<unknown>): Promise<CoreError> {
 }
 
 let core: Core;
-beforeEach(() => {
-  core = createCore({ database: ":memory:" });
+beforeEach(async () => {
+  core = createCore({ passwordCost: TEST_PASSWORD_COST, database: ":memory:" });
+  web = await addAccount(core);
 });
 afterEach(() => core.close());
 

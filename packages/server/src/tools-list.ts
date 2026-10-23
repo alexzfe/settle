@@ -18,11 +18,20 @@ export const TOOLS_JSON = join(
   "_tools.json",
 );
 
-/** The MCP endpoint's tools/list result, asked of `app` as the Agent would ask it. */
-export async function listTools(app: Hono, port: number): Promise<{ tools: unknown[] }> {
-  const response = await app.request("/mcp/homes/any", {
+/**
+ * The MCP endpoint's tools/list result, asked of `app` as the Agent would ask it: of `home`'s
+ * endpoint, with `headers` saying who asks (its key, say).
+ */
+export async function listTools(
+  app: Hono,
+  port: number,
+  home = "any",
+  headers: Record<string, string> = {},
+): Promise<{ tools: unknown[] }> {
+  const response = await app.request(`/mcp/homes/${home}`, {
     method: "POST",
     headers: {
+      ...headers,
       host: `127.0.0.1:${port}`,
       "content-type": "application/json",
       accept: "application/json, text/event-stream",

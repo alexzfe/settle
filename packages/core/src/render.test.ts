@@ -154,7 +154,7 @@ it("renders every Room's Room Sheet", async () => {
 it("says so when a Room recorded windowless has a daylight opening, rather than hiding it", async () => {
   // Only legacy rows can contradict themselves: save_room now clears the flag. The stale value
   // must still be visible, or an Agent reading the Sheet reports the Room as already correct.
-  const web = { caller: { kind: "web" }, home: fixture.home } as const;
+  const web = { ...fixture.web, home: fixture.home };
   const { room } = await fixture.core.run("get_room", web, { home: fixture.home, room: "kitchen" });
   const sheet = renderRoomSheet({ ...room, windowless: true });
   expect(sheet).toContain("(still recorded as windowless, which is out of date)");
@@ -172,16 +172,12 @@ it("renders a Room Sheet with the Blueprint, page, and printed text of its Bluep
 
 it("renders the view_images text block, which comes before the images", async () => {
   const session = await openSession();
-  await fixture.core.run(
-    "upload_blueprint",
-    { caller: { kind: "web" } },
-    {
-      home: fixture.home,
-      file: readFileSync(join(FIXTURE_FILES, "blueprint-3-pages.pdf")),
-      fileName: "survey.pdf",
-      label: "Survey",
-    },
-  );
+  await fixture.core.run("upload_blueprint", fixture.web, {
+    home: fixture.home,
+    file: readFileSync(join(FIXTURE_FILES, "blueprint-3-pages.pdf")),
+    fileName: "survey.pdf",
+    label: "Survey",
+  });
   const view = async (input: Omit<OperationInput<"view_images">, "session">) =>
     toolText(
       "view_images",
@@ -204,11 +200,13 @@ it("renders find_items lines, with an Item's Photos by id, day, and caption and 
     { takenOn: "2026-01-02" },
     { takenOn: "2026-03-14", caption: "scratch on the left leg" },
   ]) {
-    await fixture.core.run(
-      "add_photo",
-      { caller: { kind: "web" } },
-      { home: fixture.home, item: "sofa", file: jpeg, thumb: jpeg, ...photo },
-    );
+    await fixture.core.run("add_photo", fixture.web, {
+      home: fixture.home,
+      item: "sofa",
+      file: jpeg,
+      thumb: jpeg,
+      ...photo,
+    });
   }
   // The bookcase's papers, added out of order: the line lists them by kind, then oldest first.
   for (const document of [
@@ -216,11 +214,12 @@ it("renders find_items lines, with an Item's Photos by id, day, and caption and 
     { kind: "manual", name: "User guide" },
     { kind: "receipt", name: "IKEA receipt" },
   ] as const) {
-    await fixture.core.run(
-      "add_document",
-      { caller: { kind: "web" } },
-      { home: fixture.home, item: "oak-bookcase", file: jpeg, ...document },
-    );
+    await fixture.core.run("add_document", fixture.web, {
+      home: fixture.home,
+      item: "oak-bookcase",
+      file: jpeg,
+      ...document,
+    });
   }
   const find = async (title: string, filter: Record<string, unknown>) => {
     const result = await fixture.core.run("find_items", agent(session), { session, ...filter });
@@ -252,11 +251,13 @@ it("renders a Room Sheet's Photos line, and view_photos' text block, which comes
     { takenOn: "2026-09-12" },
     { takenOn: "2026-09-12", wall: 2, caption: "the bed and both bedside tables" },
   ]) {
-    const { photos } = await fixture.core.run(
-      "add_photo",
-      { caller: { kind: "web" } },
-      { home: fixture.home, room: "main-bedroom", file: jpeg, thumb: jpeg, ...photo },
-    );
+    const { photos } = await fixture.core.run("add_photo", fixture.web, {
+      home: fixture.home,
+      room: "main-bedroom",
+      file: jpeg,
+      thumb: jpeg,
+      ...photo,
+    });
     ids.push(photos[0]?.id ?? 0);
   }
   const { sheet } = await fixture.core.run("get_room_sheet", agent(session), {
@@ -265,8 +266,10 @@ it("renders a Room Sheet's Photos line, and view_photos' text block, which comes
   });
   await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-main-bedroom-photos"));
   // A Room Photo with a Wall, then an Item's (the sofa's newest, from the test above).
-  const web = { caller: { kind: "web" } } as const;
-  const { photos } = await fixture.core.run("get_item", web, { home: fixture.home, item: "sofa" });
+  const { photos } = await fixture.core.run("get_item", fixture.web, {
+    home: fixture.home,
+    item: "sofa",
+  });
   const sofa = photos[0]?.id ?? 0;
   const viewed = await fixture.core.run("view_photos", agent(session), {
     session,
@@ -839,13 +842,14 @@ describe("A re-based Decision", () => {
 describe("The Shopping exports and the phone page", () => {
   // Their own fixture Home, since the Wool rug is Settled here to put it on the Shopping List.
   let own: FixtureHome;
-  const web: CallContext = { caller: { kind: "web" } };
+  let web: CallContext;
   beforeAll(async () => {
     let next = 0;
     own = await createFixtureHome({
       random: (max) => next++ % max,
       clock: () => new Date("2026-09-14T10:00:00.000Z"),
     });
+    web = own.web;
     await own.core.run("set_decision_state", web, {
       home: own.home,
       decision: "wool-rug",

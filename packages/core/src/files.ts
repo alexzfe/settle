@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import type { BlueprintFileType, Quarter } from "./operations/schemas.js";
 
 /**
@@ -18,6 +18,8 @@ export interface FileStore {
   writeBytes(path: string, bytes: Uint8Array): void;
   /** Removes the file, or the folder and everything in it; does nothing when there is neither. */
   remove(path: string): void;
+  /** Every file under the folder, as paths relative to it; [] when there is no such folder. */
+  list(path: string): string[];
 }
 
 export const nodeFileStore: FileStore = {
@@ -37,6 +39,15 @@ export const nodeFileStore: FileStore = {
   },
   remove(path) {
     rmSync(path, { recursive: true, force: true });
+  },
+  list(path) {
+    const entries = missingAsUndefined(() =>
+      readdirSync(path, { recursive: true, withFileTypes: true }),
+    );
+    return (entries ?? [])
+      .filter((entry) => entry.isFile())
+      .map((entry) => relative(path, join(entry.parentPath, entry.name)))
+      .sort();
   },
 };
 

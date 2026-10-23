@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useId, useLayoutEffect, useState } from "react";
 import {
   Link,
@@ -10,8 +9,9 @@ import {
   useParams,
 } from "react-router";
 import { AboutPage } from "./AboutPage";
+import { AccountPage } from "./AccountPage";
+import { AdminPage } from "./AdminPage";
 import styles from "./App.module.css";
-import { authStatus } from "./api";
 import { BlueprintPage } from "./BlueprintPage";
 import { ChangeLogPage } from "./ChangeLogPage";
 import { DecisionPage } from "./DecisionPage";
@@ -23,7 +23,7 @@ import { HomePage } from "./HomePage";
 import { ItemPage } from "./ItemPage";
 import { ItemsPage } from "./ItemsPage";
 import { type LiveState, useLiveUpdates } from "./liveUpdates";
-import { useDecisions, useHomes, useItems, useShopping } from "./queries";
+import { useAccount, useDecisions, useHomes, useItems, useShopping } from "./queries";
 import { RoomPage } from "./RoomPage";
 import { RoomsPage } from "./RoomsPage";
 import { SessionPage } from "./SessionPage";
@@ -44,6 +44,22 @@ export const routes: RouteObject[] = [
         element: (
           <Shell>
             <HomeListPage />
+          </Shell>
+        ),
+      },
+      {
+        path: "/account",
+        element: (
+          <Shell>
+            <AccountPage />
+          </Shell>
+        ),
+      },
+      {
+        path: "/admin",
+        element: (
+          <Shell>
+            <AdminPage />
           </Shell>
         ),
       },
@@ -146,7 +162,7 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
         <div className={styles.footer}>
           <ThemeToggle />
           {home && <AgentStatus home={home.slug} live={home.live} />}
-          <LogOut />
+          <AccountLinks />
         </div>
       </aside>
       <main className={styles.main}>{children}</main>
@@ -155,18 +171,23 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
 }
 
 /**
- * Logging out, when the server has a password: a plain form, since the server clears the cookie
- * and answers with its login page.
+ * The Account logged in: its page, the Admin's page for the Admin, and logging out, a plain form,
+ * since the server ends the Login and answers with its login page.
  */
-function LogOut() {
-  const status = useQuery({ queryKey: ["auth-status"], queryFn: authStatus, staleTime: Infinity });
-  if (!status.data?.auth) return null;
+function AccountLinks() {
+  const account = useAccount().data?.account;
   return (
-    <form method="post" action="/logout">
-      <button type="submit" className="secondary">
-        Log out
-      </button>
-    </form>
+    <div className={styles.accountLinks}>
+      <Link to="/account" title={account?.email}>
+        Account
+      </Link>
+      {account?.admin && <Link to="/admin">Admin</Link>}
+      <form method="post" action="/logout">
+        <button type="submit" className="secondary">
+          Log out
+        </button>
+      </form>
+    </div>
   );
 }
 

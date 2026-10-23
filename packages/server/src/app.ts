@@ -1,7 +1,9 @@
-import type { Core } from "@settle/core";
-import { Hono, type MiddlewareHandler } from "hono";
+import { type Core, CoreError } from "@settle/core";
+import { type Context, Hono, type MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { AgentActivity } from "./agent-activity.js";
 import {
+  handleAccountExport,
   handleApi,
   handleBlueprintPage,
   handleDocument,
@@ -12,10 +14,15 @@ import {
   handlePhoto,
   handlePhotoUpload,
   handleUpload,
+  JSON_CAP,
+  UPLOAD_CAPS,
+  uploadGuard,
 } from "./api.js";
-import { type AuthOptions, useAuth, useNoAuth } from "./auth.js";
+import { type AuthOptions, useAuth } from "./auth.js";
+import { callerOf } from "./caller.js";
 import { streamChanges } from "./events.js";
 import { handleGuideByToken } from "./lan.js";
+import { UploadLimiter } from "./limits.js";
 import { handleMcpRequest, mcpTools } from "./mcp.js";
 import { handleExport, handleGuidePage } from "./pages.js";
 import { serveWeb } from "./web.js";
@@ -28,21 +35,32 @@ export interface AppOptions {
   webDist?: string;
   /** When hosted: the origin the app is reached at, which the front door accepts too. */
   publicOrigin?: string;
-  /** With SETTLE_PASSWORD: the login, which every route but a few needs (auth.ts). */
+  /** The login's options (auth.ts): where the client IP comes from, and the failure limits. */
   auth?: AuthOptions;
+  /** The upload limits per Account; a test gives its own. */
+  uploads?: UploadLimiter;
 }
 
-export function createApp({ core, port, webDist, publicOrigin, auth }: AppOptions): Hono {
+/** The most an MCP request may send: the Agent's longest writes are a few pages of Markdown. */
+const MCP_CAP = 4 * 1024 * 1024;
+
+export function createApp({
+  core,
+  port,
+  webDist,
+  publicOrigin,
+  auth,
+  uploads = new UploadLimiter(),
+}: AppOptions): Hono {
   const tools = mcpTools(core);
   // The Agent's last tool call per Home, which /events passes on. The web's /api calls don't count.
   const activity = new AgentActivity();
   const app = new Hono();
   app.use("*", frontDoor(publicOrigin));
-  if (auth) useAuth(app, { core, auth, ...(publicOrigin ? { publicOrigin } : {}) });
-  else useNoAuth(app);
+  useAuth(app, { core, ...(auth ? { auth } : {}), ...(publicOrigin ? { publicOrigin } : {}) });
   app.get("/health", (c) => c.json({ status: "ok" }));
-  // Whether there is a login, so the web knows to offer a log-out.
-  app.get("/api/auth_status", (c) => c.json({ auth: auth !== undefined }));
+  // Every upload: its cap before the body is read, then the Account's upload limits.
+  for (const [path, cap] of Object.entries(UPLOAD_CAPS)) app.post(path, uploadGuard(cap, uploads));
   // Blueprints: a multipart upload in, and each rendered page out as a PNG.
   app.post("/api/upload_blueprint", (c) => handleUpload(core, c));
   app.get("/api/get_blueprint_page", (c) => handleBlueprintPage(core, c));
@@ -60,7 +78,11 @@ export function createApp({ core, port, webDist, publicOrigin, auth }: AppOption
   app.get("/api/export_guides", (c) => handleExport(core, c, "export_guides"));
   // The Home Folder command fetches this and pipes it into sh, inside the folder.
   app.get("/api/home_folder_script", (c) => handleHomeFolderScript(core, c));
-  app.post("/api/:operation", (c) => handleApi(core, c));
+  // Everything in the Account's Homes, as one .zip.
+  app.get("/api/export_account", (c) => handleAccountExport(core, c));
+  app.post("/api/:operation", bodyLimit({ maxSize: JSON_CAP, onError: tooBig }), (c) =>
+    handleApi(core, c),
+  );
   // The Quick Guide's phone page: by its token, which needs no login, or by its slug with
   // ?home=, for the web UI. In LAN mode the LAN listener serves it by token too (lan.ts).
   app.get("/guide/:slug", (c) =>
@@ -69,18 +91,33 @@ export function createApp({ core, port, webDist, publicOrigin, auth }: AppOption
       : handleGuidePage(core, c),
   );
   app.get("/events", (c) => streamChanges(core, activity, c));
-  app.all("/mcp/homes/:home", (c) =>
-    handleMcpRequest(c.req.raw, {
+  app.all("/mcp/homes/:home", bodyLimit({ maxSize: MCP_CAP, onError: tooBig }), async (c) => {
+    const home = c.req.param("home");
+    // Without the key, a Login opens the MCP endpoint of its own Account's Homes alone.
+    if (c.get("keyed") !== home) {
+      try {
+        core.checkHome(callerOf(c), home);
+      } catch (error) {
+        if (!(error instanceof CoreError)) throw error;
+        return c.json({ error: { code: error.code, message: error.message } }, 404);
+      }
+    }
+    return handleMcpRequest(c.req.raw, {
       core,
       tools,
-      home: c.req.param("home"),
+      home,
       activity,
       port,
       ...(publicOrigin ? { publicOrigin } : {}),
-    }),
-  );
+    });
+  });
   serveWeb(app, webDist);
   return app;
+}
+
+function tooBig(c: Context): Response {
+  const message = "That request is far larger than anything this route takes.";
+  return c.json({ error: { code: "validation", message } }, 413);
 }
 
 const LOCAL_HOSTNAMES = new Set(["127.0.0.1", "localhost"]);

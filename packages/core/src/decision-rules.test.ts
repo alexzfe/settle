@@ -7,9 +7,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
+import { addAccount, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { DecisionDetail, DecisionState } from "./operations/schemas.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 
 let core: Core;
 let home: string;
@@ -17,7 +18,8 @@ let session: string;
 const agent = (id?: string): CallContext => ({ caller: { kind: "session", session: id }, home });
 
 beforeEach(async () => {
-  core = createCore();
+  core = createCore({ passwordCost: TEST_PASSWORD_COST });
+  web = await addAccount(core);
   home = (await core.run("create_home", web, { name: "My flat", country: "GB", city: "London" }))
     .home.slug;
   session = await openSession();

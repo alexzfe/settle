@@ -2,7 +2,7 @@
 // and Home Folder, in two columns on a wide screen.
 
 import type { PlannedStay } from "@settle/core";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import about from "./AboutPage.module.css";
@@ -13,6 +13,7 @@ import { formatDate, sentence } from "./format";
 import { queryKeys, useConstraints, useHome, useNotes } from "./queries";
 import { CopyButton } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
+import { Dialog } from "./ui/Dialog";
 import { Section } from "./ui/Section";
 import { ArchivedNote, Fact, Length } from "./Values";
 
@@ -66,6 +67,7 @@ function AboutColumns({ slug }: { slug: string }) {
       <div>
         <Section title="Home Folder" id="home-folder">
           <HomeFolderSetup home={home.data.home} />
+          <NewKey home={slug} />
         </Section>
         <Section title="Blueprints" id="blueprints">
           <BlueprintList home={slug} />
@@ -245,5 +247,58 @@ export function HomeFolderSetup({ home }: { home: Home }) {
         ))}
       </details>
     </>
+  );
+}
+
+/**
+ * A new key for the Home's Agent, cancelling the old: for a key that leaked, in a .mcp.json that
+ * was shared or committed. Every Home Folder of the Home then needs the command run again.
+ */
+function NewKey({ home }: { home: string }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const rotate = useMutation({
+    mutationFn: () => call("rotate_home_key", { home }),
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.home(home), "home-folder-setup"],
+      });
+    },
+  });
+  return (
+    <div className={about.newKey}>
+      <button type="button" className="secondary" onClick={() => setOpen(true)}>
+        New key…
+      </button>
+      {rotate.isSuccess && (
+        <p role="status">
+          The Home has a new key. Run the Home Folder command again in each of its folders.
+        </p>
+      )}
+      {open && (
+        <Dialog label="A new key for this Home" onClose={() => setOpen(false)}>
+          <h2>Give this Home a new key?</h2>
+          <p>
+            The old key stops working at once: the Agent in every Home Folder of this Home loses its
+            access until you run the Home Folder command in that folder again. Do this if the key in
+            a <code>.mcp.json</code> was shared or committed by mistake.
+          </p>
+          <div className={about.dialogActions}>
+            <button type="button" disabled={rotate.isPending} onClick={() => rotate.mutate()}>
+              Make a new key
+            </button>
+            <button type="button" className="secondary" onClick={() => setOpen(false)}>
+              Keep this one
+            </button>
+          </div>
+          {rotate.isError && (
+            <p role="alert" className={styles.error}>
+              {rotate.error.message}
+            </p>
+          )}
+        </Dialog>
+      )}
+    </div>
   );
 }

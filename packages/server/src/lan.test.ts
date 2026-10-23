@@ -4,11 +4,17 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { type NetworkInterfaceInfo, tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFixtureHome, type FixtureHome, type GetDecisionResult } from "@settle/core";
+import {
+  createFixtureHome,
+  type FixtureHome,
+  type GetDecisionResult,
+  TEST_PASSWORD_COST,
+} from "@settle/core";
 import type { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createLanApp, lanAddress } from "./lan.js";
 import { type RunningServer, startServer } from "./server.js";
+import { setUp } from "./testing.js";
 
 const LAN_URL = "http://192.168.1.20:4380";
 
@@ -19,11 +25,10 @@ describe("the LAN listener", () => {
   beforeAll(async () => {
     fixture = await createFixtureHome({ lanUrl: LAN_URL });
     lan = createLanApp({ core: fixture.core });
-    const { decision } = await fixture.core.run(
-      "get_decision",
-      { caller: { kind: "web" } },
-      { home: fixture.home, decision: "wool-rug" },
-    );
+    const { decision } = await fixture.core.run("get_decision", fixture.web, {
+      home: fixture.home,
+      decision: "wool-rug",
+    });
     const url = decision.guides?.phoneUrl ?? "";
     expect(url.startsWith(`${LAN_URL}/guide/`)).toBe(true);
     token = url.slice(url.lastIndexOf("/") + 1);
@@ -98,16 +103,21 @@ describe("the LAN listener", () => {
 describe("LAN mode on real listeners", () => {
   let root: string;
   let server: RunningServer;
+  let cookie: string;
   beforeAll(async () => {
     root = mkdtempSync(join(tmpdir(), "settle-lan-"));
     // 127.0.0.2 stands in for the LAN address: another address of this machine, which the
     // loopback listener on 127.0.0.1 does not cover.
-    server = await startServer({
-      host: "127.0.0.1",
-      port: 0,
-      dataDir: join(root, "data"),
-      lan: { host: "127.0.0.2" },
-    });
+    server = await startServer(
+      {
+        host: "127.0.0.1",
+        port: 0,
+        dataDir: join(root, "data"),
+        lan: { host: "127.0.0.2" },
+      },
+      { passwordCost: TEST_PASSWORD_COST },
+    );
+    cookie = await setUp(server.setupUrl as string);
   });
   afterAll(async () => {
     await server.close();
@@ -117,7 +127,7 @@ describe("LAN mode on real listeners", () => {
   async function api(operation: string, body: unknown): Promise<unknown> {
     const response = await fetch(`${server.url}/api/${operation}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", cookie },
       body: JSON.stringify(body),
     });
     return response.json();
@@ -129,6 +139,7 @@ describe("LAN mode on real listeners", () => {
       headers: {
         "content-type": "application/json",
         accept: "application/json, text/event-stream",
+        cookie,
       },
       body: JSON.stringify({
         jsonrpc: "2.0",

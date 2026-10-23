@@ -2,13 +2,21 @@
 //   pnpm --filter @settle/server tools:json
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { createCore } from "@settle/core";
+import { addAccount, createCore, TEST_PASSWORD_COST } from "@settle/core";
 import { createApp } from "../src/app.js";
 import { listTools, TOOLS_JSON } from "../src/tools-list.js";
 
-const core = createCore();
+const core = createCore({ passwordCost: TEST_PASSWORD_COST });
 try {
-  const tools = await listTools(createApp({ core, port: 4380 }), 4380);
+  // Any Home's endpoint lists the same tools; it opens to its key.
+  const web = await addAccount(core);
+  const { home } = await core.run("create_home", web, {
+    name: "Any",
+    country: "GB",
+    city: "London",
+  });
+  const key = { authorization: `Bearer ${core.homeToken(home.slug)}` };
+  const tools = await listTools(createApp({ core, port: 4380 }), 4380, home.slug, key);
   writeFileSync(TOOLS_JSON, `${JSON.stringify(tools, null, 2)}\n`);
   // In Biome's layout, so pnpm lint stays clean.
   execFileSync("pnpm", ["exec", "biome", "format", "--write", TOOLS_JSON], { stdio: "inherit" });

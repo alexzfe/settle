@@ -63,6 +63,45 @@ export interface HomeRow {
   accessNote: string | null;
   /** The Home's bearer key for its MCP endpoint and Home Folder script; never shown to the Agent. */
   token: string;
+  /** The Account that owns it; null until the setup link claims a Home made before Accounts. */
+  accountId: number | null;
+}
+
+/** An Account: the login that owns Homes. */
+export interface AccountRow {
+  id: number;
+  email: string;
+  /** scrypt$<N>$<r>$<p>$<salt>$<hash> (accounts.ts). */
+  passwordHash: string;
+  admin: boolean;
+  disabledAt: string | null;
+  createdAt: string;
+}
+
+/** One browser's signed-in state for an Account, by the SHA-256 of its cookie's token. */
+export interface LoginRow {
+  id: number;
+  tokenHash: string;
+  accountId: number;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  userAgent: string | null;
+}
+
+export type AccountLinkKind = "setup" | "invite" | "reset";
+
+/** A one-time link, by the SHA-256 of its token. */
+export interface AccountLinkRow {
+  id: number;
+  kind: AccountLinkKind;
+  tokenHash: string;
+  /** For a reset link, the Account whose password it sets. */
+  accountId: number | null;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  madeBy: number | null;
 }
 
 export interface LevelRow {
@@ -539,7 +578,12 @@ export interface HomeTables {
 }
 
 export type HomeTable = keyof HomeTables;
-type Tables = HomeTables & { homes: HomeRow };
+export type Tables = HomeTables & {
+  homes: HomeRow;
+  accounts: AccountRow;
+  logins: LoginRow;
+  account_links: AccountLinkRow;
+};
 type Table = keyof Tables;
 type NewRow<T extends Table> = Omit<Tables[T], "id">;
 type Patch<T extends Table> = Partial<Omit<Tables[T], "id" | "homeId">>;
@@ -551,10 +595,42 @@ export interface Store {
   transaction<T>(fn: () => T): T;
 
   insertHome(
-    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token">,
+    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token" | "accountId">,
   ): HomeRow;
   home(slug: string): HomeRow | undefined;
   homes(): HomeRow[];
+  /** An Account's Homes, by name. */
+  homesOf(accountId: number): HomeRow[];
+  /** Gives every Home with no Account to this one; returns how many. */
+  claimHomes(accountId: number): number;
+  /**
+   * Deletes a Home and every row of it, in every table with a home_id: what the Home model holds,
+   * its Sessions and its change log. Its files are the caller's to remove.
+   */
+  deleteHome(homeId: number): void;
+  /** Every row of a Home, as stored, by table: the Home's own row and each table with a home_id. */
+  homeRows(homeId: number): Record<string, Record<string, unknown>[]>;
+
+  accountCount(): number;
+  account(id: number): AccountRow | undefined;
+  /** Whatever the case of `email`. */
+  accountByEmail(email: string): AccountRow | undefined;
+  /** In the order they were made. */
+  accounts(): AccountRow[];
+  /** Deletes the Account with its Logins and links. Its Homes must be deleted first. */
+  deleteAccount(id: number): void;
+
+  login(tokenHash: string): LoginRow | undefined;
+  /** Newest first. */
+  logins(accountId: number): LoginRow[];
+  deleteLogin(id: number): void;
+  /** Ends every Login of the Account, but the one `keep` names. */
+  deleteLogins(accountId: number, keep?: number): void;
+
+  accountLink(tokenHash: string): AccountLinkRow | undefined;
+  /** Links of one kind, newest first. */
+  accountLinks(kind: AccountLinkKind): AccountLinkRow[];
+  deleteAccountLink(id: number): void;
 
   insertLevel(level: Omit<LevelRow, "id">): LevelRow;
   /** In storey order. */
@@ -641,6 +717,7 @@ export const MEASUREMENT_KEYS: ReadonlySet<string> = new Set([
   "clearWidth",
 ]);
 const BOOLEAN_KEYS = new Set([
+  "admin",
   "lift",
   "outdoor",
   "windowless",
@@ -738,6 +815,17 @@ export function openStore(path: string): Store {
     return raw && decode<T>(raw);
   };
 
+  /** Every table with a home_id column, read from the schema so a new one is never missed. */
+  let tablesWithHome: string[] | undefined;
+  const homeTables = () => {
+    tablesWithHome ??= all<{ name: string }>(
+      `SELECT name FROM sqlite_schema WHERE type = 'table' AND EXISTS
+         (SELECT 1 FROM pragma_table_info(sqlite_schema.name) WHERE name = 'home_id')
+       ORDER BY name`,
+    ).map(({ name }) => name);
+    return tablesWithHome;
+  };
+
   function insert<T extends Table>(table: T, row: NewRow<T>): Tables[T] {
     const pairs = Object.entries(row).flatMap(([field, value]) => encode(field, value));
     const id = Number(
@@ -780,6 +868,58 @@ export function openStore(path: string): Store {
     insertHome: (home) => insert("homes", home as NewRow<"homes">),
     home: (slug) => one<HomeRow>("SELECT * FROM homes WHERE slug = ?", slug),
     homes: () => rows<HomeRow>("SELECT * FROM homes ORDER BY name, id"),
+    homesOf: (accountId) =>
+      rows<HomeRow>("SELECT * FROM homes WHERE account_id = ? ORDER BY name, id", accountId),
+    claimHomes: (accountId) =>
+      Number(run("UPDATE homes SET account_id = ? WHERE account_id IS NULL", accountId).changes),
+    deleteHome(homeId) {
+      // Rows of one Home refer to each other in every direction; checked once all are gone.
+      db.exec("PRAGMA defer_foreign_keys = ON");
+      for (const table of homeTables()) run(`DELETE FROM ${table} WHERE home_id = ?`, homeId);
+      run("DELETE FROM homes WHERE id = ?", homeId);
+    },
+    homeRows(homeId) {
+      const found: Record<string, Record<string, unknown>[]> = {
+        homes: all("SELECT * FROM homes WHERE id = ?", homeId),
+      };
+      for (const table of homeTables()) {
+        found[table] = all(`SELECT * FROM ${table} WHERE home_id = ? ORDER BY rowid`, homeId);
+      }
+      return found;
+    },
+
+    accountCount: () =>
+      Number(get<{ count: number }>("SELECT count(*) AS count FROM accounts")?.count),
+    account: (id) => one<AccountRow>("SELECT * FROM accounts WHERE id = ?", id),
+    accountByEmail: (email) => one<AccountRow>("SELECT * FROM accounts WHERE email = ?", email),
+    accounts: () => rows<AccountRow>("SELECT * FROM accounts ORDER BY id"),
+    deleteAccount(id) {
+      run("DELETE FROM accounts WHERE id = ?", id);
+    },
+
+    login: (tokenHash) => one<LoginRow>("SELECT * FROM logins WHERE token_hash = ?", tokenHash),
+    logins: (accountId) =>
+      rows<LoginRow>(
+        "SELECT * FROM logins WHERE account_id = ? ORDER BY created_at DESC, id DESC",
+        accountId,
+      ),
+    deleteLogin(id) {
+      run("DELETE FROM logins WHERE id = ?", id);
+    },
+    deleteLogins(accountId, keep) {
+      run("DELETE FROM logins WHERE account_id = ? AND id IS NOT ?", accountId, keep ?? null);
+    },
+
+    accountLink: (tokenHash) =>
+      one<AccountLinkRow>("SELECT * FROM account_links WHERE token_hash = ?", tokenHash),
+    accountLinks: (kind) =>
+      rows<AccountLinkRow>(
+        "SELECT * FROM account_links WHERE kind = ? ORDER BY created_at DESC, id DESC",
+        kind,
+      ),
+    deleteAccountLink(id) {
+      run("DELETE FROM account_links WHERE id = ?", id);
+    },
 
     insertLevel: (level) => insert("levels", level),
     levels: (homeId) =>

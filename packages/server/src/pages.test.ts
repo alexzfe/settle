@@ -8,6 +8,7 @@ import { createFixtureHome, type FixtureHome, type GetShoppingResult } from "@se
 import type { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
+import { asLoggedIn, loginCookie } from "./testing.js";
 
 const PORT = 4380;
 
@@ -15,7 +16,10 @@ let fixture: FixtureHome;
 let app: Hono;
 beforeAll(async () => {
   fixture = await createFixtureHome();
-  app = createApp({ core: fixture.core, port: PORT });
+  app = asLoggedIn(
+    createApp({ core: fixture.core, port: PORT }),
+    loginCookie(fixture.core, fixture.web),
+  );
 });
 afterAll(() => fixture.core.close());
 
@@ -65,7 +69,10 @@ describe("the Quick Guide's phone page", () => {
     const dist = mkdtempSync(join(tmpdir(), "settle-pages-"));
     try {
       writeFileSync(join(dist, "index.html"), "<!doctype html><title>The UI</title>");
-      const withUi = createApp({ core: fixture.core, port: PORT, webDist: dist });
+      const withUi = asLoggedIn(
+        createApp({ core: fixture.core, port: PORT, webDist: dist }),
+        loginCookie(fixture.core, fixture.web),
+      );
       const guide = await withUi.request("/guide/wool-rug?home=fixture-home");
       expect(await guide.text()).toContain("<h1>Wool rug</h1>");
       const bare = await withUi.request("/guide/");

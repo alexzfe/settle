@@ -11,10 +11,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
+import { addAccount, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { FetchedImage } from "./images.js";
 import type { DecisionDetail, Listing } from "./operations/schemas.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 
 const JPEG = image([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46], "image/jpeg");
 const PNG = image([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], "image/png");
@@ -46,6 +47,7 @@ beforeEach(async () => {
   now = "2026-09-17T10:00:00.000Z";
   dataDir = mkdtempSync(join(tmpdir(), "settle-listings-"));
   core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
     dataDir,
     clock: () => new Date(now),
     async fetchImage(url) {
@@ -56,6 +58,7 @@ beforeEach(async () => {
       return answer;
     },
   });
+  web = await addAccount(core);
   home = (await core.run("create_home", web, { name: "My flat", country: "GB", city: "London" }))
     .home.slug;
   session = (

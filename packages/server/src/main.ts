@@ -29,6 +29,18 @@ console.log(
         `(data in ${config.dataDir})`
     : `Settle on ${server.url} (data in ${config.dataDir})`,
 );
+if (process.env.SETTLE_PASSWORD) {
+  console.warn(
+    "SETTLE_PASSWORD is set but ignored: accounts replaced the shared password. Remove it.",
+  );
+}
+if (server.setupUrl) {
+  console.log(
+    `No account yet. Open ${server.setupUrl} to make the Admin account; it also claims every ` +
+      "Home already here. The link works once, and a new one is printed at each start until it " +
+      "is used.",
+  );
+}
 if (server.lanUrl) {
   console.log(
     `LAN mode: phones on this network open Quick Guides at ${server.lanUrl}/guide/<token>, the ` +

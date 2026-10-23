@@ -10,6 +10,7 @@
 // below). Every surface that renders the guide without the Requirements beside it — the phone
 // page, the printable and Markdown exports, the Shopping List — still shows it whole.
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import styles from "./App.module.css";
@@ -21,18 +22,19 @@ import type {
   Requirement,
   Room,
 } from "./api";
-import { guidesExportUrl } from "./api";
+import { call, guidesExportUrl } from "./api";
 import { reasonPath, recordPath } from "./decisions";
 import { formatDate, sentence, words } from "./format";
 import { ListingComparison } from "./Listings";
 import { headings, InlineMarkdown, Markdown } from "./Markdown";
 import page from "./Purchase.module.css";
 import { QrCode } from "./QrCode";
-import { useFullGuide, useHome } from "./queries";
+import { queryKeys, useFullGuide, useHome } from "./queries";
 import { AgentWritten } from "./ui/AgentWritten";
 import { buildPrompt } from "./ui/AskAgent";
 import { Callout } from "./ui/Callout";
 import { Card } from "./ui/Card";
+import { Dialog } from "./ui/Dialog";
 import { EmptyState } from "./ui/EmptyState";
 import { Section } from "./ui/Section";
 import { Fact } from "./Values";
@@ -323,6 +325,51 @@ function ShopLines({
 }
 
 /**
+ * A new phone link for the Quick Guide, cancelling the old: for a link or QR code that reached
+ * the wrong person, since it opens the guide without a login.
+ */
+function NewLink({ home, decision }: { home: string; decision: string }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const rotate = useMutation({
+    mutationFn: () => call("rotate_guide_link", { home, decision }),
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.decision(home, decision) });
+    },
+  });
+  return (
+    <>
+      <button type="button" className="secondary" onClick={() => setOpen(true)}>
+        New link…
+      </button>
+      {open && (
+        <Dialog label="A new phone link" onClose={() => setOpen(false)}>
+          <h2>Give this Quick Guide a new link?</h2>
+          <p>
+            Anyone with the link opens the guide without logging in. The old link and its QR code
+            stop working at once, wherever they were sent or printed; scan the new code instead.
+          </p>
+          <div className={page.dialogActions}>
+            <button type="button" disabled={rotate.isPending} onClick={() => rotate.mutate()}>
+              Make a new link
+            </button>
+            <button type="button" className="secondary" onClick={() => setOpen(false)}>
+              Keep this one
+            </button>
+          </div>
+          {rotate.isError && (
+            <p role="alert" className={styles.error}>
+              {rotate.error.message}
+            </p>
+          )}
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+/**
  * Where to read the whole Quick Guide, in steps: open it on a phone (by the QR code of its phone
  * address, when the app has one), print it or download it, and know the phone page is live. Its
  * heading says where rather than what, since the section around it is already "Taking it shopping".
@@ -361,6 +408,7 @@ function TakeItShopping({ home, decision }: { home: string; decision: DecisionDe
                 </figcaption>
               </figure>
             )}
+            {phoneUrl && <NewLink home={home} decision={decision.slug} />}
           </li>
           {decision.guides && (
             <li>

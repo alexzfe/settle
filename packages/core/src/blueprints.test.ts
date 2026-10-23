@@ -18,10 +18,10 @@ import {
 import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
 import { nodeFileStore, type PdfRenderer } from "./files.js";
-import { FIXTURE_FILES } from "./fixture/fixture-home.js";
+import { addAccount, FIXTURE_FILES, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { BuildingMeasurement } from "./operations/schemas.js";
 
-const web: CallContext = { caller: { kind: "web" } };
+let web: CallContext;
 const agent = (home: string, session?: string): CallContext => ({
   caller: { kind: "session", session },
   home,
@@ -51,9 +51,14 @@ const printed = (mm: number, page = 1, blueprint = "agent-plan"): BuildingMeasur
 
 let dataDir: string;
 let core: Core;
-beforeEach(() => {
+beforeEach(async () => {
   dataDir = mkdtempSync(join(tmpdir(), "settle-blueprints-"));
-  core = createCore({ dataDir, clock: () => new Date("2026-09-14T10:00:00.000Z") });
+  core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
+    dataDir,
+    clock: () => new Date("2026-09-14T10:00:00.000Z"),
+  });
+  web = await addAccount(core);
 });
 afterEach(() => {
   core.close();
@@ -61,9 +66,15 @@ afterEach(() => {
 });
 
 /** Closes this test's core and builds another on the same data dir, with `options`. */
-function replaceCore(options: CoreOptions): void {
+async function replaceCore(options: CoreOptions): Promise<void> {
   core.close();
-  core = createCore({ dataDir, clock: () => new Date("2026-09-14T10:00:00.000Z"), ...options });
+  core = createCore({
+    passwordCost: TEST_PASSWORD_COST,
+    dataDir,
+    clock: () => new Date("2026-09-14T10:00:00.000Z"),
+    ...options,
+  });
+  web = await addAccount(core);
 }
 
 /** mupdf, except that rendering page `broken` of any file throws, as a damaged page might. */
@@ -214,7 +225,7 @@ describe("upload_blueprint", () => {
   });
 
   it("refuses with no_pages when a page fails to render, removing what it wrote", async () => {
-    replaceCore({ renderPdf: failingOnPage(2) });
+    await replaceCore({ renderPdf: failingOnPage(2) });
     const my = await setUp();
     await my.upload(A3, "plan.pdf", "Plan");
 
@@ -232,7 +243,7 @@ describe("upload_blueprint", () => {
 
   it("removes the pages it rendered when keeping the uploaded file fails", async () => {
     const uploads = join(dataDir, "uploads");
-    replaceCore({
+    await replaceCore({
       files: {
         ...nodeFileStore,
         writeBytes(path, bytes) {
@@ -252,7 +263,7 @@ describe("upload_blueprint", () => {
   it("removes every file it wrote when its transaction fails", async () => {
     // The clock is first read inside the upload's transaction, for uploadedAt.
     let stopped = false;
-    replaceCore({
+    await replaceCore({
       clock: () => {
         if (stopped) throw new Error("clock stopped");
         return new Date("2026-09-14T10:00:00.000Z");

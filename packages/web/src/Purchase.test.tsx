@@ -659,3 +659,20 @@ it("shows a Listing the Agent records without a reload", async () => {
   );
   expect(await screen.findByText("Hay Plain rug")).toBeDefined();
 });
+
+it("makes a new phone link only after saying the old link and its QR code stop working", async () => {
+  const phoneUrl = "https://settle.example.com/guide/k3Jx9QaZ7pLm";
+  const fetch = showRug(
+    { quickGuide, guides: { ...guides, phoneUrl } },
+    { rotate_guide_link: () => ({ phoneUrl: "https://settle.example.com/guide/n3wT0ken" }) },
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "New link…" }));
+  const dialog = screen.getByRole("dialog", { name: "A new phone link" });
+  expect(dialog.textContent).toContain("The old link and its QR code stop working at once");
+  expect(inputsTo(fetch, "rotate_guide_link")).toEqual([]);
+  fireEvent.click(within(dialog).getByRole("button", { name: "Make a new link" }));
+  await waitFor(() =>
+    expect(inputsTo(fetch, "rotate_guide_link")).toEqual([{ home: "flat", decision: "wool-rug" }]),
+  );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
