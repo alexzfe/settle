@@ -61,7 +61,8 @@ export const saveGuides = defineOperation({
     "then your tests and asks. So never repeat a Requirement or a Measure first line in " +
     "quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is " +
     "marked out of date when a Requirement changes after it was written: save it again then. A " +
-    "Rejected Purchase has no Guides. Needs the open Session's id as `session`.",
+    "Rejected Purchase has no Guides. The purchase Skill (read_skill) says how to write them. " +
+    "Needs the open Session's id as `session`.",
   input: saveGuidesInput,
   readOnly: false,
   surface: "agent",
@@ -121,7 +122,8 @@ export const recordListing = defineOperation({
     "without its ratingNote is refused. photoUrl links straight to the picture: the app fetches " +
     "and keeps the bytes, and when it can't it keeps the link and says so on the receipt. Tell " +
     "the user plainly which musts it fails. A Listing never changes the Purchase's state; a " +
-    "Rejected or Fulfilled Purchase takes none. Needs the open Session's id as `session`.",
+    "Rejected or Fulfilled Purchase takes none. The purchase Skill (read_skill) says how to " +
+    "check and rate one. Needs the open Session's id as `session`.",
   input: recordListingInput,
   readOnly: false,
   surface: "agent",

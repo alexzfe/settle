@@ -404,6 +404,8 @@ describe("the Account page", () => {
       email: "kim@home.example",
       admin: false,
       createdAt: expect.any(String),
+      password: true,
+      google: false,
     });
   });
 });

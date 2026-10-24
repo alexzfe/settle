@@ -18,17 +18,45 @@ export function requireHome(context: OperationContext): HomeRow {
 
 /**
  * The ownership check, the one wall between Accounts: the Home with this slug, if the caller may
- * reach it. The Agent's Session reaches the Home whose key the server checked; the web caller,
- * only a Home its Account owns; a Quick Guide's link, none by slug. Every refusal is the refusal
- * for a Home that doesn't exist, word for word, so nobody learns which Homes do.
+ * reach it. The Agent through a Connection reaches only a Home its enabled Account owns; through a
+ * Home Folder, the Home whose key the server checked; the web caller, only a Home its Account
+ * owns; a Quick Guide's link, none by slug. Every refusal is the refusal for a Home that doesn't
+ * exist, word for word, so nobody learns which Homes do.
  */
 export function ownedHome(store: Store, caller: Caller, slug: string): HomeRow {
   const home = store.home(slug);
-  const reachable =
-    home !== undefined &&
-    (caller.kind === "session" || (caller.kind === "web" && home.accountId === caller.account));
-  if (!reachable) throw noSuchHome(slug);
+  if (home === undefined || !reaches(store, caller, home)) throw noSuchHome(slug);
   return home;
+}
+
+function reaches(store: Store, caller: Caller, home: HomeRow): boolean {
+  switch (caller.kind) {
+    case "session":
+      return caller.account === undefined || ownsEnabled(store, caller.account, home);
+    case "web":
+      return home.accountId === caller.account;
+    case "guide":
+      return false;
+  }
+}
+
+function ownsEnabled(store: Store, accountId: number, home: HomeRow): boolean {
+  return home.accountId === accountId && store.account(accountId)?.disabledAt === null;
+}
+
+/**
+ * The Home of the Session with this slug, for the Agent through a Connection: undefined when there
+ * is no such Session or its Home is not the enabled Account's, so both read as an unknown Session.
+ */
+export function connectedSessionHome(
+  store: Store,
+  accountId: number,
+  slug: string,
+): HomeRow | undefined {
+  const session = store.session(slug);
+  if (!session) return undefined;
+  const home = store.homesOf(accountId).find((each) => each.id === session.homeId);
+  return home && ownsEnabled(store, accountId, home) ? home : undefined;
 }
 
 /**
@@ -83,13 +111,7 @@ export function requireSession(
   }
   const session = context.store.session(caller.session);
   // A Session of another Home is reported as unknown: the AI never learns of other Homes.
-  if (!session || session.homeId !== home.id) {
-    throw new CoreError(
-      "unknown_session",
-      `This Home has no Session "${caller.session}". Call open_session to open one, then pass ` +
-        "the id it returns as `session`.",
-    );
-  }
+  if (!session || session.homeId !== home.id) throw unknownSession(caller.session);
   if (open && session.closedAt !== null) {
     throw new CoreError(
       "session_closed",
@@ -98,6 +120,15 @@ export function requireSession(
     );
   }
   return session;
+}
+
+/** The refusal for a Session the caller can't reach, the same whether or not it exists. */
+export function unknownSession(slug: string): CoreError {
+  return new CoreError(
+    "unknown_session",
+    `This Home has no Session "${slug}". Call open_session to open one, then pass the id it ` +
+      "returns as `session`.",
+  );
 }
 
 /** The change log's origin for the caller: its Session's slug, or "web". */

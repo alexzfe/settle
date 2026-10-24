@@ -51,6 +51,8 @@ COPY --from=build /app/packages/core/data packages/core/data
 COPY --from=build /app/packages/core/fixture packages/core/fixture
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/web/dist packages/web/dist
+# The built Skills, which read_skill serves to an Agent without them (core's skill-texts.ts).
+COPY plugin/skills plugin/skills
 # The app's files stay root-owned and read-only to it; only /data is the node user's.
 RUN mkdir -p /data && chown node:node /data
 USER node

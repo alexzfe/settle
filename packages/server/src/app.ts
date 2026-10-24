@@ -23,7 +23,8 @@ import { callerOf } from "./caller.js";
 import { streamChanges } from "./events.js";
 import { handleGuideByToken } from "./lan.js";
 import { UploadLimiter } from "./limits.js";
-import { handleMcpRequest, mcpTools } from "./mcp.js";
+import { handleAccountMcpRequest, handleMcpRequest, mcpTools } from "./mcp.js";
+import { connectionOf } from "./oauth.js";
 import { handleExport, handleGuidePage } from "./pages.js";
 import { serveWeb } from "./web.js";
 
@@ -57,6 +58,7 @@ export function createApp({
   const activity = new AgentActivity();
   const app = new Hono();
   app.use("*", frontDoor(publicOrigin));
+  // The login, with the OAuth server Claude connects through (oauth.ts).
   useAuth(app, { core, ...(auth ? { auth } : {}), ...(publicOrigin ? { publicOrigin } : {}) });
   app.get("/health", (c) => c.json({ status: "ok" }));
   // Every upload: its cap before the body is read, then the Account's upload limits.
@@ -91,6 +93,17 @@ export function createApp({
       : handleGuidePage(core, c),
   );
   app.get("/events", (c) => streamChanges(core, activity, c));
+  // The Account's MCP endpoint, for a Connection: the login check let only its access token in.
+  app.all("/mcp", bodyLimit({ maxSize: MCP_CAP, onError: tooBig }), (c) =>
+    handleAccountMcpRequest(c.req.raw, {
+      core,
+      tools,
+      account: connectionOf(c).account.id,
+      activity,
+      port,
+      ...(publicOrigin ? { publicOrigin } : {}),
+    }),
+  );
   app.all("/mcp/homes/:home", bodyLimit({ maxSize: MCP_CAP, onError: tooBig }), async (c) => {
     const home = c.req.param("home");
     // Without the key, a Login opens the MCP endpoint of its own Account's Homes alone.

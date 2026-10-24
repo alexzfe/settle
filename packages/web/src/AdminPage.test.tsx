@@ -12,7 +12,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const admin = { email: "sam@example.com", admin: true, createdAt: "2026-10-01T10:00:00.000Z" };
+const admin = {
+  email: "sam@example.com",
+  admin: true,
+  createdAt: "2026-10-01T10:00:00.000Z",
+  password: true,
+  google: false,
+};
 
 function stubAdminPage(handlers: ApiHandlers = {}) {
   return stubApi({

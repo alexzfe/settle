@@ -9,8 +9,9 @@ import { queryKeys } from "./queries";
 /**
  * Creates a Home from its name, country, and city. The server derives the latitude from the city;
  * when it answers city_not_found, the form asks for the latitude and sends it with the next try.
+ * Once made, it goes to the Home, or wherever `onCreated` leads.
  */
-export function CreateHomeForm() {
+export function CreateHomeForm({ onCreated }: { onCreated?: (home: string) => void } = {}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [askLatitude, setAskLatitude] = useState(false);
@@ -18,7 +19,8 @@ export function CreateHomeForm() {
     mutationFn: (input: Operations["create_home"]["input"]) => call("create_home", input),
     onSuccess: ({ home }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.homes });
-      void navigate(`/homes/${home.slug}`);
+      if (onCreated) onCreated(home.slug);
+      else void navigate(`/homes/${home.slug}`);
     },
     onError: (error) => {
       if (error instanceof ApiError && error.code === "city_not_found") setAskLatitude(true);

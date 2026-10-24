@@ -9,7 +9,7 @@ Grills the user and Settles the Active Home's Design Direction, then each Room's
 
 ## Starting
 
-1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol.
 2. **Open the Session.** Call `open_session` with `skill: "design-direction"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write, even when the user asked for something you can do at once. The opening's Home-wide Decisions show the Design Direction, if there is one, with its state.
 3. **Pick the work from the user's request and the recorded state.**
    - For a question about whether a look, material, or inspiration fits the Home, assess it against the current Direction and the Home. Discussion alone changes no Decision. If the user contradicts a Settled Decision, follow "Changing a Decision"; changing it follows "Asking first".

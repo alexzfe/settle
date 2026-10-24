@@ -16,6 +16,9 @@ services:
       # Behind Cloudflare, and reachable through it alone: take each visitor's IP from Cloudflare,
       # for the limits on wrong passwords.
       # SETTLE_TRUSTED_PROXY: cloudflare
+      # Sign in with Google, off while these are empty: set both in .env (SELF-HOSTING.md).
+      SETTLE_GOOGLE_CLIENT_ID: ${SETTLE_GOOGLE_CLIENT_ID:-}
+      SETTLE_GOOGLE_CLIENT_SECRET: ${SETTLE_GOOGLE_CLIENT_SECRET:-}
     volumes:
       - settle-data:/data
 

@@ -91,4 +91,21 @@ describe("loadConfig", () => {
       );
     }
   });
+  it("turns Sign in with Google on only with both its client id and secret", () => {
+    const clientId = "123-abc.apps.googleusercontent.com";
+    expect(loadConfig({}).google).toBeUndefined();
+    expect(
+      loadConfig({ SETTLE_GOOGLE_CLIENT_ID: clientId, SETTLE_GOOGLE_CLIENT_SECRET: "GOCSPX-x" })
+        .google,
+    ).toEqual({ clientId, clientSecret: "GOCSPX-x" });
+    expect(() => loadConfig({ SETTLE_GOOGLE_CLIENT_ID: clientId })).toThrow(
+      /needs both.*only the id is set/,
+    );
+    expect(() => loadConfig({ SETTLE_GOOGLE_CLIENT_SECRET: "GOCSPX-x" })).toThrow(
+      /only the secret is set/,
+    );
+    expect(() =>
+      loadConfig({ SETTLE_GOOGLE_CLIENT_ID: "123-abc", SETTLE_GOOGLE_CLIENT_SECRET: "GOCSPX-x" }),
+    ).toThrow(/apps\.googleusercontent\.com/);
+  });
 });

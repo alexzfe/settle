@@ -40,6 +40,26 @@ SETTLE_EMAIL=you@example.com SETTLE_PASSWORD='your password' \
   node scripts/seed-demo-home.mjs http://127.0.0.1:4380/mcp/homes/lisbon-flat
 ```
 
+## Use Settle in Claude
+
+Settle connects to Claude as a custom connector, on any Claude plan, Free included. Connect it once
+and it is there on the web, in the desktop and phone apps, and in Claude Code; every chat can use
+any of your Homes.
+
+1. Log in to Settle and click **Connect Settle to Claude**: it is on your account page, and right
+   after you name your first Home.
+2. Claude opens with Settle's name and address filled in. Click **Add**.
+3. Click **Connect**.
+4. Settle asks whether Claude may use your account. Click **Allow**, and log in if it asks.
+5. Back in Claude, switch Settle on for a chat (**+**, then **Connectors**) if it isn't already.
+
+Your account page lists each Connection, with **Disconnect** to end it. In Claude Code, the same page
+gives one command that adds the connector for every folder, with the plugin.
+
+Claude connects from Anthropic's servers, not from your computer, so this needs Settle on a server
+reachable from the internet over HTTPS ([SELF-HOSTING.md](SELF-HOSTING.md)). A Settle on
+`127.0.0.1` works only with Claude Code on the same computer.
+
 ## On a server
 
 Run locally as above, Settle listens on `127.0.0.1` only. Everyone logs in with their own account,

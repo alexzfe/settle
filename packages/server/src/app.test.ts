@@ -215,7 +215,7 @@ describe("the search index", () => {
       const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
         tools: { name: string }[];
       };
-      expect(tools).toHaveLength(20);
+      expect(tools).toHaveLength(22);
       expect(tools.map((tool) => tool.name)).not.toContain("find_index");
     } finally {
       fixture.core.close();
@@ -269,7 +269,7 @@ describe("the Item page", () => {
       const { tools } = (await listTools(withFixture, PORT, fixture.home)) as {
         tools: { name: string }[];
       };
-      expect(tools).toHaveLength(20);
+      expect(tools).toHaveLength(22);
       expect(tools.map((tool) => tool.name)).not.toContain("get_item");
       expect(tools.map((tool) => tool.name)).not.toContain("edit_item");
     } finally {
@@ -602,7 +602,7 @@ describe("the MCP endpoint", () => {
     expect(SERVER_INSTRUCTIONS.length).toBeLessThanOrEqual(512);
   });
 
-  it("lists the Agent tools, read tools marked readOnlyHint, every write taking session", async () => {
+  it("lists the Agent tools, read tools marked readOnlyHint, every call taking session", async () => {
     const { tools } = (await listTools(app, PORT)) as {
       tools: {
         name: string;
@@ -612,8 +612,11 @@ describe("the MCP endpoint", () => {
       }[];
     };
     expect(tools.map((tool) => [tool.name, tool.annotations.readOnlyHint])).toEqual([
+      // Before a Session, the Agent sees the Homes' names alone.
+      ["list_homes", true],
       // It records a Session, so it is a write, though it never changes the Home.
       ["open_session", false],
+      ["read_skill", true],
       ["get_room_sheet", true],
       ["find_items", true],
       ["find_decisions", true],
@@ -634,7 +637,9 @@ describe("the MCP endpoint", () => {
       ["flag_conflict", false],
       ["close_session", false],
     ]);
-    for (const tool of tools.filter((each) => !each.annotations.readOnlyHint)) {
+    for (const tool of tools) {
+      // Every call carries the Session, but list_homes comes before one.
+      if (tool.name === "list_homes") continue;
       // open_session takes a Session only to join one; without it, it opens a new one.
       if (tool.name === "open_session") {
         expect(Object.keys(tool.inputSchema.properties ?? {})).toContain("session");

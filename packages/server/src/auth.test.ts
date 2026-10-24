@@ -469,7 +469,13 @@ describe("the one-time links' pages", () => {
     const cookie = (made.headers.get("set-cookie") ?? "").split(";")[0] as string;
     const account = await api("get_account", { cookie });
     expect(await account.json()).toEqual({
-      account: { email: "lee@example.com", admin: false, createdAt: expect.any(String) },
+      account: {
+        email: "lee@example.com",
+        admin: false,
+        createdAt: expect.any(String),
+        password: true,
+        google: false,
+      },
     });
     const again = await post(path, {
       email: "max@example.com",

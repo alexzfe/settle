@@ -30,6 +30,13 @@ export function renderSkill(dir: string, source: string, protocol: string): stri
   if (!frontmatter.success) {
     throw new Error(`${dir}/SKILL.md frontmatter:\n${z.prettifyError(frontmatter.error)}`);
   }
+  // The server reads the description back as a Skill's trigger line (core's skill-texts.ts)
+  // without a YAML parser, so it must be one line: plain, or double-quoted as JSON quotes it.
+  const line = /^description: (.+)$/m.exec(yaml)?.[1] ?? "";
+  const read = line.startsWith('"') ? jsonString(line) : line;
+  if (read !== frontmatter.data.description) {
+    throw new Error(`${dir}/SKILL.md: write description on one line, plain or "double-quoted"`);
+  }
   if (frontmatter.data.name !== dir) {
     throw new Error(`${dir}/SKILL.md: name "${frontmatter.data.name}" must match its folder`);
   }
@@ -44,4 +51,12 @@ export function renderSkill(dir: string, source: string, protocol: string): stri
   }
 
   return `---\n${yaml}\n---\n\n${body}\n\n${PROTOCOL_HEADING}\n\n${protocol.trim()}\n`;
+}
+
+function jsonString(text: string): string | undefined {
+  try {
+    return JSON.parse(text) as string;
+  } catch {
+    return undefined;
+  }
 }

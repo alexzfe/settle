@@ -9,7 +9,7 @@ Records or corrects the Active Home's facts, Levels, Rooms, and Inventory, from 
 
 ## Starting
 
-1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol.
 2. **Open the Session.** Call `open_session` with `skill: "home-intake"`, or join the Session this conversation already has. Name the Home. The Overview's Room lines and their Gaps tell you what the interview still needs.
 3. **Read-back.** When the user asks what is recorded, read the relevant Room Sheet or use `find_items` for Inventory. Summarise its recorded facts and Gaps, keeping estimates visibly approximate. Answer without changing the Home's facts or starting the interview. Offer a correction or further intake as an optional next step.
 4. **Pick the work.** Handle the fact, correction, or Item the user came with first. For a wider intake, ask what they want help with next if they have not said. Recommend a first Room from the Overview and explain why. Agree this Session's scope; use the Gaps to find missing facts within it.
@@ -31,7 +31,7 @@ Use the stages below for the work agreed for this Session. Begin a new Home with
 
      Word each later answer as a Constraint the same way. Add the Constraints with `set_constraints` in one batch, once the user agrees to their wording.
    - Done when the Levels and every Home fact the user knows are saved, and the rented-permissions Constraints are either added with the user's agreement or declined.
-2. **Blueprint**, when the Overview lists one. Read it in four stages, in this order, with one reply per Level for each stage: show what you read on that Level's pages, ask the user to confirm or correct it, and save what they confirm before going on. When the user has already agreed to what a stage would propose ("record the rooms with the plan's sizes"), save it in that reply and say what you saved, rather than asking again. For north, follow "Where north is", including when the user has already said to use the arrow. Without a Blueprint, skip to Remaining Gaps; a user who has a plan can upload it on the Home's page in the app.
+2. **Blueprint**, when the Overview lists one. When it lists none and the user has a floor plan (or drops one into the chat), link the page that takes it (see "Uploads") and carry on by interview until it is there. Read it in four stages, in this order, with one reply per Level for each stage: show what you read on that Level's pages, ask the user to confirm or correct it, and save what they confirm before going on. When the user has already agreed to what a stage would propose ("record the rooms with the plan's sizes"), save it in that reply and say what you saved, rather than asking again. For north, follow "Where north is", including when the user has already said to use the arrow. Without a Blueprint, skip to Remaining Gaps; a user who has a plan can upload it on the Home's page in the app.
    - **Fetching pages.** Call `view_images` with the Blueprint's slug and the pages you need: one Level's pages at a time, at most six per call. Its text block, before the images, names each page and its Level once mapped. When a dimension string is too small to read, call it again for that page with `crop` set to the quarter that holds it; never guess a digit.
    - **Pages to Levels.** When the text block gives a page no Level, say which Level you think it shows (from its title, e.g. "GROUND FLOOR") in that Level's Room-list reply. Once the user agrees, record it with `save_home`'s `blueprintPages`, adding the Level first if the Home lacks it. Map every page before reading its dimensions.
    - **Printed text only.** Fill in from the Blueprint only what is printed on it as text: Room labels, dimension strings, and printed figures such as "Ceiling height 2.45 m throughout". Save such a value with `provenance: "blueprint"` and `source: { blueprint, page, printed }`, where `printed` is the figure exactly as the plan prints it: `12'6"`, or `3.62` from *3.62 m x 4.00 m*. Nothing else on the drawing is a Blueprint value: Windows, Doors, and the north arrow are drawn symbols, and a length scaled off the drawing or its scale bar is Estimated. Ask the user for these, or propose them for the user to confirm.
@@ -94,16 +94,24 @@ Follow "Closing" in the Session protocol. Close when the user is done. In `open`
 
 ### The Active Home
 
-This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
+This conversation works on one Home, the Active Home of its Session. Once `open_session` has opened it, every call works on that Home alone: you can neither see nor switch to another. In a Home Folder, the folder decides the Home. Through the Settle connector, `open_session` decides it:
+
+- When the user has one Home, open it without asking.
+- When they have several and haven't said which, call `list_homes` and ask which one, by name, before anything else. Pass its slug as `home`.
+- To work on another Home, the user starts a new conversation.
 
 ### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, and that the Settle connector is switched on (in Claude Code, reconnect with /mcp)." Do nothing else until the tools are back.
+
+### Skills without native loading
+
+Without the Settle Skills loaded, the rules come from the tools: `open_session` begins with this protocol and a menu of the Skills, and `read_skill` returns one Skill in full. Read a Skill before its work starts, and follow it. Never call `read_skill` for a Skill already loaded in this conversation.
 
 ### Opening
 
 - The first Skill in a conversation calls `open_session` with its own name as `skill`. The result gives the Session id, the Home's name, and the opening: the Home Overview, with the Home's facts, its Constraints, and one line per Room with that Room's Gaps.
-- Pass that Session id as `session` on every write, for the rest of the conversation.
+- Pass that Session id as `session` on every call, reads included, for the rest of the conversation.
 - A Skill that starts later in the same conversation joins the Session instead: it calls `open_session` with its `skill` and the existing `session`, and gets only what the Session hasn't been sent yet.
 - For every Skill except Home Intake, the opening also holds the Home-wide Decisions in force, after the Overview: the Design Direction and the Palette in full, each marked with its state (or how many Candidates there are when none is chosen yet), then every other Home-wide Settled Decision, one line each. Treat what is Settled there as settled ground.
 - When the opening lists open flags or Conflicts, mention them in one line: how many, and any in your own work's scope. Don't stop to resolve them. Resolve one when the user works on that Decision.
@@ -147,6 +155,17 @@ A Room Sheet's Photos line and `find_items` list the user's Photos by id, Wall, 
 - **Look at the fewest Photos that answer the question,** at most four in one call. When the question names a place (by the window, the sofa wall), use the Room Sheet's Walls to find which Wall that is and send only that Wall's Photo; otherwise the newest.
 - **What a Photo can tell.** Describe what is there, and judge how colors sit together or compare two things in the same Photo (a paint chip held against the wall). Never state a paint code, an exact color or a hex from a Photo; if asked, say a photo can't show that, since the camera and the light shift colors, and point to the code on the tin or a painted sample.
 - **Never ask the user to take or add Photos.** That includes hints: never "do you have a photo of it?", "once there's a Photo of that room I can…", or "if you add a photo". When a Room has no Photo, say nothing about Photos.
+
+### Uploads
+
+Blueprints, Photos and Documents go into Settle through its app, never through the chat: a file or picture the user drops into the conversation can't reach the Home's record. When the work needs one, link the page that takes it, from the address `open_session` gives for the Home in the app (`<address>` below):
+
+- A Blueprint: `<address>/about#blueprints`.
+- A Photo of a Room: `<address>/rooms/<room slug>`.
+- A Photo or Document of an Item: `<address>/items/<item slug>`.
+- A Listing's picture: the Purchase's page, `<address>/decisions/<decision slug>`.
+
+The "Photos" rule still holds: never ask for a Photo the user hasn't offered.
 
 ### Saying what changed
 

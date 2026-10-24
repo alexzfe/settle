@@ -27,6 +27,18 @@ export interface Config {
    * failed-login limits. Unset, it is the socket's, and the header is ignored.
    */
   trustedProxy?: "cloudflare";
+  /**
+   * Sign in with Google (google.ts), on only when the server's owner registers Settle with Google
+   * and sets SETTLE_GOOGLE_CLIENT_ID and SETTLE_GOOGLE_CLIENT_SECRET. Unset, there is no Google
+   * button anywhere.
+   */
+  google?: GoogleClient;
+}
+
+/** The Web client the server's owner made in Google Cloud's console. */
+export interface GoogleClient {
+  clientId: string;
+  clientSecret: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -35,6 +47,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const publicOrigin = parsePublicOrigin(env.SETTLE_PUBLIC_ORIGIN);
   const host = parseHost(env.SETTLE_HOST, publicOrigin);
   const trustedProxy = parseTrustedProxy(env.SETTLE_TRUSTED_PROXY);
+  const google = parseGoogle(env.SETTLE_GOOGLE_CLIENT_ID, env.SETTLE_GOOGLE_CLIENT_SECRET);
   return {
     host,
     port: parsePort(env.SETTLE_PORT),
@@ -42,7 +55,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ...(publicOrigin ? { publicOrigin } : {}),
     ...(lan ? { lan } : {}),
     ...(trustedProxy ? { trustedProxy } : {}),
+    ...(google ? { google } : {}),
   };
+}
+
+function parseGoogle(
+  clientId: string | undefined,
+  clientSecret: string | undefined,
+): GoogleClient | undefined {
+  if (!clientId && !clientSecret) return undefined;
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "Sign in with Google needs both SETTLE_GOOGLE_CLIENT_ID and SETTLE_GOOGLE_CLIENT_SECRET, " +
+        `from the Web client in Google Cloud's console; only ${clientId ? "the id" : "the secret"} ` +
+        "is set. Set both, or neither to leave it off",
+    );
+  }
+  if (!clientId.trim().endsWith(".apps.googleusercontent.com")) {
+    throw new Error(
+      "SETTLE_GOOGLE_CLIENT_ID must be the Web client's Client ID, which ends in " +
+        `".apps.googleusercontent.com", not "${clientId}"`,
+    );
+  }
+  return { clientId: clientId.trim(), clientSecret: clientSecret.trim() };
 }
 
 function parseTrustedProxy(value: string | undefined): Config["trustedProxy"] {

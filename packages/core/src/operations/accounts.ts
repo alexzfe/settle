@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   cleanEmail,
   hashPassword,
+  hasPassword,
   INVITE_MS,
   insertLink,
   newToken,
@@ -29,6 +30,10 @@ export interface AccountSummary {
   email: string;
   admin: boolean;
   createdAt: string;
+  /** False for an Account made with Google that has not set a password. */
+  password: boolean;
+  /** Whether a Google account is linked to it, to log in with. */
+  google: boolean;
 }
 
 export interface LoginSummary {
@@ -78,13 +83,14 @@ const accountIdInput = z
 
 export const getAccount = defineOperation({
   name: "get_account",
-  description: "The Account logged in: its email, whether it is the Admin, and when it was made.",
+  description:
+    "The Account logged in: its email, whether it is the Admin, when it was made, whether it has " +
+    "a password, and whether a Google account is linked to it.",
   input: z.object({}),
   readOnly: true,
   surface: "web",
   handler(context): { account: AccountSummary } {
-    const { email, admin, createdAt } = requireAccount(context);
-    return { account: { email, admin, createdAt } };
+    return { account: summaryOf(requireAccount(context)) };
   },
 });
 
@@ -92,16 +98,17 @@ export const changePassword = defineOperation({
   name: "change_password",
   description:
     "Changes the password of the Account logged in, given the current one, and ends every other " +
-    "Login of it, so a browser that had the old password is logged out.",
+    "Login of it, so a browser that had the old password is logged out. An Account made with " +
+    "Google sets its first password this way, with no current one.",
   input: z.object({
-    current: passwordInput,
+    current: passwordInput.optional(),
     password: z.string().describe("The new password: 12 to 256 characters, nothing else asked."),
   }),
   readOnly: false,
   surface: "web",
   async handler(context, input): Promise<Record<string, never>> {
     const account = requireAccount(context);
-    await requirePassword(account, input.current);
+    if (hasPassword(account)) await requirePassword(account, input.current ?? "");
     const problem = passwordProblem(input.password);
     if (problem) throw new CoreError("validation", problem);
     const passwordHash = await hashPassword(input.password, context.passwordCost);
@@ -122,13 +129,19 @@ export const changeEmail = defineOperation({
   async handler(context, input): Promise<{ account: AccountSummary }> {
     const account = requireAccount(context);
     const email = cleanEmail(input.email);
+    if (!hasPassword(account)) {
+      throw new CoreError(
+        "validation",
+        "This account has no password yet, and changing its email needs one. Set a password first.",
+      );
+    }
     await requirePassword(account, input.password);
     const taken = context.store.accountByEmail(email);
     if (taken && taken.id !== account.id) {
       throw new CoreError("validation", "Another account already uses that email.");
     }
     context.store.update("accounts", account.id, { email });
-    return { account: { email, admin: account.admin, createdAt: account.createdAt } };
+    return { account: summaryOf({ ...account, email }) };
   },
 });
 
@@ -160,12 +173,18 @@ export const listLogins = defineOperation({
 
 export const endLogins = defineOperation({
   name: "end_logins",
-  description: "Ends every Login of the Account logged in, this one included: everywhere logs out.",
+  description:
+    "Ends every Login of the Account logged in, this one included, and every Connection: " +
+    "everywhere logs out, and Claude is disconnected.",
   input: z.object({}),
   readOnly: false,
   surface: "web",
   handler(context): Record<string, never> {
-    context.store.deleteLogins(requireAccount(context).id);
+    const account = requireAccount(context);
+    context.store.transaction(() => {
+      context.store.deleteLogins(account.id);
+      context.store.deleteConnections(account.id);
+    });
     return {};
   },
 });
@@ -325,8 +344,9 @@ export const listAccounts = defineOperation({
 export const disableAccount = defineOperation({
   name: "disable_account",
   description:
-    "Disables another Account at once: every Login of it ends, its Homes' keys and Quick Guide " +
-    "links stop working, and nothing is deleted. enable_account undoes it.",
+    "Disables another Account at once: every Login and Connection of it ends, its Homes' keys " +
+    "and Quick Guide links stop working, and nothing is deleted. enable_account undoes it, " +
+    "but its Connections stay ended: Claude has to be connected again.",
   input: z.object({ account: accountIdInput }),
   readOnly: false,
   surface: "web",
@@ -338,6 +358,7 @@ export const disableAccount = defineOperation({
         context.store.update("accounts", account.id, { disabledAt: context.now() });
       }
       context.store.deleteLogins(account.id);
+      context.store.deleteConnections(account.id);
     });
     return {};
   },
@@ -419,6 +440,17 @@ export const rotateGuideLink = defineOperation({
     return optional({ phoneUrl: phoneOrigin && `${phoneOrigin}/guide/${lanToken}` });
   },
 });
+
+function summaryOf(account: AccountRow): AccountSummary {
+  const { email, admin, createdAt } = account;
+  return {
+    email,
+    admin,
+    createdAt,
+    password: hasPassword(account),
+    google: account.googleSub !== null,
+  };
+}
 
 /** The current password, or a refusal. */
 async function requirePassword(account: AccountRow, password: string): Promise<void> {

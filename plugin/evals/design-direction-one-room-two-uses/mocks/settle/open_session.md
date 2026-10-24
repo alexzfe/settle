@@ -1,5 +1,6 @@
 Session: design-direction-r3jd
-Pass session "design-direction-r3jd" on every write in this conversation.
+Pass session "design-direction-r3jd" on every call in this conversation.
+The Home in the app: http://127.0.0.1:4380/homes/fixture-home
 
 Home: Fixture Home
 Location: London, GB (latitude 51.5° N)

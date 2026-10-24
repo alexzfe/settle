@@ -15,6 +15,7 @@
     "plugin:build": "pnpm --filter @settle/skills build",
     "plugin:eval": "claude plugin eval ./plugin --trust-plugin --ablation none --no-publish --model claude-sonnet-5",
     "plugin:eval:live": "bash scripts/plugin-eval-live.sh",
+    "plugin:eval:connector": "node scripts/plugin-eval-connector.mjs",
     "start": "pnpm --filter @settle/server start"
   },
   "devDependencies": {

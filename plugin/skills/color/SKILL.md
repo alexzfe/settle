@@ -9,7 +9,7 @@ Propose and settle the Active Home's Palette, then the Room colors: the Palette 
 
 ## Starting
 
-1. **Check the tools.** Follow "Tools missing" in the Session protocol below.
+1. **Check the tools.** Follow "Tools missing" in the Session protocol.
 2. **Open the Session.** Call `open_session` with `skill: "color"`, or join the Session this conversation already has. The first sentence you write after it names the Home ("Working on Maple Cottage."), before any lookup or write. The opening's Home-wide Decisions show the Design Direction and the Palette, each with its state.
 3. **The Design Direction comes first,** since every color rests on it.
    - **Not Settled** (none yet, only Candidates, or Leaning): say so in that first reply, naming its state, and recommend settling it first in Design Direction, naming that Skill in plain words. It runs only when asked for by name or handed the question, so offer the hand-off yourself: "Settle the direction in Design Direction now, or start on colors anyway?" If the user would rather start on colors, go on, and keep every color Decision you save below Settled (Candidate or Leaning) until the Design Direction is Settled, even when the user commits. When they commit, move it to Leaning at most, say it stays there until the Design Direction is Settled, and offer Design Direction again.
@@ -116,16 +116,24 @@ Close when the user is done (see "Closing"). In `open`, list every color Decisio
 
 ### The Active Home
 
-This conversation runs in a Home Folder, and every Session held here belongs to that folder's Home. The platform's tools only ever reach this Home: you can neither see nor switch to another.
+This conversation works on one Home, the Active Home of its Session. Once `open_session` has opened it, every call works on that Home alone: you can neither see nor switch to another. In a Home Folder, the folder decides the Home. Through the Settle connector, `open_session` decides it:
+
+- When the user has one Home, open it without asking.
+- When they have several and haven't said which, call `list_homes` and ask which one, by name, before anything else. Pass its slug as `home`.
+- To work on another Home, the user starts a new conversation.
 
 ### Tools missing
 
-Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, then reconnect with /mcp." Do nothing else until the tools are back.
+Your first step is to check that the platform's tools are present, by looking for `open_session`. If it is missing, tell the user: "Settle's tools aren't available. Check that Settle is running and reachable, and that the Settle connector is switched on (in Claude Code, reconnect with /mcp)." Do nothing else until the tools are back.
+
+### Skills without native loading
+
+Without the Settle Skills loaded, the rules come from the tools: `open_session` begins with this protocol and a menu of the Skills, and `read_skill` returns one Skill in full. Read a Skill before its work starts, and follow it. Never call `read_skill` for a Skill already loaded in this conversation.
 
 ### Opening
 
 - The first Skill in a conversation calls `open_session` with its own name as `skill`. The result gives the Session id, the Home's name, and the opening: the Home Overview, with the Home's facts, its Constraints, and one line per Room with that Room's Gaps.
-- Pass that Session id as `session` on every write, for the rest of the conversation.
+- Pass that Session id as `session` on every call, reads included, for the rest of the conversation.
 - A Skill that starts later in the same conversation joins the Session instead: it calls `open_session` with its `skill` and the existing `session`, and gets only what the Session hasn't been sent yet.
 - For every Skill except Home Intake, the opening also holds the Home-wide Decisions in force, after the Overview: the Design Direction and the Palette in full, each marked with its state (or how many Candidates there are when none is chosen yet), then every other Home-wide Settled Decision, one line each. Treat what is Settled there as settled ground.
 - When the opening lists open flags or Conflicts, mention them in one line: how many, and any in your own work's scope. Don't stop to resolve them. Resolve one when the user works on that Decision.
@@ -169,6 +177,17 @@ A Room Sheet's Photos line and `find_items` list the user's Photos by id, Wall, 
 - **Look at the fewest Photos that answer the question,** at most four in one call. When the question names a place (by the window, the sofa wall), use the Room Sheet's Walls to find which Wall that is and send only that Wall's Photo; otherwise the newest.
 - **What a Photo can tell.** Describe what is there, and judge how colors sit together or compare two things in the same Photo (a paint chip held against the wall). Never state a paint code, an exact color or a hex from a Photo; if asked, say a photo can't show that, since the camera and the light shift colors, and point to the code on the tin or a painted sample.
 - **Never ask the user to take or add Photos.** That includes hints: never "do you have a photo of it?", "once there's a Photo of that room I can…", or "if you add a photo". When a Room has no Photo, say nothing about Photos.
+
+### Uploads
+
+Blueprints, Photos and Documents go into Settle through its app, never through the chat: a file or picture the user drops into the conversation can't reach the Home's record. When the work needs one, link the page that takes it, from the address `open_session` gives for the Home in the app (`<address>` below):
+
+- A Blueprint: `<address>/about#blueprints`.
+- A Photo of a Room: `<address>/rooms/<room slug>`.
+- A Photo or Document of an Item: `<address>/items/<item slug>`.
+- A Listing's picture: the Purchase's page, `<address>/decisions/<decision slug>`.
+
+The "Photos" rule still holds: never ask for a Photo the user hasn't offered.
 
 ### Saying what changed
 

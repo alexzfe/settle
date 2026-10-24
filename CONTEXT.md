@@ -11,11 +11,11 @@ A dwelling the user designs and furnishes — a house, apartment, or similar. An
 _Avoid_: Property, house, apartment, space, unit
 
 **Active Home**:
-The one Home a Session can see: the Home whose Home Folder the Agent is running in. Everything about the user's other Homes is invisible to it.
+The one Home a Session belongs to, chosen when the Session opens. Everything about the user's other Homes is invisible to the Session, except their names, which the Agent sees while choosing.
 _Avoid_: Current home, selected home, default home
 
 **Home Folder**:
-A folder on one of the user's computers in which the user runs their Agent; a Home may have one on each computer the user works from. Every Session started there belongs to that Home. It holds only the two files that point the Agent at the platform and at that Home; none of the Home's record is in it, so moving the platform to another machine moves the Home with it and leaves the Home Folder to be pointed again.
+The older way to connect Claude Code to one Home, kept until the Connection path passes the evals, then retired. A folder on one of the user's computers in which the user runs their Agent; a Home may have one on each computer the user works from. Every Session started there belongs to that Home. It holds only the two files that point the Agent at the platform and at that Home; none of the Home's record is in it, so moving the platform to another machine moves the Home with it and leaves the Home Folder to be pointed again.
 _Avoid_: Workspace, project, project folder
 
 **Tenure**:
@@ -203,7 +203,7 @@ _Avoid_: Spending limit, allowance
 ### AI
 
 **Agent**:
-The external AI client (e.g. Claude Code, Codex) in which the user runs Sessions, using their own subscription.
+Claude, on the web, the desktop or phone app, or in Claude Code, linked to an Account by a Connection or, on the older path, to one Home by a Home Folder. It runs on the user's own Claude subscription.
 _Avoid_: Harness, assistant, bot
 
 **Session**:
@@ -246,6 +246,12 @@ _Avoid_: Owner, superuser, root
 One browser's signed-in state for an Account, kept until it expires or is ended. An Account sees its
 Logins and can end them all.
 _Avoid_: Session (taken), sign-in
+
+**Connection**:
+An Agent's authorised link to an Account, made when the user connects Claude and clicks Allow.
+The Account page lists each one, and the user can end it at any time. It reaches every Home of the
+Account, but each Session inside it works on one.
+_Avoid_: Integration, token, grant, Session (taken), Login (taken)
 
 **Invite**:
 A one-time link, made by the Admin, that lets one person create an Account. It expires after seven

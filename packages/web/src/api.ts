@@ -147,6 +147,25 @@ export type ItemPage = Omit<CoreItemPage, "item"> & {
   documents: Document[];
 };
 
+/** One Connection: Claude's authorised link to the Account, made when the user clicked Allow. */
+export interface Connection {
+  id: number;
+  /** The host Settle's Allow page named the client by: "claude.ai", or "localhost". */
+  client: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** How to connect Claude to this server, from its own origin. */
+export interface ClaudeConnect {
+  /** The Account's MCP URL. */
+  mcpUrl: string;
+  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
+  addConnectorUrl: string;
+  /** For Claude Code: the same connector for every folder, and the Settle plugin. */
+  claudeCodeCommand: string;
+}
+
 /** An operation's input and output, as core's registry declares them. */
 interface Shapes<Name extends CoreOperationName> {
   input: OperationInput<Name>;
@@ -216,6 +235,10 @@ export interface Operations {
   change_email: Shapes<"change_email">;
   list_logins: Shapes<"list_logins">;
   end_logins: Shapes<"end_logins">;
+  // The Account's Connections, and how to make one: the server answers these itself (api.ts).
+  list_connections: { input: Record<string, never>; output: { connections: Connection[] } };
+  end_connection: { input: { connection: number }; output: Record<string, never> };
+  claude_connect: { input: Record<string, never>; output: ClaudeConnect };
   delete_account: Shapes<"delete_account">;
   // The Admin page: invites, reset links, and the other Accounts, seen from outside.
   create_invite: Shapes<"create_invite">;
