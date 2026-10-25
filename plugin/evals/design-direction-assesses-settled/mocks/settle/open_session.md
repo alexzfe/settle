@@ -1,5 +1,6 @@
 Session: design-direction-p7rd
-Pass session "design-direction-p7rd" on every write in this conversation.
+Pass session "design-direction-p7rd" on every call in this conversation.
+The Home in the app: http://127.0.0.1:4380/homes/fixture-home
 
 Home: Fixture Home
 Location: London, GB (latitude 51.5° N)

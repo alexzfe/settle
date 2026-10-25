@@ -105,12 +105,34 @@ export const createHome = defineOperation({
 
 export const listHomes = defineOperation({
   name: "list_homes",
-  description: "Every Home of the Account logged in, by name.",
+  description:
+    "Lists the Homes this connection reaches, by name and slug only: nothing else about a Home " +
+    "is visible before its Session opens. Use it before open_session when the user may have " +
+    "several Homes, to ask which one to work on. Changes nothing.",
   input: z.object({}),
   readOnly: true,
-  surface: "web",
-  handler: (context) => ({ homes: context.store.homesOf(requireAccount(context).id).map(toHome) }),
+  surface: "both",
+  handler(context): { homes: Home[] } {
+    if (context.caller.kind === "session") return { homes: homesOfAgent(context).map(toHome) };
+    return { homes: context.store.homesOf(requireAccount(context).id).map(toHome) };
+  },
+  // The Agent reads only this text, so it sees each Home's name and slug and nothing else.
+  text: ({ homes }) =>
+    homes.length === 0
+      ? "No Homes yet."
+      : homes.map((home) => `- ${home.name} (slug ${home.slug})`).join("\n"),
 });
+
+/**
+ * The Homes the Agent may open a Session on: through a Connection, every Home of its enabled
+ * Account; through a Home Folder, the Home whose key the server checked.
+ */
+export function homesOfAgent(context: OperationContext): HomeRow[] {
+  const { caller, store } = context;
+  if (caller.kind !== "session") return [];
+  if (caller.account === undefined) return [requireHome(context)];
+  return store.account(caller.account)?.disabledAt === null ? store.homesOf(caller.account) : [];
+}
 
 export const getHome = defineOperation({
   name: "get_home",

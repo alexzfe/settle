@@ -31,6 +31,8 @@ export const queryKeys = {
   /** The Account logged in, and its Logins. */
   account: ["account"],
   logins: ["account", "logins"],
+  connections: ["account", "connections"],
+  claudeConnect: ["claude-connect"],
   /** The Admin's lists: waiting invites, and every Account. */
   invites: ["admin", "invites"],
   accounts: ["admin", "accounts"],

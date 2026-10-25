@@ -70,7 +70,7 @@ import {
   setListingPhoto,
 } from "./operations/purchases.js";
 import { getRoom, getRoomSheet, saveRoom } from "./operations/rooms.js";
-import { ownedHome } from "./operations/scope.js";
+import { connectedSessionHome, noSuchHome, ownedHome, unknownSession } from "./operations/scope.js";
 import { closeSession, openSession } from "./operations/sessions.js";
 import {
   exportGuides,
@@ -78,6 +78,7 @@ import {
   getGuidePage,
   getShopping,
 } from "./operations/shopping.js";
+import { readSkill, readSkillTexts, type SkillTexts } from "./operations/skill-texts.js";
 import { optional } from "./optional.js";
 import type { CallContext, Operation, OperationContext } from "./registry.js";
 import { openStore, type Store } from "./store.js";
@@ -125,6 +126,7 @@ const operations = {
   get_document: getDocument,
   edit_item: editItem,
   open_session: openSession,
+  read_skill: readSkill,
   get_room_sheet: getRoomSheet,
   find_items: findItems,
   find_decisions: findDecisions,
@@ -204,6 +206,8 @@ export interface CoreOptions {
   random?: (max: number) => number;
   /** In LAN mode: the LAN listener's address, for each Quick Guide's phone URL. */
   lanUrl?: string;
+  /** Internal seam: the built Skills' folder, plugin/skills unless a test gives another. */
+  skillsDir?: string;
   /** Internal seam: scrypt's cost for new password hashes; OWASP's unless a test gives a cheap one. */
   passwordCost?: PasswordCost;
 }
@@ -231,6 +235,11 @@ export interface Core {
    * events): refuses a Home the caller can't reach exactly as a Home that doesn't exist.
    */
   checkHome(context: CallContext, home: string): void;
+  /**
+   * The slug of the Home a Session works on, when the Account reaches it through a Connection;
+   * undefined otherwise. For the server's record of when the Agent last called for a Home.
+   */
+  sessionHome(account: number, session: string): string | undefined;
   /** Logins, passwords and the one-time links, for the server's login pages and cookie check. */
   readonly accounts: Accounts;
   close(): void;
@@ -245,6 +254,7 @@ export function createCore(options: CoreOptions = {}): Core {
   );
   let dataDir = options.dataDir;
   let temporaryDataDir: string | undefined;
+  let skillTexts: SkillTexts | undefined;
 
   const base = {
     store,
@@ -257,6 +267,10 @@ export function createCore(options: CoreOptions = {}): Core {
         dataDir = temporaryDataDir;
       }
       return dataDir;
+    },
+    skillTexts(): SkillTexts {
+      skillTexts ??= readSkillTexts(options.skillsDir);
+      return skillTexts;
     },
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
@@ -306,10 +320,12 @@ export function createCore(options: CoreOptions = {}): Core {
       if (context.caller.kind === "guide" && name !== "get_guide_page") {
         throw new CoreError("not_found", `There is no operation "${name}".`);
       }
-      // The web caller is refused another Account's Home before its input is even read, so no
-      // operation's validation can tell a Home that exists from one that doesn't.
+      // The web caller, and the Agent through a Connection, are refused another Account's Home
+      // before the input is even read, so no operation's validation can tell a Home that exists
+      // from one that doesn't.
       const named = context.home ?? (input as { home?: unknown } | undefined)?.home;
-      if (context.caller.kind !== "session" && typeof named === "string" && named !== "") {
+      const keyed = context.caller.kind === "session" && context.caller.account === undefined;
+      if (!keyed && typeof named === "string" && named !== "") {
         ownedHome(store, context.caller, named);
       }
       const schema =
@@ -322,10 +338,11 @@ export function createCore(options: CoreOptions = {}): Core {
         throw new CoreError("validation", `Invalid input for ${name}. ${issues.join("; ")}.`);
       }
       const data = parsed.data as Record<string, unknown>;
+      const caller = withSession(context, data.session);
       const operationContext: OperationContext = {
         ...base,
-        caller: withSession(context, data.session),
-        home: context.home ?? (typeof data.home === "string" ? data.home : undefined),
+        caller,
+        home: homeOfCall(store, context.home, caller, data.home),
       };
       return (await operation.handler(operationContext, parsed.data)) as never;
     },
@@ -335,6 +352,7 @@ export function createCore(options: CoreOptions = {}): Core {
       const owner = home?.accountId == null ? undefined : store.account(home.accountId);
       return owner && owner.disabledAt === null ? home?.token : undefined;
     },
+    sessionHome: (account, session) => connectedSessionHome(store, account, session)?.slug,
     checkHome(context, home) {
       ownedHome(store, context.caller, home);
     },
@@ -358,5 +376,32 @@ function withSession(context: CallContext, session: unknown): CallContext["calle
   if (caller.session !== undefined && caller.session !== session) {
     throw new CoreError("validation", "The call names two different Sessions.");
   }
-  return { kind: "session", session };
+  return { ...caller, session };
+}
+
+/**
+ * The Home a call works on. Through a Connection, its Session's Home, so a Session locks the
+ * conversation to one Home: a Session that doesn't exist and one of another Account's Home are
+ * refused alike. Before a Session, the `home` open_session names. Through a Home Folder, the
+ * URL's Home, which a `home` argument may not contradict; for the web, the `home` it passes.
+ */
+function homeOfCall(
+  store: Store,
+  urlHome: string | undefined,
+  caller: CallContext["caller"],
+  named: unknown,
+): string | undefined {
+  const argument = typeof named === "string" && named !== "" ? named : undefined;
+  if (caller.kind === "session" && caller.account !== undefined) {
+    if (caller.session === undefined) return argument;
+    const home = connectedSessionHome(store, caller.account, caller.session);
+    if (!home || (argument !== undefined && argument !== home.slug)) {
+      throw unknownSession(caller.session);
+    }
+    return home.slug;
+  }
+  if (urlHome !== undefined && argument !== undefined && argument !== urlHome) {
+    throw noSuchHome(argument);
+  }
+  return urlHome ?? argument;
 }

@@ -4,7 +4,8 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { type OpeningBlock, renderOpening } from "../render.js";
 import type { HomeRow, SessionRow } from "../store.js";
 import { openingView } from "./decisions.js";
-import { requireHome, requireSession, sessionInput } from "./scope.js";
+import { homesOfAgent } from "./homes.js";
+import { homeInput, requireHome, requireSession, sessionInput } from "./scope.js";
 
 export const SKILLS = ["home-intake", "design-direction", "color", "purchase"] as const;
 export type Skill = (typeof SKILLS)[number];
@@ -28,21 +29,32 @@ export interface OpenSessionResult {
   session: string;
   /** The Home's name. */
   home: string;
+  /** The Home's page in the app, where the user uploads what the Agent can't take in the chat. */
+  app: string;
   /** The opening blocks the Session had not been sent yet, rendered; empty when none. */
   opening: string;
+  /**
+   * Through a Connection, where the Agent has no native Skills: the Session protocol and the
+   * menu of Skills, sent with a new Session's opening and again on `resend`.
+   */
+  skills?: { skill: Skill; protocol: string; menu: { name: Skill; trigger: string }[] };
 }
 
 export const openSession = defineOperation({
   name: "open_session",
   description:
-    "Opens a Session for this Home and returns its opening: the Home's name and its Home " +
+    "Opens a Session for one Home and returns its opening: the Home's name and its Home " +
     "Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many " +
     "Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item " +
     "count, and Gaps: the facts advice still needs); for every Skill but home-intake, the " +
     "Home-wide Decisions in force (the Design Direction and Palette in full, marked Settled or " +
     "Leaning, then the other Home-wide Settled Decisions); and the open flags and Conflicts, one " +
-    "line each. Call it first, when a Skill starts, before any other tool of this server, and pass " +
-    "the returned Session id as `session` on every later call in the conversation. A Session is " +
+    "line each. Without native Settle Skills, it also starts with the rules for working in " +
+    "Settle and the menu of Skills to read. Call it first, before any other tool of this server except " +
+    "list_homes, and pass the returned Session id as `session` on every later call in the " +
+    "conversation: the Session is locked to its Home. Which Home: when the user has one, leave " +
+    "out `home` and it opens; when they have several, ask the user which (list_homes gives the " +
+    "names), unless they named it, and pass its slug as `home`. A Session is " +
     "one interview with the user; the app keeps its record (Skills used and a summary), not the " +
     "transcript. When another Skill starts later in the same conversation, call it again with " +
     "`session` and that `skill`: it joins the open Session and returns only what the Session has " +
@@ -51,7 +63,18 @@ export const openSession = defineOperation({
     "close_session, call it without `session` to start a new Session. It records the Session " +
     "and never changes the Home.",
   input: z.object({
-    skill: z.enum(SKILLS).describe("The Skill that is starting."),
+    skill: z
+      .enum(SKILLS)
+      .describe(
+        "The Skill that is starting: home-intake records the Home's Rooms and belongings; " +
+          "design-direction its style; color its Palette and paint; purchase things to buy.",
+      ),
+    home: homeInput
+      .optional()
+      .describe(
+        "The slug of the Home to open, from list_homes. Leave out when the user has one Home, " +
+          "or with `session`.",
+      ),
     session: sessionInput
       .optional()
       .describe(
@@ -68,10 +91,10 @@ export const openSession = defineOperation({
   readOnly: false,
   surface: "agent",
   handler(context, input): OpenSessionResult {
-    const home = requireHome(context);
     if (context.caller.kind === "session" && context.caller.session !== undefined) {
-      return joinSession(context, home, input.skill, input.resend === true);
+      return joinSession(context, requireHome(context), input.skill, input.resend === true);
     }
+    const home = chosenHome(context);
     const { store } = context;
     const slug = newSessionSlug(context, input.skill);
     const blocks = OPENING_BLOCKS[input.skill];
@@ -89,20 +112,84 @@ export const openSession = defineOperation({
       return {
         session: slug,
         home: home.name,
+        app: appPage(context, home),
         opening: renderOpening(openingView(store, home), blocks),
+        ...skillsFor(context, input.skill),
       };
     });
   },
-  text: ({ session, opening }) =>
+  text: ({ session, app, opening, skills }) =>
     [
       `Session: ${session}`,
-      `Pass session "${session}" on every write in this conversation.`,
+      `Pass session "${session}" on every call in this conversation.`,
+      `The Home in the app: ${app}`,
+      ...(skills ? ["", renderSkills(session, skills)] : []),
       "",
       opening ||
         "This Session already has the opening. If the Home Overview is no longer in view, call " +
           "open_session again with resend: true.",
     ].join("\n"),
 });
+
+function appPage(context: OperationContext, home: HomeRow): string {
+  return `${context.origin}/homes/${home.slug}`;
+}
+
+/**
+ * The Home a new Session opens on: the URL's for a Home Folder, the one named as `home`, or
+ * through a Connection the Account's only Home. With several and none named, the refusal lists
+ * their names, which the Agent may see before choosing, and tells it to ask.
+ */
+function chosenHome(context: OperationContext): HomeRow {
+  if (context.home !== undefined) return requireHome(context);
+  const homes = homesOfAgent(context);
+  const [only] = homes;
+  if (homes.length === 1 && only) return only;
+  if (homes.length === 0) {
+    throw new CoreError(
+      "not_found",
+      `There is no Home to work on yet. Ask the user to create one in the app: ${context.origin}`,
+    );
+  }
+  const names = homes.map((home) => `${home.name} (slug ${home.slug})`).join(", ");
+  throw new CoreError(
+    "validation",
+    `The user has ${homes.length} Homes: ${names}. Unless they already said which, ask them ` +
+      "which one to work on, then call open_session with its slug as `home`.",
+  );
+}
+
+/** The protocol and menu, for the Agent through a Connection, which has no native Skills. */
+function skillsFor(context: OperationContext, skill: Skill): Pick<OpenSessionResult, "skills"> {
+  if (context.caller.kind !== "session" || context.caller.account === undefined) return {};
+  const { protocol, skills } = context.skillTexts();
+  return {
+    skills: { skill, protocol, menu: skills.map(({ name, trigger }) => ({ name, trigger })) },
+  };
+}
+
+function renderSkills(
+  session: string,
+  { skill, protocol, menu }: NonNullable<OpenSessionResult["skills"]>,
+): string {
+  return [
+    "## Session protocol",
+    "",
+    "These rules hold for every Skill, all conversation long.",
+    "",
+    protocol,
+    "",
+    "## Skills",
+    "",
+    "Each Skill below is how Settle does one kind of work. Before that work starts, call " +
+      "read_skill with its name and follow what it returns as the Skill. Never call read_skill " +
+      "for a Skill already loaded in this conversation.",
+    "",
+    ...menu.map(({ name, trigger }) => `- ${name}: ${trigger}`),
+    "",
+    `Now read the ${skill} Skill: read_skill with name "${skill}" and session "${session}".`,
+  ].join("\n");
+}
 
 function joinSession(
   context: OperationContext,
@@ -137,7 +224,9 @@ function joinSession(
   return {
     session: session.slug,
     home: home.name,
+    app: appPage(context, home),
     opening: renderOpening(openingView(context.store, home), blocks),
+    ...(resend ? skillsFor(context, skill) : {}),
   };
 }
 

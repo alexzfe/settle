@@ -30,9 +30,10 @@ it("shows each Home as a card with its city and Room count", async () => {
   await waitFor(() => expect(within(card).getByText("2 Rooms")).toBeDefined());
 });
 
-it("says when there are no Homes yet", async () => {
+it("leads an Account with no Home yet into the first run", async () => {
   stubApi({ list_homes: () => ({ homes: [] }) });
-  renderRoutes("/");
-  expect(await screen.findByText("No Homes yet.")).toBeDefined();
+  const { router } = renderRoutes("/");
+  expect(await screen.findByRole("heading", { name: "Name your Home" })).toBeDefined();
+  expect(router.state.location.pathname).toBe("/welcome");
   expect(screen.getByRole("button", { name: "Create Home" })).toBeDefined();
 });

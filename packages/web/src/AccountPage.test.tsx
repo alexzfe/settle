@@ -2,6 +2,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { browserName } from "./AccountPage";
 import { login } from "./api";
+import { clientName, dayWords } from "./ConnectToClaude";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
 beforeEach(() => {
@@ -15,7 +16,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const sam = { email: "sam@example.com", admin: false, createdAt: "2026-10-01T10:00:00.000Z" };
+const sam = {
+  email: "sam@example.com",
+  admin: false,
+  createdAt: "2026-10-01T10:00:00.000Z",
+  password: true,
+  google: false,
+};
 
 function stubAccountPage(handlers: ApiHandlers = {}) {
   return stubApi({
@@ -40,6 +47,15 @@ function stubAccountPage(handlers: ApiHandlers = {}) {
           current: false,
         },
       ],
+    }),
+    list_connections: () => ({ connections: [] }),
+    claude_connect: () => ({
+      mcpUrl: "https://settle.example.com/mcp",
+      addConnectorUrl:
+        "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Settle" +
+        "&connectorUrl=https%3A%2F%2Fsettle.example.com%2Fmcp",
+      claudeCodeCommand:
+        "claude mcp add --transport http --scope user settle https://settle.example.com/mcp",
     }),
     ...handlers,
   });
@@ -76,6 +92,27 @@ it("changes the password given the current one, and checks the new one was typed
   expect(inputsTo(fetch, "change_password")).toEqual([
     { current: "the old password", password: "a brand new password" },
   ]);
+});
+
+it("lets an Account made with Google set its first password, with no current one", async () => {
+  const fetch = stubAccountPage({
+    get_account: () => ({ account: { ...sam, password: false, google: true } }),
+    change_password: () => ({}),
+  });
+  renderRoutes("/account");
+  const field = (name: string) => screen.getByLabelText(name) as HTMLInputElement;
+  await screen.findByText(/You log in with Google, so your account has no password/);
+  expect(screen.getByText(/You can log in with Google\./)).toBeTruthy();
+  expect(screen.queryByLabelText("Current password")).toBeNull();
+  // Changing the email asks for a password it doesn't have yet.
+  expect(screen.queryByRole("button", { name: "Change email" })).toBeNull();
+  expect(screen.getByText(/To change it, set a password first/)).toBeTruthy();
+
+  fireEvent.change(field("New password"), { target: { value: "a brand new password" } });
+  fireEvent.change(field("The same again"), { target: { value: "a brand new password" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set a password" }));
+  await screen.findByText(/Password set\. Other browsers are logged out\./);
+  expect(inputsTo(fetch, "change_password")).toEqual([{ password: "a brand new password" }]);
 });
 
 it("logs out everywhere, this browser included", async () => {
@@ -117,4 +154,43 @@ it("names a browser in a few words", () => {
     ),
   ).toBe("Edge on Windows");
   expect(browserName("curl/8.10.1")).toBe("curl");
+});
+
+it("lists each Connection with when it was made and last used, and Disconnect ends it", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-24T15:00:00"));
+  let connections = [
+    {
+      id: 7,
+      client: "claude.ai",
+      createdAt: "2026-10-24T10:00:00.000Z",
+      lastUsedAt: "2026-10-24T14:00:00.000Z",
+    },
+  ];
+  const fetch = stubAccountPage({
+    list_connections: () => ({ connections }),
+    end_connection: () => {
+      connections = [];
+      return {};
+    },
+  });
+  renderRoutes("/account");
+  const row = (await screen.findByText("Claude (claude.ai)")).closest("li") as HTMLElement;
+  expect(row.textContent).toContain("Connected 24 Oct, last used today");
+  expect(
+    screen.getByRole("link", { name: "Connect Settle to Claude" }).getAttribute("href"),
+  ).toContain("connectorUrl=https%3A%2F%2Fsettle.example.com%2Fmcp");
+  fireEvent.click(within(row).getByRole("button", { name: "Disconnect" }));
+  await screen.findByText("Claude isn't connected to your account yet.");
+  expect(inputsTo(fetch, "end_connection")).toEqual([{ connection: 7 }]);
+  vi.useRealTimers();
+});
+
+it("names a Connection's client and its last use in words", () => {
+  expect(clientName("claude.ai")).toBe("Claude (claude.ai)");
+  expect(clientName("localhost")).toBe("A program on a computer (localhost)");
+  const now = new Date("2026-10-24T15:00:00");
+  expect(dayWords("2026-10-24T01:00:00", now)).toBe("today");
+  expect(dayWords("2026-10-23T23:00:00", now)).toBe("yesterday");
+  expect(dayWords("2026-09-02T12:00:00", now)).toBe("2 Sep");
 });

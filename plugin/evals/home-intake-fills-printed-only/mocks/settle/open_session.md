@@ -1,5 +1,6 @@
 Session: home-intake-plan
-Pass session "home-intake-plan" on every write in this conversation.
+Pass session "home-intake-plan" on every call in this conversation.
+The Home in the app: http://127.0.0.1:4380/homes/flat-5
 
 Home: Flat 5
 Location: London, GB (latitude 51.5° N)

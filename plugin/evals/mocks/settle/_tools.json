@@ -1,9 +1,26 @@
 {
   "tools": [
     {
+      "name": "list_homes",
+      "title": "List homes",
+      "description": "Lists the Homes this connection reaches, by name and slug only: nothing else about a Home is visible before its Session opens. Use it before open_session when the user may have several Homes, to ask which one to work on. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
       "name": "open_session",
       "title": "Open session",
-      "description": "Opens a Session for this Home and returns its opening: the Home's name and its Home Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item count, and Gaps: the facts advice still needs); for every Skill but home-intake, the Home-wide Decisions in force (the Design Direction and Palette in full, marked Settled or Leaning, then the other Home-wide Settled Decisions); and the open flags and Conflicts, one line each. Call it first, when a Skill starts, before any other tool of this server, and pass the returned Session id as `session` on every later call in the conversation. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
+      "description": "Opens a Session for one Home and returns its opening: the Home's name and its Home Overview (the Home's facts and Levels, the Constraints every Skill must obey, how many Items are Unplaced, and one line per Room with its slug, Level, size, light, use, Item count, and Gaps: the facts advice still needs); for every Skill but home-intake, the Home-wide Decisions in force (the Design Direction and Palette in full, marked Settled or Leaning, then the other Home-wide Settled Decisions); and the open flags and Conflicts, one line each. Without native Settle Skills, it also starts with the rules for working in Settle and the menu of Skills to read. Call it first, before any other tool of this server except list_homes, and pass the returned Session id as `session` on every later call in the conversation: the Session is locked to its Home. Which Home: when the user has one, leave out `home` and it opens; when they have several, ask the user which (list_homes gives the names), unless they named it, and pass its slug as `home`. A Session is one interview with the user; the app keeps its record (Skills used and a summary), not the transcript. When another Skill starts later in the same conversation, call it again with `session` and that `skill`: it joins the open Session and returns only what the Session has not been sent yet. If the Home Overview is no longer in view, for example after context compaction, call it with `session` and `resend: true` to get the whole opening again. After close_session, call it without `session` to start a new Session. It records the Session and never changes the Home.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -11,7 +28,12 @@
           "skill": {
             "type": "string",
             "enum": ["home-intake", "design-direction", "color", "purchase"],
-            "description": "The Skill that is starting."
+            "description": "The Skill that is starting: home-intake records the Home's Rooms and belongings; design-direction its style; color its Palette and paint; purchase things to buy."
+          },
+          "home": {
+            "description": "The slug of the Home to open, from list_homes. Leave out when the user has one Home, or with `session`.",
+            "type": "string",
+            "minLength": 1
           },
           "session": {
             "description": "Leave out to open a new Session. To join the Session this conversation already has, pass its id.",
@@ -27,6 +49,35 @@
       },
       "annotations": {
         "readOnlyHint": false,
+        "openWorldHint": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "read_skill",
+      "title": "Read skill",
+      "description": "Returns one Skill in full: how Settle does one kind of work (home-intake, design-direction, color, purchase), the same text as the native Skill of that name. open_session lists the Skills with when each applies. Read a Skill before its work starts and follow it; skip one already loaded in this conversation. Changes nothing.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The id of this conversation's open Session, as open_session returned it."
+          },
+          "name": {
+            "type": "string",
+            "enum": ["home-intake", "design-direction", "color", "purchase"],
+            "description": "The Skill's name, as open_session lists it."
+          }
+        },
+        "required": ["session", "name"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
         "openWorldHint": false
       },
       "execution": {
@@ -563,7 +614,7 @@
     {
       "name": "save_room",
       "title": "Save room",
-      "description": "Records one Room of this Home, or changes it, with its Walls, Windows, Doors, Features, and Surfaces, and returns a receipt: one line per change, any refused part with its reason, and the Room's remaining Gaps (what advice still needs). A Room is a named space divided from its neighbours by walls with doorways, whether or not a door hangs in them: an open-plan kitchen and living area is one Room; a hallway, a staircase, or a balcony you can step onto is a Room too; a built-in cupboard is a Feature. Pass `room` (its slug) to change a recorded Room; without it, a Room with the same name is updated, never duplicated. Give only what the user stated or confirmed: fields and parts left out stay as they are, and a part given with archive: true is Archived (kept, out of the current state), never deleted. Walls go clockwise from 1 and are named <room>/wall-<position>; Windows, Doors, and Features name their Wall by its position, so add the Wall first or in the same call. A Door is shared by the two Rooms it joins: naming otherRoom updates the Door that already joins them. Lengths are whole millimetres with a Provenance: measured (the user measured it), blueprint (printed on a Blueprint), or estimated (by eye, scaled off a drawing, or guessed); colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated): that part is refused and the receipt states both values, with their Provenance; a write with nothing else in it is refused as a whole. Tell the user both values in one line and ask; only if they say to replace it, call again with overrideProvenance quoting their words. Tell the user what the receipt says changed. Needs the open Session's id as `session`; a closed Session is refused.",
+      "description": "Records one Room of this Home, or changes it, with its Walls, Windows, Doors, Features, and Surfaces, and returns a receipt: one line per change, any refused part with its reason, and the Room's remaining Gaps (what advice still needs). A Room is a named space divided from its neighbours by walls with doorways, whether or not a door hangs in them: an open-plan kitchen and living area is one Room; a hallway, a staircase, or a balcony you can step onto is a Room too; a built-in cupboard is a Feature. Pass `room` (its slug) to change a recorded Room; without it, a Room with the same name is updated, never duplicated. Give only what the user stated or confirmed: fields and parts left out stay as they are, and a part given with archive: true is Archived (kept, out of the current state), never deleted. Walls go clockwise from 1 and are named <room>/wall-<position>; Windows, Doors, and Features name their Wall by its position, so add the Wall first or in the same call. A Door is shared by the two Rooms it joins: naming otherRoom updates the Door that already joins them. Lengths are whole millimetres with a Provenance: measured (the user measured it), blueprint (printed on a Blueprint), or estimated (by eye, scaled off a drawing, or guessed); colors carry one too. A value is never replaced by one of weaker Provenance (measured > blueprint > estimated): that part is refused and the receipt states both values, with their Provenance; a write with nothing else in it is refused as a whole. Tell the user both values in one line and ask; only if they say to replace it, call again with overrideProvenance quoting their words. Tell the user what the receipt says changed. The home-intake Skill (read_skill) says how to record a Room. Needs the open Session's id as `session`; a closed Session is refused.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2170,7 +2221,7 @@
     {
       "name": "save_decision",
       "title": "Save decision",
-      "description": "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), settled (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors, each with a role; one Settled at a time), room-color (a Surface's color and finish: its color must name a color of the Palette in force, the Settled Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. Without it, one of the same kind, scope, and title that is neither Rejected nor Fulfilled is changed. A Requirement given without a position that matches an active one (text, strength, and reason) is left as it is. A Settled or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes; a Fulfilled one is never Reopened. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically, the Palette in force in the Basis of every Decision using its colors, and a Decision a Requirement's reason names joins it); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
+      "description": "Creates or changes one Decision of this Home and returns a receipt. Read its kind's Skill first (read_skill: design-direction, color, or purchase), unless it is already loaded. A Decision is a choice about the whole Home or one Room, always in one state: candidate (under consideration), leaning (favoured), settled (committed), or rejected. A new one starts as a Candidate; change its state only with set_decision_state. Its kind says what the app does with it: design-direction (the Home's style, Home-wide; it names no colors), room-direction (how one Room refines it), room-use (what one Room is for; its functions change when Fulfilled), palette (the Home's named colors, each with a role; one Settled at a time), room-color (a Surface's color and finish: its color must name a color of the Palette in force, the Settled Palette, else the Leaning one; its Surface changes when Fulfilled), purchase (with Requirements), or other. content holds the kind's own fields; each field says which kinds take it. Pass `decision` (its slug) to change one: title and statement are always given, content replaces what is recorded, basis replaces the Basis, and evidence entries are added. Without it, one of the same kind, scope, and title that is neither Rejected nor Fulfilled is changed. A Requirement given without a position that matches an active one (text, strength, and reason) is left as it is. A Settled or Rejected Decision takes new Evidence only: to change it, Reopen or revive it first, with the user's yes; a Fulfilled one is never Reopened. Basis: the Decisions it rests on (the Design Direction is in every Basis automatically, the Palette in force in the Basis of every Decision using its colors, and a Decision a Requirement's reason names joins it); Evidence: the Notes, Sessions, or Decisions that support or undermine it. Every Basis and Evidence entry must exist in this Home. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2525,7 +2576,7 @@
     {
       "name": "save_guides",
       "title": "Save guides",
-      "description": "Saves the Shopping Guides of one Purchase Decision and returns a receipt. The Quick Guide is a companion to the Full Guide, glanced at in a shop, in front of one candidate, or with a seller: fragments, not sentences, numbers first, the whole of it one phone screen. lookingFor is its top line, what the user is hunting for in about 80 characters (\"Semi-sheer · warm cream · made-to-measure · 2–2.5× fullness\"). quickLines are your own lines, at most 8 in all, each with a kind: avoid (write these first; a guide with none is suspect), test (what to try in the shop), ask (what to ask the seller). A why only when it changes a judgment in the shop, in five words or fewer. fullGuide is the Full Guide, Markdown to read ahead of time, under headings that suit the product; every must Requirement explains why. Each replaces what is saved; leave one out to keep it. The app assembles the Quick Guide itself: the looking-for line, a Measure first line for every must resting on an Estimated or unrecorded value, the musts, your avoids, the prefers, then your tests and asks. So never repeat a Requirement or a Measure first line in quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is marked out of date when a Requirement changes after it was written: save it again then. A Rejected Purchase has no Guides. Needs the open Session's id as `session`.",
+      "description": "Saves the Shopping Guides of one Purchase Decision and returns a receipt. The Quick Guide is a companion to the Full Guide, glanced at in a shop, in front of one candidate, or with a seller: fragments, not sentences, numbers first, the whole of it one phone screen. lookingFor is its top line, what the user is hunting for in about 80 characters (\"Semi-sheer · warm cream · made-to-measure · 2–2.5× fullness\"). quickLines are your own lines, at most 8 in all, each with a kind: avoid (write these first; a guide with none is suspect), test (what to try in the shop), ask (what to ask the seller). A why only when it changes a judgment in the shop, in five words or fewer. fullGuide is the Full Guide, Markdown to read ahead of time, under headings that suit the product; every must Requirement explains why. Each replaces what is saved; leave one out to keep it. The app assembles the Quick Guide itself: the looking-for line, a Measure first line for every must resting on an Estimated or unrecorded value, the musts, your avoids, the prefers, then your tests and asks. So never repeat a Requirement or a Measure first line in quickLines; a changed Requirement shows in the Quick Guide at once. The Full Guide is marked out of date when a Requirement changes after it was written: save it again then. A Rejected Purchase has no Guides. The purchase Skill (read_skill) says how to write them. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2588,7 +2639,7 @@
     {
       "name": "record_listing",
       "title": "Record listing",
-      "description": "Records a Listing for one Purchase Decision (a real product the user brings: its name, link, price, size, and picture) checked against every Requirement, and returns a receipt with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from it, with a few words on what decided it. A new Listing needs a check for every Requirement not Archived. Pass `listing` (its slug) to change one: the fields given replace what is recorded, and the checks given replace those of their Requirements; it must then have a check for every Requirement, those added since included. A rating on its own needs no checks resent. Also give it a Rating: 1 to 5 whole stars for how good the product is, with ratingNote, the one line that makes the stars arguable. A Rating is your judgement, not a formula: place it on the same scale as the other Listings' ratings that get_decision shows you, weigh the Requirements heaviest but not alone (quality, value, and taste count too), and never lower it for a failed must — the checks carry that, and a 5-star product under a failed must is the strongest sign the Requirement itself deserves a second look. A rating without its ratingNote is refused. photoUrl links straight to the picture: the app fetches and keeps the bytes, and when it can't it keeps the link and says so on the receipt. Tell the user plainly which musts it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase takes none. Needs the open Session's id as `session`.",
+      "description": "Records a Listing for one Purchase Decision (a real product the user brings: its name, link, price, size, and picture) checked against every Requirement, and returns a receipt with its pass, fail, and unknown counts and any must it fails. Judge each Requirement from what the listing says: pass, fail, or unknown when it doesn't say or can't be judged from it, with a few words on what decided it. A new Listing needs a check for every Requirement not Archived. Pass `listing` (its slug) to change one: the fields given replace what is recorded, and the checks given replace those of their Requirements; it must then have a check for every Requirement, those added since included. A rating on its own needs no checks resent. Also give it a Rating: 1 to 5 whole stars for how good the product is, with ratingNote, the one line that makes the stars arguable. A Rating is your judgement, not a formula: place it on the same scale as the other Listings' ratings that get_decision shows you, weigh the Requirements heaviest but not alone (quality, value, and taste count too), and never lower it for a failed must — the checks carry that, and a 5-star product under a failed must is the strongest sign the Requirement itself deserves a second look. A rating without its ratingNote is refused. photoUrl links straight to the picture: the app fetches and keeps the bytes, and when it can't it keeps the link and says so on the receipt. Tell the user plainly which musts it fails. A Listing never changes the Purchase's state; a Rejected or Fulfilled Purchase takes none. The purchase Skill (read_skill) says how to check and rate one. Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

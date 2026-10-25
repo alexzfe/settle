@@ -8,6 +8,7 @@ import {
   MAX_DOCUMENT_BYTES,
   MAX_IMAGE_BYTES,
   type OperationInput,
+  PLUGIN_INSTALL,
 } from "@settle/core";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -74,8 +75,9 @@ export const JSON_CAP = MB;
  */
 export async function handleApi(core: Core, c: Context): Promise<Response> {
   const name = c.req.param("operation") ?? "";
+  const connections = CONNECTION_CALLS[name];
   const operation = core.operations.find((each) => each.name === name);
-  if (!operation || operation.surface === "agent") {
+  if (!connections && (!operation || operation.surface === "agent")) {
     const message = operation
       ? `${name} is a tool for the Agent, called over MCP; the web API does not offer it.`
       : `There is no operation "${name}".`;
@@ -99,7 +101,70 @@ export async function handleApi(core: Core, c: Context): Promise<Response> {
   } catch {
     return c.json({ error: { code: "validation", message: "The body is not valid JSON." } }, 400);
   }
+  if (connections) {
+    const { caller } = callerOf(c);
+    if (caller.kind !== "web") throw new Error("The web API is called by a Login");
+    return answer(c, async () => c.json(connections(core, caller.account, input)));
+  }
   return answer(c, async () => c.json((await core.run(name, callerOf(c), input)) as object));
+}
+
+/** One Connection, as the Account page lists it. */
+export interface ConnectionSummary {
+  id: number;
+  /** The host the Allow page named the client by: "claude.ai", or "localhost" for Claude Code. */
+  client: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** How to connect Claude to this server: the Connect to Claude block's button and command. */
+export interface ClaudeConnect {
+  /** The Account's MCP URL, which Claude's connector dialog takes. */
+  mcpUrl: string;
+  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
+  addConnectorUrl: string;
+  /** For Claude Code: the same connector for every folder, and the plugin with the Skills. */
+  claudeCodeCommand: string;
+}
+
+/**
+ * The Connections' web calls, which the server answers from core.accounts itself: they belong to
+ * the OAuth server (oauth.ts), not to the Home model's operations. JSON in and out, like the rest.
+ */
+const CONNECTION_CALLS: Record<string, (core: Core, account: number, input: unknown) => object> = {
+  list_connections: (core, account): { connections: ConnectionSummary[] } => ({
+    connections: core.accounts
+      .connections(account)
+      .map(({ id, clientHost, createdAt, lastUsedAt }) => ({
+        id,
+        client: clientHost,
+        createdAt,
+        lastUsedAt,
+      })),
+  }),
+  end_connection: (core, account, input): Record<string, never> => {
+    const id = (input as { connection?: unknown } | null)?.connection;
+    if (typeof id !== "number" || !core.accounts.disconnect(account, id)) {
+      throw new CoreError("not_found", "There is no such Connection.");
+    }
+    return {};
+  },
+  claude_connect: (core): ClaudeConnect => claudeConnect(core.accounts.mcpUrl),
+};
+
+/** The Connect to Claude block's links, for the server's MCP URL. */
+export function claudeConnect(mcpUrl: string): ClaudeConnect {
+  return {
+    mcpUrl,
+    addConnectorUrl:
+      "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Settle" +
+      `&connectorUrl=${encodeURIComponent(mcpUrl)}`,
+    // At user scope, so every folder gets both; the Home Folder's install is the project's.
+    claudeCodeCommand:
+      `claude mcp add --transport http --scope user settle ${mcpUrl} && ` +
+      PLUGIN_INSTALL.replace("--scope project", "--scope user"),
+  };
 }
 
 /**

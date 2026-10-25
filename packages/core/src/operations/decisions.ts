@@ -111,7 +111,9 @@ type RequirementIn = z.output<typeof requirementInput>;
 export const saveDecision = defineOperation({
   name: "save_decision",
   description:
-    "Creates or changes one Decision of this Home and returns a receipt. A Decision is a choice " +
+    "Creates or changes one Decision of this Home and returns a receipt. Read its kind's Skill " +
+    "first (read_skill: design-direction, color, or purchase), unless it is already loaded. " +
+    "A Decision is a choice " +
     "about the whole Home or one Room, always in one state: candidate (under consideration), " +
     "leaning (favoured), settled (committed), or rejected. A new one starts as a Candidate; " +
     "change its state only with set_decision_state. Its kind says what the app does with it: " +

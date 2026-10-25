@@ -1,11 +1,12 @@
-// The Account page: the Account logged in, its email and password, the browsers logged in to it,
-// everything in it to download, and deleting it.
+// The Account page: the Account logged in, its email and password, Claude connected to it, the
+// browsers logged in to it, everything in it to download, and deleting it.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import page from "./AccountPage.module.css";
 import styles from "./App.module.css";
 import { ACCOUNT_EXPORT_URL, call, login } from "./api";
+import { Connections, ConnectToClaude } from "./ConnectToClaude";
 import { formatDate, formatTime } from "./format";
 import { queryKeys, useAccount } from "./queries";
 import { Card } from "./ui/Card";
@@ -16,28 +17,42 @@ export function AccountPage() {
   const account = useAccount();
   if (account.isPending) return <p>Loading…</p>;
   if (account.isError) return <p className={styles.error}>{account.error.message}</p>;
-  const { email, admin, createdAt } = account.data.account;
+  const { email, admin, createdAt, password, google } = account.data.account;
   return (
     <>
       <h1>Your account</h1>
       <p className={styles.muted}>
         {email}
         {admin && ", the Admin of this server"}. Made {formatDate(createdAt)}.
+        {google && " You can log in with Google."}
       </p>
       <div className={page.columns}>
         <div>
           <Section title="Email">
             <Card>
-              <EmailForm email={email} />
+              {password ? (
+                <EmailForm email={email} />
+              ) : (
+                <p className={styles.muted}>
+                  Your email is what you log in with. To change it, set a password first: changing
+                  it asks for one.
+                </p>
+              )}
             </Card>
           </Section>
           <Section title="Password">
             <Card>
-              <PasswordForm />
+              <PasswordForm hasPassword={password} />
             </Card>
           </Section>
         </div>
         <div>
+          <Section title="Connect to Claude">
+            <ConnectToClaude />
+          </Section>
+          <Section title="Connections">
+            <Connections />
+          </Section>
           <Section title="Logins">
             <Logins />
           </Section>
@@ -101,12 +116,14 @@ function EmailForm({ email }: { email: string }) {
   );
 }
 
-function PasswordForm() {
+/** Change the password; or, for an Account made with Google, set its first one. */
+function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   const queryClient = useQueryClient();
   const [mismatch, setMismatch] = useState(false);
   const change = useMutation({
-    mutationFn: (input: { current: string; password: string }) => call("change_password", input),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.logins }),
+    mutationFn: (input: { current?: string; password: string }) => call("change_password", input),
+    // The Account too: one that had no password now has one.
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.account }),
   });
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,20 +133,28 @@ function PasswordForm() {
     setMismatch(password !== String(form.get("again") ?? ""));
     if (password !== String(form.get("again") ?? "")) return;
     change.mutate(
-      { current: String(form.get("current") ?? ""), password },
+      hasPassword ? { current: String(form.get("current") ?? ""), password } : { password },
       { onSuccess: () => element.reset() },
     );
   }
   return (
     <form className={`${styles.form} ${page.form}`} onSubmit={onSubmit}>
+      {!hasPassword && (
+        <p className={styles.muted}>
+          You log in with Google, so your account has no password. Set one to log in with your email
+          too.
+        </p>
+      )}
       <p className={styles.muted}>
         At least 12 characters; a few words in a row is fine. Every other browser logged in to your
         account is logged out.
       </p>
-      <label>
-        Current password{" "}
-        <input name="current" type="password" autoComplete="current-password" required />
-      </label>
+      {hasPassword && (
+        <label>
+          Current password{" "}
+          <input name="current" type="password" autoComplete="current-password" required />
+        </label>
+      )}
       <label>
         New password{" "}
         <input
@@ -145,14 +170,19 @@ function PasswordForm() {
         The same again <input name="again" type="password" autoComplete="new-password" required />
       </label>
       <button type="submit" disabled={change.isPending}>
-        Change password
+        {hasPassword ? "Change password" : "Set a password"}
       </button>
       {mismatch && (
         <p role="alert" className={styles.error}>
           The two new passwords are different. Type the same one twice.
         </p>
       )}
-      {change.isSuccess && <p role="status">Password changed. Other browsers are logged out.</p>}
+      {change.isSuccess && (
+        <p role="status">
+          {change.variables.current === undefined ? "Password set." : "Password changed."} Other
+          browsers are logged out.
+        </p>
+      )}
       {change.isError && (
         <p role="alert" className={styles.error}>
           {change.error.message}
@@ -193,6 +223,7 @@ function Logins() {
       >
         Log out everywhere
       </button>
+      <p>This disconnects Claude too.</p>
       {end.isError && (
         <p role="alert" className={styles.error}>
           {end.error.message}

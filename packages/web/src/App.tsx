@@ -34,6 +34,7 @@ import { documentTitle, HomeNameContext } from "./ui/documentTitle";
 import { SettleMark } from "./ui/SettleIcon";
 import { StateMark } from "./ui/StateMark";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { ConnectStep, NameYourHome } from "./WelcomePage";
 
 export const routes: RouteObject[] = [
   {
@@ -44,6 +45,23 @@ export const routes: RouteObject[] = [
         element: (
           <Shell>
             <HomeListPage />
+          </Shell>
+        ),
+      },
+      // The first run, while the Account has no Home: name it, then connect Claude.
+      {
+        path: "/welcome",
+        element: (
+          <Shell>
+            <NameYourHome />
+          </Shell>
+        ),
+      },
+      {
+        path: "/welcome/connect/:home",
+        element: (
+          <Shell>
+            <ConnectStep />
           </Shell>
         ),
       },

@@ -143,7 +143,15 @@ function stubAccount(account: { admin: boolean } | "expired") {
             { error: { code: "unauthorized", message: "Log in first." } },
             { status: 401 },
           )
-        : { account: { email: "sam@example.com", admin: account.admin, createdAt: "2026-10-22" } },
+        : {
+            account: {
+              email: "sam@example.com",
+              admin: account.admin,
+              createdAt: "2026-10-22",
+              password: true,
+              google: false,
+            },
+          },
   });
 }
 

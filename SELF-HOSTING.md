@@ -4,9 +4,9 @@ Settle runs as one container: the web app and the MCP endpoint your Claude Code 
 on port 4380, with everything it stores in one volume. The image is
 `ghcr.io/alexzfe/settle:latest`, for amd64 and arm64; each release is also tagged `vX.Y.Z`.
 
-Everyone logs in with their own account, an email and a password. Each account's Homes are its
-own: no other account can see them. The first account, the Admin, invites the rest. Settle never
-sends email; the email is only what you log in with.
+Everyone logs in with their own account, an email and a password, or Google if you turn it on.
+Each account's Homes are its own: no other account can see them. The first account, the Admin,
+invites the rest. Settle never sends email; the email is only what you log in with.
 
 Whoever runs the server can read its database, and so can an HTTPS proxy in the middle, such as
 Cloudflare. Tell the people you invite.
@@ -94,6 +94,46 @@ account's email and how many Homes it has, and nothing inside them.
 
 Each person's Account page changes their email and password, logs them out everywhere, downloads
 everything in their Homes as a `.zip`, and deletes their account.
+
+## Sign in with Google (optional)
+
+Off unless you turn it on. With it on, the login page offers **Log in with Google** next to the
+password, and an invite link offers **Join with Google**. Google is asked only who someone is (the
+`openid email profile` scopes); Settle keeps none of Google's tokens. Invites still decide who gets
+in: a Google account with no invite gets no account. An account whose email matches the Google
+account's verified email is linked to it at its first Google login, and can then use either. An
+account made with Google has no password until it sets one on its Account page.
+
+To turn it on, register Settle with Google, once, in [Google Cloud's
+console](https://console.cloud.google.com). It's free, with no billing:
+
+1. Create a project ([New project](https://console.cloud.google.com/projectcreate)), named Settle.
+2. In **Google Auth Platform**, click **Get started**. App name Settle, your email as the support
+   and contact email, and Audience **External**.
+3. Under **Branding → Authorized domains**, add the domain your Settle is on (`example.com` for
+   `settle.example.com`).
+4. Under **Data Access**, add the scopes `openid`, `.../auth/userinfo.email` and
+   `.../auth/userinfo.profile`, and no others. Leave **Audience** in **Testing**: with only these
+   three scopes, nobody needs adding as a test user, there is no review, and sign-ins don't expire
+   after 7 days. Another scope would bring all three back.
+5. Under **Clients**, create a client of type **Web application**, with one authorized redirect
+   URI: your `SETTLE_PUBLIC_ORIGIN` followed by `/auth/google/callback`, such as
+   `https://settle.example.com/auth/google/callback`. Copy the client ID and secret. Google shows
+   the secret only this once.
+6. Add both to `.env` and restart:
+
+   ```sh
+   SETTLE_GOOGLE_CLIENT_ID=123-abc.apps.googleusercontent.com
+   SETTLE_GOOGLE_CLIENT_SECRET=GOCSPX-...
+   ```
+
+   ```sh
+   docker compose up -d
+   ```
+
+Google may take a few minutes to accept a new redirect URI. Settle refuses to start with only one of
+the two set. To turn it off again, remove both. Accounts made with Google then log in with a reset
+link from the Admin page, which sets a password.
 
 ## The Quick Guide on a phone
 

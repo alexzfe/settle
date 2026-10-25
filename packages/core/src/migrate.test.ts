@@ -40,6 +40,8 @@ describe("migrate", () => {
       { id: 16 },
       { id: 17 },
       { id: 18 },
+      { id: 19 },
+      { id: 20 },
     ]);
     db.close();
   });
@@ -48,7 +50,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 19 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 21 });
     db.close();
   });
 
@@ -364,12 +366,15 @@ describe("migrate", () => {
       .all()
       .map((row) => row.name);
     expect(tables).toEqual([
+      "access_tokens",
       "account_links",
       "accounts",
+      "authorization_codes",
       "blueprint_pages",
       "blueprints",
       "change_log",
       "conflicts",
+      "connections",
       "constraints",
       "decision_basis",
       "decision_evidence",
@@ -388,6 +393,7 @@ describe("migrate", () => {
       "logins",
       "migrations",
       "notes",
+      "oauth_clients",
       "photos",
       "requirements",
       "rooms",

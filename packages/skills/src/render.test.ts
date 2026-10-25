@@ -23,6 +23,13 @@ describe("renderSkill", () => {
     );
   });
 
+  it("refuses a description the server can't read back without a YAML parser", () => {
+    const folded = source.replace("description: Records the Home.", "description: >\n  Records.");
+    expect(() => renderSkill("home-intake", folded, "")).toThrow(/one line/);
+    const quoted = source.replace("Records the Home.", '"Records the \\"Home\\"."');
+    expect(renderSkill("home-intake", quoted, "")).toContain('Records the \\"Home\\".');
+  });
+
   it("refuses frontmatter fields outside the spec", () => {
     const extra = source.replace("---\n\n", "allowed-tools: Read\n---\n\n");
     expect(() => renderSkill("home-intake", extra, "")).toThrow(/allowed-tools/);

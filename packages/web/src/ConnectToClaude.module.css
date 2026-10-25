@@ -1,0 +1,43 @@
+/* The Connect to Claude block: a link that looks like the primary button, and Claude Code's
+   command folded under it. Values come from tokens.css. */
+
+.block p {
+  margin: 0 0 var(--space-3);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius);
+  background: var(--color-ink);
+  color: var(--color-ground);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.button:hover {
+  border-color: var(--color-ink-muted);
+  background: var(--color-ink-muted);
+  color: var(--color-ground);
+}
+
+.code {
+  font-size: var(--text-sm);
+}
+
+.code summary {
+  margin-bottom: var(--space-2);
+  cursor: pointer;
+}
+
+.code pre {
+  margin: 0 0 var(--space-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.code p {
+  margin-top: var(--space-2);
+}

@@ -65,8 +65,9 @@ export const saveRoom = defineOperation({
     "> estimated): that part is refused and the receipt states both values, with their " +
     "Provenance; a write with nothing else in it is refused as a whole. Tell the user both values " +
     "in one line and ask; only if they say to replace it, call again with overrideProvenance " +
-    "quoting their words. Tell the user what the receipt says changed. Needs the open Session's " +
-    "id as `session`; a closed Session is refused.",
+    "quoting their words. Tell the user what the receipt says changed. The home-intake Skill " +
+    "(read_skill) says how to record a Room. Needs the open Session's id as `session`; a closed " +
+    "Session is refused.",
   input: saveRoomInput,
   readOnly: false,
   surface: "agent",

@@ -1,12 +1,19 @@
 export {
+  ACCESS_TOKEN_SECONDS,
   type Accounts,
+  CONNECTION_DAYS,
+  type CurrentConnection,
   type CurrentLogin,
+  type GoogleIdentity,
+  type GoogleLogInResult,
+  type GrantResult,
   LINK_MISS,
   LOGIN_DAYS,
   type LogInResult,
   PASSWORD_MAX,
   PASSWORD_MIN,
   type PasswordCost,
+  type TokenGrant,
 } from "./accounts.js";
 export {
   type AnyOperation,
@@ -86,4 +93,4 @@ export {
   renderRoomSheet,
   renderViewedPages,
 } from "./render.js";
-export type { AccountLinkKind, AccountRow } from "./store.js";
+export type { AccountLinkKind, AccountRow, ConnectionRow, OauthClientRow } from "./store.js";

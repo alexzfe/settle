@@ -1,5 +1,6 @@
 Session: home-intake-vwxy
-Pass session "home-intake-vwxy" on every write in this conversation.
+Pass session "home-intake-vwxy" on every call in this conversation.
+The Home in the app: http://127.0.0.1:4380/homes/fixture-home
 
 Home-wide Decisions in force:
 
@@ -27,6 +28,7 @@ Other Home-wide Decisions, Settled:
 - Keep the original floors (keep-the-original-floors): Other, Settled; 1 open Conflict. The oak boards and terracotta tiles stay.
 
 Session: home-intake-vwxy
-Pass session "home-intake-vwxy" on every write in this conversation.
+Pass session "home-intake-vwxy" on every call in this conversation.
+The Home in the app: http://127.0.0.1:4380/homes/fixture-home
 
 This Session already has the opening. If the Home Overview is no longer in view, call open_session again with resend: true.

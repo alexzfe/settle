@@ -87,7 +87,10 @@ export async function startServer(
       port,
       webDist,
       ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
-      ...(config.trustedProxy ? { auth: { trustedProxy: config.trustedProxy } } : {}),
+      auth: {
+        ...(config.trustedProxy ? { trustedProxy: config.trustedProxy } : {}),
+        ...(config.google ? { google: { client: config.google } } : {}),
+      },
     });
     if (lanHost) lanApp = createLanApp({ core: open });
     const setupUrl = open.accounts.makeSetupLink();

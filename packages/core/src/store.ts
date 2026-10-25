@@ -71,11 +71,13 @@ export interface HomeRow {
 export interface AccountRow {
   id: number;
   email: string;
-  /** scrypt$<N>$<r>$<p>$<salt>$<hash> (accounts.ts). */
+  /** scrypt$<N>$<r>$<p>$<salt>$<hash> (accounts.ts), or NO_PASSWORD: '' for a Google-only Account. */
   passwordHash: string;
   admin: boolean;
   disabledAt: string | null;
   createdAt: string;
+  /** The Google account linked to it, by Google's permanent user id; null when none is. */
+  googleSub: string | null;
 }
 
 /** One browser's signed-in state for an Account, by the SHA-256 of its cookie's token. */
@@ -102,6 +104,50 @@ export interface AccountLinkRow {
   expiresAt: string;
   usedAt: string | null;
   madeBy: number | null;
+}
+
+/** A client that registered itself (RFC 7591); a CIMD client has none. */
+export interface OauthClientRow {
+  id: number;
+  clientId: string;
+  clientName: string | null;
+  /** The exact redirect URIs it registered. */
+  redirectUris: string[];
+  createdAt: string;
+}
+
+/** An Agent's authorised link to an Account, by the SHA-256 of its refresh token. */
+export interface ConnectionRow {
+  id: number;
+  accountId: number;
+  /** The CIMD URL, or a registered client's id. */
+  clientId: string;
+  /** The host the Allow page named it by. */
+  clientHost: string;
+  createdAt: string;
+  lastUsedAt: string;
+  /** Null until its authorisation code is exchanged. */
+  refreshHash: string | null;
+  refreshExpiresAt: string | null;
+}
+
+/** A Connection's short-lived bearer token for /mcp, by its SHA-256. */
+export interface AccessTokenRow {
+  id: number;
+  tokenHash: string;
+  connectionId: number;
+  expiresAt: string;
+}
+
+/** A one-time authorisation code, by its SHA-256, with the PKCE challenge it must answer. */
+export interface AuthorizationCodeRow {
+  id: number;
+  codeHash: string;
+  connectionId: number;
+  redirectUri: string;
+  codeChallenge: string;
+  expiresAt: string;
+  usedAt: string | null;
 }
 
 export interface LevelRow {
@@ -583,6 +629,10 @@ export type Tables = HomeTables & {
   accounts: AccountRow;
   logins: LoginRow;
   account_links: AccountLinkRow;
+  oauth_clients: OauthClientRow;
+  connections: ConnectionRow;
+  access_tokens: AccessTokenRow;
+  authorization_codes: AuthorizationCodeRow;
 };
 type Table = keyof Tables;
 type NewRow<T extends Table> = Omit<Tables[T], "id">;
@@ -615,9 +665,11 @@ export interface Store {
   account(id: number): AccountRow | undefined;
   /** Whatever the case of `email`. */
   accountByEmail(email: string): AccountRow | undefined;
+  /** The Account linked to this Google account. */
+  accountByGoogle(sub: string): AccountRow | undefined;
   /** In the order they were made. */
   accounts(): AccountRow[];
-  /** Deletes the Account with its Logins and links. Its Homes must be deleted first. */
+  /** Deletes the Account with its Logins, links and Connections. Its Homes must go first. */
   deleteAccount(id: number): void;
 
   login(tokenHash: string): LoginRow | undefined;
@@ -631,6 +683,25 @@ export interface Store {
   /** Links of one kind, newest first. */
   accountLinks(kind: AccountLinkKind): AccountLinkRow[];
   deleteAccountLink(id: number): void;
+
+  oauthClient(clientId: string): OauthClientRow | undefined;
+  /** Deletes the registered clients made before `before` that no Connection names. */
+  pruneOauthClients(before: string): void;
+  connection(id: number): ConnectionRow | undefined;
+  connectionByRefresh(refreshHash: string): ConnectionRow | undefined;
+  /** Newest first. */
+  connections(accountId: number): ConnectionRow[];
+  /** Ends a Connection with its access tokens and codes. */
+  deleteConnection(id: number): void;
+  /** Ends every Connection of the Account. */
+  deleteConnections(accountId: number): void;
+  accessToken(tokenHash: string): AccessTokenRow | undefined;
+  /**
+   * Deletes the access tokens and codes expired by `now`, the Connections lapsed by then, and
+   * those whose code was never exchanged and is gone.
+   */
+  pruneConnections(now: string): void;
+  authorizationCode(codeHash: string): AuthorizationCodeRow | undefined;
 
   insertLevel(level: Omit<LevelRow, "id">): LevelRow;
   /** In storey order. */
@@ -739,6 +810,7 @@ const JSON_KEYS = new Set([
   "quickLines",
   "dimensions",
   "listedFields",
+  "redirectUris",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 
@@ -892,6 +964,7 @@ export function openStore(path: string): Store {
       Number(get<{ count: number }>("SELECT count(*) AS count FROM accounts")?.count),
     account: (id) => one<AccountRow>("SELECT * FROM accounts WHERE id = ?", id),
     accountByEmail: (email) => one<AccountRow>("SELECT * FROM accounts WHERE email = ?", email),
+    accountByGoogle: (sub) => one<AccountRow>("SELECT * FROM accounts WHERE google_sub = ?", sub),
     accounts: () => rows<AccountRow>("SELECT * FROM accounts ORDER BY id"),
     deleteAccount(id) {
       run("DELETE FROM accounts WHERE id = ?", id);
@@ -920,6 +993,43 @@ export function openStore(path: string): Store {
     deleteAccountLink(id) {
       run("DELETE FROM account_links WHERE id = ?", id);
     },
+
+    oauthClient: (clientId) =>
+      one<OauthClientRow>("SELECT * FROM oauth_clients WHERE client_id = ?", clientId),
+    pruneOauthClients(before) {
+      run(
+        `DELETE FROM oauth_clients WHERE created_at < ? AND NOT EXISTS
+           (SELECT 1 FROM connections WHERE connections.client_id = oauth_clients.client_id)`,
+        before,
+      );
+    },
+    connection: (id) => one<ConnectionRow>("SELECT * FROM connections WHERE id = ?", id),
+    connectionByRefresh: (refreshHash) =>
+      one<ConnectionRow>("SELECT * FROM connections WHERE refresh_hash = ?", refreshHash),
+    connections: (accountId) =>
+      rows<ConnectionRow>(
+        "SELECT * FROM connections WHERE account_id = ? ORDER BY created_at DESC, id DESC",
+        accountId,
+      ),
+    deleteConnection(id) {
+      run("DELETE FROM connections WHERE id = ?", id);
+    },
+    deleteConnections(accountId) {
+      run("DELETE FROM connections WHERE account_id = ?", accountId);
+    },
+    accessToken: (tokenHash) =>
+      one<AccessTokenRow>("SELECT * FROM access_tokens WHERE token_hash = ?", tokenHash),
+    pruneConnections(now) {
+      run("DELETE FROM access_tokens WHERE expires_at <= ?", now);
+      run("DELETE FROM authorization_codes WHERE expires_at <= ?", now);
+      run("DELETE FROM connections WHERE refresh_expires_at <= ?", now);
+      run(
+        `DELETE FROM connections WHERE refresh_hash IS NULL AND NOT EXISTS
+           (SELECT 1 FROM authorization_codes WHERE connection_id = connections.id)`,
+      );
+    },
+    authorizationCode: (codeHash) =>
+      one<AuthorizationCodeRow>("SELECT * FROM authorization_codes WHERE code_hash = ?", codeHash),
 
     insertLevel: (level) => insert("levels", level),
     levels: (homeId) =>

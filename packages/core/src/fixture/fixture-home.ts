@@ -120,6 +120,7 @@ export async function createFixtureHome(
     admin: true,
     disabledAt: null,
     createdAt: "2026-09-01T09:00:00.000Z",
+    googleSub: null,
   });
   const web: CallContext = { caller: { kind: "web", account: account.id } };
   admins.set(core, web);

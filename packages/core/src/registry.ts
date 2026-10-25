@@ -3,24 +3,29 @@ import type { PasswordCost } from "./accounts.js";
 import type { RecordKind } from "./events.js";
 import type { FileStore, PdfRenderer } from "./files.js";
 import type { ImageFetcher } from "./images.js";
+import type { SkillTexts } from "./operations/skill-texts.js";
 import type { HomeRow, Store } from "./store.js";
 
 /**
- * Who is calling. The Agent calls on behalf of a Session (absent only when open_session starts a
- * new one), and the server has already checked its Home's key. The web UI calls as the Account
+ * Who is calling. The Agent calls on behalf of a Session (absent only before open_session starts
+ * one): through a Connection, for the Account it carries, whose Homes it may reach one Session at
+ * a time; or through a Home Folder, whose Home's key the server has already checked. The web UI calls as the Account
  * logged in, from one of its Logins, and needs no Session: it reaches only that Account's Homes.
  * Whoever holds a Quick Guide's link, a phone that is not logged in, may open that guide by its
  * token and nothing else.
  */
 export type Caller =
-  | { kind: "session"; session?: string }
+  | { kind: "session"; session?: string; account?: number }
   | { kind: "web"; account: number; login?: number }
   | { kind: "guide" };
 
 /** What an adapter passes with each call. */
 export interface CallContext {
   caller: Caller;
-  /** The Home's slug: from the MCP endpoint's URL, or from `home` in the web API's body. */
+  /**
+   * The Home's slug: from the Home Folder's MCP endpoint URL, or from `home` in the web API's
+   * body. Through a Connection there is none: the Session decides the Home.
+   */
   home?: string;
 }
 
@@ -50,6 +55,8 @@ export interface OperationContext extends CallContext {
   fetchImage: ImageFetcher;
   /** The folder holding uploads/ and rendered/, which the stored Blueprint paths are relative to. */
   dataDir(): string;
+  /** The built Skills, read once on first use, which the Agent without them reads as guides. */
+  skillTexts(): SkillTexts;
   /** Now, as an ISO timestamp. */
   now(): string;
   /** A random integer from 0 up to, not including, `max`. */

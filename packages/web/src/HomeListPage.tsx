@@ -1,7 +1,8 @@
-// Every Home as a card, and the form that creates one.
+// Every Home as a card, and the form that creates one. An Account with no Home yet is led into the
+// first run instead (WelcomePage.tsx).
 
 import { useQueries } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 import styles from "./App.module.css";
 import { call } from "./api";
 import { CreateHomeForm } from "./CreateHomeForm";
@@ -11,6 +12,8 @@ import { Card } from "./ui/Card";
 import { Section } from "./ui/Section";
 
 export function HomeListPage() {
+  const homes = useHomes();
+  if (homes.data?.homes.length === 0) return <Navigate to="/welcome" replace />;
   return (
     <>
       <h1>Homes</h1>
@@ -36,7 +39,6 @@ function HomeList() {
   });
   if (homes.isPending) return <p>Loading…</p>;
   if (homes.isError) return <p className={styles.error}>{homes.error.message}</p>;
-  if (all.length === 0) return <p className={styles.muted}>No Homes yet.</p>;
   return (
     <ul className={list.cards}>
       {all.map((home, index) => {
