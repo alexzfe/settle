@@ -357,6 +357,7 @@ a.reason:hover {
 
 /* The empty slot: a dashed box that says what to do with it and opens the paste box. */
 .photoEmpty {
+  --press-scale: 0.99;
   padding: var(--space-3);
   border: 1px dashed var(--color-hairline);
   color: var(--color-ink-muted);

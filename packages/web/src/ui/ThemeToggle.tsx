@@ -34,8 +34,14 @@ export function applyTheme(
   root: HTMLElement = document.documentElement,
   storage: Pick<Storage, "setItem" | "removeItem"> | undefined = safeStorage(),
 ): void {
+  // Hold transitions off until the new colours have painted, so no control fades between themes.
+  root.setAttribute("data-theme-switching", "");
   if (choice === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", choice);
+  const settle = () => root.removeAttribute("data-theme-switching");
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => requestAnimationFrame(settle));
+  } else settle();
   try {
     if (choice === "system") storage?.removeItem(THEME_KEY);
     else storage?.setItem(THEME_KEY, choice);

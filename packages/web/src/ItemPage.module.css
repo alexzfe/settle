@@ -106,6 +106,7 @@
 
 /* A Photo is a button that opens it full size; it keeps the picture's own frame. */
 .photoButton {
+  --press-scale: 0.99;
   display: block;
   width: 100%;
   padding: 0;
@@ -191,6 +192,12 @@
   clip-path: inset(50%);
   overflow: hidden;
   white-space: nowrap;
+}
+
+.addForm,
+.captionForm,
+.crop {
+  --press-scale: 0.99;
 }
 
 .addForm,

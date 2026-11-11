@@ -148,6 +148,12 @@
   box-sizing: border-box;
 }
 
+/* Thinner, truer strokes on macOS; other systems ignore it. */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   margin: 0;
   background: var(--color-ground);
@@ -155,7 +161,6 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-md);
   line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -166,6 +171,7 @@ h3 {
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 h1 {
@@ -184,6 +190,16 @@ h4 {
   margin-block: var(--space-4) var(--space-2);
   font-size: var(--text-md);
   font-weight: 600;
+  text-wrap: balance;
+}
+
+/* No lone word on a paragraph's last line. */
+p,
+li,
+dd,
+blockquote,
+figcaption {
+  text-wrap: pretty;
 }
 
 p {
@@ -196,6 +212,7 @@ a {
   text-decoration-color: var(--color-stone);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
+  transition: text-decoration-color 150ms ease-out;
 }
 
 a:hover {
@@ -223,6 +240,25 @@ button {
   font-weight: 500;
   line-height: 1.2;
   cursor: pointer;
+  transition-property: background-color, border-color, color, transform;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+/* A small press, only where motion is welcome. Wide buttons set --press-scale nearer 1, or the
+   shrink reads as a jump. */
+@media (prefers-reduced-motion: no-preference) {
+  button:active:not(:disabled) {
+    transform: scale(var(--press-scale, 0.97));
+  }
+}
+
+/* While the theme changes, nothing fades: the colours swap everywhere in the same frame. */
+:root[data-theme-switching] *,
+:root[data-theme-switching] *::before,
+:root[data-theme-switching] *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat every control's own transition */
+  transition: none !important;
 }
 
 button:hover {
@@ -259,6 +295,9 @@ textarea {
   color: var(--color-ink);
   font: inherit;
   font-size: var(--text-sm);
+  transition-property: border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 input[type="checkbox"],
@@ -380,6 +419,20 @@ hr {
 ul,
 ol {
   padding-inline-start: var(--space-6);
+}
+
+/* Motion is a nicety: off entirely when the system asks for less. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: must beat every page's own motion */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: must beat every page's own motion */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: must beat every page's own motion */
+    animation-iteration-count: 1 !important;
+  }
 }
 
 ::selection {

@@ -22,8 +22,20 @@
 }
 
 .askAgent button {
+  position: relative;
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-xs);
+}
+
+/* Small buttons keep their quiet size but take a taller tap: an invisible 4px band above and
+   below, half the usual 8px gap, so two bands never overlap. The theme switch is 2rem tall, so
+   with its bands it is a 40px tap. */
+.askAgent button::after,
+.live button::after,
+.themeToggle button::after {
+  position: absolute;
+  inset: -4px 0;
+  content: "";
 }
 
 .askAgentNote {
@@ -184,6 +196,7 @@
 }
 
 .live button {
+  position: relative;
   padding: 0.1rem var(--space-2);
   font-size: var(--text-xs);
 }
@@ -221,7 +234,10 @@
 }
 
 .themeToggle button {
+  position: relative;
+  min-height: 2rem;
   padding: 0.2rem var(--space-2);
+  --press-scale: 1;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -359,6 +375,7 @@
   align-items: center;
   padding: var(--space-4);
   background: rgb(28 26 23 / 0.35);
+  animation: fade-in 150ms ease-out;
 }
 
 .dialog {
@@ -370,8 +387,24 @@
   border-radius: var(--radius);
   background: var(--color-ground);
   box-shadow: var(--shadow-raised);
+  animation: rise-in 200ms ease-out;
 }
 
 .dialog:focus {
   outline: none;
+}
+
+/* The dialog arrives: the backdrop fades, the panel rises a few pixels into place. It leaves
+   at once, which reads as quicker than any exit. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
 }
