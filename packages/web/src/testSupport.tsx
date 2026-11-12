@@ -8,15 +8,18 @@ import { routes as appRoutes } from "./App";
 import type { OperationName, Operations, UploadName, Uploads } from "./api";
 import { createQueryClient } from "./queries";
 
+/** A handler's answer, or a promise of one, so a test can hold a call in flight. */
+type Answer<T> = T | Response | Promise<T | Response>;
+
 export type ApiHandlers = {
-  [Op in OperationName]?: (input: Operations[Op]["input"]) => Operations[Op]["output"] | Response;
+  [Op in OperationName]?: (input: Operations[Op]["input"]) => Answer<Operations[Op]["output"]>;
 } & {
-  [Op in UploadName]?: (form: FormData) => Uploads[Op] | Response;
+  [Op in UploadName]?: (form: FormData) => Answer<Uploads[Op]>;
 };
 
 /**
  * Answers POST /api/<op> from the handlers, passing each the parsed JSON input or, for an upload,
- * the form; an operation without one gets a 404 error.
+ * the form; an operation without one gets a 404 error. A handler may answer later, with a promise.
  */
 export function stubApi(handlers: ApiHandlers) {
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -29,7 +32,7 @@ export function stubApi(handlers: ApiHandlers) {
       return Response.json({ error }, { status: 404 });
     }
     const body = init?.body;
-    const answer = handler(body instanceof FormData ? body : JSON.parse(String(body)));
+    const answer = await handler(body instanceof FormData ? body : JSON.parse(String(body)));
     return answer instanceof Response ? answer : Response.json(answer);
   });
   vi.stubGlobal("fetch", fetch);
