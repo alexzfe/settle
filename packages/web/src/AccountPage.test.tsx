@@ -22,6 +22,7 @@ const sam = {
   createdAt: "2026-10-01T10:00:00.000Z",
   password: true,
   google: false,
+  googleSignIn: false,
 };
 
 function stubAccountPage(handlers: ApiHandlers = {}) {
@@ -88,7 +89,9 @@ it("changes the password given the current one, and checks the new one was typed
 
   fireEvent.change(field("The same again"), { target: { value: "a brand new password" } });
   fireEvent.click(screen.getByRole("button", { name: "Change password" }));
-  await screen.findByText(/Password changed\. Other browsers are logged out\./);
+  await screen.findByText(
+    /Password changed\. Other browsers are logged out, and Claude is disconnected\./,
+  );
   expect(inputsTo(fetch, "change_password")).toEqual([
     { current: "the old password", password: "a brand new password" },
   ]);
@@ -111,7 +114,9 @@ it("lets an Account made with Google set its first password, with no current one
   fireEvent.change(field("New password"), { target: { value: "a brand new password" } });
   fireEvent.change(field("The same again"), { target: { value: "a brand new password" } });
   fireEvent.click(screen.getByRole("button", { name: "Set a password" }));
-  await screen.findByText(/Password set\. Other browsers are logged out\./);
+  await screen.findByText(
+    /Password set\. Other browsers are logged out, and Claude is disconnected\./,
+  );
   expect(inputsTo(fetch, "change_password")).toEqual([{ password: "a brand new password" }]);
 });
 
@@ -119,7 +124,9 @@ it("logs out everywhere, this browser included", async () => {
   const go = vi.spyOn(login, "go").mockImplementation(() => {});
   const fetch = stubAccountPage({ end_logins: () => ({}) });
   renderRoutes("/account");
-  fireEvent.click(await screen.findByRole("button", { name: "Log out everywhere" }));
+  const button = await screen.findByRole("button", { name: "Log out everywhere" });
+  expect(screen.getByText(/each Home Folder must be set up again/)).toBeTruthy();
+  fireEvent.click(button);
   await waitFor(() => expect(go).toHaveBeenCalledTimes(1));
   expect(inputsTo(fetch, "end_logins")).toEqual([{}]);
 });
@@ -193,4 +200,20 @@ it("names a Connection's client and its last use in words", () => {
   expect(dayWords("2026-10-24T01:00:00", now)).toBe("today");
   expect(dayWords("2026-10-23T23:00:00", now)).toBe("yesterday");
   expect(dayWords("2026-09-02T12:00:00", now)).toBe("2 Sep");
+});
+
+it("offers to link Google, by a link that starts the trip, only when the server has it and none is linked", async () => {
+  stubAccountPage({ get_account: () => ({ account: { ...sam, googleSignIn: true } }) });
+  renderRoutes("/account");
+  const link = await screen.findByRole("link", { name: "Link Google" });
+  expect(link.getAttribute("href")).toBe("/auth/google?link=1");
+  cleanup();
+
+  for (const account of [sam, { ...sam, googleSignIn: true, google: true }]) {
+    stubAccountPage({ get_account: () => ({ account }) });
+    renderRoutes("/account");
+    await screen.findByText(/sam@example\.com/);
+    expect(screen.queryByRole("link", { name: "Link Google" })).toBeNull();
+    cleanup();
+  }
 });

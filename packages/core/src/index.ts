@@ -8,12 +8,14 @@ export {
   type GoogleLogInResult,
   type GrantResult,
   LINK_MISS,
+  type LinkGoogleResult,
   LOGIN_DAYS,
   type LogInResult,
   PASSWORD_MAX,
   PASSWORD_MIN,
   type PasswordCost,
   type TokenGrant,
+  WRONG_PASSWORD,
 } from "./accounts.js";
 export {
   type AnyOperation,
