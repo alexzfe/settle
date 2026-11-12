@@ -27,25 +27,62 @@ export function migrate(path: string): DatabaseSync {
 
   const applied = appliedIds(db);
   const pending = listMigrations().filter((migration) => !applied.has(migration.id));
-  if (pending.length === 0) return db;
+  if (pending.length > 0) {
+    inTransaction(db, () => {
+      for (const migration of pending) {
+        db.exec(readFileSync(join(MIGRATIONS_DIR, migration.file), "utf8"));
+        // Prepared after the file runs: 0000_init is what creates the table.
+        db.prepare("INSERT INTO migrations (id, applied_at) VALUES (?, ?)").run(
+          migration.id,
+          new Date().toISOString(),
+        );
+      }
+    });
+  }
+  adoptOlderKeys(db);
+  return db;
+}
 
+/** Runs `work` in one transaction; on failure rolls back, closes the database, and rethrows. */
+function inTransaction(db: DatabaseSync, work: () => void): void {
   db.exec("BEGIN");
   try {
-    for (const migration of pending) {
-      db.exec(readFileSync(join(MIGRATIONS_DIR, migration.file), "utf8"));
-      // Prepared after the file runs: 0000_init is what creates the table.
-      db.prepare("INSERT INTO migrations (id, applied_at) VALUES (?, ?)").run(
-        migration.id,
-        new Date().toISOString(),
-      );
-    }
+    work();
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
     db.close();
     throw error;
   }
-  return db;
+}
+
+/**
+ * Takes in a Home key that a Settle from before 0021 wrote into homes.token after a rollback (a
+ * new Home, or its "New key…"): the key becomes that Home's one key, kept by its hash as 0021 keeps
+ * keys, and the plain copy is emptied. One key replaces the Home's others because that older
+ * Settle has one key per Home, so its "New key…" meant to cancel the rest. Runs on every start,
+ * since 0021 runs only once.
+ */
+function adoptOlderKeys(db: DatabaseSync): void {
+  const hasKeys = db
+    .prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'home_keys'")
+    .get();
+  if (!hasKeys) return;
+  const older = db.prepare("SELECT id, token FROM homes WHERE token IS NOT NULL").all() as {
+    id: number;
+    token: string;
+  }[];
+  if (older.length === 0) return;
+  const now = new Date().toISOString();
+  inTransaction(db, () => {
+    for (const home of older) {
+      db.prepare("DELETE FROM home_keys WHERE home_id = ?").run(home.id);
+      db.prepare(
+        "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, settle_sha256(?), ?)",
+      ).run(home.id, home.token, now);
+      db.prepare("UPDATE homes SET token = NULL WHERE id = ?").run(home.id);
+    }
+  });
 }
 
 function listMigrations(): Migration[] {

@@ -487,6 +487,39 @@ describe("migrate", () => {
     db.close();
   });
 
+  it("hashes a key an older Settle wrote after 0021, as that Home's one key, on every start", () => {
+    // After a rollback, v2.1.0 writes a Home's key into homes.token again (a new Home, or "New
+    // key…"). Rolled forward, 0021 has already run, so the start itself must take that key in.
+    const path = tempDatabase();
+    const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+    const first = migrate(path);
+    first.exec(
+      "INSERT INTO homes (id, slug, name, country, city, latitude) VALUES " +
+        "(1, 'house', 'House', 'PT', 'Lisbon', 38.7), (2, 'flat', 'Flat', 'PT', 'Porto', 41.1)",
+    );
+    const addKey = first.prepare(
+      "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, ?, '')",
+    );
+    addKey.run(1, sha("from-the-new-build"));
+    addKey.run(2, sha("flat-key"));
+    // v2.1.0's "New key…" on house: the key it shows replaces the Home's others.
+    first.exec("UPDATE homes SET token = 'rotated-on-v2.1.0' WHERE slug = 'house'");
+    first.close();
+
+    const db = migrate(path);
+    expect(db.prepare("SELECT slug, token FROM homes ORDER BY id").all()).toEqual([
+      { slug: "house", token: null },
+      { slug: "flat", token: null },
+    ]);
+    expect(
+      db.prepare("SELECT home_id, key_hash FROM home_keys ORDER BY home_id, key_hash").all(),
+    ).toEqual([
+      { home_id: 1, key_hash: sha("rotated-on-v2.1.0") },
+      { home_id: 2, key_hash: sha("flat-key") },
+    ]);
+    db.close();
+  });
+
   it("turns on WAL and foreign keys", () => {
     const db = migrate(tempDatabase());
     expect(db.prepare("PRAGMA journal_mode").get()).toEqual({ journal_mode: "wal" });
