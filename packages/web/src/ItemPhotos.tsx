@@ -10,7 +10,7 @@ import type { PercentCrop } from "react-image-crop";
 import styles from "./App.module.css";
 import { call, type Photo, type PhotoOwner, type PhotoWall, photoUrl, upload } from "./api";
 import sheet from "./ItemPage.module.css";
-import { formatPartialDate } from "./itemDates";
+import { formatPartialDate, localDay } from "./itemDates";
 import { type CropArea, type PreparedPhoto, preparePhoto } from "./photoPrep";
 import { queryKeys } from "./queries";
 import { Dialog } from "./ui/Dialog";
@@ -60,12 +60,6 @@ function usePhotoWrite<Input>(
   });
 }
 
-/** A day as the Photos store it, YYYY-MM-DD, in the reader's time zone. */
-function isoDay(date: Date): string {
-  const two = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
-}
-
 /**
  * Photos grouped by the day they were taken, in the order given (newest first), each group headed
  * "Today" or "14 Mar 2026".
@@ -79,7 +73,7 @@ export function photoGroups(
     const last = groups.at(-1);
     if (last?.day === photo.takenOn) last.photos.push(photo);
     else {
-      const label = photo.takenOn === isoDay(today) ? "Today" : photoDate(photo);
+      const label = photo.takenOn === localDay(today) ? "Today" : photoDate(photo);
       groups.push({ day: photo.takenOn, label, photos: [photo] });
     }
   }
@@ -648,7 +642,7 @@ export function AddPhoto({
     if ("room" in owner && wall !== null) form.set("wall", String(wall));
     form.set("file", prepared.file, decoded ? "photo.jpg" : picked.name);
     form.set("thumb", prepared.thumb, decoded ? "thumb.jpg" : picked.name);
-    if (prepared.takenOn) form.set("takenOn", prepared.takenOn);
+    form.set("takenOn", prepared.takenOn);
     if (caption.trim()) form.set("caption", caption.trim());
     save.mutate(form, { onSuccess: close });
   }

@@ -11,6 +11,7 @@ import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { renderViewedPhotos } from "../render.js";
 import type { HomeRow, ItemRow, PhotoRow, RoomRow, WallRow } from "../store.js";
+import { homeToday } from "../time-zone.js";
 import { newestFirst } from "./model.js";
 import {
   addPhotoInput,
@@ -45,7 +46,7 @@ export const addPhoto = defineOperation({
   description:
     "Adds a Photo to one Room or one Item, Archived ones too, as multipart/form-data: `room` or " +
     "`item`, the photo as `file` and its thumbnail as `thumb`, both made by the browser, with " +
-    "`takenOn` (today when left out), an optional one-line `caption`, and for a Room an " +
+    "`takenOn` (today in the Home's time zone when left out), an optional one-line `caption`, and for a Room an " +
     "optional `wall`, the position of the Wall it shows. Answers the owner's Photos, newest " +
     "first.",
   input: addPhotoInput,
@@ -55,7 +56,7 @@ export const addPhoto = defineOperation({
     const home = requireHome(context);
     const file = uploadedImage(input.file, { name: "That photo", heic: true });
     const thumb = uploadedImage(input.thumb, { name: "Its thumbnail", heic: true });
-    const today = context.now().slice(0, 10);
+    const today = homeToday(context.now(), home);
     const takenOn = input.takenOn ?? today;
     if (takenOn > tomorrow(today)) {
       throw new CoreError("validation", `A Photo can't be taken in the future, on ${takenOn}.`);
@@ -155,10 +156,12 @@ export const deletePhoto = defineOperation({
   surface: "web",
   handler(context, input): PhotosResult {
     const home = requireHome(context);
-    return context.write("web", (log) => {
+    let removed: { path: string; thumbPath: string } | undefined;
+    const result = context.write("web", (log) => {
       const owner = requireOwner(context, home, input);
       const photo = requirePhoto(context, home, owner, input.photo);
       context.store.removePhoto(photo.id);
+      removed = photo;
       log({
         home,
         recordKind: owner.kind,
@@ -168,11 +171,14 @@ export const deletePhoto = defineOperation({
         new: null,
         reason: WEB_EDIT,
       });
-      // Last, so a failure above leaves the files with the row the rollback keeps.
-      context.files.remove(join(context.dataDir(), photo.path));
-      context.files.remove(join(context.dataDir(), photo.thumbPath));
       return { photos: photosOf(context, home, owner) };
     });
+    // After COMMIT, so a write or a COMMIT that fails leaves the files with the row it keeps.
+    if (removed) {
+      context.files.remove(join(context.dataDir(), removed.path));
+      context.files.remove(join(context.dataDir(), removed.thumbPath));
+    }
+    return result;
   },
 });
 
@@ -207,8 +213,9 @@ export const viewPhotos = defineOperation({
     "that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: " +
     "at most 4 per call, and the fewest that answer the question, usually the newest or the one " +
     "of the Wall in question. Call this only when the user has asked you to look or said yes " +
-    "to looking: each Photo stays in the Session's context for every later turn. Changes " +
-    "nothing.",
+    "to looking: each Photo stays in the Session's context for every later turn. When the user " +
+    "only asks what is where or what something looks like, answer from the records and point " +
+    "them to the Room's or Item's page in the app; don't offer to look. Changes nothing.",
   input: viewPhotosInput,
   readOnly: true,
   surface: "agent",
@@ -290,7 +297,10 @@ function store(
   return path;
 }
 
-/** The day after `day`: a phone ahead of the server's UTC may date a photo there. */
+/**
+ * The day after `day`: a phone ahead of the Home's day (abroad, east of it, or ahead of UTC for a
+ * Home with no time zone) may date a photo there.
+ */
 function tomorrow(day: string): string {
   const date = new Date(`${day}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + 1);

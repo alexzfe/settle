@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Document, Home, Item, ItemPage, Photo } from "./api";
 import { recordPath } from "./decisions";
@@ -415,6 +415,60 @@ describe("the pencil", () => {
     expect(screen.getByRole("form")).toBeDefined();
   });
 
+  it("keeps a change the Agent made while the form was open, sending only what the user changed", async () => {
+    let item: Item = { ...mattress };
+    const fetch = stubItem(() => ({ ...bare, item }));
+    renderRoutes(`/homes/flat/items/${mattress.slug}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit its facts" }));
+    // The Agent renames the Item and sets its brand, a color and the width; live updates read it
+    // afresh.
+    item = {
+      ...mattress,
+      name: "Zed mattress",
+      brand: "Zed",
+      colors: [{ name: "ivory", provenance: "listed" }],
+      width: { mm: 1600, provenance: "measured" },
+    };
+    act(() =>
+      FakeEventSource.open().emit("change", {
+        home: "flat",
+        recordKind: "item",
+        recordSlug: mattress.slug,
+      }),
+    );
+    expect(await screen.findByRole("heading", { name: "Zed mattress" })).toBeDefined();
+    const form = screen.getByRole("form", { name: "Edit its facts" });
+    fireEvent.change(within(form).getByLabelText("Model"), { target: { value: "Aero" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(inputsTo(fetch, "edit_item")).toHaveLength(1));
+    expect(inputsTo(fetch, "edit_item")[0]).toEqual({
+      home: "flat",
+      item: mattress.slug,
+      fields: { model: "Aero" },
+    });
+  });
+
+  it("does not carry an open form over to another Item already read", async () => {
+    const fetch = stubApi({
+      list_homes: () => ({ homes: [flat] }),
+      get_item: ({ item }) => (item === "rosemary" ? bare : { ...bare, item: mattress }),
+      edit_item: () => ({ receipt: "Saved." }),
+    });
+    const { router } = renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("heading", { name: "Rosemary" });
+    await act(() => router.navigate(`/homes/flat/items/${mattress.slug}`));
+    await screen.findByRole("heading", { name: mattress.name });
+    fireEvent.click(screen.getByRole("button", { name: "Edit its facts" }));
+    fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Acme" } });
+
+    // Back to the Rosemary, which is cached, so the page never shows Loading in between.
+    await act(() => router.navigate(-1));
+    expect(await screen.findByRole("heading", { name: "Rosemary" })).toBeDefined();
+    expect(screen.queryByRole("form", { name: "Edit its facts" })).toBeNull();
+    expect(inputsTo(fetch, "edit_item")).toEqual([]);
+  });
+
   it("closes on Cancel without sending", async () => {
     const fetch = stubItem(() => bare);
     renderRoutes("/homes/flat/items/rosemary");
@@ -591,9 +645,42 @@ describe("Photos", () => {
     await waitFor(() => expect(inputsTo(fetch, "get_item")).toHaveLength(2));
   });
 
+  it("does not carry a Photo being added over to another Item already read", async () => {
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: new Blob(["a"]),
+      thumb: new Blob(["b"]),
+      takenOn: "2026-03-14",
+    });
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
+    );
+    stubApi({
+      list_homes: () => ({ homes: [flat] }),
+      get_item: ({ item }) => (item === "rosemary" ? bare : { ...bare, item: mattress }),
+    });
+    const { router } = renderRoutes("/homes/flat/items/rosemary");
+    await screen.findByRole("heading", { name: "Rosemary" });
+    await act(() => router.navigate(`/homes/flat/items/${mattress.slug}`));
+    await screen.findByRole("heading", { name: mattress.name });
+    fireEvent.change(screen.getByLabelText("Photo file"), {
+      target: { files: [new File(["x"], "a.jpg", { type: "image/jpeg" })] },
+    });
+    await screen.findByRole("form", { name: "Add a photo" });
+
+    // Back to the Rosemary, which is cached, so the page never shows Loading in between.
+    await act(() => router.navigate(-1));
+    expect(await screen.findByRole("heading", { name: "Rosemary" })).toBeDefined();
+    expect(screen.queryByRole("form", { name: "Add a photo" })).toBeNull();
+  });
+
   it("shows core's refusal of a photo it could not take", async () => {
     const original = new File(["ftypheic"], "IMG_0002.HEIC", { type: "image/heic" });
-    vi.mocked(preparePhoto).mockResolvedValue({ file: original, thumb: original });
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: original,
+      thumb: original,
+      takenOn: "2026-03-14",
+    });
     const message = "This is a HEIC photo, which the app cannot read. Export it as a JPEG.";
     stubItem(() => bare, undefined, {
       add_photo: () =>
@@ -615,11 +702,13 @@ describe("Photos", () => {
     const whole = {
       file: new Blob(["whole"]),
       thumb: new Blob(["w"]),
+      takenOn: "2026-03-14",
       size: { width: 4000, height: 3000 },
     };
     const cut = {
       file: new Blob(["cut"]),
       thumb: new Blob(["c"]),
+      takenOn: "2026-03-14",
       size: { width: 4000, height: 3000 },
     };
     vi.mocked(preparePhoto).mockImplementation(async (_, crop) => (crop ? cut : whole));

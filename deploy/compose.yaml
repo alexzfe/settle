@@ -13,9 +13,14 @@ services:
       - "127.0.0.1:4380:4380"
     environment:
       SETTLE_PUBLIC_ORIGIN: ${SETTLE_PUBLIC_ORIGIN:?set SETTLE_PUBLIC_ORIGIN to the address the browser uses, such as https://settle.example.com}
-      # Behind Cloudflare, and reachable through it alone: take each visitor's IP from Cloudflare,
-      # for the limits on wrong passwords.
-      # SETTLE_TRUSTED_PROXY: cloudflare
+      # Where each visitor's IP comes from, for the limits on wrong passwords. "forwarded": the
+      # HTTPS proxy on this machine (Caddy, tailscale serve) says, in X-Forwarded-For; without it
+      # every visitor would seem to be Docker's gateway, and one person's wrong guesses would lock
+      # out everyone. Trusted from any loopback or private address (Docker's gateway is one), so
+      # keep the 127.0.0.1 publish above: published on the LAN, any device there could pick its
+      # own IP with each guess. Behind Cloudflare, and reachable through it alone, set
+      # SETTLE_TRUSTED_PROXY=cloudflare in .env instead; set it empty there to turn it off.
+      SETTLE_TRUSTED_PROXY: ${SETTLE_TRUSTED_PROXY-forwarded}
       # Sign in with Google, off while these are empty: set both in .env (SELF-HOSTING.md).
       SETTLE_GOOGLE_CLIENT_ID: ${SETTLE_GOOGLE_CLIENT_ID:-}
       SETTLE_GOOGLE_CLIENT_SECRET: ${SETTLE_GOOGLE_CLIENT_SECRET:-}

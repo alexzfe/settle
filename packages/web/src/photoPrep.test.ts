@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DOCUMENT_QUALITY,
   exifDay,
@@ -135,7 +135,6 @@ describe("preparePhoto", () => {
     const prepared = await preparePhoto(file);
     expect(prepared.file).toBe(file);
     expect(prepared.thumb).toBe(file);
-    expect(prepared.takenOn).toBeUndefined();
     expect(prepared.size).toBeUndefined();
   });
 
@@ -192,12 +191,31 @@ describe("preparePhoto", () => {
     expect(prepared.takenOn).toBe("2025-12-31");
   });
 
-  it("leaves the date out when the file has none", async () => {
-    stubDrawing({ width: 100, height: 100 });
-    expect((await preparePhoto(picked())).takenOn).toBeUndefined();
-    expect(
-      (await preparePhoto(picked(new Uint8Array([0xff, 0xd8, 0xff, 0xd9])))).takenOn,
-    ).toBeUndefined();
+  describe("when the file has no date, as a camera shot or a screenshot has not", () => {
+    const machineZone = process.env.TZ;
+    beforeEach(() => {
+      // 19:24 on 11 November in New York, already the 12th on the server's UTC clock.
+      process.env.TZ = "America/New_York";
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-12T00:24:00.000Z"));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      process.env.TZ = machineZone;
+    });
+
+    it("dates it the user's own day, not the server's", async () => {
+      stubDrawing({ width: 100, height: 100 });
+      expect((await preparePhoto(picked())).takenOn).toBe("2026-11-11");
+      expect((await preparePhoto(picked(new Uint8Array([0xff, 0xd8, 0xff, 0xd9])))).takenOn).toBe(
+        "2026-11-11",
+      );
+    });
+
+    it("dates a file it cannot decode the same way", async () => {
+      stubDrawing("undecodable");
+      expect((await preparePhoto(picked())).takenOn).toBe("2026-11-11");
+    });
   });
 });
 

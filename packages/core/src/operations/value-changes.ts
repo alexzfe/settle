@@ -74,13 +74,20 @@ export function flagValueChanges(writer: Writer, changes: Change[], now: string)
     );
     if (!change) continue;
     const own = flags.filter((each) => each.decisionId === decision.id);
-    const open = own.some(
+    const open = own.find(
       (each) =>
         each.clearedAt === null &&
         each.sourceKind === requirement.reasonKind &&
         each.sourceId === requirement.reasonId,
     );
-    if (open) continue;
+    if (open) {
+      // Changed again while flagged: the flag keeps the value from before it, and the latest one.
+      if (open.sourceField === change.field) {
+        open.newValue = change.new ?? null;
+        store.update("flags", open.id, { newValue: open.newValue });
+      }
+      continue;
+    }
     const flag = writer.create(
       "flags",
       "flag",
@@ -92,6 +99,8 @@ export function flagValueChanges(writer: Writer, changes: Change[], now: string)
         sourceKind: requirement.reasonKind,
         sourceId: requirement.reasonId,
         sourceField: change.field,
+        oldValue: change.old ?? null,
+        newValue: change.new ?? null,
         raisedAt: now,
         clearedAt: null,
         resolution: null,

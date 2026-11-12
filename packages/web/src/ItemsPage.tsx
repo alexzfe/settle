@@ -5,6 +5,7 @@ import { type Item, photoUrl, type Room } from "./api";
 import { itemPath } from "./decisions";
 import { sentence, wallNameOf } from "./format";
 import page from "./ItemsPage.module.css";
+import { isSafeLink } from "./Markdown";
 import { useHome, useItems } from "./queries";
 import { Swatch } from "./Swatch";
 import { buildPrompt } from "./ui/AskAgent";
@@ -343,7 +344,7 @@ export function ItemLine({ home, item }: { home: string; item: Item }) {
       {item.condition}
       {[item.brand, item.model].filter(Boolean).join(" ")}
       {item.pricePaid}
-      {item.link && <a href={item.link}>product page</a>}
+      {item.link && isSafeLink(item.link) && <a href={item.link}>product page</a>}
       {light && `light: ${light}`}
       {item.archivedAt && <ArchivedNote at={item.archivedAt} reason={item.archivedReason} />}
     </Parts>

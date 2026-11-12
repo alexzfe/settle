@@ -1,11 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import { get as httpsGet } from "node:https";
-import { BlockList, isIP, type LookupFunction } from "node:net";
-import type { Core, CurrentConnection } from "@settle/core";
+import { type Core, type CurrentConnection, hostBlocked, safeLookup } from "@settle/core";
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { inWords, RegisterLimiter } from "./limits.js";
 
 // Settle as the OAuth 2.1 sign-in server Claude talks to (the MCP authorization spec, 2025-11-25,
 // with CIMD). Claude's connector hits /mcp, gets a 401 pointing at the discovery documents, sends
@@ -79,12 +78,16 @@ export type ClientMetadataFetcher = (url: string) => Promise<unknown>;
 export interface OAuthOptions {
   /** Fetches a CIMD client's metadata document; a test gives its own. */
   fetchClientMetadata?: ClientMetadataFetcher;
+  /** Client registrations per IP; a test gives its own, with its own clock. */
+  registrations?: RegisterLimiter;
 }
 
 /** What the server's login gives the Allow page: the Account logged in, if any. */
 export interface OAuthLogin {
   /** The Account the request's Login names, or undefined when it has none. */
   account(c: Context): { id: number; email: string } | undefined;
+  /** The client's IP, as the login limits take it (SETTLE_TRUSTED_PROXY). */
+  ip(c: Context): string;
   /** The page attributes the login pages use: their HTML and their headers. */
   page(title: string, body: string[]): string;
   headers: Record<string, string>;
@@ -172,6 +175,7 @@ export function useOAuth(
 ): void {
   const { origin, mcpUrl } = core.accounts;
   const fetchMetadata = cached(options.fetchClientMetadata ?? fetchClientMetadata);
+  const registrations = options.registrations ?? new RegisterLimiter();
   // Allows given before a login, by the SHA-256 of the cookie that binds each to its browser.
   const pending = new Map<string, { request: AuthorizationRequest; until: number }>();
 
@@ -216,6 +220,19 @@ export function useOAuth(
 
   // RFC 7591, the fallback for a client without CIMD. Every client is public: no secret is made.
   app.post(OAUTH_PATHS.register, async (c) => {
+    const refused = registrations.take(login.ip(c));
+    if (refused) {
+      c.header("Retry-After", String(Math.ceil(refused.waitMs / 1000)));
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "Too many clients registered from here in the last hour. Try again " +
+            `${inWords(Date.now() + refused.waitMs)}, or connect with a client registered already.`,
+        },
+        429,
+      );
+    }
     const body = (await c.req.json().catch(() => undefined)) as Record<string, unknown> | undefined;
     const uris = body?.redirect_uris;
     if (
@@ -443,6 +460,14 @@ export function useOAuth(
     const text = (name: string) => (typeof form[name] === "string" ? (form[name] as string) : "");
     // A public client sends its id in the form; one that sends it by Basic is read the same.
     const clientId = text("client_id") || basicClientId(c.req.header("authorization"));
+    if (clientId === undefined) {
+      return oauthError(
+        c,
+        "invalid_client",
+        "The Authorization header's client_id is not URL-encoded right. Send client_id in the " +
+          "form instead, or encode it as RFC 6749 section 2.3.1 says.",
+      );
+    }
     if (!clientId) return oauthError(c, "invalid_request", "Send client_id.");
     if (text("resource") !== "" && text("resource") !== mcpUrl) {
       return oauthError(c, "invalid_target", `Tokens here are only for ${mcpUrl}.`);
@@ -491,11 +516,16 @@ function oauthError(c: Context, error: string, description: string): Response {
   return c.json({ error, error_description: description }, 400, NO_STORE);
 }
 
-function basicClientId(header: string | undefined): string {
+/** The client id a Basic header names: "" when there is none, undefined when it is malformed. */
+function basicClientId(header: string | undefined): string | undefined {
   const encoded = /^Basic (.+)$/.exec(header ?? "")?.[1];
   if (!encoded) return "";
   const [id = ""] = Buffer.from(encoded, "base64").toString("utf8").split(":");
-  return decodeURIComponent(id);
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return undefined;
+  }
 }
 
 function parseUrl(text: string): URL | undefined {
@@ -573,64 +603,12 @@ const METADATA_TIMEOUT_MS = 5_000;
 const METADATA_MAX_BYTES = 64 * 1024;
 const METADATA_CACHE_MS = 5 * 60 * 1000;
 
-const BLOCKED = new BlockList();
-for (const [net, prefix] of [
-  ["0.0.0.0", 8],
-  ["10.0.0.0", 8],
-  ["100.64.0.0", 10],
-  ["127.0.0.0", 8],
-  ["169.254.0.0", 16],
-  ["172.16.0.0", 12],
-  ["192.0.0.0", 24],
-  ["192.168.0.0", 16],
-  ["198.18.0.0", 15],
-  ["224.0.0.0", 4],
-  ["240.0.0.0", 4],
-] as const) {
-  BLOCKED.addSubnet(net, prefix, "ipv4");
-}
-for (const [net, prefix] of [
-  ["::", 128],
-  ["::1", 128],
-  ["fc00::", 7],
-  ["fe80::", 10],
-  ["ff00::", 8],
-  ["64:ff9b::", 96],
-] as const) {
-  BLOCKED.addSubnet(net, prefix, "ipv6");
-}
-
-/** Whether an address is one the server must never fetch from: private, loopback, and the like. */
-export function addressBlocked(address: string): boolean {
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
-  if (mapped) return BLOCKED.check(mapped, "ipv4");
-  const family = isIP(address);
-  if (family === 0) return true;
-  return BLOCKED.check(address, family === 4 ? "ipv4" : "ipv6");
-}
-
-/** DNS, refusing any answer that names a blocked address. */
-const safeLookup: LookupFunction = (hostname, options, callback) => {
-  dnsLookup(hostname, { ...options, all: true }, (error, addresses: LookupAddress[]) => {
-    if (error) return callback(error, "", 4);
-    const blocked = addresses.find(({ address }) => addressBlocked(address));
-    if (blocked || addresses.length === 0) {
-      return callback(new Error(`${hostname} is a private address`), "", 4);
-    }
-    if (options.all)
-      return (callback as never as (e: null, a: LookupAddress[]) => void)(null, addresses);
-    const first = addresses[0] as LookupAddress;
-    return callback(null, first.address, first.family);
-  });
-};
-
 /** Fetches a CIMD document over https, refusing private addresses, slow answers and big ones. */
 export function fetchClientMetadata(url: string): Promise<unknown> {
   const parsed = parseUrl(url);
   if (parsed?.protocol !== "https:") return Promise.reject(new Error("it isn't an https URL"));
-  const host = parsed.hostname.replace(/^\[|\]$/g, "");
-  if (host === "localhost" || (isIP(host) !== 0 && addressBlocked(host))) {
-    return Promise.reject(new Error(`${host} is a private address`));
+  if (parsed.hostname === "localhost" || hostBlocked(parsed)) {
+    return Promise.reject(new Error(`${parsed.hostname} is a private address`));
   }
   return new Promise((resolve, reject) => {
     const request = httpsGet(

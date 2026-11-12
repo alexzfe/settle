@@ -1,5 +1,6 @@
+import { focusManager } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Constraint, Home, Level, Note } from "./api";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
@@ -168,6 +169,7 @@ it("shows the command that sets up the Home Folder, the plugin install line, and
   const fetch = stubAboutPage({
     home_folder_setup: () => ({
       origin,
+      key: "the-new-key",
       command,
       pluginInstall,
       files: [
@@ -205,18 +207,138 @@ it("shows the command that sets up the Home Folder, the plugin install line, and
   expect(files.querySelector("figure pre")?.textContent).toBe(mcp);
 });
 
+it("makes the folder's key once, when asked, and never again on its own, since each call makes one", async () => {
+  const fetch = stubAboutPage({
+    home_folder_setup: () => ({
+      origin: "https://settle.example.com",
+      key: "the-new-key",
+      command: "curl … | sh",
+      pluginInstall: "claude plugin install settle@settle",
+      files: [],
+    }),
+  });
+  renderRoutes("/homes/flat/about");
+  fireEvent.click(await screen.findByRole("button", { name: "Set up Home Folder" }));
+  await screen.findByText("curl … | sh");
+  expect(screen.getByText(/new key for this folder, shown only now/)).toBeTruthy();
+  // Coming back to the tab refetches a query; this is no query.
+  await act(async () => {
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(inputsTo(fetch, "home_folder_setup")).toEqual([{ home: "flat" }]);
+});
+
 it("makes a new key only after saying the old one stops and the Home Folder command must run again", async () => {
   const fetch = stubAboutPage({ rotate_home_key: () => ({}) });
   renderRoutes("/homes/flat/about");
   fireEvent.click(await screen.findByRole("button", { name: "New key…" }));
   const dialog = screen.getByRole("dialog", { name: "A new key for this Home" });
-  expect(dialog.textContent).toContain("The old key stops working at once");
+  expect(dialog.textContent).toContain("Every key of this Home stops working at once");
   expect(dialog.textContent).toContain("run the Home Folder command in that folder again");
   fireEvent.click(screen.getByRole("button", { name: "Keep this one" }));
   expect(inputsTo(fetch, "rotate_home_key")).toEqual([]);
 
   fireEvent.click(screen.getByRole("button", { name: "New key…" }));
   fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
-  await screen.findByText(/The Home has a new key\./);
+  await screen.findByText(/Every key of this Home is cancelled\./);
   expect(inputsTo(fetch, "rotate_home_key")).toEqual([{ home: "flat" }]);
+});
+
+it("hides the Home Folder command once a new key cancels the key it holds", async () => {
+  stubAboutPage({
+    home_folder_setup: () => ({
+      origin: "https://settle.example.com",
+      key: "the-cancelled-key",
+      command: "curl … | sh",
+      pluginInstall: "claude plugin install settle@settle",
+      files: [],
+    }),
+    rotate_home_key: () => ({}),
+  });
+  renderRoutes("/homes/flat/about");
+  fireEvent.click(await screen.findByRole("button", { name: "Set up Home Folder" }));
+  await screen.findByText("curl … | sh");
+
+  fireEvent.click(screen.getByRole("button", { name: "New key…" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
+  await screen.findByText(/Every key of this Home is cancelled\./);
+  expect(screen.queryByText("curl … | sh")).toBeNull();
+  expect(screen.getByRole("button", { name: "Set up Home Folder" })).toBeTruthy();
+});
+
+describe("the Home's time zone, the day it dates things in", () => {
+  const machineZone = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = "America/Lima";
+  });
+  afterEach(() => {
+    process.env.TZ = machineZone;
+  });
+
+  it("is set to the browser's when its owner opens a Home that has none", async () => {
+    const fetch = stubAboutPage({
+      set_home_time_zone: () => ({ home: { ...flat, timeZone: "America/Lima" } }),
+    });
+    renderRoutes("/homes/flat/about");
+    await waitFor(() =>
+      expect(inputsTo(fetch, "set_home_time_zone")).toEqual([
+        { home: "flat", timeZone: "America/Lima", onlyIfNone: true },
+      ]),
+    );
+  });
+
+  it("is left as it is on a Home that has one", async () => {
+    const zoned = { ...flat, timeZone: "Europe/Madrid" };
+    const fetch = stubAboutPage({
+      get_home: () => ({ home: zoned, levels: [ground], rooms: [], unplacedItems: 0 }),
+    });
+    renderRoutes("/homes/flat/about");
+    await screen.findByText("Europe/Madrid");
+    expect(inputsTo(fetch, "set_home_time_zone")).toEqual([]);
+  });
+
+  it("is shown with the Home facts and changed there", async () => {
+    let zone = "Europe/Madrid";
+    const home = () => ({ ...flat, timeZone: zone });
+    const fetch = stubAboutPage({
+      get_home: () => ({ home: home(), levels: [ground], rooms: [], unplacedItems: 0 }),
+      set_home_time_zone: (input) => {
+        zone = (input as { timeZone: string }).timeZone;
+        return { home: home() };
+      },
+    });
+    renderRoutes("/homes/flat/about");
+    await screen.findByText("Europe/Madrid");
+    fireEvent.click(screen.getByRole("button", { name: "Change time zone…" }));
+    const dialog = screen.getByRole("dialog", { name: "The Home's time zone" });
+    const field = screen.getByLabelText("Time zone");
+    expect(dialog.contains(field)).toBe(true);
+    fireEvent.change(field, { target: { value: "America/Santiago" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("America/Santiago");
+    expect(inputsTo(fetch, "set_home_time_zone")).toEqual([
+      { home: "flat", timeZone: "America/Santiago" },
+    ]);
+  });
+
+  it("shows the server's refusal of a zone that is not one", async () => {
+    const message = '"Mars/Olympus" is not an IANA time zone. Give the zone\'s name.';
+    stubAboutPage({
+      get_home: () => ({
+        home: { ...flat, timeZone: "Europe/Madrid" },
+        levels: [ground],
+        rooms: [],
+        unplacedItems: 0,
+      }),
+      set_home_time_zone: () =>
+        Response.json({ error: { code: "validation", message } }, { status: 400 }),
+    });
+    renderRoutes("/homes/flat/about");
+    fireEvent.click(await screen.findByRole("button", { name: "Change time zone…" }));
+    fireEvent.change(screen.getByLabelText("Time zone"), { target: { value: "Mars/Olympus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(message);
+  });
 });

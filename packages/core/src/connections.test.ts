@@ -68,6 +68,16 @@ function exchange(code: string, verifier: string, overrides: Partial<{ clientId:
   });
 }
 
+/** A Home of Kim's and one of Sam's, each with a Home Folder's key. */
+async function homeKeys() {
+  const made = async (as: CallContext, name: string) => {
+    const { home } = await core.run("create_home", as, { name, country: "GB", city: "York" });
+    const { key } = await core.run("home_folder_setup", as, { home: home.slug });
+    return { home: home.slug, key };
+  };
+  return { kims: await made(kim, "Cottage"), sams: await made(admin, "Flat") };
+}
+
 describe("Connections", () => {
   it("names the MCP URL every token is bound to", () => {
     expect(core.accounts.mcpUrl).toBe(`${ORIGIN}/mcp`);
@@ -178,22 +188,42 @@ describe("Connections", () => {
     expect(store.connections(kimId)).toEqual([]);
   });
 
-  it("end when the Account logs out everywhere", async () => {
+  it("end when the Account logs out everywhere, with the keys of its Homes, and no one else's", async () => {
     const { code, verifier } = connect();
     const grant = granted(exchange(code, verifier));
+    const keys = await homeKeys();
     await core.run("end_logins", kim, {});
     expect(core.accounts.connected(grant.accessToken)).toBeUndefined();
     expect(store.connections(kimId)).toEqual([]);
+    expect(core.homeKeyOpens(keys.kims.home, keys.kims.key)).toBe(false);
+    expect(core.homeKeyOpens(keys.sams.home, keys.sams.key)).toBe(true);
   });
 
-  it("end when a reset link sets a new password", async () => {
+  it("end when a reset link sets a new password, with the keys of the Account's Homes", async () => {
     const { code, verifier } = connect();
     const grant = granted(exchange(code, verifier));
+    const keys = await homeKeys();
     const { reset } = await core.run("create_reset_link", admin, { account: kimId });
     const token = reset.url.slice(reset.url.lastIndexOf("/") + 1);
     await core.accounts.redeem("reset", token, { password: `${TEST_PASSWORD} again` });
     expect(core.accounts.connected(grant.accessToken)).toBeUndefined();
     expect(store.connections(kimId)).toEqual([]);
+    expect(core.homeKeyOpens(keys.kims.home, keys.kims.key)).toBe(false);
+    expect(core.homeKeyOpens(keys.sams.home, keys.sams.key)).toBe(true);
+  });
+
+  it("end when the password changes, since whoever knew the old one may have made one", async () => {
+    const { code, verifier } = connect();
+    const grant = granted(exchange(code, verifier));
+    await core.run("change_password", kim, {
+      current: TEST_PASSWORD,
+      password: `${TEST_PASSWORD} again`,
+    });
+    expect(core.accounts.connected(grant.accessToken)).toBeUndefined();
+    expect(store.connections(kimId)).toEqual([]);
+    expect(
+      core.accounts.refresh({ refreshToken: grant.refreshToken, clientId: CLIENT }).outcome,
+    ).toBe("refused");
   });
 
   it("end one at a time by Disconnect, the Account's own only", () => {
@@ -214,6 +244,39 @@ describe("registered clients", () => {
     now += 2 * DAY;
     core.accounts.registerClient({ redirectUris: [CALLBACK] });
     expect(core.accounts.registeredClient(client.clientId)).toBeUndefined();
+  });
+});
+
+describe("registered clients, many", () => {
+  it("are capped at 500 that no Connection uses, the oldest dropped first", () => {
+    const first = core.accounts.registerClient({ redirectUris: [CALLBACK] });
+    // One a Connection uses is never dropped, however old.
+    const { verifier, challenge } = pkce();
+    const code = core.accounts.connect(kimId, {
+      clientId: first.clientId,
+      clientHost: "claude.ai",
+      redirectUri: CALLBACK,
+      codeChallenge: challenge,
+    });
+    granted(
+      core.accounts.exchangeCode({
+        code,
+        clientId: first.clientId,
+        redirectUri: CALLBACK,
+        verifier,
+      }),
+    );
+    const second = core.accounts.registerClient({ redirectUris: [CALLBACK] });
+    const flood = Array.from({ length: 500 }, (_, i) => {
+      now += 1000;
+      return core.accounts.registerClient({ redirectUris: [CALLBACK], clientName: `flood ${i}` });
+    });
+    const kept = [second, ...flood].filter((client) =>
+      core.accounts.registeredClient(client.clientId),
+    );
+    expect(kept).toHaveLength(500);
+    expect(core.accounts.registeredClient(first.clientId)).toBeDefined();
+    expect(core.accounts.registeredClient(second.clientId)).toBeUndefined();
   });
 });
 

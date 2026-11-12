@@ -135,3 +135,88 @@ describe("the Account endpoint", () => {
     expect(activity.last(home)?.tool).toBe("find_items");
   });
 });
+
+describe("refusals of a tool's input", () => {
+  async function opened(): Promise<string> {
+    await createHome(kim, "Lisbon flat");
+    return sessionOf(await call(kim, "open_session", { skill: "home-intake" }));
+  }
+
+  it("come from Core, saying what is wrong with each field and what to do", async () => {
+    const session = await opened();
+
+    const refused = await call(kim, "set_decision_state", {
+      session,
+      decision: "linen-curtains",
+      to: "Settled",
+    });
+
+    expect(refused.isError).toBe(true);
+    const text = textOf(refused);
+    expect(text).not.toContain("MCP error");
+    expect(text).toContain("`to`");
+    expect(text).toContain("Call set_decision_state again");
+  });
+
+  it("say a length is { mm, provenance } when one is given wrong", async () => {
+    const session = await opened();
+
+    const refused = await call(kim, "save_room", {
+      session,
+      name: "Living room",
+      ceilingHeight: { provenance: "measured" },
+    });
+
+    expect(refused.isError).toBe(true);
+    expect(textOf(refused)).toContain("`ceilingHeight.mm`");
+    expect(textOf(refused)).toContain("whole millimetres");
+  });
+
+  it("refuse a tool that doesn't exist, as a tool result", async () => {
+    const refused = await call(kim, "delete_everything", {});
+
+    expect(refused.isError).toBe(true);
+    expect(textOf(refused)).toContain('There is no tool "delete_everything"');
+  });
+});
+
+describe("tools/list", () => {
+  async function listed(): Promise<
+    { name: string; description: string; annotations: { openWorldHint?: boolean } }[]
+  > {
+    const response = await handleMcpRequest(request("tools/list", {}), {
+      core,
+      tools: mcpTools(core),
+      home: "any",
+      activity,
+      port: PORT,
+    });
+    return ((await response.json()) as { result: { tools: never[] } }).result.tools;
+  }
+
+  it("marks record_listing open-world, since it fetches the Listing's picture from the web", async () => {
+    const tools = await listed();
+
+    const open = tools.filter((tool) => tool.annotations.openWorldHint).map((tool) => tool.name);
+    expect(open).toEqual(["record_listing"]);
+  });
+
+  it("lists keeping a flagged Decision among set_decision_state's moves", async () => {
+    const tool = (await listed()).find((each) => each.name === "set_decision_state");
+
+    expect(tool?.description).toContain(
+      "Only these moves: a Decision with an open flag or Conflict to its current state (a " +
+        "keep, which clears them; quote the user in `reason`);",
+    );
+  });
+
+  it("says find_items's text leaves out the Items with none of its words", async () => {
+    const tool = (await listed()).find((each) => each.name === "find_items") as unknown as {
+      inputSchema: { properties: { text: { description: string } } };
+    };
+
+    const described = tool.inputSchema.properties.text.description;
+    expect(described).toContain("Only Items with at least one of these words");
+    expect(described).not.toContain("come first");
+  });
+});

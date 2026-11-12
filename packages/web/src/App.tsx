@@ -24,7 +24,14 @@ import { HomePage } from "./HomePage";
 import { ItemPage } from "./ItemPage";
 import { ItemsPage } from "./ItemsPage";
 import { type LiveState, useLiveUpdates } from "./liveUpdates";
-import { useAccount, useDecisions, useHomes, useItems, useShopping } from "./queries";
+import {
+  useAccount,
+  useDecisions,
+  useHomes,
+  useHomeTimeZone,
+  useItems,
+  useShopping,
+} from "./queries";
 import { RoomPage } from "./RoomPage";
 import { RoomsPage } from "./RoomsPage";
 import { SessionPage } from "./SessionPage";
@@ -459,6 +466,7 @@ function sectionOf(path: string): string {
 /** The pages of one Home, kept live while any of them is open. */
 function HomeScope({ home }: { home: string }) {
   const live = useLiveUpdates(home);
+  useHomeTimeZone(home);
   useScrollToHash();
   const homes = useHomes();
   const name = homes.data?.homes.find((each) => each.slug === home)?.name ?? home;

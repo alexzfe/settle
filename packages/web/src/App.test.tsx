@@ -262,6 +262,7 @@ function stubAccount(account: { admin: boolean } | "expired") {
               createdAt: "2026-10-22",
               password: true,
               google: false,
+              googleSignIn: false,
             },
           },
   });

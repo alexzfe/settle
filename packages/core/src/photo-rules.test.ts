@@ -7,6 +7,7 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
@@ -47,6 +48,8 @@ let session: string;
 let agent: CallContext;
 /** Paths whose write the file store refuses, to fail an upload partway. */
 let failing: RegExp | undefined;
+/** Called with each path the file store removes. */
+let onRemove: ((path: string) => void) | undefined;
 
 const add = (input: Partial<OperationInput<"add_photo">> = {}) =>
   core.run("add_photo", web, { home, item: "lamp", file: JPEG, thumb: THUMB, ...input });
@@ -54,18 +57,35 @@ const page = (item = "lamp") => core.run("get_item", web, { home, item });
 const photosDir = () => join(dataDir, "uploads", home, "photos");
 const stored = () => (existsSync(photosDir()) ? readdirSync(photosDir()).sort() : []);
 
+/** How many rows of `table` with this id are committed, read over a second connection. */
+function committedRows(table: string, id: number): number {
+  const db = new DatabaseSync(join(dataDir, "settle.db"), { readOnly: true });
+  try {
+    return db.prepare(`SELECT count(*) AS n FROM ${table} WHERE id = ?`).get(id)?.n as number;
+  } finally {
+    db.close();
+  }
+}
+
 beforeEach(async () => {
   failing = undefined;
+  onRemove = undefined;
   dataDir = mkdtempSync(join(tmpdir(), "settle-photos-"));
   core = createCore({
     passwordCost: TEST_PASSWORD_COST,
     dataDir,
+    // A file, so a second connection can see what is committed.
+    database: join(dataDir, "settle.db"),
     clock: () => new Date("2026-10-05T10:00:00.000Z"),
     files: {
       ...nodeFileStore,
       writeBytes(path, bytes) {
         if (failing?.test(path)) throw new Error(`The disk refused ${path}`);
         nodeFileStore.writeBytes(path, bytes);
+      },
+      remove(path) {
+        onRemove?.(path);
+        nodeFileStore.remove(path);
       },
     },
   });
@@ -228,6 +248,18 @@ describe("edit_photo and delete_photo", () => {
     expect(photos).toEqual([]);
     expect(stored()).toEqual([]);
     expect((await page()).item).not.toHaveProperty("photo");
+  });
+
+  it("removes the files only once the row's deletion is committed", async () => {
+    const id = (await add()).photos[0]?.id ?? 0;
+    const rowsAtRemoval: number[] = [];
+    onRemove = () => rowsAtRemoval.push(committedRows("photos", id));
+
+    await core.run("delete_photo", web, { home, item: "lamp", photo: id });
+
+    // Both files, each after COMMIT: a failed COMMIT keeps the row, so it must keep its files.
+    expect(rowsAtRemoval).toEqual([0, 0]);
+    expect(stored()).toEqual([]);
   });
 
   it("refuses not_found for a Photo that is not on the named Item", async () => {

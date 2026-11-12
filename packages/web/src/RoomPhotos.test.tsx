@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Home, Photo, Room, RoomDetail } from "./api";
 import { photoGroups, wallsWithoutPhoto } from "./ItemPhotos";
@@ -197,7 +197,11 @@ describe("Room Photos", () => {
   });
 
   it("sends no Wall for the whole Room", async () => {
-    vi.mocked(preparePhoto).mockResolvedValue({ file: new Blob(["a"]), thumb: new Blob(["b"]) });
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: new Blob(["a"]),
+      thumb: new Blob(["b"]),
+      takenOn: "2026-10-12",
+    });
     vi.stubGlobal(
       "URL",
       Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
@@ -219,6 +223,38 @@ describe("Room Photos", () => {
     await waitFor(() => expect(sent).toBeDefined());
     expect((sent as FormData).get("room")).toBe("bedroom");
     expect((sent as FormData).has("wall")).toBe(false);
+  });
+
+  it("does not carry a Photo being added over to another Room already read", async () => {
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: new Blob(["a"]),
+      thumb: new Blob(["b"]),
+      takenOn: "2026-10-12",
+    });
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
+    );
+    stubRoom(() => [], {
+      get_room: ({ room }) => ({
+        room: room === "bedroom" ? bedroom() : { ...bedroom(), slug: "study", name: "Study" },
+        decisions: [],
+        photos: [],
+      }),
+    });
+    const { router } = renderRoutes("/homes/flat/rooms/bedroom");
+    await screen.findByRole("heading", { name: "Bedroom", level: 1 });
+    await act(() => router.navigate("/homes/flat/rooms/study"));
+    await screen.findByRole("heading", { name: "Study", level: 1 });
+    fireEvent.change(screen.getByLabelText("Photo file"), {
+      target: { files: [new File(["x"], "a.jpg", { type: "image/jpeg" })] },
+    });
+    await screen.findByRole("form", { name: "Add a photo" });
+
+    // Back to the Bedroom, which is cached, so the page never shows Loading in between.
+    await act(() => router.navigate(-1));
+    expect(await screen.findByRole("heading", { name: "Bedroom", level: 1 })).toBeDefined();
+    expect(screen.queryByRole("form", { name: "Add a photo" })).toBeNull();
   });
 
   it("shows a Photo's Wall in the viewer, changes it, clears it, and deletes the Photo", async () => {

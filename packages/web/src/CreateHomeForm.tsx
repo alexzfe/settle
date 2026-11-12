@@ -4,11 +4,12 @@ import { useNavigate } from "react-router";
 import styles from "./App.module.css";
 import { ApiError, call, type Operations } from "./api";
 import layout from "./CreateHomeForm.module.css";
-import { queryKeys } from "./queries";
+import { browserTimeZone, queryKeys } from "./queries";
 
 /**
  * Creates a Home from its name, country, and city. The server derives the latitude from the city;
  * when it answers city_not_found, the form asks for the latitude and sends it with the next try.
+ * It sends the browser's time zone too: the zone the Home's days are dated in.
  * Once made, it goes to the Home, or wherever `onCreated` leads.
  */
 export function CreateHomeForm({ onCreated }: { onCreated?: (home: string) => void } = {}) {
@@ -44,6 +45,7 @@ export function CreateHomeForm({ onCreated }: { onCreated?: (home: string) => vo
       name: text("name"),
       country: text("country"),
       city: text("city"),
+      timeZone: browserTimeZone(),
       ...(latitude === null ? {} : { latitude: Number(latitude) }),
     });
   }
