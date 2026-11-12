@@ -9,9 +9,11 @@ import type { GoogleClient } from "./config.js";
 // unless the server's owner sets the Google client (config.ts). Google is asked only who signed in
 // (openid email profile); its ID token is read once at the code exchange and dropped, and no
 // Google token is stored or reaches Claude or /mcp. Who may get in is still Settle's call: a
-// Google account reaches only the Account linked to it, or one whose email is Google's verified
-// email (which is linked from then on), or a new one through an invite link. A Google sign-in
-// alone never makes an Account. The plumbing (PKCE, state, nonce, the ID token's checks) is
+// Google account reaches only the Account linked to it, or one with no password whose email is
+// Google's verified email (which is linked from then on), or a new one through an invite link. An
+// Account with a password links Google only from its Account page, logged in (?link=1): emails here
+// are never confirmed, so an email alone proves nothing. A Google sign-in alone never makes an
+// Account. The plumbing (PKCE, state, nonce, the ID token's checks) is
 // panva's oauth4webapi.
 //
 // When Claude connects, Settle's Allow page (oauth.ts) comes before the login page, so before any
@@ -48,10 +50,12 @@ interface Trip {
   state: string;
   verifier: string;
   nonce: string;
-  /** Where a login goes after; absent for an invite. */
+  /** Where a login goes after; absent for an invite or a link. */
   next?: string;
   /** The invite link's token, for an invite redeemed with Google. */
   invite?: string;
+  /** Linking Google to the Account logged in, from its Account page. */
+  link?: true;
 }
 
 /** What the routes need from the login (auth.ts): starting a Login, and its pages. */
@@ -63,7 +67,7 @@ export interface GoogleLogin {
   /** The invite page, with an error. */
   invitePage(c: Context, token: string, error: string): Response;
   /** A page with one message. */
-  notice(c: Context, message: string, status: 400 | 404 | 502): Response;
+  notice(c: Context, message: string, status: 400 | 403 | 404 | 502): Response;
   safeNext(next: string | undefined): string;
   secure: boolean;
 }
@@ -80,15 +84,22 @@ export function useGoogle(
     ? { [oauth.customFetch]: google.fetch }
     : {};
 
-  // ?next= for a login, ?invite= for an invite. A link, not a form: a form's post may not lead
-  // to another site under the pages' form-action 'self'.
+  // ?next= for a login, ?invite= for an invite, ?link=1 to link Google to the Account logged in.
+  // A link, not a form: a form's post may not lead to another site under the pages'
+  // form-action 'self'.
   app.get(GOOGLE_PATHS.start, async (c) => {
     const invite = c.req.query("invite");
+    const link = c.req.query("link") !== undefined;
+    if (link && !c.get("caller")) return c.redirect("/login?next=%2Faccount", 302);
     const trip: Trip = {
       state: oauth.generateRandomState(),
       verifier: oauth.generateRandomCodeVerifier(),
       nonce: oauth.generateRandomNonce(),
-      ...(invite ? { invite } : { next: login.safeNext(c.req.query("next")) }),
+      ...(link
+        ? { link: true }
+        : invite
+          ? { invite }
+          : { next: login.safeNext(c.req.query("next")) }),
     };
     setCookie(c, COOKIE, Buffer.from(JSON.stringify(trip)).toString("base64url"), {
       httpOnly: true,
@@ -160,6 +171,34 @@ export function useGoogle(
       return back("Google sign-in didn't work. Try again, or use your email and password.", 400);
     }
 
+    if (trip.link) {
+      // The Account is the Login's now, not the one the trip began with: the trip's cookie is
+      // the browser's to change, the Login is not.
+      const caller = c.get("caller");
+      if (caller?.kind !== "web") {
+        return login.notice(c, "Log in first, then link Google from your Account page.", 400);
+      }
+      const linked = core.accounts.linkGoogle(caller.account, identity);
+      if (linked.outcome === "linked_elsewhere") {
+        return login.notice(
+          c,
+          "This Google account is already linked to another account here. Log in with that " +
+            "account, or link a different Google account.",
+          403,
+        );
+      }
+      if (linked.outcome === "already_linked") {
+        return login.notice(
+          c,
+          "Your account is already linked to a different Google account, and a link is never " +
+            "replaced. Log in with that one. To link another, ask whoever runs this server for a " +
+            "password reset, which removes the link.",
+          403,
+        );
+      }
+      return c.redirect("/account", 303);
+    }
+
     if (trip.invite !== undefined) {
       try {
         const account = core.accounts.redeemWithGoogle(trip.invite, identity);
@@ -182,6 +221,13 @@ export function useGoogle(
         return back(
           "The account with this email is linked to a different Google account. Log in with " +
             "that one, or with your email and password.",
+          403,
+        );
+      case "has_password":
+        return back(
+          "The account with this email logs in with a password, so Google can't be linked to it " +
+            "by email alone. Log in with your email and password, then link Google from your " +
+            "Account page.",
           403,
         );
       case "unknown":
@@ -210,6 +256,7 @@ function readTrip(cookie: string | undefined): Trip | undefined {
     const text = (value: unknown) => typeof value === "string" && value !== "";
     if (!text(trip.state) || !text(trip.verifier) || !text(trip.nonce)) return undefined;
     if (trip.invite !== undefined && !text(trip.invite)) return undefined;
+    if (trip.link !== undefined && trip.link !== true) return undefined;
     return trip as Trip;
   } catch {
     return undefined;

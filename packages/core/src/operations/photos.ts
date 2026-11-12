@@ -155,10 +155,12 @@ export const deletePhoto = defineOperation({
   surface: "web",
   handler(context, input): PhotosResult {
     const home = requireHome(context);
-    return context.write("web", (log) => {
+    let removed: { path: string; thumbPath: string } | undefined;
+    const result = context.write("web", (log) => {
       const owner = requireOwner(context, home, input);
       const photo = requirePhoto(context, home, owner, input.photo);
       context.store.removePhoto(photo.id);
+      removed = photo;
       log({
         home,
         recordKind: owner.kind,
@@ -168,11 +170,14 @@ export const deletePhoto = defineOperation({
         new: null,
         reason: WEB_EDIT,
       });
-      // Last, so a failure above leaves the files with the row the rollback keeps.
-      context.files.remove(join(context.dataDir(), photo.path));
-      context.files.remove(join(context.dataDir(), photo.thumbPath));
       return { photos: photosOf(context, home, owner) };
     });
+    // After COMMIT, so a write or a COMMIT that fails leaves the files with the row it keeps.
+    if (removed) {
+      context.files.remove(join(context.dataDir(), removed.path));
+      context.files.remove(join(context.dataDir(), removed.thumbPath));
+    }
+    return result;
   },
 });
 

@@ -156,10 +156,12 @@ export const deleteDocument = defineOperation({
   surface: "web",
   handler(context, input): DocumentsResult {
     const home = requireHome(context);
-    return context.write("web", (log) => {
+    let removed: string | undefined;
+    const result = context.write("web", (log) => {
       const item = requireItem(context, home, input.item);
       const document = requireDocument(context, home, item, input.document);
       context.store.removeDocument(document.id);
+      removed = document.path;
       log({
         home,
         recordKind: "item",
@@ -169,10 +171,11 @@ export const deleteDocument = defineOperation({
         new: null,
         reason: WEB_EDIT,
       });
-      // Last, so a failure above leaves the file with the row the rollback keeps.
-      context.files.remove(join(context.dataDir(), document.path));
       return { documents: documentsOf(context, home, item) };
     });
+    // After COMMIT, so a write or a COMMIT that fails leaves the file with the row it keeps.
+    if (removed) context.files.remove(join(context.dataDir(), removed));
+    return result;
   },
 });
 

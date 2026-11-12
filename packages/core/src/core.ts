@@ -3,8 +3,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { z } from "zod";
-import { type Accounts, createAccounts, PASSWORD_COST, type PasswordCost } from "./accounts.js";
+import {
+  type Accounts,
+  createAccounts,
+  PASSWORD_COST,
+  type PasswordCost,
+  tokenHash,
+} from "./accounts.js";
 import { mupdfRenderer } from "./blueprints/mupdf.js";
+import { inProcessRunner, workerRunner } from "./blueprints/render-runner.js";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
 import { type FileStore, nodeFileStore, type PdfRenderer } from "./files.js";
@@ -198,8 +205,13 @@ export interface CoreOptions {
    */
   dataDir?: string;
   files?: FileStore;
-  /** Internal seam: renders Blueprint files; mupdf unless a test gives another. */
+  /**
+   * Internal seam: renders Blueprint files; mupdf in a worker thread unless a test gives another,
+   * which then runs on this thread.
+   */
   renderPdf?: PdfRenderer;
+  /** Internal seam: the longest one Blueprint render may take; RENDER_TIME_LIMIT_MS by default. */
+  renderTimeLimitMs?: number;
   /** Internal seam: fetches a Listing's photo over HTTP; a test always gives its own. */
   fetchImage?: ImageFetcher;
   clock?: () => Date;
@@ -210,6 +222,8 @@ export interface CoreOptions {
   skillsDir?: string;
   /** Internal seam: scrypt's cost for new password hashes; OWASP's unless a test gives a cheap one. */
   passwordCost?: PasswordCost;
+  /** Whether the server offers Sign in with Google, so the Account page can offer to link it. */
+  googleSignIn?: boolean;
 }
 
 export interface Core {
@@ -225,11 +239,11 @@ export interface Core {
   /** Hears every change after its write commits; the returned function stops listening. */
   subscribe(listener: ChangeListener): () => void;
   /**
-   * The bearer key of the Home with this slug, for the server to check a request against;
-   * undefined when there is no such Home, or it has no Account yet, or its Account is disabled.
-   * No operation returns it to the Agent.
+   * Whether `key` is one of the bearer keys of the Home with this slug, for the server to check a
+   * request against: never when there is no such Home, or it has no Account yet, or its Account is
+   * disabled. Only each key's SHA-256 is stored; no operation returns a key to the Agent.
    */
-  homeToken(home: string): string | undefined;
+  homeKeyOpens(home: string, key: string): boolean;
   /**
    * The ownership check, for a route that reads a Home without running an operation (the
    * events): refuses a Home the caller can't reach exactly as a Home that doesn't exist.
@@ -260,6 +274,9 @@ export function createCore(options: CoreOptions = {}): Core {
     store,
     files: options.files ?? nodeFileStore,
     renderPdf: options.renderPdf ?? mupdfRenderer,
+    renders: options.renderPdf
+      ? inProcessRunner(options.renderPdf)
+      : workerRunner({ timeLimitMs: options.renderTimeLimitMs }),
     fetchImage: options.fetchImage ?? nodeImageFetcher,
     dataDir(): string {
       if (dataDir === undefined) {
@@ -275,6 +292,7 @@ export function createCore(options: CoreOptions = {}): Core {
     now: () => clock().toISOString(),
     random: options.random ?? randomInt,
     passwordCost: options.passwordCost ?? PASSWORD_COST,
+    googleSignIn: options.googleSignIn ?? false,
     origin: options.publicOrigin ?? `http://127.0.0.1:${options.port ?? 4380}`,
     ...optional({ publicOrigin: options.publicOrigin, lanUrl: options.lanUrl }),
     write<T>(origin: string, fn: Parameters<OperationContext["write"]>[1]): T {
@@ -342,10 +360,11 @@ export function createCore(options: CoreOptions = {}): Core {
       return (await operation.handler(operationContext, parsed.data)) as never;
     },
     subscribe: (listener) => bus.subscribe(listener),
-    homeToken(slug) {
+    homeKeyOpens(slug, key) {
       const home = store.home(slug);
       const owner = home?.accountId == null ? undefined : store.account(home.accountId);
-      return owner && owner.disabledAt === null ? home?.token : undefined;
+      if (!home || !owner || owner.disabledAt !== null) return false;
+      return store.homeKey(home.id, tokenHash(key)) !== undefined;
     },
     sessionHome: (account, session) => connectedSessionHome(store, account, session)?.slug,
     checkHome(context, home) {

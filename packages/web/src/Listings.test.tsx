@@ -442,6 +442,72 @@ it("sends a chosen file to the paste box, and shows core's refusal when it refus
   expect((form.get("file") as File).name).toBe("rug.jpg");
 });
 
+it("sends nothing pasted, dropped or chosen while a picture is on its way", async () => {
+  let answer: (value: { decision: string; listing: typeof hay }) => void = () => {};
+  const fetch = showBoard([hay], {
+    set_listing_photo: () => new Promise((resolve) => (answer = resolve)),
+  });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  fireEvent.click(
+    within(headOf("Hay Plain rug")).getByRole("button", { name: "Change the picture" }),
+  );
+  const target = screen.getByRole("button", { name: /^Paste an image here/ });
+  const first = new File(["\x89PNG"], "clip.png", { type: "image/png" });
+  fireEvent.paste(target, { clipboardData: { files: [first] } });
+  await screen.findByRole("button", { name: "Sending…" });
+
+  const second = new File(["\x89PNG"], "other.png", { type: "image/png" });
+  fireEvent.paste(target, { clipboardData: { files: [second] } });
+  fireEvent.drop(target, { dataTransfer: { files: [second] } });
+  await act(() => Promise.resolve());
+  const sending = () => fetch.mock.calls.filter(([url]) => url === "/api/set_listing_photo");
+  expect(sending()).toHaveLength(1);
+  expect(screen.getByLabelText("Picture file")).toHaveProperty("disabled", true);
+
+  act(() => answer({ decision: "wool-rug", listing: hay }));
+  await waitFor(() => expect(screen.queryByLabelText("Picture file")).toBeNull());
+  expect(sending()).toHaveLength(1);
+});
+
+it("sends one picture when two are pasted before the page redraws", async () => {
+  const fetch = showBoard([hay], {
+    set_listing_photo: () => new Promise(() => {}),
+  });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  fireEvent.click(
+    within(headOf("Hay Plain rug")).getByRole("button", { name: "Change the picture" }),
+  );
+  const target = screen.getByRole("button", { name: /^Paste an image here/ });
+  const first = new File(["\x89PNG"], "clip.png", { type: "image/png" });
+  const second = new File(["\x89PNG"], "other.png", { type: "image/png" });
+  // Both in the same task, before React has heard the first is pending.
+  fireEvent.paste(target, { clipboardData: { files: [first] } });
+  fireEvent.paste(target, { clipboardData: { files: [second] } });
+  await screen.findByRole("button", { name: "Sending…" });
+  const sending = () => fetch.mock.calls.filter(([url]) => url === "/api/set_listing_photo");
+  expect(sending()).toHaveLength(1);
+});
+
+it("empties the chooser after each choice, so the same file can be chosen again", async () => {
+  showBoard([hay], {
+    set_listing_photo: () =>
+      Response.json(
+        { error: { code: "file_too_large", message: "That picture is over 20 MB." } },
+        { status: 400 },
+      ),
+  });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  fireEvent.click(
+    within(headOf("Hay Plain rug")).getByRole("button", { name: "Change the picture" }),
+  );
+  const chooser = screen.getByLabelText<HTMLInputElement>("Picture file");
+  const emptied = vi.spyOn(chooser, "value", "set");
+  const big = new File(["\xff\xd8\xff"], "rug.jpg", { type: "image/jpeg" });
+  fireEvent.change(chooser, { target: { files: [big] } });
+  await screen.findByRole("alert");
+  expect(emptied).toHaveBeenCalledWith("");
+});
+
 it("sends a pasted image and an image address to the paste box", async () => {
   const fetch = showBoard([hay], {
     set_listing_photo: () => ({ decision: "wool-rug", listing: hay }),

@@ -338,13 +338,18 @@ function NewLink({ home, decision }: { home: string; decision: string }) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.decision(home, decision) });
     },
   });
+  // Closed, it forgets a refusal, so the dialog opens afresh.
+  const close = () => {
+    setOpen(false);
+    rotate.reset();
+  };
   return (
     <>
       <button type="button" className="secondary" onClick={() => setOpen(true)}>
         New link…
       </button>
       {open && (
-        <Dialog label="A new phone link" onClose={() => setOpen(false)}>
+        <Dialog label="A new phone link" onClose={close}>
           <h2>Give this Quick Guide a new link?</h2>
           <p>
             Anyone with the link opens the guide without logging in. The old link and its QR code
@@ -354,7 +359,7 @@ function NewLink({ home, decision }: { home: string; decision: string }) {
             <button type="button" disabled={rotate.isPending} onClick={() => rotate.mutate()}>
               Make a new link
             </button>
-            <button type="button" className="secondary" onClick={() => setOpen(false)}>
+            <button type="button" className="secondary" onClick={close}>
               Keep this one
             </button>
           </div>

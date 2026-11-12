@@ -91,8 +91,10 @@ export function RoomPage() {
   useDocumentTitle(sheet.data?.room.name);
   if (sheet.isPending) return <p>Loading…</p>;
   if (sheet.isError) return <p className={styles.error}>{sheet.error.message}</p>;
+  // Keyed so another Room never inherits a Photo being added or an open section.
   return (
     <RoomSheet
+      key={room}
       room={sheet.data.room}
       decisions={sheet.data.decisions}
       photos={sheet.data.photos ?? []}
