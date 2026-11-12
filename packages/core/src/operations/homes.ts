@@ -358,6 +358,7 @@ export const homeFolderSetupOperation = defineOperation({
       keyHash: tokenHash(key),
       createdAt: context.now(),
     });
+    context.store.keepKeyForRollback(home.id, key);
     return { key, ...homeFolderSetup(context.origin, home.slug, key) };
   },
 });

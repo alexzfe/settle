@@ -445,12 +445,16 @@ describe("home_folder_setup", () => {
     expect(core.homeKeyOpens(home, second.key)).toBe(true);
   });
 
-  it("stores only each key's SHA-256, so a copy of the database opens no Home", async () => {
+  it("stores each key by its SHA-256, and only the first in plain, for a rollback", async () => {
+    // For one release homes.token keeps the first folder's key, which v2.1.0 reads after a
+    // rollback (migration 0021); every later key is stored by its SHA-256 alone.
     const home = await newHome();
-    const { key } = await core.run("home_folder_setup", web, { home });
+    const { key: first } = await core.run("home_folder_setup", web, { home });
+    const { key: second } = await core.run("home_folder_setup", web, { home });
     const rows = JSON.stringify(store.homeRows(store.home(home)?.id as number));
-    expect(rows).not.toContain(key);
-    expect(rows).toContain(tokenHash(key));
+    expect(rows).not.toContain(second);
+    expect(rows).toContain(tokenHash(second));
+    expect(rows).toContain(tokenHash(first));
   });
 
   it("refuses a Home that does not exist", async () => {

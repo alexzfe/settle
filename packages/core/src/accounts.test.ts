@@ -6,6 +6,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { strFromU8, unzipSync } from "fflate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -493,6 +494,46 @@ describe("the Admin", () => {
     expect((await core.run("get_guide_page", guide, { token: tokenOf(url) })).text).toContain(
       "<html",
     );
+  });
+});
+
+describe("the copy of a Home's key that v2.1.0 reads, kept for one release so a rollback works", () => {
+  let path: string;
+  let keys: FixtureHome;
+  beforeEach(async () => {
+    path = join(dataDir, "keys.sqlite");
+    keys = await createFixtureHome({ dataDir, publicOrigin: ORIGIN, database: path });
+  });
+  afterEach(() => keys.core.close());
+  /** What homes.token holds for the fixture Home, read as v2.1.0 reads it. */
+  const legacyKey = () => {
+    const db = new DatabaseSync(path);
+    const row = db.prepare("SELECT token FROM homes WHERE slug = ?").get(keys.home) as {
+      token: string | null;
+    };
+    db.close();
+    return row.token;
+  };
+
+  it("holds the first Home Folder's key, not later ones", async () => {
+    const first = await keys.core.run("home_folder_setup", keys.web, { home: keys.home });
+    expect(legacyKey()).toBe(first.key);
+    await keys.core.run("home_folder_setup", keys.web, { home: keys.home });
+    expect(legacyKey()).toBe(first.key);
+  });
+
+  it("is emptied when New key… cancels the keys, then holds the next one", async () => {
+    await keys.core.run("home_folder_setup", keys.web, { home: keys.home });
+    await keys.core.run("rotate_home_key", keys.web, { home: keys.home });
+    expect(legacyKey()).toBeNull();
+    const next = await keys.core.run("home_folder_setup", keys.web, { home: keys.home });
+    expect(legacyKey()).toBe(next.key);
+  });
+
+  it("is emptied when Log out everywhere cancels the Account's keys", async () => {
+    await keys.core.run("home_folder_setup", keys.web, { home: keys.home });
+    await keys.core.run("end_logins", keys.web, {});
+    expect(legacyKey()).toBeNull();
   });
 });
 

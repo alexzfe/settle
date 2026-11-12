@@ -137,10 +137,10 @@ describe("migrate", () => {
     const columns = (db.prepare("PRAGMA table_info(homes)").all() as { name: string }[]).map(
       (column) => column.name,
     );
-    // The column stays, emptied, so v2.1.0 still starts and makes Homes after a rollback; a later
-    // migration drops it.
+    // The column and its key stay for one release, so after a rollback v2.1.0's Home Folders
+    // still open; a later migration empties and drops it.
     expect(columns).toContain("token");
-    expect(db.prepare("SELECT token FROM homes").all()).toEqual([{ token: null }]);
+    expect(db.prepare("SELECT token FROM homes").all()).toEqual([{ token: "theFlatsOldKey" }]);
     expect(db.prepare("SELECT home_id, key_hash FROM home_keys").all()).toEqual([
       { home_id: 1, key_hash: createHash("sha256").update("theFlatsOldKey").digest("hex") },
     ]);
@@ -487,36 +487,47 @@ describe("migrate", () => {
     db.close();
   });
 
-  it("hashes a key an older Settle wrote after 0021, as that Home's one key, on every start", () => {
-    // After a rollback, v2.1.0 writes a Home's key into homes.token again (a new Home, or "New
-    // key…"). Rolled forward, 0021 has already run, so the start itself must take that key in.
+  it("on every start, takes in a key an older Settle made after 0021 as that Home's one key", () => {
+    // After a rollback, v2.1.0 writes a new key into homes.token (a new Home, or "New key…").
+    // Rolled forward, 0021 has already run, so the start itself takes that key in. A key this
+    // build already holds is left as it is, with the Home's other keys.
     const path = tempDatabase();
     const sha = (text: string) => createHash("sha256").update(text).digest("hex");
     const first = migrate(path);
     first.exec(
-      "INSERT INTO homes (id, slug, name, country, city, latitude) VALUES " +
-        "(1, 'house', 'House', 'PT', 'Lisbon', 38.7), (2, 'flat', 'Flat', 'PT', 'Porto', 41.1)",
+      "INSERT INTO homes (id, slug, name, country, city, latitude, token) VALUES " +
+        "(1, 'house', 'House', 'PT', 'Lisbon', 38.7, 'rotated-on-v2.1.0'), " +
+        "(2, 'flat', 'Flat', 'PT', 'Porto', 41.1, 'flat-key'), " +
+        "(3, 'loft', 'Loft', 'PT', 'Faro', 37.0, 'made-on-v2.1.0')",
     );
     const addKey = first.prepare(
       "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, ?, '')",
     );
     addKey.run(1, sha("from-the-new-build"));
     addKey.run(2, sha("flat-key"));
-    // v2.1.0's "New key…" on house: the key it shows replaces the Home's others.
-    first.exec("UPDATE homes SET token = 'rotated-on-v2.1.0' WHERE slug = 'house'");
+    addKey.run(2, sha("flat-second-folder"));
     first.close();
 
     const db = migrate(path);
+    // The copies stay, for the next rollback.
     expect(db.prepare("SELECT slug, token FROM homes ORDER BY id").all()).toEqual([
-      { slug: "house", token: null },
-      { slug: "flat", token: null },
+      { slug: "house", token: "rotated-on-v2.1.0" },
+      { slug: "flat", token: "flat-key" },
+      { slug: "loft", token: "made-on-v2.1.0" },
     ]);
     expect(
       db.prepare("SELECT home_id, key_hash FROM home_keys ORDER BY home_id, key_hash").all(),
-    ).toEqual([
-      { home_id: 1, key_hash: sha("rotated-on-v2.1.0") },
-      { home_id: 2, key_hash: sha("flat-key") },
-    ]);
+    ).toEqual(
+      [
+        // v2.1.0's New key… cancelled the key this build made.
+        { home_id: 1, key_hash: sha("rotated-on-v2.1.0") },
+        // Known: nothing changes, the second folder's key included.
+        { home_id: 2, key_hash: sha("flat-key") },
+        { home_id: 2, key_hash: sha("flat-second-folder") },
+        // A Home v2.1.0 made.
+        { home_id: 3, key_hash: sha("made-on-v2.1.0") },
+      ].sort((a, b) => a.home_id - b.home_id || a.key_hash.localeCompare(b.key_hash)),
+    );
     db.close();
   });
 

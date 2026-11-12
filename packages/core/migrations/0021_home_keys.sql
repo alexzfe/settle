@@ -17,7 +17,8 @@ SELECT id, settle_sha256(token), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 FROM homes
 WHERE token IS NOT NULL;
 
--- homes.token is emptied, not dropped, so a rollback to v2.1.0 still starts and still makes Homes
--- (its create_home writes the column); its Home Folders then need "New key". A later migration
--- drops the column once no rollback past this one is wanted.
-UPDATE homes SET token = NULL;
+-- homes.token keeps its key for one release, so a rollback to v2.1.0, which reads only it, leaves
+-- every Home Folder working: users never need a new key because of a rollback. This build keeps it
+-- in step (the first folder's key while it is empty, emptied when keys are cancelled), and
+-- migrate.ts takes in any key v2.1.0 writes there. A later migration empties and drops it, once
+-- no rollback past this release is wanted.

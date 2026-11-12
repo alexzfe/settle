@@ -57,30 +57,34 @@ function inTransaction(db: DatabaseSync, work: () => void): void {
 }
 
 /**
- * Takes in a Home key that a Settle from before 0021 wrote into homes.token after a rollback (a
- * new Home, or its "New key…"): the key becomes that Home's one key, kept by its hash as 0021 keeps
- * keys, and the plain copy is emptied. One key replaces the Home's others because that older
- * Settle has one key per Home, so its "New key…" meant to cancel the rest. Runs on every start,
- * since 0021 runs only once.
+ * Takes in a Home key that v2.1.0 wrote into homes.token after a rollback (a new Home, or its
+ * "New key…"), which this build doesn't hold yet: it becomes that Home's one key, kept by its hash
+ * as 0021 keeps keys. One key replaces the Home's others because v2.1.0 has one key per Home, so
+ * its "New key…" meant to cancel the rest. A key this build already holds (the copy it keeps in
+ * step itself) changes nothing. The copy stays, for the next rollback. Runs on every start, since
+ * 0021 runs only once.
  */
 function adoptOlderKeys(db: DatabaseSync): void {
   const hasKeys = db
     .prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'home_keys'")
     .get();
   if (!hasKeys) return;
-  const older = db.prepare("SELECT id, token FROM homes WHERE token IS NOT NULL").all() as {
-    id: number;
-    token: string;
-  }[];
-  if (older.length === 0) return;
+  const unknown = db
+    .prepare(
+      `SELECT id, token FROM homes WHERE token IS NOT NULL AND NOT EXISTS (
+         SELECT 1 FROM home_keys
+         WHERE home_keys.home_id = homes.id AND home_keys.key_hash = settle_sha256(homes.token)
+       )`,
+    )
+    .all() as { id: number; token: string }[];
+  if (unknown.length === 0) return;
   const now = new Date().toISOString();
   inTransaction(db, () => {
-    for (const home of older) {
+    for (const home of unknown) {
       db.prepare("DELETE FROM home_keys WHERE home_id = ?").run(home.id);
       db.prepare(
         "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, settle_sha256(?), ?)",
       ).run(home.id, home.token, now);
-      db.prepare("UPDATE homes SET token = NULL WHERE id = ?").run(home.id);
     }
   });
 }

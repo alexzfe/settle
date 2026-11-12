@@ -534,7 +534,7 @@ function zipAccount(context: OperationContext, account: AccountRow): ReadableStr
   for (const home of homes) {
     entries.push(() => {
       const rows = store.homeRows(home.id);
-      // homes.token is empty since 0021, kept only for a rollback; it isn't the Home's data.
+      // homes.token is a key kept for one release, for a rollback (0021); a key never leaves.
       rows.homes = (rows.homes ?? []).map(({ token: _token, account_id: _account, ...row }) => row);
       // The Home's keys stay on the server, even as hashes.
       delete rows.home_keys;
