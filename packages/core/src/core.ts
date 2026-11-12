@@ -11,6 +11,7 @@ import {
   tokenHash,
 } from "./accounts.js";
 import { mupdfRenderer } from "./blueprints/mupdf.js";
+import { inProcessRunner, workerRunner } from "./blueprints/render-runner.js";
 import { CoreError } from "./errors.js";
 import { type ChangeEvent, type ChangeListener, EventBus } from "./events.js";
 import { type FileStore, nodeFileStore, type PdfRenderer } from "./files.js";
@@ -204,8 +205,13 @@ export interface CoreOptions {
    */
   dataDir?: string;
   files?: FileStore;
-  /** Internal seam: renders Blueprint files; mupdf unless a test gives another. */
+  /**
+   * Internal seam: renders Blueprint files; mupdf in a worker thread unless a test gives another,
+   * which then runs on this thread.
+   */
   renderPdf?: PdfRenderer;
+  /** Internal seam: the longest one Blueprint render may take; RENDER_TIME_LIMIT_MS by default. */
+  renderTimeLimitMs?: number;
   /** Internal seam: fetches a Listing's photo over HTTP; a test always gives its own. */
   fetchImage?: ImageFetcher;
   clock?: () => Date;
@@ -268,6 +274,9 @@ export function createCore(options: CoreOptions = {}): Core {
     store,
     files: options.files ?? nodeFileStore,
     renderPdf: options.renderPdf ?? mupdfRenderer,
+    renders: options.renderPdf
+      ? inProcessRunner(options.renderPdf)
+      : workerRunner({ timeLimitMs: options.renderTimeLimitMs }),
     fetchImage: options.fetchImage ?? nodeImageFetcher,
     dataDir(): string {
       if (dataDir === undefined) {

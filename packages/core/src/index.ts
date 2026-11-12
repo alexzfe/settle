@@ -69,6 +69,7 @@ export type { FindRow } from "./operations/find-index.js";
 export type { Session } from "./operations/homes.js";
 export * from "./operations/schemas.js";
 export { SKILLS, type Skill } from "./operations/sessions.js";
+export { hostBlocked, safeLookup } from "./private-addresses.js";
 export type { Operation, OperationSurface } from "./registry.js";
 export {
   DECISION_KIND_LABELS,

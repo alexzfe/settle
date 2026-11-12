@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { CoreError } from "../errors.js";
 import type { FetchedImage, PhotoType } from "../images.js";
-import { imageVersion, PHOTO_EXTENSIONS, uploadedImage } from "../images.js";
+import { imageVersion, PASTE_INSTEAD, PHOTO_EXTENSIONS, uploadedImage } from "../images.js";
 import { optional } from "../optional.js";
 import { equal } from "../provenance.js";
 import { defineOperation, type OperationContext } from "../registry.js";
@@ -133,9 +133,10 @@ export const recordListing = defineOperation({
     // store.transaction is synchronous, so the picture is fetched here, before the write, and
     // stored with the row inside it. The fetch is best-effort: a failure only costs the bytes.
     const photo = await fetchPhoto(context, home, input);
-    let stored: StoredPhoto | undefined;
+    const swap: PhotoSwap = {};
+    let receipt: string;
     try {
-      const receipt = context.write(session.slug, (log) => {
+      receipt = context.write(session.slug, (log) => {
         const model = loadDecisions(context.store, home);
         const writer = new Writer(context, home, log, undefined);
         const decision = requirePurchase(model, input.decision, "Listings");
@@ -184,9 +185,16 @@ export const recordListing = defineOperation({
         }
         const checks = planChecks(model, subject, requirements, listing, input.checks ?? []);
         requireRatingNote(listing, input);
-        const write = storeListing(context, model, writer, decision, listing, input, photo?.image);
-        const row = write.row;
-        stored = write.stored;
+        const row = storeListing(
+          context,
+          model,
+          writer,
+          decision,
+          listing,
+          input,
+          photo?.image,
+          swap,
+        );
         const changedChecks = storeChecks(context, model, row, checks);
         if (listing && changedChecks > 0) {
           writer.logged({
@@ -210,17 +218,20 @@ export const recordListing = defineOperation({
         if (photo?.failure) {
           writer.line(
             `Listing for ${subject}`,
-            `its picture could not be stored, so the link is kept: ${photo.failure}`,
+            `its picture could not be stored, so the link is kept: ${photo.failure} If the user ` +
+              "wants the picture, ask them to save it from the shop's page and paste it into " +
+              "the Listing on the board.",
           );
         }
         return writer.receipt();
       });
-      return { receipt };
     } catch (error) {
       // The bytes were written inside the transaction that has just rolled back.
-      if (stored) removePhoto(context, stored.photoPath);
+      removePhoto(context, swap.written ?? null);
       throw error;
     }
+    removeReplaced(context, swap.replaced);
+    return { receipt };
   },
   text: ({ receipt }) => receipt,
 });
@@ -292,8 +303,10 @@ interface ListingInput {
 }
 
 /**
- * Adds a Listing, or changes the fields given of one recorded; returns its row, and the picture
- * it wrote to disk, if any, so a rolled-back write can take the bytes away again.
+ * Adds a Listing, or changes the fields given of one recorded, and returns its row. What it does
+ * to the picture on disk goes into `swap` as soon as it is done, so a write that rolls back, even
+ * from inside here, can take the new bytes away again, and a committed one can remove the
+ * picture replaced.
  */
 function storeListing(
   context: OperationContext,
@@ -303,7 +316,8 @@ function storeListing(
   listing: ListingRow | undefined,
   input: ListingInput,
   image: FetchedImage | undefined,
-): { row: ListingRow; stored: StoredPhoto | undefined } {
+  swap: PhotoSwap,
+): ListingRow {
   const { store } = context;
   const at = context.now();
   const values = {
@@ -322,6 +336,7 @@ function storeListing(
       store.slugTaken("listings", taken, model.home.id),
     );
     const stored = image && storePhoto(context, model.home, slug, image);
+    Object.assign(swap, photoSwap(null, stored));
     const row = store.insert("listings", {
       homeId: model.home.id,
       decisionId: decision.id,
@@ -348,10 +363,11 @@ function storeListing(
       field: `listing ${slug}`,
       new: optional({ ...values, ...optional({ photoStored: stored && true }) }),
     });
-    return { row, stored };
+    return row;
   }
   const previous = listing.photoPath;
   const stored = image && storePhoto(context, model.home, listing.slug, image);
+  Object.assign(swap, photoSwap(previous, stored));
   const current = listing as unknown as Record<string, unknown>;
   const patch = Object.fromEntries(
     Object.entries({ ...values, ...stored }).filter(
@@ -369,9 +385,7 @@ function storeListing(
     });
     Object.assign(listing, patch);
   }
-  // A JPEG replaced by a WebP lands at another path: the copy it replaces goes.
-  if (stored && previous && previous !== stored.photoPath) removePhoto(context, previous);
-  return { row: listing, stored };
+  return listing;
 }
 
 /**
@@ -451,25 +465,57 @@ interface StoredPhoto {
   photoVersion: string;
 }
 
-/** Writes the bytes and returns the columns naming them. Called inside the write. */
+/**
+ * Writes the bytes and returns the columns naming them. Called inside the write. The name carries
+ * the version, so new bytes never overwrite the picture the committed row still names: a write
+ * that rolls back leaves that picture in place, and the one it replaces goes only after COMMIT.
+ */
 function storePhoto(
   context: OperationContext,
   home: HomeRow,
   slug: string,
   image: FetchedImage,
 ): StoredPhoto {
+  const photoVersion = imageVersion(image.bytes);
   const photoPath = join(
     "uploads",
     home.slug,
     "listings",
-    `${slug}.${PHOTO_EXTENSIONS[image.type]}`,
+    `${slug}-${photoVersion}.${PHOTO_EXTENSIONS[image.type]}`,
   );
   context.files.writeBytes(join(context.dataDir(), photoPath), image.bytes);
-  return { photoPath, photoType: image.type, photoVersion: imageVersion(image.bytes) };
+  return { photoPath, photoType: image.type, photoVersion };
+}
+
+/**
+ * What a picture write did on disk: the file it wrote that no committed row names yet, which a
+ * rollback takes away, and the file it replaced, which goes once the write has committed.
+ */
+interface PhotoSwap {
+  written?: string;
+  replaced?: string;
+}
+
+function photoSwap(previous: string | null, stored: StoredPhoto | undefined): PhotoSwap {
+  if (!stored || stored.photoPath === previous) return {};
+  return { written: stored.photoPath, ...(previous ? { replaced: previous } : {}) };
 }
 
 function removePhoto(context: OperationContext, path: string | null): void {
   if (path) context.files.remove(join(context.dataDir(), path));
+}
+
+/**
+ * Removes the picture a committed write replaced. The write stands whatever happens here, so a
+ * removal that fails is only logged: it leaves a stray file, never an error for a change that
+ * was made, nor the rollback's cleanup of the picture that was committed.
+ */
+function removeReplaced(context: OperationContext, path: string | undefined): void {
+  try {
+    removePhoto(context, path ?? null);
+  } catch (error) {
+    console.warn(`Couldn't remove the replaced picture ${path}:`, error);
+  }
 }
 
 /**
@@ -493,7 +539,9 @@ async function fetchPhoto(
   try {
     return { image: await context.fetchImage(photoUrl) };
   } catch (error) {
-    return { failure: error instanceof Error ? error.message : String(error) };
+    // The fetcher's what-to-do is the user's, at the paste box; the receipt gives the Agent its own.
+    const message = error instanceof Error ? error.message : String(error);
+    return { failure: message.replace(PASTE_INSTEAD, "").trim() };
   }
 }
 
@@ -514,7 +562,8 @@ export const dropListing = defineOperation({
   surface: "web",
   handler(context, input): DropListingResult {
     const home = requireHome(context);
-    return context.write("web", (log) => {
+    let picture: string | null = null;
+    const result = context.write("web", (log) => {
       const model = loadDecisions(context.store, home);
       const { listing, decision } = requireListing(model, input.listing);
       if (decision.fulfilment?.listing === listing.slug) {
@@ -528,7 +577,7 @@ export const dropListing = defineOperation({
       // listing_checks is the only foreign key into listings: a Deviation cites a Requirement.
       context.store.removeListingChecks(listing.id);
       context.store.removeListing(listing.id);
-      removePhoto(context, listing.photoPath);
+      picture = listing.photoPath;
       writer.logged({
         recordKind: "decision",
         record: decision,
@@ -543,6 +592,9 @@ export const dropListing = defineOperation({
       });
       return { decision: decision.slug, listing: listing.slug };
     });
+    // After COMMIT, so a failed one keeps the picture with the row it keeps.
+    removePhoto(context, picture);
+    return result;
   },
 });
 
@@ -599,18 +651,21 @@ export const setListingPhoto = defineOperation({
   surface: "web",
   async handler(context, input): Promise<ListingResult> {
     const home = requireHome(context);
+    // Checked before the fetch too, so nothing is fetched for a Listing the Home has not got.
+    requireListing(loadDecisions(context.store, home), input.listing);
     const image =
       input.file === undefined
         ? await context.fetchImage(input.url as string)
         : uploadedImage(input.file);
-    let stored: StoredPhoto | undefined;
+    let swap: PhotoSwap = {};
+    let result: ListingResult;
     try {
-      return context.write("web", (log) => {
+      result = context.write("web", (log) => {
         const model = loadDecisions(context.store, home);
         const { listing, decision } = requireListing(model, input.listing);
         const writer = new Writer(context, home, log, undefined);
-        const previous = listing.photoPath;
-        stored = storePhoto(context, home, listing.slug, image);
+        const stored = storePhoto(context, home, listing.slug, image);
+        swap = photoSwap(listing.photoPath, stored);
         const patch = { ...stored, ...(input.url === undefined ? {} : { photoUrl: input.url }) };
         context.store.update("listings", listing.id, patch);
         writer.logged({
@@ -621,16 +676,17 @@ export const setListingPhoto = defineOperation({
           new: { photoVersion: stored.photoVersion, ...optional({ photoUrl: input.url }) },
         });
         Object.assign(listing, patch);
-        if (previous && previous !== stored.photoPath) removePhoto(context, previous);
         return {
           decision: decision.slug,
           listing: toListing(model, listing, activeRequirements(model, decision)),
         };
       });
     } catch (error) {
-      if (stored) removePhoto(context, stored.photoPath);
+      removePhoto(context, swap.written ?? null);
       throw error;
     }
+    removeReplaced(context, swap.replaced);
+    return result;
   },
 });
 
