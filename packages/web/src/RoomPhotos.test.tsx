@@ -226,7 +226,11 @@ describe("Room Photos", () => {
   });
 
   it("does not carry a Photo being added over to another Room already read", async () => {
-    vi.mocked(preparePhoto).mockResolvedValue({ file: new Blob(["a"]), thumb: new Blob(["b"]) });
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: new Blob(["a"]),
+      thumb: new Blob(["b"]),
+      takenOn: "2026-10-12",
+    });
     vi.stubGlobal(
       "URL",
       Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: vi.fn() }),
