@@ -1,9 +1,11 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.27.1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Settle in one container: the server, its MCP endpoint, and the built web UI, on port 4380.
 # The runtime layout keeps the workspace's shape (/app/packages/{core,server,web}), because the
 # server finds the UI at packages/web/dist and core finds its migrations and data beside its dist.
 
-ARG NODE_IMAGE=node:26-bookworm-slim
+# Pinned by version and digest, so a rebuild takes the same Node; Renovate (renovate.json) proposes
+# each new one as a pull request.
+ARG NODE_IMAGE=node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1
 # Node 26 ships without corepack, so pnpm comes from npm, pinned.
 ARG PNPM_VERSION=12.4.2
 
@@ -19,6 +21,8 @@ COPY packages/web/package.json packages/web/
 COPY packages/skills/package.json packages/skills/
 
 # Build: every dependency, then core, server, and web (the Skills build writes plugin/, not needed here).
+# Core and server build from tsconfig.build.json, which leaves out the tests, their helpers and
+# the source maps; the image runs none of them.
 FROM pnpm AS build
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
@@ -26,7 +30,7 @@ COPY tsconfig.base.json ./
 COPY packages/core packages/core
 COPY packages/server packages/server
 COPY packages/web packages/web
-RUN pnpm --filter @settle/core --filter @settle/server --filter @settle/web build
+RUN pnpm exec tsc --build packages/server/tsconfig.build.json && pnpm --filter @settle/web build
 
 # Production dependencies of the server and core only; the UI is static files once built.
 FROM pnpm AS deps
@@ -48,7 +52,6 @@ COPY --from=deps --chown=root:root /app ./
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/core/migrations packages/core/migrations
 COPY --from=build /app/packages/core/data packages/core/data
-COPY --from=build /app/packages/core/fixture packages/core/fixture
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/web/dist packages/web/dist
 # The built Skills, which read_skill serves to an Agent without them (core's skill-texts.ts).

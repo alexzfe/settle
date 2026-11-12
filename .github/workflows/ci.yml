@@ -3,13 +3,15 @@
 #
 #   pull request  -> check
 #   push to main  -> check, build ghcr.io/alexzfe/settle:<sha> for amd64 and arm64, deploy to staging
-#   push tag v*   -> tag the image main already built for that commit vX.Y.Z and latest, deploy it
-#                    to prod, then cut a GitHub Release
+#   push tag v*   -> refuse unless main's run for that commit deployed it to staging, deploy
+#                    that image to prod by its SHA, and only once prod is healthy tag it vX.Y.Z
+#                    and latest and cut a GitHub Release
 #
 # Prod never rebuilds: the tag points at a commit main already built and staging already ran. The
 # deploys take the Tailscale CI secrets TS_CI_OAUTH_CLIENT_ID and TS_CI_OAUTH_SECRET, and the
 # repository variables SETTLE_STAGING_URL and SETTLE_PROD_URL, the public addresses each deploy is
-# smoke-tested at.
+# smoke-tested at. Actions are pinned to commit SHAs, with their version beside them; Renovate
+# (renovate.json) proposes each update as a pull request.
 name: ci
 
 on:
@@ -30,7 +32,8 @@ permissions:
 env:
   # The lockfile does not record pnpm's version, so it is pinned here and in the Dockerfile.
   PNPM_VERSION: 12.4.2
-  NODE_VERSION: 26
+  # Node's exact version, the one the Dockerfile's base image runs; Renovate moves both together.
+  NODE_VERSION: 26.13.1
   IMAGE: ghcr.io/alexzfe/settle
 
 jobs:
@@ -38,18 +41,32 @@ jobs:
     if: github.ref_type != 'tag'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm test
+      # The image builds core and server from tsconfig.build.json, which leaves the tests and their
+      # helpers out, so a shipped file that imports one fails here rather than in the image job.
+      # Before pnpm build, which then writes the full dist/.
+      - run: pnpm exec tsc --build packages/server/tsconfig.build.json
       - run: pnpm build
+      # The image serves the committed plugin/skills to the Claude app (read_skill), so they must
+      # be what the Skills' sources build.
+      - name: Check the committed plugin/ matches a fresh build
+        run: |
+          if [ -n "$(git status --porcelain -- plugin/)" ]; then
+            git status --short -- plugin/
+            git diff --stat -- plugin/
+            echo "::error::plugin/ differs from a fresh build of packages/skills. Run pnpm plugin:build and commit plugin/."
+            exit 1
+          fi
 
   image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -59,25 +76,25 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Emulates arm64 on the amd64 runner, for the second platform below.
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       # The full SHA is what infra's deploy runs; sha-<short> and main are for people.
       - id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
           tags: |
             type=sha,format=long,prefix=
             type=sha,prefix=sha-,format=short
             type=raw,value=main
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -98,17 +115,47 @@ jobs:
       url: ${{ vars.SETTLE_STAGING_URL }}
     secrets: inherit
 
-  # A release: the image main built for this commit, under the version and as latest, so
-  # self-hosters following latest move only on a release.
-  promote:
+  # A release runs only a commit whose run on main succeeded, and so deployed to staging.
+  staged:
     if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check ${{ github.sha }} reached staging
+        run: |
+          staged=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main \
+            --event push --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          if [ "$staged" = 0 ]; then
+            echo "::error::${GITHUB_SHA} has no successful run on main, so it never reached staging. Tag a commit whose main run deployed to staging, or re-run that run's failed jobs and then this one."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # Prod runs the image main built, by its SHA, so no version tag has to exist yet.
+  prod:
+    needs: staged
+    uses: alexzfe/infra/.github/workflows/deploy-app.yml@main
+    with:
+      app: settle
+      env: prod
+      tag: ${{ github.sha }}
+      url: ${{ vars.SETTLE_PROD_URL }}
+    secrets: inherit
+
+  # vX.Y.Z and latest name the image only once prod has run it and passed its health check, so a
+  # self-hoster never pulls a release prod rolled back.
+  promote:
+    needs: prod
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -120,18 +167,8 @@ jobs:
             --tag "${IMAGE}:latest" \
             "${IMAGE}:${GITHUB_SHA}"
 
-  prod:
-    needs: promote
-    uses: alexzfe/infra/.github/workflows/deploy-app.yml@main
-    with:
-      app: settle
-      env: prod
-      tag: ${{ github.sha }}
-      url: ${{ vars.SETTLE_PROD_URL }}
-    secrets: inherit
-
   release:
-    needs: prod
+    needs: promote
     runs-on: ubuntu-latest
     permissions:
       contents: write

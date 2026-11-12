@@ -9,7 +9,9 @@ import { loadConfig } from "./config.js";
 // settle backup: the data dir as one .tar.gz, written to stdout, safe while the server runs.
 // The database is copied by SQLite's online backup, so the copy is consistent however busy the
 // server is; uploads/ and rendered/ are copied as they are, and files are only ever added or
-// removed whole. Restore by unpacking it into an empty data dir:
+// removed whole. The copy must pass SQLite's integrity_check, or nothing is written and the
+// command fails, so a broken database never becomes an archive that looks whole. Restore by
+// unpacking it into an empty data dir:
 //
 //   docker exec <container> node packages/server/dist/backup.js > settle.tgz
 //   tar xzf settle.tgz -C <empty data dir>
@@ -32,6 +34,7 @@ export async function writeBackup(dataDir: string, out: NodeJS.WritableStream): 
     } finally {
       source.close();
     }
+    checkIntegrity(join(staging, DATABASE), database);
     // The folders go in through links, followed, so nothing is copied twice.
     const folders = FOLDERS.filter((folder) => existsSync(join(dataDir, folder)));
     for (const folder of folders) symlinkSync(join(dataDir, folder), join(staging, folder));
@@ -42,6 +45,31 @@ export async function writeBackup(dataDir: string, out: NodeJS.WritableStream): 
   } finally {
     rmSync(staging, { recursive: true, force: true });
   }
+}
+
+/**
+ * Runs SQLite's integrity_check on the staged copy, before any byte of the archive is written, so
+ * a broken database never becomes a backup that looks whole.
+ */
+function checkIntegrity(copy: string, original: string): void {
+  let problems: string[];
+  let staged: DatabaseSync | undefined;
+  try {
+    staged = new DatabaseSync(copy, { readOnly: true });
+    problems = (staged.prepare("PRAGMA integrity_check").all() as { integrity_check: string }[])
+      .map((row) => row.integrity_check)
+      .filter((line) => line !== "ok");
+  } catch (error) {
+    problems = [(error as Error).message];
+  } finally {
+    staged?.close();
+  }
+  if (problems.length === 0) return;
+  throw new Error(
+    `The database at ${original} failed SQLite's integrity check (${problems.slice(0, 3).join("; ")}), ` +
+      "so no backup was written. Keep the last good backup, and restore from it or repair the " +
+      "database before taking another.",
+  );
 }
 
 if (import.meta.main) {
