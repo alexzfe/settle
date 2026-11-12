@@ -5,11 +5,11 @@
 // Any call answered 401, because the Login ran out or was ended, sends the browser to the login page.
 
 import type {
-  Item as CoreItem,
-  ItemPage as CoreItemPage,
+  ClaudeConnect,
+  ConnectionSummary,
   OperationName as CoreOperationName,
-  Room as CoreRoom,
   DecisionReceiptResult,
+  DocumentsResult,
   EditItemInput,
   ExportGuidesInput,
   ExportShoppingListInput,
@@ -17,11 +17,14 @@ import type {
   GetDecisionWebInput,
   GetShoppingInput,
   GetShoppingResult,
+  ItemDocument,
   ListDecisionsInput,
   ListDecisionsResult,
   ListingResult,
   OperationInput,
   OperationOutput,
+  Photo,
+  PhotosResult,
   ResolveConflictInput,
   ResolveFlagInput,
   RoomDetail,
@@ -34,13 +37,17 @@ export type {
   Blueprint,
   BlueprintPage,
   ChangeEntry,
+  ClaudeConnect,
   Conflict,
+  ConnectionSummary as Connection,
   Constraint,
   DecisionDetail,
   DecisionKind,
   DecisionState,
   DecisionSummary,
   Deviation,
+  DocumentKind,
+  DocumentsResult,
   Door,
   EditItemInput,
   EvidenceEntry,
@@ -53,15 +60,21 @@ export type {
   Held,
   HoldReason,
   Home,
+  Item,
+  ItemDocument as Document,
+  ItemPage,
   Level,
   ListDecisionsInput,
   Listing,
   ListingCheck,
   Note,
+  Photo,
+  PhotosResult,
   QuickGuide,
   QuickGuideLine,
   Requirement,
   Resolution,
+  Room,
   RoomDetail,
   Session,
   ShoppingEntry,
@@ -73,98 +86,11 @@ export type {
 // Surface record in the package's exports; the record's type is taken from the Room detail.
 export type Surface = RoomDetail["surfaces"][number];
 
-// Photos, as the item-photos and room-photos handoffs' contracts give them. Core builds them
-// alongside this page, so their shapes are declared here until its schemas carry them; core's own
-// types, once they do, must agree with these.
-
-/** Whose a Photo is: one Item or one Room, named by slug. */
+/** Whose a Photo is: one Item or one Room, named by slug. Core takes either; the web sends one. */
 export type PhotoOwner = { item: string } | { room: string };
 
 /** A Room Photo's Wall: its position in the Room, its label, and whether it is now archived. */
-export interface PhotoWall {
-  position: number;
-  label?: string;
-  archived: boolean;
-}
-
-/** A Photo of an Item or a Room: a dated picture the user took and added, with an optional caption. */
-export interface Photo {
-  id: number;
-  /** Changes whenever the stored bytes do; passed to get_photo so the browser caches for good. */
-  version: string;
-  /** When it was taken, YYYY-MM-DD: from the photo's EXIF, else the day it was added. */
-  takenOn: string;
-  caption?: string;
-  /** The Wall a Room Photo shows; absent for the whole Room, and always for an Item's. */
-  wall?: PhotoWall;
-}
-
-/** An Item, with its main (newest) Photo when it has any, for the lists' thumbnails. */
-export type Item = CoreItem & { photo?: Pick<Photo, "id" | "version"> };
-
-/** A Room, with its main (newest) Photo when it has any, for its tile's thumbnail. */
-export type Room = CoreRoom & { photo?: Pick<Photo, "id" | "version"> };
-
-/** What every Photo write answers: the owner's Photos as they now stand, newest first. */
-export interface PhotosResult {
-  photos: Photo[];
-}
-
-/** get_home, its Rooms carrying their main Photo. */
-export type HomeResult = Omit<OperationOutput<"get_home">, "rooms"> & { rooms: Room[] };
-
-/** get_room: the Room Sheet and its Decisions, with the Room's Photos newest first. */
-export type RoomResult = OperationOutput<"get_room"> & { photos: Photo[] };
-
-// Documents, as the item-documents handoff's contract gives them, declared here as Photos were
-// until core's schemas carry them; core's own types, once they do, must agree with these.
-
-export type DocumentKind = "receipt" | "warranty" | "manual" | "other";
-
-/** A file kept with an Item: a PDF or an image, of a kind, with an optional one-line name. */
-export interface Document {
-  id: number;
-  kind: DocumentKind;
-  name?: string;
-  type: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
-  bytes: number;
-  /** Changes whenever the stored bytes do; passed to get_document so the browser caches for good. */
-  version: string;
-}
-
-/** What every Document write answers: the Item's Documents as they now stand, in page order. */
-export interface DocumentsResult {
-  documents: Document[];
-}
-
-/**
- * One Item's page, with its Photos newest first and its Documents by kind then oldest first, each
- * empty when it has none.
- */
-export type ItemPage = Omit<CoreItemPage, "item"> & {
-  item: Item;
-  photos: Photo[];
-  documents: Document[];
-};
-
-/** One Connection: Claude's authorised link to the Account, made when the user clicked Allow. */
-export interface Connection {
-  id: number;
-  /** The host Settle's Allow page named the client by: "claude.ai", or "localhost". */
-  client: string;
-  createdAt: string;
-  lastUsedAt: string;
-}
-
-/** How to connect Claude to this server, from its own origin. */
-export interface ClaudeConnect {
-  /** The Account's MCP URL. */
-  mcpUrl: string;
-  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
-  addConnectorUrl: string;
-  /** For Claude Code: the same connector for every folder, and the Settle plugin. */
-  claudeCodeCommand: string;
-}
+export type PhotoWall = NonNullable<Photo["wall"]>;
 
 /** An operation's input and output, as core's registry declares them. */
 interface Shapes<Name extends CoreOperationName> {
@@ -176,13 +102,13 @@ interface Shapes<Name extends CoreOperationName> {
 export interface Operations {
   list_homes: Shapes<"list_homes">;
   create_home: Shapes<"create_home">;
-  get_home: { input: OperationInput<"get_home">; output: HomeResult };
+  get_home: Shapes<"get_home">;
   home_folder_setup: Shapes<"home_folder_setup">;
   list_sessions: Shapes<"list_sessions">;
-  get_room: { input: OperationInput<"get_room">; output: RoomResult };
+  get_room: Shapes<"get_room">;
   list_items: Shapes<"list_items">;
   /** One Item's page: its register, the Decisions tied to it, and its history. Web-only. */
-  get_item: { input: OperationInput<"get_item">; output: ItemPage };
+  get_item: Shapes<"get_item">;
   /** The pencil: the first write to an Item from the web, logged with origin "web". */
   edit_item: { input: EditItemInput; output: OperationOutput<"edit_item"> };
   list_constraints: Shapes<"list_constraints">;
@@ -204,31 +130,11 @@ export interface Operations {
   hold_listing: Shapes<"hold_listing">;
   // A Photo's caption, a Room Photo's Wall, and its removal: web-only, the user's own hand. An
   // empty caption clears it; a null Wall makes it the whole Room's.
-  edit_photo: {
-    input: PhotoOwner & {
-      home: string;
-      photo: number;
-      caption?: string | null;
-      wall?: number | null;
-    };
-    output: PhotosResult;
-  };
-  delete_photo: { input: PhotoOwner & { home: string; photo: number }; output: PhotosResult };
+  edit_photo: Shapes<"edit_photo">;
+  delete_photo: Shapes<"delete_photo">;
   // A Document's kind and name, and its removal: web-only too. An empty or null name clears it.
-  edit_document: {
-    input: {
-      home: string;
-      item: string;
-      document: number;
-      kind?: DocumentKind;
-      name?: string | null;
-    };
-    output: DocumentsResult;
-  };
-  delete_document: {
-    input: { home: string; item: string; document: number };
-    output: DocumentsResult;
-  };
+  edit_document: Shapes<"edit_document">;
+  delete_document: Shapes<"delete_document">;
   // The Account page: the Account logged in, its password, email, Logins, and its deletion.
   get_account: Shapes<"get_account">;
   change_password: Shapes<"change_password">;
@@ -236,7 +142,7 @@ export interface Operations {
   list_logins: Shapes<"list_logins">;
   end_logins: Shapes<"end_logins">;
   // The Account's Connections, and how to make one: the server answers these itself (api.ts).
-  list_connections: { input: Record<string, never>; output: { connections: Connection[] } };
+  list_connections: { input: Record<string, never>; output: { connections: ConnectionSummary[] } };
   end_connection: { input: { connection: number }; output: Record<string, never> };
   claude_connect: { input: Record<string, never>; output: ClaudeConnect };
   delete_account: Shapes<"delete_account">;
@@ -337,7 +243,7 @@ export function photoUrl(
 export function documentUrl(
   home: string,
   item: string,
-  document: Pick<Document, "id" | "version">,
+  document: Pick<ItemDocument, "id" | "version">,
 ): string {
   const query = new URLSearchParams({
     home,
@@ -403,7 +309,7 @@ async function send<Output>(url: string, init: RequestInit): Promise<Output> {
   if (error) throw new ApiError(error.code, error.message, response.status);
   throw new ApiError(
     "unexpected_response",
-    `${url} answered ${response.status} without an error message. Is the server running?`,
+    `${url} answered ${response.status} without an error message.`,
     response.status,
   );
 }

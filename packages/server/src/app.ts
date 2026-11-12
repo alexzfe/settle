@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { type Core, CoreError } from "@settle/core";
 import { type Context, Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -15,6 +16,7 @@ import {
   handlePhotoUpload,
   handleUpload,
   JSON_CAP,
+  refuse,
   UPLOAD_CAPS,
   uploadGuard,
 } from "./api.js";
@@ -125,12 +127,38 @@ export function createApp({
     });
   });
   serveWeb(app, webDist);
+  app.notFound((c) => {
+    const message = `There is no ${c.req.method} ${c.req.path}.`;
+    return refuse(c, 404, "not_found", message);
+  });
+  app.onError(unexpected);
   return app;
+}
+
+/**
+ * Anything thrown that isn't one of core's refusals: a SQLite error, a broken invariant, a crash
+ * in a library. The log keeps the error under a short id; the answer gives the id and nothing of
+ * the error, in the shape every other refusal has. The Home Folder script's caller is curl -f,
+ * which reads only the status, so it keeps plain text.
+ */
+function unexpected(error: Error, c: Context): Response {
+  const id = randomBytes(4).toString("hex");
+  console.error(`error ${id}: ${c.req.method} ${loggable(c.req.path)}`, error);
+  const message =
+    "Something went wrong on the server. Try again; if it keeps happening, the server's log says " +
+    `why under error ${id}.`;
+  if (c.req.path === "/api/home_folder_script") return c.text(`${message}\n`, 500);
+  return refuse(c, 500, "internal", message);
+}
+
+/** A path for the log: a setup, invite or reset link's one-time token is left out. */
+function loggable(path: string): string {
+  return path.replace(/^\/(setup|invite|reset)\/[^/]+/, "/$1/:token");
 }
 
 function tooBig(c: Context): Response {
   const message = "That request is far larger than anything this route takes.";
-  return c.json({ error: { code: "validation", message } }, 413);
+  return refuse(c, 413, "too_large", message);
 }
 
 const LOCAL_HOSTNAMES = new Set(["127.0.0.1", "localhost"]);
@@ -152,7 +180,7 @@ function frontDoor(publicOrigin: string | undefined): MiddlewareHandler {
     const hostAllowed = host === publicHost || isLocal(`http://${host}`);
     const originAllowed = origin === undefined || origin === publicOrigin || isLocal(origin);
     if (!hostAllowed || !originAllowed) {
-      return c.json({ error: { code: "forbidden", message } }, 403);
+      return refuse(c, 403, "forbidden", message);
     }
     await next();
   };

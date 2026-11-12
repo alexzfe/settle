@@ -22,7 +22,8 @@ beforeAll(async () => {
 });
 afterAll(() => fixture.core.close());
 
-const index = () => fixture.core.run("find_index", fixture.web, { home: fixture.home });
+const index = async () =>
+  (await fixture.core.run("find_index", fixture.web, { home: fixture.home })).rows;
 
 async function row(kind: FindRow["kind"], slug: string): Promise<FindRow> {
   const found = (await index()).find((each) => each.kind === kind && each.slug === slug);
@@ -78,7 +79,7 @@ describe("find_index", () => {
       { caller: { kind: "session", session }, home: home.slug },
       { session, name: "Kitchen" },
     );
-    const rows = await core.run("find_index", web, { home: home.slug });
+    const { rows } = await core.run("find_index", web, { home: home.slug });
     expect(rows.map((each) => [each.name, each.where])).toEqual([["Kitchen", ""]]);
     core.close();
   });

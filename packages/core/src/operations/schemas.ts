@@ -1180,7 +1180,11 @@ export const listConstraintsResult = z.object({ constraints: z.array(constraintS
 export const listNotesResult = z.object({ notes: z.array(noteSchema) });
 export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
 /** Newest first. */
-export const getChangeLogResult = z.object({ changes: z.array(changeSchema) });
+export const getChangeLogResult = z.object({
+  changes: z.array(changeSchema),
+  /** Whether older changes were left out by the limit. */
+  more: z.boolean(),
+});
 
 /** get_room_sheet: the Room Sheet as text. */
 export const getRoomSheetResult = z.object({ sheet: z.string() });

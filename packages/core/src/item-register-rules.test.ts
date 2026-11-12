@@ -447,6 +447,15 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
   afterAll(() => fixture.core.close());
   const page = (item: string) => fixture.core.run("get_item", web, { home: fixture.home, item });
 
+  it("refuses an unknown Item in words for the user, naming no Agent tool", async () => {
+    const error = await refusal(page("nope"));
+    expect(error.code).toBe("not_found");
+    expect(error.message).toBe(
+      'This Home has no Item "nope". It may have been renamed or removed; open it from the ' +
+        "Items page.",
+    );
+  });
+
   it("shows the Billy with the Purchase relying on it and the one that replaced it", async () => {
     const billy = await page("bookcase");
     expect(billy.item).toMatchObject({ slug: "bookcase", archivedReason: expect.any(String) });

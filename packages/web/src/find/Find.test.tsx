@@ -57,7 +57,7 @@ function stub(rows: FindRow[] = index) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({ home: flat, levels: [], rooms: [], unplacedItems: 0 }),
-    find_index: () => rows,
+    find_index: () => ({ rows }),
   });
 }
 

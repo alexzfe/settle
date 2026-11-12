@@ -49,7 +49,7 @@ const intake: Session = {
   summary: { changed: "Measured the living room.", open: "Nothing", next: "Color" },
 };
 
-function stubLog(changes: () => ChangeEntry[]) {
+function stubLog(changes: () => ChangeEntry[], more = false) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({
@@ -60,7 +60,7 @@ function stubLog(changes: () => ChangeEntry[]) {
     }),
     list_decisions: () => ({ decisions: [] }),
     list_sessions: () => ({ sessions: [intake] }),
-    get_change_log: () => ({ changes: changes() }),
+    get_change_log: () => ({ changes: changes(), more }),
   });
 }
 
@@ -85,7 +85,7 @@ it("reads the log as sentences grouped by Session, newest first, with a link to 
   await screen.findByText(/length/);
 
   expect(inputsTo(fetch, "get_change_log")).toEqual([{ home: "flat" }]);
-  expect(screen.getByText("Only the newest 200 changes are loaded.")).toBeDefined();
+  expect(screen.queryByText(/Only the newest/)).toBeNull();
   expect(timeline()).toEqual([
     [
       "Home Intake Session",
@@ -116,6 +116,12 @@ it("reads the log as sentences grouped by Session, newest first, with a link to 
   );
   expect(await screen.findByText("Cat")).toBeDefined();
   expect(timeline()[0]?.[1]).toBe("Cat added");
+});
+
+it("says only the newest changes are loaded when the server left older ones out", async () => {
+  stubLog(() => [overridden, created], true);
+  renderRoutes("/homes/flat/log");
+  expect(await screen.findByText("Only the newest 200 changes are loaded.")).toBeDefined();
 });
 
 it("shows a Session's first few changes and links the rest, and a Decision's state as its marks", async () => {
@@ -194,7 +200,10 @@ it("keeps every field of every change behind a toggle", async () => {
 });
 
 it("says so when nothing has changed yet", async () => {
-  stubApi({ list_homes: () => ({ homes: [flat] }), get_change_log: () => ({ changes: [] }) });
+  stubApi({
+    list_homes: () => ({ homes: [flat] }),
+    get_change_log: () => ({ changes: [], more: false }),
+  });
   renderRoutes("/homes/flat/log");
   expect(await screen.findByText("No changes yet.")).toBeDefined();
 });

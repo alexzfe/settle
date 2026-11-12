@@ -144,9 +144,13 @@ export function imageDimensions(bytes: Uint8Array): { width: number; height: num
   return undefined;
 }
 
-/** Whether the bytes are a PDF: "%PDF-" in the head, since a PDF may have a little junk before it. */
+/**
+ * Whether the bytes are a PDF: "%PDF-" at the start, after any whitespace. Anything else before it
+ * is refused, so a page that only mentions "%PDF-" (an HTML file in a comment, say) is never
+ * stored and served back as a PDF.
+ */
 export function isPdf(bytes: Uint8Array): boolean {
-  return new TextDecoder("latin1").decode(bytes.subarray(0, 1024)).includes("%PDF-");
+  return /^\s*%PDF-/.test(new TextDecoder("latin1").decode(bytes.subarray(0, 1024)));
 }
 
 /** The refusal of a HEIC image, which `name` is; `otherwise` offers another way, after a comma. */

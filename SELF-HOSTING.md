@@ -180,7 +180,16 @@ docker compose up -d
 docker compose pull && docker compose up -d
 ```
 
-The database is migrated when the server starts.
+The database is migrated when the server starts. Before it applies a migration, Settle copies the
+database to `settle.sqlite.before-<NNNN>` in the data folder, `<NNNN>` being the first migration it
+applies, and removes the copy from the upgrade before. To go back to the version you had, stop the
+container, delete `settle.sqlite-wal` and `settle.sqlite-shm` if they are there, replace
+`settle.sqlite` with that copy, and pin the old image tag (`ghcr.io/alexzfe/settle:vX.Y.Z`) in
+`compose.yaml`.
+Anything written since the upgrade is lost.
+
+An older Settle refuses to start on a database a newer one migrated, and says which copy to
+restore.
 
 ### From a version with one shared password
 

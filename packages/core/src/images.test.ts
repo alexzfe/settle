@@ -7,7 +7,13 @@ import { createServer, type IncomingHttpHeaders, type ServerResponse } from "nod
 import type { AddressInfo, LookupFunction } from "node:net";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CoreError } from "./errors.js";
-import { createImageFetcher, MAX_IMAGE_BYTES, nodeImageFetcher, sniffImageType } from "./images.js";
+import {
+  createImageFetcher,
+  isPdf,
+  MAX_IMAGE_BYTES,
+  nodeImageFetcher,
+  sniffImageType,
+} from "./images.js";
 
 const JPEG = bytes([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]);
 const PNG = bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
@@ -105,6 +111,20 @@ describe("sniffImageType", () => {
       sniffImageType(bytes([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45])),
     ).toBe(undefined);
     expect(sniffImageType(new Uint8Array())).toBeUndefined();
+  });
+});
+
+describe("isPdf", () => {
+  const text = (value: string) => new TextEncoder().encode(value);
+
+  it("takes bytes that begin with %PDF-, after any whitespace", () => {
+    expect(isPdf(text("%PDF-1.7\n%âãÏÓ\n"))).toBe(true);
+    expect(isPdf(text("\r\n \t%PDF-1.4\n"))).toBe(true);
+  });
+
+  it("refuses an HTML page that only mentions %PDF- further in, so it is never served as a PDF", () => {
+    expect(isPdf(text("<!doctype html><!-- %PDF-1.7 --><script>alert(1)</script>"))).toBe(false);
+    expect(isPdf(HTML)).toBe(false);
   });
 });
 
