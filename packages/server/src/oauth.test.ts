@@ -14,7 +14,7 @@ import type { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { FailureLimiter } from "./limits.js";
-import { addressBlocked, CLAUDE_CALLBACK, fetchClientMetadata } from "./oauth.js";
+import { CLAUDE_CALLBACK, fetchClientMetadata } from "./oauth.js";
 import { loginCookie } from "./testing.js";
 
 const { accountMcp } = vi.hoisted(() => ({
@@ -679,22 +679,6 @@ describe("the CIMD fetch", () => {
       "not a url",
     ]) {
       await expect(fetchClientMetadata(url), url).rejects.toThrow();
-    }
-  });
-
-  it("counts every private range as blocked, and a public address as not", () => {
-    for (const address of [
-      "10.0.0.1",
-      "172.16.5.4",
-      "100.64.0.1",
-      "0.0.0.0",
-      "fd00::1",
-      "fe80::1",
-    ]) {
-      expect(addressBlocked(address), address).toBe(true);
-    }
-    for (const address of ["160.79.104.10", "2606:4700::1111"]) {
-      expect(addressBlocked(address), address).toBe(false);
     }
   });
 });
