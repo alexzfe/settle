@@ -1,7 +1,7 @@
 // The server-enforced rules of slice 3 (Blueprints), and the Blueprint operations: upload,
 // view_images, page-to-Level mapping, and Blueprint sources.
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { crc32, deflateSync } from "node:zlib";
@@ -152,7 +152,94 @@ function noisyPng(width: number, height: number): Uint8Array {
   ]);
 }
 
+/** A PNG's signature and IHDR alone, claiming `width` × `height`, with no image data. */
+function pngHeader(width: number, height: number): Uint8Array {
+  const out = Buffer.alloc(8 + 25);
+  out.set(PNG_SIGNATURE, 0);
+  out.writeUInt32BE(13, 8);
+  out.write("IHDR", 12, "latin1");
+  out.writeUInt32BE(width, 16);
+  out.writeUInt32BE(height, 20);
+  out[24] = 8;
+  out[25] = 2;
+  out.writeUInt32BE(crc32(out.subarray(12, 29)), 29);
+  return out;
+}
+
+/** A JPEG's start, an APP0 segment, and a baseline frame header claiming `width` × `height`. */
+function jpegHeader(width: number, height: number): Uint8Array {
+  const app0 = [0xff, 0xe0, 0x00, 0x10, ...Buffer.from("JFIF\0"), 1, 1, 0, 0, 1, 0, 1, 0, 0];
+  const sof = [0xff, 0xc0, 0x00, 0x11, 8, height >> 8, height & 0xff, width >> 8, width & 0xff, 3];
+  const components = [1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1];
+  return new Uint8Array([0xff, 0xd8, ...app0, ...sof, ...components]);
+}
+
+/**
+ * A one-page PDF of a couple of KB whose page draws a form that draws the next one 16 times, down
+ * `levels` levels: 16^(levels-1) fills of the page. Four levels hold mupdf for about 8 s.
+ */
+function nestedPdf(levels: number): Uint8Array {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R " +
+      "/Resources << /XObject << /X 5 0 R >> >> >>",
+    stream("", "/X Do"),
+  ];
+  for (let level = 1; level <= levels; level++) {
+    const last = level === levels;
+    const content = last ? "0 0 600 800 re f" : Array(16).fill("/X Do").join(" ");
+    const resources = last ? "" : ` /Resources << /XObject << /X ${6 + level - 1} 0 R >> >>`;
+    objects.push(stream(` /Type /XObject /Subtype /Form /BBox [0 0 600 800]${resources}`, content));
+  }
+  let pdf = "%PDF-1.7\n";
+  const offsets: number[] = [];
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return new TextEncoder().encode(pdf);
+
+  function stream(dict: string, content: string): string {
+    return `<< /Length ${content.length}${dict} >>\nstream\n${content}\nendstream`;
+  }
+}
+
+/** Counts the event loop's turns until stopped: zero means something held Node's one thread. */
+function heartbeat(): () => number {
+  let beats = 0;
+  const timer = setInterval(() => beats++, 10);
+  return () => {
+    clearInterval(timer);
+    return beats;
+  };
+}
+
 describe("upload_blueprint", () => {
+  it("refuses a file that takes too long to draw, while the server goes on answering", async () => {
+    // One page of 2 KB passes both caps, yet drew for 51 s on the server's one thread. Rendering
+    // runs in a worker with a time limit, so the upload is refused and nothing else waits.
+    await replaceCore({ renderTimeLimitMs: 1000 });
+    const my = await setUp();
+    const stop = heartbeat();
+
+    const error = await refusal(my.upload(nestedPdf(4), "tangled.pdf"));
+
+    expect(stop()).toBeGreaterThan(10);
+    expect(error.code).toBe("validation");
+    expect(error.message).toBe(
+      "tangled.pdf took too long to draw, so the Blueprint was not added. Export the floor " +
+        "plans as a simpler PDF, or as PNGs, then upload that.",
+    );
+    expect(await my.blueprints()).toEqual([]);
+    expect(existsSync(join(dataDir, "uploads"))).toBe(false);
+    expect(existsSync(join(dataDir, "rendered", "my-flat"))).toBe(false);
+  }, 20_000);
+
   it("keeps the file, renders every page at 2000 px with its text layer, and lists it", async () => {
     const my = await setUp();
 
@@ -294,6 +381,81 @@ describe("upload_blueprint", () => {
     expect(await my.blueprints()).toEqual([]);
   });
 
+  it("refuses a file of more than 30 pages before rendering any of them", async () => {
+    // A tiny PDF can declare thousands of pages sharing one content stream, and every page
+    // rendered holds Node's one thread: 1,500 of them froze the server for 50 s.
+    const rendered: number[] = [];
+    await replaceCore({
+      renderPdf: {
+        ...mupdfRenderer,
+        open: () => ({
+          pageCount: 31,
+          renderPage(page) {
+            rendered.push(page);
+            throw new Error("should not render");
+          },
+          textLines: () => [],
+          close() {},
+        }),
+      },
+    });
+    const my = await setUp();
+
+    const error = await refusal(my.upload(A3, "everything.pdf"));
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toBe(
+      "everything.pdf has 31 pages, and a Blueprint can have at most 30. Upload the floor " +
+        "plans alone, or split the file into parts of 30 pages or fewer.",
+    );
+    expect(rendered).toEqual([]);
+    expect(await my.blueprints()).toEqual([]);
+    expect(existsSync(join(dataDir, "uploads"))).toBe(false);
+  });
+
+  it("refuses a PNG or JPEG over 100 megapixels by its header, before opening it", async () => {
+    // A 30000×30000 PNG of 875 KB took the server to 1.95 GB, which WebAssembly never gives back.
+    let opened = 0;
+    await replaceCore({
+      renderPdf: {
+        ...mupdfRenderer,
+        open(bytes, type) {
+          opened++;
+          return mupdfRenderer.open(bytes, type);
+        },
+      },
+    });
+    const my = await setUp();
+    const png = pngHeader(10_001, 10_000);
+    const jpeg = jpegHeader(12_000, 9_000);
+
+    const pngError = await refusal(my.upload(png, "scan.png"));
+    const jpegError = await refusal(my.upload(jpeg, "scan.jpg"));
+
+    expect(pngError.code).toBe("validation");
+    expect(pngError.message).toBe(
+      "scan.png is 10001 × 10000 pixels, and a Blueprint image can be at most 100 megapixels. " +
+        "Save it smaller (a floor plan reads well at 2000 pixels on its long edge), then upload " +
+        "that.",
+    );
+    expect(jpegError.message).toContain("scan.jpg is 12000 × 9000 pixels");
+    expect(opened).toBe(0);
+    expect(await my.blueprints()).toEqual([]);
+  });
+
+  it("opens an image of exactly 100 megapixels", async () => {
+    await replaceCore({
+      renderPdf: {
+        ...mupdfRenderer,
+        open() {
+          throw new Error("opened");
+        },
+      },
+    });
+    const my = await setUp();
+    await expect(my.upload(pngHeader(10_000, 10_000), "scan.png")).rejects.toThrow("opened");
+  });
+
   it("logs the upload from the web and publishes a blueprint event", async () => {
     const events: ChangeEvent[] = [];
     core.subscribe((event) => events.push(event));
@@ -317,6 +479,25 @@ describe("upload_blueprint", () => {
 });
 
 describe("view_images", () => {
+  it("refuses a crop that takes too long to draw, while the server goes on answering", async () => {
+    // Views re-render from the kept file, so they draw under the same limit as the upload. The
+    // kept file is swapped for a slow one, standing in for a file just inside the limit.
+    await replaceCore({ renderTimeLimitMs: 1000 });
+    const my = await setUp();
+    await my.upload(A3, "plan.pdf", "Plan");
+    writeFileSync(join(dataDir, "uploads", "my-flat", "plan.pdf"), nestedPdf(4));
+    const stop = heartbeat();
+
+    const error = await refusal(my.viewImages({ blueprint: "plan", pages: [1], crop: "top-left" }));
+
+    expect(stop()).toBeGreaterThan(10);
+    expect(error.code).toBe("validation");
+    expect(error.message).toBe(
+      "Page 1 of Plan (plan) took too long to draw. Ask the user to export the floor plans as a " +
+        "simpler PDF, or as PNGs, and upload that.",
+    );
+  }, 30_000);
+
   it("returns at most 6 pages per call, enforced by the schema", async () => {
     const my = await setUp();
     await my.upload(THREE_PAGES, "plan.pdf", "Plan");

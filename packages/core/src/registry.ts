@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { PasswordCost } from "./accounts.js";
+import type { RenderRunner } from "./blueprints/render-runner.js";
 import type { RecordKind } from "./events.js";
 import type { FileStore, PdfRenderer } from "./files.js";
 import type { ImageFetcher } from "./images.js";
@@ -47,6 +48,11 @@ export interface OperationContext extends CallContext {
   files: FileStore;
   /** Renders Blueprint files to page images and text lines. */
   renderPdf: PdfRenderer;
+  /**
+   * Runs Blueprint renders off the server's own thread, with a time limit: every render of a file
+   * goes through it, never through renderPdf.open directly.
+   */
+  renders: RenderRunner;
   /**
    * Fetches a Listing's product photo from the shop, validated: core's one outbound call (see
    * images.ts). A port like the two above, so no test ever reaches the network; store.transaction
