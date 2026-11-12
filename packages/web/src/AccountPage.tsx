@@ -262,6 +262,11 @@ function DeleteAccount({ email }: { email: string }) {
     mutationFn: (typed: string) => call("delete_account", { email: typed }),
     onSuccess: () => login.go(),
   });
+  // Closed, it forgets a refusal, so the dialog opens afresh.
+  const close = () => {
+    setOpen(false);
+    remove.reset();
+  };
   return (
     <>
       <p>
@@ -272,7 +277,7 @@ function DeleteAccount({ email }: { email: string }) {
         Delete my account…
       </button>
       {open && (
-        <Dialog label="Delete your account" onClose={() => setOpen(false)}>
+        <Dialog label="Delete your account" onClose={close}>
           <form
             className={`${styles.form} ${page.form}`}
             onSubmit={(event) => {
@@ -293,7 +298,7 @@ function DeleteAccount({ email }: { email: string }) {
               <button type="submit" disabled={remove.isPending}>
                 Delete my account
               </button>
-              <button type="button" className="secondary" onClick={() => setOpen(false)}>
+              <button type="button" className="secondary" onClick={close}>
                 Keep it
               </button>
             </div>

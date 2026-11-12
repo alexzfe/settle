@@ -139,6 +139,29 @@ it("deletes the Account only once its email is typed, pointing to the download f
   expect(inputsTo(fetch, "delete_account")).toEqual([{ email: "sam@example.com" }]);
 });
 
+it("opens the delete dialog afresh, without the last refusal", async () => {
+  stubAccountPage({
+    delete_account: () =>
+      Response.json(
+        { error: { code: "invalid_input", message: "That is not this account's email." } },
+        { status: 400 },
+      ),
+  });
+  renderRoutes("/account");
+  fireEvent.click(await screen.findByRole("button", { name: "Delete my account…" }));
+  let dialog = screen.getByRole("dialog", { name: "Delete your account" });
+  fireEvent.change(within(dialog).getByLabelText(/Type your email/), {
+    target: { value: "kim@example.com" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Delete my account" }));
+  await within(dialog).findByRole("alert");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Keep it" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Delete my account…" }));
+  dialog = screen.getByRole("dialog", { name: "Delete your account" });
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+});
+
 it("offers the Admin no way to delete their own account", async () => {
   stubAccountPage({ get_account: () => ({ account: { ...sam, admin: true } }) });
   renderRoutes("/account");

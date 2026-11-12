@@ -265,3 +265,22 @@ describe("thumbnails", () => {
     ]);
   });
 });
+
+describe("an Item's product page link", () => {
+  it("is followed only to a web page, on a Room page's list as everywhere else", () => {
+    render(
+      <MemoryRouter>
+        <ItemList
+          home="flat"
+          items={[
+            item("sofa", "Sofa", "living-room", { link: "https://example.com/sofa" }),
+            item("lamp", "Lamp", "living-room", { link: "javascript:alert(1)" }),
+            item("vase", "Vase", "living-room", { link: "data:text/html,<p>hi</p>" }),
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const links = screen.getAllByRole("link", { name: "product page" });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["https://example.com/sofa"]);
+  });
+});
