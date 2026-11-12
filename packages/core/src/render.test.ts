@@ -232,6 +232,13 @@ it("renders find_items lines, with an Item's Photos by id, day, and caption and 
     await find('text "oak"', { text: "oak" }),
     await find("the balcony", { room: "balcony" }),
   ];
+  const sofa = results[0]?.split("\n").find((line) => line.startsWith("- Sofa"));
+  expect(sofa).toContain(
+    "photos, which the user sees on its page, http://127.0.0.1:4380/homes/fixture-home/items/sofa",
+  );
+  // The rule goes once after the lines, not on every Item with Photos.
+  const every = results[0] ?? "";
+  expect(every.match(/don't offer to look/g)).toHaveLength(1);
   await expect(results.join("\n\n")).toMatchFileSnapshot(snapshot("find_items"));
   const sheet = await fixture.core.run("get_room_sheet", agent(session), {
     session,
@@ -264,6 +271,13 @@ it("renders a Room Sheet's Photos line, and view_photos' text block, which comes
     session,
     room: "main-bedroom",
   });
+  // A recall question can reach the Room Sheet with no Skill running: the line itself says to
+  // point the user to the page, by its address, rather than offer to look.
+  expect(sheet).toContain(
+    "Photos, which the user sees on this Room's page, " +
+      "http://127.0.0.1:4380/homes/fixture-home/rooms/main-bedroom:",
+  );
+  expect(sheet).toContain("don't offer to look");
   await expect(sheet).toMatchFileSnapshot(snapshot("room-sheet-main-bedroom-photos"));
   // A Room Photo with a Wall, then an Item's (the sofa's newest, from the test above).
   const { photos } = await fixture.core.run("get_item", fixture.web, {
@@ -276,6 +290,15 @@ it("renders a Room Sheet's Photos line, and view_photos' text block, which comes
     photos: [ids[2] ?? 0, sofa],
   });
   await expect(toolText("view_photos", viewed)).toMatchFileSnapshot(snapshot("view_photos"));
+});
+
+it("tells the Agent in view_photos' description to answer a recall question from the records and point to the page", () => {
+  const description =
+    fixture.core.operations.find((each) => each.name === "view_photos")?.description ?? "";
+  expect(description).toContain(
+    "When the user only asks what is where or what something looks like, answer from the " +
+      "records and point them to the Room's or Item's page in the app; don't offer to look.",
+  );
 });
 
 it("renders search_notes lines", async () => {

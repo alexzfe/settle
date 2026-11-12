@@ -238,7 +238,8 @@ function saveLevel(
     if (levels.length === 1) {
       throw new CoreError(
         "validation",
-        `${named(level)} is the Home's only Level, and every Home keeps at least one.`,
+        `${named(level)} is the Home's only Level, and every Home keeps at least one. To call it ` +
+          "something else, rename it with save_home (`level` and a new `name`) instead.",
       );
     }
     const unmapped = unmapLevel(context, home, writer, level);

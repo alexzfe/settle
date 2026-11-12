@@ -530,6 +530,10 @@ export interface FlagRow {
   sourceId: number;
   /** For value_changed: the field that changed. */
   sourceField: string | null;
+  /** For value_changed: the field's value before the change that raised the flag. */
+  oldValue: unknown;
+  /** For value_changed: the field's value now, kept up to date while the flag is open. */
+  newValue: unknown;
   raisedAt: string;
   clearedAt: string | null;
   resolution: Resolution | null;
@@ -834,6 +838,8 @@ const JSON_KEYS = new Set([
   "dimensions",
   "listedFields",
   "redirectUris",
+  "oldValue",
+  "newValue",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 

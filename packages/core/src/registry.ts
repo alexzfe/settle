@@ -109,6 +109,11 @@ export interface Operation<
    */
   webInput?: WebInput;
   readOnly: boolean;
+  /**
+   * For an Agent operation that reaches outside Settle, as record_listing fetches the Listing's
+   * picture from the shop's site: the MCP tool's openWorldHint.
+   */
+  openWorld?: boolean;
   surface: OperationSurface;
   handler(
     context: OperationContext,

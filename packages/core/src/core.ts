@@ -88,7 +88,7 @@ import {
 import { readSkill, readSkillTexts, type SkillTexts } from "./operations/skill-texts.js";
 import { optional } from "./optional.js";
 import type { CallContext, Operation, OperationContext } from "./registry.js";
-import { openStore, type Store } from "./store.js";
+import { MEASUREMENT_KEYS, openStore, type Store } from "./store.js";
 
 export type { CallContext, Caller } from "./registry.js";
 
@@ -349,12 +349,7 @@ export function createCore(options: CoreOptions = {}): Core {
       const schema =
         context.caller.kind === "web" && operation.webInput ? operation.webInput : operation.input;
       const parsed = schema.safeParse(input ?? {});
-      if (!parsed.success) {
-        const issues = parsed.error.issues.map(
-          (issue) => `${issue.path.join(".") || "input"}: ${issue.message}`,
-        );
-        throw new CoreError("validation", `Invalid input for ${name}. ${issues.join("; ")}.`);
-      }
+      if (!parsed.success) throw invalidInput(name, parsed.error.issues, context.caller.kind);
       const data = parsed.data as Record<string, unknown>;
       const caller = withSession(context, data.session);
       const operationContext: OperationContext = {
@@ -423,4 +418,39 @@ function homeOfCall(
     throw noSuchHome(argument);
   }
   return urlHome ?? argument;
+}
+
+/**
+ * The refusal of an input its schema rejects, for every caller: each field at fault by its path
+ * with what is wrong, then, for the Agent, what to do. Over MCP this replaces the SDK's bare Zod
+ * paths (mcp.ts hands the raw arguments to core). A length given wrong also says what a length
+ * is, since that shape is the one an Agent most often gets wrong. The web's forms check first, so
+ * a refusal there gets no advice about calling a tool again.
+ */
+function invalidInput(
+  name: string,
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+  caller: CallContext["caller"]["kind"],
+): CoreError {
+  const fields = issues.map((issue) => {
+    const path = issue.path.map(String);
+    return `\`${path.join(".") || "input"}\`: ${issue.message}`;
+  });
+  const length = issues.some((issue) => {
+    const keys = issue.path.map(String);
+    const last = keys.at(-1) ?? "";
+    return last === "mm" || MEASUREMENT_KEYS.has(last) || MEASUREMENT_KEYS.has(keys.at(-2) ?? "");
+  });
+  const refused = `${name} was refused and nothing was recorded. ${fields.join("; ")}.`;
+  if (caller === "web") return new CoreError("validation", refused);
+  return new CoreError(
+    "validation",
+    `${refused} ` +
+      (length
+        ? "A length is { mm, provenance }: whole millimetres, and how it was found (measured, " +
+          "blueprint, listed, or estimated). "
+        : "") +
+      `Call ${name} again with ${fields.length === 1 ? "that field" : "those fields"} fixed; ` +
+      "each field's description in the tool's input schema says what it takes.",
+  );
 }

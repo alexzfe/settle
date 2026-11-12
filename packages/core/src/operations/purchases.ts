@@ -126,6 +126,7 @@ export const recordListing = defineOperation({
     "check and rate one. Needs the open Session's id as `session`.",
   input: recordListingInput,
   readOnly: false,
+  openWorld: true,
   surface: "agent",
   async handler(context, input): Promise<ReceiptResult> {
     const home = requireHome(context);
