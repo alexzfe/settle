@@ -744,8 +744,8 @@ export interface Store {
   guideByLanToken(token: string): GuideRow | undefined;
 
   appendChange(change: ChangeRow): void;
-  /** Oldest first. */
-  changes(homeId: number): ChangeRow[];
+  /** The newest `limit` changes, newest first. */
+  newestChanges(homeId: number, limit: number): ChangeRow[];
   /** One record's changes, by its kind and id (its identity; a slug is only a label), oldest first. */
   recordChanges(homeId: number, recordKind: string, recordId: number): ChangeRow[];
   /**
@@ -1129,10 +1129,11 @@ export function openStore(path: string): Store {
         change.reason,
       );
     },
-    changes: (homeId) =>
+    newestChanges: (homeId, limit) =>
       all<RawChange>(
-        `SELECT ${CHANGE_COLUMNS} FROM change_log WHERE home_id = ? ORDER BY id`,
+        `SELECT ${CHANGE_COLUMNS} FROM change_log WHERE home_id = ? ORDER BY id DESC LIMIT ?`,
         homeId,
+        limit,
       ).map(parseChange),
     recordChanges: (homeId, recordKind, recordId) =>
       all<RawChange>(

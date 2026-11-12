@@ -1,4 +1,13 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -73,7 +82,6 @@ describe("migrate", () => {
   it("gives the Quick Guide's own lines a kind, avoid when they begin Avoid and test otherwise, and leaves the looking-for line empty", () => {
     const path = tempDatabase();
     const early = new DatabaseSync(path);
-    // Guides rows alone, for Purchases this test never needs.
     early.exec("PRAGMA foreign_keys = OFF");
     for (const file of readdirSync(MIGRATIONS)
       .filter((each) => each < "0009")
@@ -83,6 +91,12 @@ describe("migrate", () => {
         .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
         .run(Number(file.slice(0, 4)));
     }
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude) VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4);
+      INSERT INTO decisions (id, home_id, slug, kind, title, statement, created_at) VALUES
+        (1, 1, 'rug', 'purchase', 'Rug', 'A rug.', ''),
+        (2, 1, 'lamp', 'purchase', 'Lamp', 'A lamp.', '');
+    `);
     const insert = early.prepare(
       "INSERT INTO guides (home_id, decision_id, slug, quick_lines, lan_token) VALUES (1, ?, ?, ?, ?)",
     );
@@ -114,7 +128,6 @@ describe("migrate", () => {
   it("moves every photo_path into photo_url, because the column has only ever held a URL", () => {
     const path = tempDatabase();
     const early = new DatabaseSync(path);
-    // Listings rows alone, for Purchases this test never needs.
     early.exec("PRAGMA foreign_keys = OFF");
     for (const file of readdirSync(MIGRATIONS)
       .filter((each) => each < "0010")
@@ -124,6 +137,12 @@ describe("migrate", () => {
         .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
         .run(Number(file.slice(0, 4)));
     }
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude) VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4);
+      INSERT INTO decisions (id, home_id, slug, kind, title, statement, created_at) VALUES
+        (1, 1, 'rug', 'purchase', 'Rug', 'A rug.', ''),
+        (2, 1, 'lamp', 'purchase', 'Lamp', 'A lamp.', '');
+    `);
     const insert = early.prepare(
       `INSERT INTO listings (home_id, decision_id, slug, name, photo_path, recorded_at)
        VALUES (1, 1, ?, ?, ?, '2026-09-14T10:00:00.000Z')`,
@@ -439,6 +458,294 @@ describe("migrate", () => {
     expect(() => account("sam@example.com", 0)).toThrow(/UNIQUE/);
     expect(() => account("kim@example.com", 1)).toThrow(/UNIQUE/);
     db.close();
+  });
+
+  /** A database at `path` with every migration below `below` applied, foreign keys off. */
+  const migratedBelow = (path: string, below: string) => {
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = OFF");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each.endsWith(".sql") && each < below)
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    return early;
+  };
+
+  /** A copy of the migrations folder with `extra` files added, for a migration not yet written. */
+  const migrationsWith = (extra: Record<string, string>) => {
+    const dir = mkdtempSync(join(tmpdir(), "settle-migrations-"));
+    dirs.push(dir);
+    const folder = join(dir, "migrations");
+    mkdirSync(folder);
+    for (const file of readdirSync(MIGRATIONS))
+      copyFileSync(join(MIGRATIONS, file), join(folder, file));
+    for (const [file, sql] of Object.entries(extra)) writeFileSync(join(folder, file), sql);
+    return folder;
+  };
+
+  const latest = () =>
+    Math.max(
+      ...readdirSync(MIGRATIONS)
+        .filter((file) => file.endsWith(".sql"))
+        .map((file) => Number(file.slice(0, 4))),
+    );
+
+  it("waits up to two seconds for another connection's write lock instead of failing at once", () => {
+    // Not longer: node:sqlite waits synchronously, so every other request waits with it.
+    const db = migrate(tempDatabase());
+    expect(db.prepare("PRAGMA busy_timeout").get()).toEqual({ timeout: 2000 });
+    db.close();
+  });
+
+  it("keeps an item's replacement through 0012's rebuild of items", () => {
+    const path = tempDatabase();
+    const early = migratedBelow(path, "0012");
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude) VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4);
+      INSERT INTO items (id, home_id, slug, name, category, price, brand) VALUES
+        (4, 1, 'old-lamp', 'Old lamp', 'lighting', '30 000 CLP', 'Ikea'),
+        (7, 1, 'new-lamp', 'New lamp', 'lighting', NULL, NULL);
+      UPDATE items SET archived_at = '2026-09-01', archived_reason = 'replaced', replaced_by_item_id = 7
+        WHERE id = 4;
+    `);
+    early.close();
+
+    const db = migrate(path);
+    expect(
+      db
+        .prepare(
+          "SELECT id, slug, price_paid, brand, archived_reason, replaced_by_item_id FROM items ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      {
+        id: 4,
+        slug: "old-lamp",
+        price_paid: "30 000 CLP",
+        brand: "Ikea",
+        archived_reason: "replaced",
+        replaced_by_item_id: 7,
+      },
+      {
+        id: 7,
+        slug: "new-lamp",
+        price_paid: null,
+        brand: null,
+        archived_reason: null,
+        replaced_by_item_id: null,
+      },
+    ]);
+    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    db.close();
+  });
+
+  it("takes a database filled at 0008 through every later migration, keeping every row", () => {
+    const path = tempDatabase();
+    const early = migratedBelow(path, "0009");
+    early.exec("PRAGMA foreign_keys = ON");
+    early.exec(`
+      INSERT INTO homes (id, slug, name, country, city, latitude) VALUES (1, 'flat', 'Flat', 'CL', 'Santiago', -33.4);
+      INSERT INTO settings (key, value) VALUES ('theme', 'light');
+      INSERT INTO levels (id, home_id, slug, name, storey) VALUES (1, 1, 'ground', 'Ground', 0);
+      INSERT INTO rooms (id, home_id, level_id, slug, name) VALUES (1, 1, 1, 'lounge', 'Lounge');
+      INSERT INTO sessions (id, home_id, slug, opened_at, skills, opening_sent)
+        VALUES (1, 1, 'intake', '', '[]', '');
+      INSERT INTO change_log (home_id, at, origin, record_kind, record_id, record_slug)
+        VALUES (1, '', 'web', 'room', 1, 'lounge');
+      INSERT INTO walls (id, home_id, room_id, slug, position) VALUES (1, 1, 1, 'lounge/wall-1', 1);
+      INSERT INTO windows (id, home_id, room_id, slug, wall_id) VALUES (1, 1, 1, 'lounge/window-1', 1);
+      INSERT INTO doors (id, home_id, slug, room_a_id, side_b_kind) VALUES (1, 1, 'front', 1, 'outside');
+      INSERT INTO surfaces (id, home_id, slug, room_id, part) VALUES (1, 1, 'lounge/floor', 1, 'floor');
+      INSERT INTO features (id, home_id, room_id, slug, kind) VALUES (1, 1, 1, 'lounge/radiator', 'radiator');
+      INSERT INTO items (id, home_id, slug, name, category) VALUES (1, 1, 'sofa', 'Sofa', 'seating');
+      INSERT INTO constraints (id, home_id, slug, text) VALUES (1, 1, 'no-nails', 'No nails.');
+      INSERT INTO notes (id, home_id, slug, text, created_at) VALUES (1, 1, 'likes-oak', 'Oak.', '');
+      INSERT INTO blueprints (id, home_id, slug, label, file_name, file_type, file_path, page_count, uploaded_at)
+        VALUES (1, 1, 'plan', 'Plan', 'plan.pdf', 'pdf', 'uploads/flat/plan.pdf', 1, '');
+      INSERT INTO blueprint_pages (home_id, blueprint_id, page, level_id, png_path, width_px, height_px)
+        VALUES (1, 1, 1, 1, 'rendered/flat/plan-1.png', 10, 10);
+      INSERT INTO decisions (id, home_id, slug, kind, title, statement, state, created_at) VALUES
+        (1, 1, 'calm', 'design-direction', 'Calm', 'Calm.', 'locked', ''),
+        (2, 1, 'rug', 'purchase', 'Rug', 'A rug.', 'leaning', '');
+      INSERT INTO decision_basis (home_id, decision_id, basis_decision_id) VALUES (1, 2, 1);
+      INSERT INTO decision_evidence (home_id, decision_id, source_kind, source_id, stance)
+        VALUES (1, 1, 'note', 1, 'supports');
+      INSERT INTO requirements (id, home_id, decision_id, position, text, strength, reason_kind, reason_id)
+        VALUES (1, 1, 2, 1, 'Washable.', 'must', 'decision', 1);
+      INSERT INTO flags (home_id, decision_id, slug, cause, source_kind, source_id, raised_at)
+        VALUES (1, 2, 'rug/flag-1', 'reopened', 'decision', 1, '');
+      INSERT INTO conflicts (home_id, decision_id, slug, session_id, description, raised_at)
+        VALUES (1, 1, 'calm/conflict-1', 1, 'Loud.', '');
+      INSERT INTO state_changes (home_id, decision_id, from_state, to_state, session_id, origin, at)
+        VALUES (1, 1, 'leaning', 'locked', 1, 'web', '');
+      INSERT INTO guides (home_id, decision_id, slug, lan_token) VALUES (1, 2, 'rug/guide', 'token');
+      INSERT INTO listings (id, home_id, decision_id, slug, name, recorded_at)
+        VALUES (1, 1, 2, 'jute-rug', 'Jute rug', '');
+      INSERT INTO listing_checks (home_id, listing_id, requirement_id, result) VALUES (1, 1, 1, 'pass');
+      INSERT INTO deviations (home_id, decision_id, slug, requirement_id, text, recorded_at)
+        VALUES (1, 2, 'rug/deviation-1', 1, 'Not washable.', '');
+    `);
+    const tables = early
+      .prepare(
+        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name <> 'migrations' ORDER BY name",
+      )
+      .all()
+      .map((row) => String(row.name));
+    // Every table at 0008 holds a row, so a table a later migration empties shows below.
+    for (const table of tables) {
+      expect(early.prepare(`SELECT count(*) AS n FROM ${table}`).get(), table).toEqual({
+        n: table === "decisions" ? 2 : 1,
+      });
+    }
+    early.close();
+
+    const db = migrate(path);
+    expect(db.prepare("SELECT max(id) AS id FROM migrations").get()).toEqual({ id: latest() });
+    for (const table of tables) {
+      expect(db.prepare(`SELECT count(*) AS n FROM ${table}`).get(), table).toEqual({
+        n: table === "decisions" ? 2 : 1,
+      });
+    }
+    expect(db.prepare("SELECT state FROM decisions WHERE id = 1").get()).toEqual({
+      state: "settled",
+    });
+    expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    db.close();
+  });
+
+  it("migrates with foreign keys off, so rebuilding a table doesn't cascade-delete the rows that refer to it", () => {
+    const path = tempDatabase();
+    migrate(path).close();
+    const filled = new DatabaseSync(path);
+    filled.exec(`
+      INSERT INTO accounts (id, email, password_hash, created_at) VALUES (1, 'sam@example.com', 'x', '');
+      INSERT INTO logins (token_hash, account_id, created_at, last_seen_at, expires_at)
+        VALUES ('hash', 1, '', '', '');
+    `);
+    filled.close();
+    // A rebuild of accounts the plain way: create, copy, drop, rename.
+    const columns = "id, email, password_hash, admin, disabled_at, created_at";
+    const migrations = migrationsWith({
+      "9990_rebuild_accounts.sql": `
+        CREATE TABLE accounts_new (
+          id INTEGER PRIMARY KEY,
+          email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+          password_hash TEXT,
+          admin INTEGER NOT NULL DEFAULT 0 CHECK (admin IN (0, 1)),
+          disabled_at TEXT,
+          created_at TEXT NOT NULL
+        ) STRICT;
+        INSERT INTO accounts_new (${columns}) SELECT ${columns} FROM accounts;
+        DROP TABLE accounts;
+        ALTER TABLE accounts_new RENAME TO accounts;
+        CREATE UNIQUE INDEX accounts_one_admin ON accounts (admin) WHERE admin = 1;
+      `,
+    });
+
+    const db = migrate(path, { migrations });
+    expect(db.prepare("SELECT max(id) AS id FROM migrations").get()).toEqual({ id: 9990 });
+    expect(db.prepare("SELECT count(*) AS n FROM logins").get()).toEqual({ n: 1 });
+    expect(db.prepare("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
+    db.close();
+  });
+
+  it("refuses migrations that leave a row pointing at nothing, and applies none of them", () => {
+    const path = tempDatabase();
+    migrate(path).close();
+    const migrations = migrationsWith({
+      "9990_fine.sql": "CREATE TABLE fine (id INTEGER PRIMARY KEY) STRICT;",
+      "9991_orphan.sql":
+        "INSERT INTO levels (home_id, slug, name, storey) VALUES (404, 'ground', 'Ground', 0);",
+    });
+
+    expect(() => migrate(path, { migrations })).toThrow(/levels.*homes/);
+    const db = migrate(path);
+    expect(db.prepare("SELECT max(id) AS id FROM migrations").get()).toEqual({ id: latest() });
+    expect(db.prepare("SELECT name FROM sqlite_schema WHERE name = 'fine'").all()).toEqual([]);
+    expect(db.prepare("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
+    db.close();
+  });
+
+  it("refuses a database a newer Settle migrated, naming the migrations this build lacks", () => {
+    const path = tempDatabase();
+    migrate(path).close();
+    const newer = new DatabaseSync(path);
+    newer.exec("INSERT INTO migrations (id, applied_at) VALUES (9998, ''), (9999, '')");
+    newer.close();
+
+    expect(() => migrate(path)).toThrow(
+      /migrations 9998 and 9999.*settle\.sqlite\.before-9998|9998.*9999.*before-9998/s,
+    );
+  });
+
+  it("copies the database aside before applying pending migrations, keeping only the last copy", () => {
+    const dir = mkdtempSync(join(tmpdir(), "settle-core-"));
+    dirs.push(dir);
+    const path = join(dir, "settle.sqlite");
+    // A fresh database has nothing to keep.
+    migrate(path).close();
+    expect(readdirSync(dir).filter((file) => file.includes(".before-"))).toEqual([]);
+
+    const filled = new DatabaseSync(path);
+    filled.exec(
+      "INSERT INTO homes (slug, name, country, city, latitude, token) VALUES ('flat', 'Flat', 'CL', 'Santiago', -33.4, 'k')",
+    );
+    filled.close();
+    const first = migrationsWith({
+      "9990_first.sql": "CREATE TABLE first (id INTEGER PRIMARY KEY) STRICT;",
+    });
+    migrate(path, { migrations: first }).close();
+    expect(readdirSync(dir).filter((file) => file.includes(".before-"))).toEqual([
+      "settle.sqlite.before-9990",
+    ]);
+    const copy = new DatabaseSync(join(dir, "settle.sqlite.before-9990"));
+    expect(copy.prepare("SELECT max(id) AS id FROM migrations").get()).toEqual({ id: latest() });
+    expect(copy.prepare("SELECT slug FROM homes").all()).toEqual([{ slug: "flat" }]);
+    copy.close();
+
+    const second = migrationsWith({
+      "9990_first.sql": "CREATE TABLE first (id INTEGER PRIMARY KEY) STRICT;",
+      "9991_second.sql": "CREATE TABLE second (id INTEGER PRIMARY KEY) STRICT;",
+    });
+    migrate(path, { migrations: second }).close();
+    expect(readdirSync(dir).filter((file) => file.includes(".before-"))).toEqual([
+      "settle.sqlite.before-9991",
+    ]);
+    expect(existsSync(join(dir, "settle.sqlite.before-9990"))).toBe(false);
+  });
+
+  it("leaves alone a copy the operator named themselves, matching only before-NNNN", () => {
+    const dir = mkdtempSync(join(tmpdir(), "settle-core-"));
+    dirs.push(dir);
+    const path = join(dir, "settle.sqlite");
+    migrate(path).close();
+    writeFileSync(join(dir, "settle.sqlite.before-v2.2"), "mine");
+
+    const next = migrationsWith({
+      "9990_next.sql": "CREATE TABLE next (id INTEGER PRIMARY KEY) STRICT;",
+    });
+    migrate(path, { migrations: next }).close();
+
+    expect(readFileSync(join(dir, "settle.sqlite.before-v2.2"), "utf8")).toBe("mine");
+  });
+
+  it("keeps the previous copy when the pending migrations fail", () => {
+    const dir = mkdtempSync(join(tmpdir(), "settle-core-"));
+    dirs.push(dir);
+    const path = join(dir, "settle.sqlite");
+    migrate(path).close();
+    const good = { "9990_good.sql": "CREATE TABLE good (id INTEGER PRIMARY KEY) STRICT;" };
+    migrate(path, { migrations: migrationsWith(good) }).close();
+    expect(existsSync(join(dir, "settle.sqlite.before-9990"))).toBe(true);
+
+    const broken = migrationsWith({ ...good, "9991_broken.sql": "THIS IS NOT SQL;" });
+    expect(() => migrate(path, { migrations: broken })).toThrow();
+
+    expect(existsSync(join(dir, "settle.sqlite.before-9990"))).toBe(true);
   });
 
   it("turns on WAL and foreign keys", () => {

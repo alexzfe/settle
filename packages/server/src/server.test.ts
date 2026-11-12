@@ -1,7 +1,7 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FIXTURE_FILES, TEST_PASSWORD_COST } from "@settle/core";
+import { FIXTURE_FILES, migrate, NewerDatabaseError, TEST_PASSWORD_COST } from "@settle/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { type RunningServer, startServer } from "./server.js";
 import { setUp } from "./testing.js";
@@ -286,3 +286,15 @@ async function nextChanges(
     text += decoder.decode(value, { stream: true });
   }
 }
+
+it("refuses to start on a database a newer Settle migrated, saying which migrations it lacks", async () => {
+  const dataDir = join(root, "newer");
+  mkdirSync(dataDir);
+  const db = migrate(join(dataDir, "settle.sqlite"));
+  db.exec("INSERT INTO migrations (id, applied_at) VALUES (9999, '')");
+  db.close();
+
+  const refusal = startServer({ host: "127.0.0.1", port: 0, dataDir });
+  await expect(refusal).rejects.toBeInstanceOf(NewerDatabaseError);
+  await expect(refusal).rejects.toThrow(/migration 9999.*settle\.sqlite\.before-9999/);
+});

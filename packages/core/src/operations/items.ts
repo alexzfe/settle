@@ -300,6 +300,8 @@ export function requireItem(model: HomeModel, slug: string): ItemRow {
     "not_found",
     `This Home has no Item "${slug}". find_items lists the Items with their slugs; leave out ` +
       "`item` to add a new one.",
+    `This Home has no Item "${slug}". It may have been renamed or removed; open it from the ` +
+      "Items page.",
   );
 }
 

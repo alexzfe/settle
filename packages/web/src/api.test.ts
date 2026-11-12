@@ -40,6 +40,13 @@ describe("call", () => {
     });
   });
 
+  it("doesn't ask whether a server that answered is running", async () => {
+    vi.stubGlobal("fetch", async () => new Response("Internal Server Error", { status: 500 }));
+    const error = await call("list_homes", {}).catch((e) => e);
+    expect(error).toMatchObject({ code: "unexpected_response", status: 500 });
+    expect(error.message).not.toMatch(/running/);
+  });
+
   it("reports a successful answer that is not JSON as unexpected_response", async () => {
     vi.stubGlobal("fetch", async () => new Response("<!doctype html>", { status: 200 }));
     await expect(call("list_homes", {})).rejects.toMatchObject({ code: "unexpected_response" });

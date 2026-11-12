@@ -1,5 +1,7 @@
 import {
   type CallContext,
+  type ClaudeConnect,
+  type ConnectionSummary,
   type Core,
   CoreError,
   type CoreErrorCode,
@@ -15,6 +17,38 @@ import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { callerOf, keyedHomeOf } from "./caller.js";
 import { inWords, type UploadLimiter } from "./limits.js";
+
+/**
+ * Every `code` an { error: { code, message } } answer carries: core's refusals, and the server's
+ * own. `message` is always for the reader; `code` is for the web to branch on.
+ */
+export type ErrorCode =
+  | CoreErrorCode
+  /** Not logged in, or the Login, key or access token is no longer good: 401. */
+  | "unauthorized"
+  /** A Host or Origin the server doesn't serve: 403. */
+  | "forbidden"
+  /** Too many uploads, or wrong passwords, in too short a time: 429. */
+  | "rate_limited"
+  /** The operation is served by its own route under another method; `Allow` names it: 405. */
+  | "method_not_allowed"
+  /** A body that isn't JSON where JSON is taken: 415. */
+  | "unsupported_media_type"
+  /** A body over the route's cap: 413. */
+  | "too_large"
+  /** Something the server didn't expect; its log says what, under the id the message gives: 500. */
+  | "internal";
+
+/** The { error: { code, message } } answer, with its status and any headers. */
+export function refuse(
+  c: Context,
+  status: ContentfulStatusCode,
+  code: ErrorCode,
+  message: string,
+  headers?: Record<string, string>,
+): Response {
+  return c.json({ error: { code, message } }, status, headers);
+}
 
 // Every other refusal is a rule refusal: 409.
 const STATUS: Partial<Record<CoreErrorCode, ContentfulStatusCode>> = {
@@ -65,6 +99,26 @@ export const UPLOAD_CAPS = {
   "/api/add_document": MAX_DOCUMENT_BYTES + MB,
 } as const;
 
+/**
+ * Every file served from an upload (a Listing's picture, a Photo, a Document, a Blueprint page):
+ * the browser takes its type as given, never sniffing one, and nothing in it may run or load, even
+ * if it is opened on its own. The bytes come from the user and sit on Settle's own origin.
+ */
+export const SERVED_FILE_HEADERS: Record<string, string> = {
+  "x-content-type-options": "nosniff",
+  "content-security-policy": "sandbox; default-src 'none'",
+};
+
+/**
+ * A PDF Document's headers: as above but not sandboxed, since Firefox's PDF viewer won't open a
+ * sandboxed document. Core stores a PDF only when its bytes start `%PDF-`, and nosniff keeps the
+ * browser to that type, so it can't be read as a page of Settle's.
+ */
+const SERVED_PDF_HEADERS: Record<string, string> = {
+  ...SERVED_FILE_HEADERS,
+  "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+};
+
 /** The JSON API's cap: every web operation's input is a few fields. */
 export const JSON_CAP = MB;
 
@@ -85,15 +139,15 @@ export async function handleApi(core: Core, c: Context): Promise<Response> {
   }
   const route = OWN_ROUTES[name];
   if (route) {
-    return c.json(
-      { error: { code: "validation", message: `${name} is served by ${route}.` } },
-      405,
-    );
+    const [method = "GET"] = route.split(" ");
+    return refuse(c, 405, "method_not_allowed", `${name} is served by ${route}.`, {
+      allow: method,
+    });
   }
   // A cross-site form can't send this content type without a CORS preflight, which never passes.
   if (!c.req.header("content-type")?.startsWith("application/json")) {
     const message = "Send the input as JSON, with Content-Type: application/json.";
-    return c.json({ error: { code: "validation", message } }, 415);
+    return refuse(c, 415, "unsupported_media_type", message);
   }
   let input: unknown;
   try {
@@ -107,25 +161,6 @@ export async function handleApi(core: Core, c: Context): Promise<Response> {
     return answer(c, async () => c.json(connections(core, caller.account, input)));
   }
   return answer(c, async () => c.json((await core.run(name, callerOf(c), input)) as object));
-}
-
-/** One Connection, as the Account page lists it. */
-export interface ConnectionSummary {
-  id: number;
-  /** The host the Allow page named the client by: "claude.ai", or "localhost" for Claude Code. */
-  client: string;
-  createdAt: string;
-  lastUsedAt: string;
-}
-
-/** How to connect Claude to this server: the Connect to Claude block's button and command. */
-export interface ClaudeConnect {
-  /** The Account's MCP URL, which Claude's connector dialog takes. */
-  mcpUrl: string;
-  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
-  addConnectorUrl: string;
-  /** For Claude Code: the same connector for every folder, and the plugin with the Skills. */
-  claudeCodeCommand: string;
 }
 
 /**
@@ -260,6 +295,7 @@ export async function handleListingPhoto(core: Core, c: Context): Promise<Respon
       v,
     } as OperationInput<"get_listing_photo">);
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      ...SERVED_FILE_HEADERS,
       "content-type": mimeType,
       // The bytes at one version never change; a new version is a new URL.
       "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
@@ -334,6 +370,7 @@ export async function handlePhoto(core: Core, c: Context): Promise<Response> {
       v,
     } as OperationInput<"get_photo">);
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      ...SERVED_FILE_HEADERS,
       "content-type": mimeType,
       "cache-control": v ? "private, max-age=31536000, immutable" : "no-cache",
     });
@@ -395,6 +432,7 @@ export async function handleDocument(core: Core, c: Context): Promise<Response> 
       v,
     } as OperationInput<"get_document">);
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      ...(mimeType === "application/pdf" ? SERVED_PDF_HEADERS : SERVED_FILE_HEADERS),
       "content-type": mimeType,
       // Core has taken out of the name anything that would break the quotes.
       "content-disposition": `inline; filename="${fileName}"`,
@@ -418,6 +456,7 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
       input as OperationInput<"get_blueprint_page">,
     );
     return c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      ...SERVED_FILE_HEADERS,
       "content-type": mimeType,
       "cache-control": "no-cache",
     });
@@ -467,13 +506,12 @@ export async function handleAccountExport(core: Core, c: Context): Promise<Respo
 export function uploadGuard(cap: number, uploads: UploadLimiter): MiddlewareHandler {
   const capped = bodyLimit({
     maxSize: cap,
-    onError: (c) =>
-      c.json({ error: { code: "validation", message: tooBig(c.req.path, cap) } }, 413),
+    onError: (c) => refuse(c, 413, "too_large", tooBig(c.req.path, cap)),
   });
   return async (c, next) => {
     const length = Number(c.req.header("content-length"));
     if (length > cap) {
-      return c.json({ error: { code: "validation", message: tooBig(c.req.path, cap) } }, 413);
+      return refuse(c, 413, "too_large", tooBig(c.req.path, cap));
     }
     const { caller } = callerOf(c);
     if (caller.kind !== "web") throw new Error("An upload without a Login");
@@ -487,7 +525,7 @@ export function uploadGuard(cap: number, uploads: UploadLimiter): MiddlewareHand
       const message =
         "That's more uploading than this server allows in a while (300 files an hour, 5 GB a " +
         `day, per account). Try again ${inWords(refused.retryAt)}.`;
-      return c.json({ error: { code: "rate_limited", message } }, 429);
+      return refuse(c, 429, "rate_limited", message);
     }
     return capped(c, next);
   };

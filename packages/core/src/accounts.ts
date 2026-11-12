@@ -162,6 +162,25 @@ export type GrantResult =
   | { outcome: "ok"; grant: TokenGrant }
   | { outcome: "refused"; why: string };
 
+/** One Connection, as the Account page lists it: the web's list_connections, which the server answers. */
+export interface ConnectionSummary {
+  id: number;
+  /** The host the Allow page named the client by: "claude.ai", or "localhost" for Claude Code. */
+  client: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** How to connect Claude to this server: the Connect to Claude block's button and command. */
+export interface ClaudeConnect {
+  /** The Account's MCP URL, which Claude's connector dialog takes. */
+  mcpUrl: string;
+  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
+  addConnectorUrl: string;
+  /** For Claude Code: the same connector for every folder, and the plugin with the Skills. */
+  claudeCodeCommand: string;
+}
+
 /** A Connection, as an access token finds it at /mcp. */
 export interface CurrentConnection {
   connection: number;

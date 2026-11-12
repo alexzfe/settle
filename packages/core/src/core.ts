@@ -344,7 +344,15 @@ export function createCore(options: CoreOptions = {}): Core {
         caller,
         home: homeOfCall(store, context.home, caller, data.home),
       };
-      return (await operation.handler(operationContext, parsed.data)) as never;
+      try {
+        return (await operation.handler(operationContext, parsed.data)) as never;
+      } catch (error) {
+        // A refusal written for the Agent names its tools; the web's user reads its own words.
+        if (error instanceof CoreError && error.webMessage && caller.kind === "web") {
+          throw new CoreError(error.code, error.webMessage);
+        }
+        throw error;
+      }
     },
     subscribe: (listener) => bus.subscribe(listener),
     homeToken(slug) {

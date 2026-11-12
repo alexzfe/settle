@@ -291,7 +291,8 @@ describe("the change log and the event bus", () => {
     const homeId = store.home(home)?.id ?? -1;
 
     const changes = store
-      .changes(homeId)
+      .newestChanges(homeId, 100)
+      .reverse()
       .map(({ origin, recordKind, recordSlug, field, new: to }) => ({
         origin,
         recordKind,
@@ -345,6 +346,24 @@ describe("the change log and the event bus", () => {
       { home, recordKind: "session", recordSlug: session },
       { home, recordKind: "room", recordSlug: "kitchen" },
     ]);
+  });
+
+  it("get_change_log answers the newest first, as many as asked, and says whether there are more", async () => {
+    const home = await newHome();
+    const session = await newSession(home);
+    await core.run("save_room", agent(home, session), { session, name: "Kitchen" });
+
+    const newest = await core.run("get_change_log", web, { home, limit: 2 });
+    expect(newest.changes.map((change) => change.record)).toEqual(["kitchen", session]);
+    expect(newest.more).toBe(true);
+    const all = await core.run("get_change_log", web, { home, limit: 4 });
+    expect(all.changes.map((change) => change.record)).toEqual([
+      "kitchen",
+      session,
+      "ground",
+      "my-flat",
+    ]);
+    expect(all.more).toBe(false);
   });
 
   it("stop calling a listener once it unsubscribes", async () => {

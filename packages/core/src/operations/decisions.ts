@@ -938,6 +938,8 @@ export function requireDecision(model: DecisionModel, slug: string): DecisionRow
   throw new CoreError(
     "not_found",
     `This Home has no Decision "${slug}". find_decisions lists its Decisions with their slugs.`,
+    `This Home has no Decision "${slug}". It may have been renamed or removed; open it from the ` +
+      "Decisions page.",
   );
 }
 

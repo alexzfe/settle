@@ -1,3 +1,4 @@
+import { NewerDatabaseError } from "@settle/core";
 import { loadConfig } from "./config.js";
 import { NoLanAddressError } from "./lan.js";
 import { startServer } from "./server.js";
@@ -12,7 +13,8 @@ const config = (() => {
   }
 })();
 const server = await startServer(config).catch((error: unknown) => {
-  if (error instanceof NoLanAddressError) {
+  // Neither is a crash: say what is wrong and what to do, without a stack trace.
+  if (error instanceof NoLanAddressError || error instanceof NewerDatabaseError) {
     console.error(error.message);
     process.exit(1);
   }

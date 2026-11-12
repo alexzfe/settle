@@ -1,7 +1,9 @@
 export {
   ACCESS_TOKEN_SECONDS,
   type Accounts,
+  type ClaudeConnect,
   CONNECTION_DAYS,
+  type ConnectionSummary,
   type CurrentConnection,
   type CurrentLogin,
   type GoogleIdentity,
@@ -53,7 +55,7 @@ export {
   PLUGIN_INSTALL,
 } from "./home-folder.js";
 export { MAX_IMAGE_BYTES } from "./images.js";
-export { migrate } from "./migrate.js";
+export { migrate, NewerDatabaseError } from "./migrate.js";
 export type {
   AccountExport,
   AccountListEntry,
