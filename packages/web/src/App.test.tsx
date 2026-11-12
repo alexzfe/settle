@@ -273,7 +273,7 @@ it("closes only Find on Escape when Find was opened from the menu sheet, then th
   stubApi({
     list_homes: () => ({ homes: [house] }),
     get_home: () => ({ home: house, levels: [], rooms: [], unplacedItems: 0 }),
-    find_index: () => [],
+    find_index: () => ({ rows: [] }),
   });
   renderRoutes("/homes/house/about");
   const menu = screen.getByRole("button", { name: "Menu" });

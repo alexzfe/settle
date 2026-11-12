@@ -903,6 +903,7 @@ describe("Photos", () => {
     vi.mocked(preparePhoto).mockResolvedValue({
       file: new Blob(["small"]),
       thumb: new Blob(["s"]),
+      takenOn: "2026-03-14",
       size: { width: 4000, height: 3000 },
     });
     vi.stubGlobal(

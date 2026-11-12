@@ -200,8 +200,10 @@ it("takes no other file while one uploads, and then shows the upload's result", 
   );
 
   act(() => answer({ blueprint: agentPlan }));
-  expect(await screen.findByRole("status")).toHaveProperty(
-    "textContent",
+  // The upload's own status line; the sidebar footer keeps a status region of its own.
+  const status = await screen.findByText(/^Uploaded /);
+  expect(status.getAttribute("role")).toBe("status");
+  expect(status.textContent).toBe(
     "Uploaded Estate agent plan, 3 pages. Ask the Agent in this Home's Home Folder to read it.",
   );
 });
