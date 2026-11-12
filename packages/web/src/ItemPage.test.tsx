@@ -593,7 +593,11 @@ describe("Photos", () => {
 
   it("shows core's refusal of a photo it could not take", async () => {
     const original = new File(["ftypheic"], "IMG_0002.HEIC", { type: "image/heic" });
-    vi.mocked(preparePhoto).mockResolvedValue({ file: original, thumb: original });
+    vi.mocked(preparePhoto).mockResolvedValue({
+      file: original,
+      thumb: original,
+      takenOn: "2026-03-14",
+    });
     const message = "This is a HEIC photo, which the app cannot read. Export it as a JPEG.";
     stubItem(() => bare, undefined, {
       add_photo: () =>
@@ -615,11 +619,13 @@ describe("Photos", () => {
     const whole = {
       file: new Blob(["whole"]),
       thumb: new Blob(["w"]),
+      takenOn: "2026-03-14",
       size: { width: 4000, height: 3000 },
     };
     const cut = {
       file: new Blob(["cut"]),
       thumb: new Blob(["c"]),
+      takenOn: "2026-03-14",
       size: { width: 4000, height: 3000 },
     };
     vi.mocked(preparePhoto).mockImplementation(async (_, crop) => (crop ? cut : whole));

@@ -11,6 +11,7 @@ import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import { renderViewedPhotos } from "../render.js";
 import type { HomeRow, ItemRow, PhotoRow, RoomRow, WallRow } from "../store.js";
+import { homeToday } from "../time-zone.js";
 import { newestFirst } from "./model.js";
 import {
   addPhotoInput,
@@ -45,7 +46,7 @@ export const addPhoto = defineOperation({
   description:
     "Adds a Photo to one Room or one Item, Archived ones too, as multipart/form-data: `room` or " +
     "`item`, the photo as `file` and its thumbnail as `thumb`, both made by the browser, with " +
-    "`takenOn` (today when left out), an optional one-line `caption`, and for a Room an " +
+    "`takenOn` (today in the Home's time zone when left out), an optional one-line `caption`, and for a Room an " +
     "optional `wall`, the position of the Wall it shows. Answers the owner's Photos, newest " +
     "first.",
   input: addPhotoInput,
@@ -55,7 +56,7 @@ export const addPhoto = defineOperation({
     const home = requireHome(context);
     const file = uploadedImage(input.file, { name: "That photo", heic: true });
     const thumb = uploadedImage(input.thumb, { name: "Its thumbnail", heic: true });
-    const today = context.now().slice(0, 10);
+    const today = homeToday(context.now(), home);
     const takenOn = input.takenOn ?? today;
     if (takenOn > tomorrow(today)) {
       throw new CoreError("validation", `A Photo can't be taken in the future, on ${takenOn}.`);
@@ -290,7 +291,10 @@ function store(
   return path;
 }
 
-/** The day after `day`: a phone ahead of the server's UTC may date a photo there. */
+/**
+ * The day after `day`: a phone ahead of the Home's day (abroad, east of it, or ahead of UTC for a
+ * Home with no time zone) may date a photo there.
+ */
 function tomorrow(day: string): string {
   const date = new Date(`${day}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + 1);

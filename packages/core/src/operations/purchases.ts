@@ -8,6 +8,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { DECISION_KIND_LABELS as KINDS, listingLine, titled } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { DecisionRow, HomeRow, ListingRow, RequirementRow } from "../store.js";
+import { dayIn } from "../time-zone.js";
 import { randomToken } from "../token.js";
 import { type DecisionModel, loadDecisions, requireDecision } from "./decisions.js";
 import {
@@ -150,7 +151,7 @@ export const recordListing = defineOperation({
         if (decision.fulfilledAt !== null) {
           throw new CoreError(
             "validation",
-            `${subject} was Fulfilled on ${decision.fulfilledAt.slice(0, 10)}: what was bought is ` +
+            `${subject} was Fulfilled on ${dayIn(decision.fulfilledAt, home.timeZone)}: what was bought is ` +
               "recorded, so it takes no more Listings.",
           );
         }
@@ -206,7 +207,10 @@ export const recordListing = defineOperation({
           : writer.changed
             ? "changed"
             : "already recorded like this, nothing changed";
-        writer.line(`Listing for ${subject}`, `${head}: ${view ? listingLine(view) : row.slug}`);
+        writer.line(
+          `Listing for ${subject}`,
+          `${head}: ${view ? listingLine(view, home.timeZone) : row.slug}`,
+        );
         if (photo?.failure) {
           writer.line(
             `Listing for ${subject}`,

@@ -252,6 +252,8 @@ export interface Operations {
   // A new key for a Home's Agent, and a new phone link for a Quick Guide: each cancels the old.
   rotate_home_key: Shapes<"rotate_home_key">;
   rotate_guide_link: Shapes<"rotate_guide_link">;
+  /** The day the Home dates things in: the browser's on a Home with none, or the owner's choice. */
+  set_home_time_zone: Shapes<"set_home_time_zone">;
 }
 
 export type OperationName = keyof Operations;

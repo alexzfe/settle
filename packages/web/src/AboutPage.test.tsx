@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Constraint, Home, Level, Note } from "./api";
 import { type ApiHandlers, FakeEventSource, inputsTo, renderRoutes, stubApi } from "./testSupport";
 
@@ -219,4 +219,79 @@ it("makes a new key only after saying the old one stops and the Home Folder comm
   fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
   await screen.findByText(/The Home has a new key\./);
   expect(inputsTo(fetch, "rotate_home_key")).toEqual([{ home: "flat" }]);
+});
+
+describe("the Home's time zone, the day it dates things in", () => {
+  const machineZone = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = "America/Lima";
+  });
+  afterEach(() => {
+    process.env.TZ = machineZone;
+  });
+
+  it("is set to the browser's when its owner opens a Home that has none", async () => {
+    const fetch = stubAboutPage({
+      set_home_time_zone: () => ({ home: { ...flat, timeZone: "America/Lima" } }),
+    });
+    renderRoutes("/homes/flat/about");
+    await waitFor(() =>
+      expect(inputsTo(fetch, "set_home_time_zone")).toEqual([
+        { home: "flat", timeZone: "America/Lima", onlyIfNone: true },
+      ]),
+    );
+  });
+
+  it("is left as it is on a Home that has one", async () => {
+    const zoned = { ...flat, timeZone: "Europe/Madrid" };
+    const fetch = stubAboutPage({
+      get_home: () => ({ home: zoned, levels: [ground], rooms: [], unplacedItems: 0 }),
+    });
+    renderRoutes("/homes/flat/about");
+    await screen.findByText("Europe/Madrid");
+    expect(inputsTo(fetch, "set_home_time_zone")).toEqual([]);
+  });
+
+  it("is shown with the Home facts and changed there", async () => {
+    let zone = "Europe/Madrid";
+    const home = () => ({ ...flat, timeZone: zone });
+    const fetch = stubAboutPage({
+      get_home: () => ({ home: home(), levels: [ground], rooms: [], unplacedItems: 0 }),
+      set_home_time_zone: (input) => {
+        zone = (input as { timeZone: string }).timeZone;
+        return { home: home() };
+      },
+    });
+    renderRoutes("/homes/flat/about");
+    await screen.findByText("Europe/Madrid");
+    fireEvent.click(screen.getByRole("button", { name: "Change time zone…" }));
+    const dialog = screen.getByRole("dialog", { name: "The Home's time zone" });
+    const field = screen.getByLabelText("Time zone");
+    expect(dialog.contains(field)).toBe(true);
+    fireEvent.change(field, { target: { value: "America/Santiago" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("America/Santiago");
+    expect(inputsTo(fetch, "set_home_time_zone")).toEqual([
+      { home: "flat", timeZone: "America/Santiago" },
+    ]);
+  });
+
+  it("shows the server's refusal of a zone that is not one", async () => {
+    const message = '"Mars/Olympus" is not an IANA time zone. Give the zone\'s name.';
+    stubAboutPage({
+      get_home: () => ({
+        home: { ...flat, timeZone: "Europe/Madrid" },
+        levels: [ground],
+        rooms: [],
+        unplacedItems: 0,
+      }),
+      set_home_time_zone: () =>
+        Response.json({ error: { code: "validation", message } }, { status: 400 }),
+    });
+    renderRoutes("/homes/flat/about");
+    fireEvent.click(await screen.findByRole("button", { name: "Change time zone…" }));
+    fireEvent.change(screen.getByLabelText("Time zone"), { target: { value: "Mars/Olympus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(message);
+  });
 });

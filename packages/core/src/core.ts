@@ -56,6 +56,7 @@ import {
   listHomes,
   listSessions,
   saveHome,
+  setHomeTimeZone,
 } from "./operations/homes.js";
 import { editItem, getItem } from "./operations/item-page.js";
 import { findItems, listItems, saveItems } from "./operations/items.js";
@@ -135,6 +136,7 @@ const operations = {
   view_images: viewImages,
   view_photos: viewPhotos,
   save_home: saveHome,
+  set_home_time_zone: setHomeTimeZone,
   save_room: saveRoom,
   save_items: saveItems,
   set_constraints: setConstraints,

@@ -122,3 +122,12 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+/* The time zone under the Home facts, with its button to change it. */
+.timeZone {
+  margin-top: var(--space-4);
+}
+
+.timeZone dl {
+  margin-bottom: var(--space-3);
+}

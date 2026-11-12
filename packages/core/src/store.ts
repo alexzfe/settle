@@ -61,6 +61,8 @@ export interface HomeRow {
   liftCarDepth: Measurement | null;
   accessWidth: Measurement | null;
   accessNote: string | null;
+  /** The Home's IANA time zone, the day core dates things in; null on a Home made before. */
+  timeZone: string | null;
   /** The Home's bearer key for its MCP endpoint and Home Folder script; never shown to the Agent. */
   token: string;
   /** The Account that owns it; null until the setup link claims a Home made before Accounts. */
@@ -645,7 +647,8 @@ export interface Store {
   transaction<T>(fn: () => T): T;
 
   insertHome(
-    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token" | "accountId">,
+    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token" | "accountId"> &
+      Partial<Pick<HomeRow, "timeZone">>,
   ): HomeRow;
   home(slug: string): HomeRow | undefined;
   homes(): HomeRow[];

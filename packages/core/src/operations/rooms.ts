@@ -143,6 +143,7 @@ export const getRoomSheet = defineOperation({
         sources: input.withSources === true,
         decisions: roomDecisions(model, room),
         photos: roomPhotos(model, room),
+        timeZone: home.timeZone,
       }),
     };
   },

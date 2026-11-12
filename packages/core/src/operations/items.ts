@@ -106,9 +106,10 @@ export const findItems = defineOperation({
           ...(documents.length > 0 ? { documents } : {}),
         };
       }),
+      ...optional({ timeZone: home.timeZone }),
     };
   },
-  text: ({ items }) => renderItems(items),
+  text: ({ items, timeZone }) => renderItems(items, timeZone),
 });
 
 export const listItems = defineOperation({

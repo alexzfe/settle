@@ -3,14 +3,14 @@
 
 import type { PlannedStay } from "@settle/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";
 import about from "./AboutPage.module.css";
 import styles from "./App.module.css";
 import { call, type Home } from "./api";
 import { BlueprintList, BlueprintUploadForm } from "./Blueprints";
 import { formatDate, sentence } from "./format";
-import { queryKeys, useConstraints, useHome, useNotes } from "./queries";
+import { browserTimeZone, queryKeys, useConstraints, useHome, useNotes } from "./queries";
 import { CopyButton } from "./ui/AskAgent";
 import { Card } from "./ui/Card";
 import { Dialog } from "./ui/Dialog";
@@ -50,6 +50,7 @@ function AboutColumns({ slug }: { slug: string }) {
         <Section title="Home facts">
           <Card>
             <HomeFacts home={home.data.home} />
+            <TimeZone home={home.data.home} />
           </Card>
           <p className={styles.muted}>
             <Link to={`/homes/${slug}/items`}>
@@ -104,6 +105,83 @@ function HomeFacts({ home }: { home: Home }) {
         )}
       </Fact>
     </dl>
+  );
+}
+
+/**
+ * The Home's time zone, the day core dates a Photo or a purchase in when none is given: set from
+ * the browser, and changed here when the Home is somewhere else.
+ */
+function TimeZone({ home }: { home: Home }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const save = useMutation({
+    mutationFn: (timeZone: string) => call("set_home_time_zone", { home: home.slug, timeZone }),
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.home(home.slug) });
+    },
+  });
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = new FormData(event.currentTarget).get("timeZone");
+    save.mutate(String(value ?? "").trim());
+  }
+  return (
+    <div className={about.timeZone}>
+      <dl className={`${styles.facts} ${about.facts}`}>
+        <Fact term="Time zone">{home.timeZone ?? "Not set: days are UTC's"}</Fact>
+      </dl>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => {
+          save.reset();
+          setOpen(true);
+        }}
+      >
+        Change time zone…
+      </button>
+      {open && (
+        <Dialog label="The Home's time zone" onClose={() => setOpen(false)}>
+          <h2>The Home's time zone</h2>
+          <p>
+            The day a Photo or a purchase is dated when no date is given. Choose where the Home is,
+            such as America/Lima.
+          </p>
+          <form onSubmit={submit}>
+            <label>
+              Time zone
+              <input
+                name="timeZone"
+                list="time-zones"
+                defaultValue={home.timeZone ?? browserTimeZone()}
+                autoComplete="off"
+                required
+              />
+            </label>
+            <datalist id="time-zones">
+              {Intl.supportedValuesOf("timeZone").map((zone) => (
+                <option key={zone} value={zone} />
+              ))}
+            </datalist>
+            <div className={about.dialogActions}>
+              <button type="submit" disabled={save.isPending}>
+                Save
+              </button>
+              <button type="button" className="secondary" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+          {save.isError && (
+            <p role="alert" className={styles.error}>
+              {save.error.message}
+            </p>
+          )}
+        </Dialog>
+      )}
+    </div>
   );
 }
 

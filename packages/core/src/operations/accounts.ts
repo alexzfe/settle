@@ -16,6 +16,7 @@ import { CoreError } from "../errors.js";
 import { optional } from "../optional.js";
 import { defineOperation, type OperationContext } from "../registry.js";
 import type { AccountRow, HomeRow } from "../store.js";
+import { dayIn, sharedTimeZone } from "../time-zone.js";
 import { randomToken } from "../token.js";
 import { loadDecisions } from "./decisions.js";
 import { guideOf } from "./purchase-views.js";
@@ -199,7 +200,7 @@ export const exportAccount = defineOperation({
   surface: "web",
   handler(context): AccountExport {
     const account = requireAccount(context);
-    const day = context.now().slice(0, 10);
+    const day = dayIn(context.now(), sharedTimeZone(context.store.homesOf(account.id)));
     return {
       fileName: `settle-export-${day}.zip`,
       mimeType: "application/zip",
