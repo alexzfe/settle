@@ -54,10 +54,23 @@ function stubDrawing(size: { width: number; height: number } | "undecodable") {
     return { ...size, close: vi.fn() };
   });
   vi.stubGlobal("createImageBitmap", decode);
-  const drawImage = vi.fn();
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
-  );
+  // What each canvas was painted with, in order.
+  const painted: string[] = [];
+  const drawImage = vi.fn(() => painted.push("picture"));
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (
+    this: HTMLCanvasElement,
+  ) {
+    const canvas = this;
+    const context = {
+      drawImage,
+      fillStyle: "#000000",
+      fillRect(x: number, y: number, width: number, height: number) {
+        const whole = x === 0 && y === 0 && width === canvas.width && height === canvas.height;
+        painted.push(`${whole ? "all" : "part"} ${context.fillStyle}`);
+      },
+    };
+    return context as unknown as CanvasRenderingContext2D;
+  });
   vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (
     this: HTMLCanvasElement,
     callback: BlobCallback,
@@ -68,7 +81,7 @@ function stubDrawing(size: { width: number; height: number } | "undecodable") {
     saved.set(blob, { width: this.width, height: this.height, type, quality });
     callback(blob);
   });
-  return { decode, drawImage };
+  return { decode, drawImage, painted };
 }
 
 const picked = (bytes: BlobPart = "not really a photo") =>
@@ -204,6 +217,14 @@ describe("preparePhoto", () => {
       expect((await preparePhoto(picked())).takenOn).toBe("2026-11-11");
     });
   });
+});
+
+it("lays a picture on white before saving it as a JPEG, which has no transparency", async () => {
+  const { painted } = stubDrawing({ width: 800, height: 600 });
+  // A receipt exported as a PNG: dark text on a transparent ground.
+  const receipt = new File(["png"], "receipt.png", { type: "image/png" });
+  await prepareDocumentImage(receipt);
+  expect(painted).toEqual(["all #fff", "picture"]);
 });
 
 describe("prepareDocumentImage", () => {

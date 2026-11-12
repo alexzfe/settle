@@ -22,6 +22,12 @@ it("says the Agent wrote it, where, and when", () => {
   );
 });
 
+it("adds the year to a date from an earlier year", () => {
+  const now = new Date(2026, 10, 11);
+  expect(shortDate(new Date(2026, 8, 14, 10).toISOString(), now)).toBe("14 Sep");
+  expect(shortDate(new Date(2025, 8, 14, 10).toISOString(), now)).toBe("14 Sep 2025");
+});
+
 it("leaves out a date it cannot read", () => {
   expect(shortDate("not a date")).toBeUndefined();
 });
