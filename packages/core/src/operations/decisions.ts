@@ -155,16 +155,17 @@ export const setDecisionState = defineOperation({
   name: "set_decision_state",
   description:
     "Moves one Decision to another state and returns a receipt, including every Decision the " +
-    "move flagged. Only these moves: candidate to leaning, settled, or rejected; leaning to " +
-    "candidate, settled, or rejected; settled to leaning (a Reopen) or rejected; rejected to " +
-    "candidate (a revival). A Fulfilled Decision stays Settled for good: it can only be kept. " +
+    "move flagged. Only these moves: a Decision with an open flag or Conflict to its current " +
+    "state (a keep, which clears them; quote the user in `reason`); candidate to leaning, " +
+    "settled, or rejected; leaning to candidate, settled, or rejected; settled to leaning (a " +
+    "Reopen) or rejected; rejected to candidate (a revival). A Fulfilled Decision stays Settled " +
+    "for good: it can only be kept. " +
     "Settle only when the user clearly commits. Before a Reopen, rejecting " +
     "a Settled Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is " +
     "required: why, quoting the user's words when they gave permission. A Reopen or Reject " +
     "flags, but never changes, every Decision resting on this one; each flag stays until the " +
     "user keeps, Reopens, or Rejects that Decision, which also clears its own flags and " +
-    "Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting " +
-    "the user. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm " +
+    "Conflicts. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm " +
     "minimalism'\". Needs the open Session's id as `session`.",
   input: setDecisionStateInput,
   webInput: setDecisionStateWebInput,
@@ -199,7 +200,8 @@ export const findDecisions = defineOperation({
     "Fulfilled), the Room it is about or Home-wide, its open flags and Conflicts, and its " +
     "one-line statement. Covers every state, Rejected and Fulfilled ones included, which the " +
     "opening and Room Sheets leave out. Filter by room (a Room's slug) or homeWide, by kind, " +
-    "and by state. Before proposing a Decision, look up the Rejected ones in its scope and never " +
+    "by state, and by fulfilled: what is still to buy is the Settled Purchases with fulfilled " +
+    "false. Before proposing a Decision, look up the Rejected ones in its scope and never " +
     "propose one of them again. get_decision gives one Decision in full. Changes nothing.",
   input: findDecisionsInput,
   readOnly: true,
@@ -1080,6 +1082,7 @@ function filterDecisions(
     homeWide?: boolean;
     kind?: DecisionKind;
     state?: DecisionState;
+    fulfilled?: boolean;
     archived?: boolean;
   },
 ): DecisionSummary[] {
@@ -1091,7 +1094,8 @@ function filterDecisions(
       (room === undefined || each.scopeRoomId === room.id) &&
       (!filter.homeWide || each.scopeRoomId === null) &&
       (filter.kind === undefined || each.kind === filter.kind) &&
-      (filter.state === undefined || each.state === filter.state),
+      (filter.state === undefined || each.state === filter.state) &&
+      (filter.fulfilled === undefined || (each.fulfilledAt !== null) === filter.fulfilled),
   );
   return sorted(model, rows).map((each) => toSummary(model, each));
 }
@@ -1252,6 +1256,7 @@ function toFlag(model: DecisionModel, row: FlagRow): Flag {
       name,
       ...optional({ field: row.sourceField }),
     },
+    ...optional({ old: row.oldValue, new: row.newValue }),
     raisedAt: row.raisedAt,
     ...optional({ clearedAt: row.clearedAt, resolution: row.resolution, reason: row.reason }),
   };
@@ -1718,6 +1723,8 @@ class DecisionWrites {
         sourceKind: "decision",
         sourceId: source.id,
         sourceField: null,
+        oldValue: null,
+        newValue: null,
         raisedAt: this.#context.now(),
         clearedAt: null,
         resolution: null,

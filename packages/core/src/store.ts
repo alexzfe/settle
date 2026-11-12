@@ -61,10 +61,19 @@ export interface HomeRow {
   liftCarDepth: Measurement | null;
   accessWidth: Measurement | null;
   accessNote: string | null;
-  /** The Home's bearer key for its MCP endpoint and Home Folder script; never shown to the Agent. */
-  token: string;
   /** The Account that owns it; null until the setup link claims a Home made before Accounts. */
   accountId: number | null;
+}
+
+/**
+ * One of a Home's bearer keys, by its SHA-256: one per Home Folder, for the Home's MCP endpoint and
+ * its Home Folder script. Never shown to the Agent.
+ */
+export interface HomeKeyRow {
+  id: number;
+  homeId: number;
+  keyHash: string;
+  createdAt: string;
 }
 
 /** An Account: the login that owns Homes. */
@@ -521,6 +530,10 @@ export interface FlagRow {
   sourceId: number;
   /** For value_changed: the field that changed. */
   sourceField: string | null;
+  /** For value_changed: the field's value before the change that raised the flag. */
+  oldValue: unknown;
+  /** For value_changed: the field's value now, kept up to date while the flag is open. */
+  newValue: unknown;
   raisedAt: string;
   clearedAt: string | null;
   resolution: Resolution | null;
@@ -626,6 +639,7 @@ export interface HomeTables {
 export type HomeTable = keyof HomeTables;
 export type Tables = HomeTables & {
   homes: HomeRow;
+  home_keys: HomeKeyRow;
   accounts: AccountRow;
   logins: LoginRow;
   account_links: AccountLinkRow;
@@ -645,8 +659,19 @@ export interface Store {
   transaction<T>(fn: () => T): T;
 
   insertHome(
-    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "token" | "accountId">,
+    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "accountId">,
   ): HomeRow;
+  /** The key a Home's key hash is, if the Home has it. */
+  homeKey(homeId: number, keyHash: string): HomeKeyRow | undefined;
+  /**
+   * Keeps `key` in homes.token, the copy v2.1.0 reads after a rollback, if the Home has none: its
+   * first Home Folder's key. Kept for one release only (see migration 0021).
+   */
+  keepKeyForRollback(homeId: number, key: string): void;
+  /** Cancels every key of the Home, the copy v2.1.0 reads included. */
+  deleteHomeKeys(homeId: number): void;
+  /** Cancels every key of every Home of the Account, the copies v2.1.0 reads included. */
+  deleteAccountHomeKeys(accountId: number): void;
   home(slug: string): HomeRow | undefined;
   homes(): HomeRow[];
   /** An Account's Homes, by name. */
@@ -687,6 +712,8 @@ export interface Store {
   oauthClient(clientId: string): OauthClientRow | undefined;
   /** Deletes the registered clients made before `before` that no Connection names. */
   pruneOauthClients(before: string): void;
+  /** Deletes the oldest registered clients no Connection names, past the newest `keep` of them. */
+  capOauthClients(keep: number): void;
   connection(id: number): ConnectionRow | undefined;
   connectionByRefresh(refreshHash: string): ConnectionRow | undefined;
   /** Newest first. */
@@ -811,6 +838,8 @@ const JSON_KEYS = new Set([
   "dimensions",
   "listedFields",
   "redirectUris",
+  "oldValue",
+  "newValue",
 ]);
 const MEASUREMENT_COLUMN = /^(.+)_(mm|prov|src)$/;
 
@@ -940,6 +969,26 @@ export function openStore(path: string): Store {
     insertHome: (home) => insert("homes", home as NewRow<"homes">),
     home: (slug) => one<HomeRow>("SELECT * FROM homes WHERE slug = ?", slug),
     homes: () => rows<HomeRow>("SELECT * FROM homes ORDER BY name, id"),
+    homeKey: (homeId, keyHash) =>
+      one<HomeKeyRow>(
+        "SELECT * FROM home_keys WHERE home_id = ? AND key_hash = ?",
+        homeId,
+        keyHash,
+      ),
+    keepKeyForRollback(homeId, key) {
+      run("UPDATE homes SET token = ? WHERE id = ? AND token IS NULL", key, homeId);
+    },
+    deleteHomeKeys(homeId) {
+      run("DELETE FROM home_keys WHERE home_id = ?", homeId);
+      run("UPDATE homes SET token = NULL WHERE id = ?", homeId);
+    },
+    deleteAccountHomeKeys(accountId) {
+      run(
+        "DELETE FROM home_keys WHERE home_id IN (SELECT id FROM homes WHERE account_id = ?)",
+        accountId,
+      );
+      run("UPDATE homes SET token = NULL WHERE account_id = ?", accountId);
+    },
     homesOf: (accountId) =>
       rows<HomeRow>("SELECT * FROM homes WHERE account_id = ? ORDER BY name, id", accountId),
     claimHomes: (accountId) =>
@@ -1001,6 +1050,15 @@ export function openStore(path: string): Store {
         `DELETE FROM oauth_clients WHERE created_at < ? AND NOT EXISTS
            (SELECT 1 FROM connections WHERE connections.client_id = oauth_clients.client_id)`,
         before,
+      );
+    },
+    capOauthClients(keep) {
+      run(
+        `DELETE FROM oauth_clients WHERE id IN (
+           SELECT id FROM oauth_clients WHERE NOT EXISTS
+             (SELECT 1 FROM connections WHERE connections.client_id = oauth_clients.client_id)
+           ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ?)`,
+        keep,
       );
     },
     connection: (id) => one<ConnectionRow>("SELECT * FROM connections WHERE id = ?", id),

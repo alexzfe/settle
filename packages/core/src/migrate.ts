@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -39,18 +40,64 @@ export function migrate(path: string, options: MigrateOptions = {}): DatabaseSyn
   const db = new DatabaseSync(path, { timeout: BUSY_TIMEOUT_MS });
   try {
     db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+    // For a migration that hashes a token it stores (0021): the SHA-256 in hex, as tokenHash makes it.
+    db.function("settle_sha256", { deterministic: true }, (text) =>
+      createHash("sha256").update(String(text)).digest("hex"),
+    );
     const migrations = listMigrations(folder);
     const applied = appliedIds(db);
     refuseNewer(path, migrations, applied);
     const pending = migrations.filter((migration) => !applied.has(migration.id));
-    if (pending.length === 0) return db;
+    if (pending.length === 0) {
+      adoptOlderKeys(db);
+      return db;
+    }
     const copy =
       path !== ":memory:" && applied.size > 0 ? copyAside(db, path, pending[0] as Migration) : null;
     applyAll(db, folder, pending);
     if (copy) removeOlderCopies(path, copy);
+    adoptOlderKeys(db);
     return db;
   } catch (error) {
     db.close();
+    throw error;
+  }
+}
+
+/**
+ * Takes in a Home key that v2.1.0 wrote into homes.token after a rollback (a new Home, or its
+ * "New key…"), which this build doesn't hold yet: it becomes that Home's one key, kept by its hash
+ * as 0021 keeps keys. One key replaces the Home's others because v2.1.0 has one key per Home, so
+ * its "New key…" meant to cancel the rest. A key this build already holds (the copy it keeps in
+ * step itself) changes nothing. The copy stays, for the next rollback. Runs on every start, since
+ * 0021 runs only once.
+ */
+function adoptOlderKeys(db: DatabaseSync): void {
+  const hasKeys = db
+    .prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'home_keys'")
+    .get();
+  if (!hasKeys) return;
+  const unknown = db
+    .prepare(
+      `SELECT id, token FROM homes WHERE token IS NOT NULL AND NOT EXISTS (
+         SELECT 1 FROM home_keys
+         WHERE home_keys.home_id = homes.id AND home_keys.key_hash = settle_sha256(homes.token)
+       )`,
+    )
+    .all() as { id: number; token: string }[];
+  if (unknown.length === 0) return;
+  const now = new Date().toISOString();
+  db.exec("BEGIN");
+  try {
+    for (const home of unknown) {
+      db.prepare("DELETE FROM home_keys WHERE home_id = ?").run(home.id);
+      db.prepare(
+        "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, settle_sha256(?), ?)",
+      ).run(home.id, home.token, now);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
     throw error;
   }
 }

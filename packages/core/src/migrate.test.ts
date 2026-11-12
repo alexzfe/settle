@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   copyFileSync,
   existsSync,
@@ -51,6 +52,8 @@ describe("migrate", () => {
       { id: 18 },
       { id: 19 },
       { id: 20 },
+      { id: 21 },
+      { id: 22 },
     ]);
     db.close();
   });
@@ -59,7 +62,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 21 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 23 });
     db.close();
   });
 
@@ -121,6 +124,40 @@ describe("migrate", () => {
         null,
       ],
       [[], null],
+    ]);
+    db.close();
+  });
+
+  it("keeps each Home's key as its SHA-256 alone, so a Home Folder set up before keeps working", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = ON");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0021")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early
+      .prepare(
+        `INSERT INTO homes (slug, name, country, city, latitude, token)
+         VALUES ('flat', 'Flat', 'GB', 'London', 51.5, 'theFlatsOldKey')`,
+      )
+      .run();
+    early.close();
+
+    const db = migrate(path);
+    const columns = (db.prepare("PRAGMA table_info(homes)").all() as { name: string }[]).map(
+      (column) => column.name,
+    );
+    // The column and its key stay for one release, so after a rollback v2.1.0's Home Folders
+    // still open; a later migration empties and drops it.
+    expect(columns).toContain("token");
+    expect(db.prepare("SELECT token FROM homes").all()).toEqual([{ token: "theFlatsOldKey" }]);
+    expect(db.prepare("SELECT home_id, key_hash FROM home_keys").all()).toEqual([
+      { home_id: 1, key_hash: createHash("sha256").update("theFlatsOldKey").digest("hex") },
     ]);
     db.close();
   });
@@ -298,13 +335,19 @@ describe("migrate", () => {
     `);
     early.close();
 
+    // Kept by 0021 as their hashes, one per Home.
     const db = migrate(path);
-    const tokens = db.prepare("SELECT token FROM homes ORDER BY id").all() as { token: string }[];
-    expect(tokens).toHaveLength(2);
-    for (const { token } of tokens) expect(token).toMatch(/^[0-9a-f]{36}$/);
-    expect(tokens[0]?.token).not.toBe(tokens[1]?.token);
+    const keys = db.prepare("SELECT home_id, key_hash FROM home_keys ORDER BY home_id").all() as {
+      home_id: number;
+      key_hash: string;
+    }[];
+    expect(keys.map((key) => key.home_id)).toEqual([1, 2]);
+    for (const { key_hash } of keys) expect(key_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(keys[0]?.key_hash).not.toBe(keys[1]?.key_hash);
     expect(() =>
-      db.prepare("UPDATE homes SET token = ? WHERE slug = 'cottage'").run(tokens[0]?.token ?? ""),
+      db
+        .prepare("UPDATE home_keys SET key_hash = ? WHERE home_id = 2")
+        .run(keys[0]?.key_hash ?? ""),
     ).toThrow(/UNIQUE/);
     db.close();
   });
@@ -404,6 +447,7 @@ describe("migrate", () => {
       "features",
       "flags",
       "guides",
+      "home_keys",
       "homes",
       "items",
       "levels",
@@ -444,8 +488,11 @@ describe("migrate", () => {
     early.close();
 
     const db = migrate(path);
-    expect(db.prepare("SELECT slug, token, account_id FROM homes").all()).toEqual([
-      { slug: "flat", token: "key", account_id: null },
+    expect(db.prepare("SELECT slug, account_id FROM homes").all()).toEqual([
+      { slug: "flat", account_id: null },
+    ]);
+    expect(db.prepare("SELECT key_hash FROM home_keys").all()).toEqual([
+      { key_hash: createHash("sha256").update("key").digest("hex") },
     ]);
     const account = (email: string, admin: number) =>
       db
@@ -746,6 +793,50 @@ describe("migrate", () => {
     expect(() => migrate(path, { migrations: broken })).toThrow();
 
     expect(existsSync(join(dir, "settle.sqlite.before-9990"))).toBe(true);
+  });
+
+  it("on every start, takes in a key an older Settle made after 0021 as that Home's one key", () => {
+    // After a rollback, v2.1.0 writes a new key into homes.token (a new Home, or "New key…").
+    // Rolled forward, 0021 has already run, so the start itself takes that key in. A key this
+    // build already holds is left as it is, with the Home's other keys.
+    const path = tempDatabase();
+    const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+    const first = migrate(path);
+    first.exec(
+      "INSERT INTO homes (id, slug, name, country, city, latitude, token) VALUES " +
+        "(1, 'house', 'House', 'PT', 'Lisbon', 38.7, 'rotated-on-v2.1.0'), " +
+        "(2, 'flat', 'Flat', 'PT', 'Porto', 41.1, 'flat-key'), " +
+        "(3, 'loft', 'Loft', 'PT', 'Faro', 37.0, 'made-on-v2.1.0')",
+    );
+    const addKey = first.prepare(
+      "INSERT INTO home_keys (home_id, key_hash, created_at) VALUES (?, ?, '')",
+    );
+    addKey.run(1, sha("from-the-new-build"));
+    addKey.run(2, sha("flat-key"));
+    addKey.run(2, sha("flat-second-folder"));
+    first.close();
+
+    const db = migrate(path);
+    // The copies stay, for the next rollback.
+    expect(db.prepare("SELECT slug, token FROM homes ORDER BY id").all()).toEqual([
+      { slug: "house", token: "rotated-on-v2.1.0" },
+      { slug: "flat", token: "flat-key" },
+      { slug: "loft", token: "made-on-v2.1.0" },
+    ]);
+    expect(
+      db.prepare("SELECT home_id, key_hash FROM home_keys ORDER BY home_id, key_hash").all(),
+    ).toEqual(
+      [
+        // v2.1.0's New key… cancelled the key this build made.
+        { home_id: 1, key_hash: sha("rotated-on-v2.1.0") },
+        // Known: nothing changes, the second folder's key included.
+        { home_id: 2, key_hash: sha("flat-key") },
+        { home_id: 2, key_hash: sha("flat-second-folder") },
+        // A Home v2.1.0 made.
+        { home_id: 3, key_hash: sha("made-on-v2.1.0") },
+      ].sort((a, b) => a.home_id - b.home_id || a.key_hash.localeCompare(b.key_hash)),
+    );
+    db.close();
   });
 
   it("turns on WAL and foreign keys", () => {

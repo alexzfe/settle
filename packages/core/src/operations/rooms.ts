@@ -34,7 +34,7 @@ import {
   type wallInput,
   type windowInput,
 } from "./schemas.js";
-import { requireHome, requireSession } from "./scope.js";
+import { appPage, requireHome, requireSession } from "./scope.js";
 import { saveSurface } from "./surfaces.js";
 import { given, sameName, Writer } from "./writer.js";
 
@@ -143,6 +143,7 @@ export const getRoomSheet = defineOperation({
         sources: input.withSources === true,
         decisions: roomDecisions(model, room),
         photos: roomPhotos(model, room),
+        page: appPage(context, home, `rooms/${room.slug}`),
       }),
     };
   },
@@ -194,7 +195,7 @@ function saveRoomRecord(
   const existing =
     input.room !== undefined
       ? requireRoom(model, input.room, { archived: true })
-      : model.rooms.find((room) => active(room) && sameName(room.name, input.name));
+      : model.rooms.find((room) => active(room) && sameName(room.name, input.name ?? ""));
   const level =
     input.level === undefined
       ? existing
@@ -217,8 +218,16 @@ function saveRoomRecord(
   };
 
   if (!existing) {
+    const name = input.name;
+    if (name === undefined) {
+      throw new CoreError(
+        "validation",
+        "save_room needs `name` for a new Room, or `room` (its slug, as the Home Overview lists " +
+          "it) to change a recorded one. Call again with one of them.",
+      );
+    }
     if (!level) throw new Error(`Home ${home.slug} has no Level`);
-    const slug = uniqueSlug(input.name, "room", (taken) =>
+    const slug = uniqueSlug(name, "room", (taken) =>
       context.store.slugTaken("rooms", taken, home.id),
     );
     const room = writer.create(
@@ -228,7 +237,7 @@ function saveRoomRecord(
         homeId: home.id,
         levelId: level.id,
         slug,
-        name: input.name,
+        name,
         functions: values.functions ?? [],
         outdoor: values.outdoor ?? false,
         ceilingHeight: values.ceilingHeight ?? null,
@@ -237,15 +246,16 @@ function saveRoomRecord(
         archivedAt: null,
         archivedReason: null,
       },
-      { name: input.name, level: level.slug, ...values },
+      { name, level: level.slug, ...values },
     );
     model.rooms.push(room);
     writer.line(named(room), `created on ${level.name}`, given(values));
     return room;
   }
 
-  // Matched by name, the Room keeps its recorded spelling; named by slug, it takes the new name.
-  const name = input.room !== undefined ? input.name : existing.name;
+  // Matched by name, the Room keeps its recorded spelling; named by slug, it takes the new name, if
+  // one was given.
+  const name = (input.room !== undefined ? input.name : undefined) ?? existing.name;
   const subject = named({ name, slug: existing.slug });
   const heads: string[] = [];
   if (level && level.id !== existing.levelId) {
@@ -312,9 +322,15 @@ class RoomParts {
     let wall: WallRow;
     if (!existing) {
       if (input.archive) {
+        const walls = model.walls
+          .filter((wall) => wall.roomId === room.id && active(wall))
+          .sort((a, b) => a.position - b.position);
         throw new CoreError(
           "not_found",
-          `${named(room)} has no Wall ${input.position} to archive.`,
+          `${named(room)} has no Wall ${input.position} to archive` +
+            (walls.length > 0
+              ? `; its Walls are ${walls.map((each) => each.slug).join(", ")}. Archive one of those by its position.`
+              : ": it has no Walls recorded. Nothing to archive."),
         );
       }
       const slug = `${room.slug}/wall-${input.position}`;

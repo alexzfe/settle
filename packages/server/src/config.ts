@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { TrustedProxy } from "./limits.js";
 
 export const DEFAULT_PORT = 4380;
 export const DEFAULT_HOST = "127.0.0.1";
@@ -23,10 +24,12 @@ export interface Config {
    */
   lan?: { host?: string };
   /**
-   * SETTLE_TRUSTED_PROXY=cloudflare: the visitor's IP is taken from CF-Connecting-IP, for the
-   * failed-login limits. Unset, it is the socket's, and the header is ignored.
+   * Where the visitor's IP comes from, for the failed-login limits. SETTLE_TRUSTED_PROXY=cloudflare:
+   * CF-Connecting-IP. =forwarded: the right-most X-Forwarded-For hop, when the request comes from
+   * a loopback or private address, as from Caddy or tailscale serve on the same machine. Unset, it
+   * is the socket's, and both headers are ignored.
    */
-  trustedProxy?: "cloudflare";
+  trustedProxy?: TrustedProxy;
   /**
    * Sign in with Google (google.ts), on only when the server's owner registers Settle with Google
    * and sets SETTLE_GOOGLE_CLIENT_ID and SETTLE_GOOGLE_CLIENT_SECRET. Unset, there is no Google
@@ -82,10 +85,11 @@ function parseGoogle(
 
 function parseTrustedProxy(value: string | undefined): Config["trustedProxy"] {
   if (!value) return undefined;
-  if (value === "cloudflare") return value;
+  if (value === "cloudflare" || value === "forwarded") return value;
   throw new Error(
-    `SETTLE_TRUSTED_PROXY must be "cloudflare", the one proxy whose visitor IP header Settle ` +
-      `trusts, or unset, not "${value}"`,
+    `SETTLE_TRUSTED_PROXY must be "cloudflare" or "forwarded" (a reverse proxy on this machine, ` +
+      `such as Caddy or tailscale serve), the proxies whose visitor IP header Settle trusts, or ` +
+      `unset, not "${value}"`,
   );
 }
 

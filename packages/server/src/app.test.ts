@@ -1312,10 +1312,12 @@ describe("the Home Folder script", () => {
   it("gives home_folder_setup's command and files through the web API", async () => {
     await api("create_home", { name: "My flat", country: "GB", city: "London" });
     const response = await api("home_folder_setup", { home: "my-flat" });
-    expect(await response.json()).toMatchObject({
+    const setup = (await response.json()) as { key: string };
+    expect(core.homeKeyOpens("my-flat", setup.key)).toBe(true);
+    expect(setup).toMatchObject({
       origin: `http://127.0.0.1:${PORT}`,
       command:
-        `curl -fsSL -H "Authorization: Bearer ${core.homeToken("my-flat")}" ` +
+        `curl -fsSL -H "Authorization: Bearer ${setup.key}" ` +
         `"http://127.0.0.1:${PORT}/api/home_folder_script?home=my-flat" | sh`,
     });
   });

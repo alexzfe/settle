@@ -21,7 +21,7 @@ import {
   uploadGuard,
 } from "./api.js";
 import { type AuthOptions, useAuth } from "./auth.js";
-import { callerOf } from "./caller.js";
+import { callerOf, keyedHomeOf } from "./caller.js";
 import { streamChanges } from "./events.js";
 import { handleGuideByToken } from "./lan.js";
 import { UploadLimiter } from "./limits.js";
@@ -109,7 +109,7 @@ export function createApp({
   app.all("/mcp/homes/:home", bodyLimit({ maxSize: MCP_CAP, onError: tooBig }), async (c) => {
     const home = c.req.param("home");
     // Without the key, a Login opens the MCP endpoint of its own Account's Homes alone.
-    if (c.get("keyed") !== home) {
+    if (keyedHomeOf(c)?.home !== home) {
       try {
         core.checkHome(callerOf(c), home);
       } catch (error) {

@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
+import { get as httpGet, type IncomingMessage } from "node:http";
+import { get as httpsGet } from "node:https";
+import type { LookupFunction } from "node:net";
 import { CoreError } from "./errors.js";
+import { hostBlocked, safeLookup } from "./private-addresses.js";
 
 // The image port: core's only way out to the network, and deliberately so. Core otherwise binds
 // loopback and makes no model calls; it fetches a Listing's product photo itself only because the
@@ -105,6 +109,42 @@ export function isHeif(bytes: Uint8Array): boolean {
 }
 
 /**
+ * A PNG's or JPEG's size in pixels, read from its header without decoding it: the PNG's IHDR, or
+ * the JPEG's first frame header. Undefined for anything else, or a header too short to say.
+ */
+export function imageDimensions(bytes: Uint8Array): { width: number; height: number } | undefined {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (sniffImageType(bytes) === "image/png") {
+    if (bytes.length < 24) return undefined;
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  if (sniffImageType(bytes) !== "image/jpeg") return undefined;
+  let at = 2;
+  while (at + 4 <= bytes.length) {
+    if (bytes[at] !== 0xff) return undefined;
+    const marker = bytes[at + 1] as number;
+    if (marker === 0xff) {
+      at++; // fill byte
+      continue;
+    }
+    // Standalone markers: TEM and RST0-7 carry no length.
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      at += 2;
+      continue;
+    }
+    if (marker === 0xda || marker === 0xd9) return undefined; // scan or end before any frame
+    const length = view.getUint16(at + 2);
+    // SOF0-15, less DHT (C4), JPG (C8) and DAC (CC): precision, then height and width.
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      if (at + 9 > bytes.length) return undefined;
+      return { width: view.getUint16(at + 7), height: view.getUint16(at + 5) };
+    }
+    at += 2 + length;
+  }
+  return undefined;
+}
+
+/**
  * Whether the bytes are a PDF: "%PDF-" at the start, after any whitespace. Anything else before it
  * is refused, so a page that only mentions "%PDF-" (an HTML file in a comment, say) is never
  * stored and served back as a PDF.
@@ -126,81 +166,134 @@ function starts(bytes: Uint8Array, signature: number[]): boolean {
 }
 
 /**
- * The real fetcher, on global fetch: a browser User-Agent, an 8 s timeout, redirects followed,
- * and the 2 MB cap enforced while reading, because content-length can lie or be absent. Validated
- * in order — status 200, an image/* content-type, a JPEG, PNG, or WebP magic number, within the
- * cap — and nothing is returned unless all four pass.
+ * The most redirects followed. Measured shops answered with none; a CDN that hops through a
+ * tracking link or two still fits.
  */
-export const nodeImageFetcher: ImageFetcher = async (url) => {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw refuse(`"${url}" is not a URL.`);
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw refuse(`Only http and https images can be fetched, not ${parsed.protocol}//.`);
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    let response: Response;
+const MAX_REDIRECTS = 5;
+
+/**
+ * What the user can do instead, at the paste box. A caller speaking to someone else, as
+ * record_listing's receipt speaks to the Agent, swaps it for its own.
+ */
+export const PASTE_INSTEAD =
+  "Save the picture from the shop's page, then paste it or choose the file instead.";
+
+/**
+ * The one refusal for anything that goes wrong once a request is sent. It never says what
+ * answered, or whether anything did: a status, a content type or "connection refused" would map
+ * the server's own network for whoever chose the URL. The reason goes to the server's log.
+ */
+const COULD_NOT_FETCH = `Couldn't fetch an image from that address. ${PASTE_INSTEAD}`;
+
+/** Why the fetch stopped: logged for the operator, never put in the refusal. */
+class FetchFailed extends Error {}
+
+/**
+ * The real fetcher, on node:http and node:https as the CIMD fetch in the server's oauth.ts is,
+ * with every connection dialled through `lookup`, which refuses private, loopback, link-local and
+ * metadata addresses: a URL any user or a product page the Agent read names must never reach
+ * inside the server's own network. The check is made as each connection is dialled, so a DNS
+ * answer can't change between it and the dial. An address literal is refused before dialling,
+ * since it needs no lookup, and redirects are followed by hand, each hop checked the same way.
+ * Then an 8 s timeout over every hop, and the 2 MB cap enforced while reading, because
+ * content-length can lie or be absent. Validated in order — status 200, an image/* content-type,
+ * a JPEG, PNG, or WebP magic number, within the cap — and nothing is returned unless all four
+ * pass. `lookup` is a seam for the tests, which send every name to a server on loopback.
+ */
+export function createImageFetcher({
+  lookup = safeLookup,
+}: {
+  lookup?: LookupFunction;
+} = {}): ImageFetcher {
+  return async (url) => {
+    let parsed: URL;
     try {
-      response = await fetch(url, {
-        headers: { "user-agent": USER_AGENT },
-        redirect: "follow",
-        signal: controller.signal,
-      });
+      parsed = new URL(url);
+    } catch {
+      throw refuse(`"${url}" is not a URL.`);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw refuse(`Only http and https images can be fetched, not ${parsed.protocol}//.`);
+    }
+    const signal = AbortSignal.timeout(TIMEOUT_MS);
+    try {
+      return await read(await follow(parsed, lookup, signal));
     } catch (error) {
-      const why = controller.signal.aborted ? "it timed out" : reason(error);
-      throw refuse(`The image at ${url} could not be fetched: ${why}.`);
+      if (error instanceof CoreError) throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn(`Couldn't fetch a Listing picture from ${url}: ${reason}`);
+      throw refuse(COULD_NOT_FETCH);
     }
-    if (response.status !== 200) {
-      throw refuse(`The image at ${url} answered ${response.status}, not 200.`);
+  };
+}
+
+export const nodeImageFetcher: ImageFetcher = createImageFetcher();
+
+/** The final answer at `url`, following redirects by hand and checking each hop's address. */
+async function follow(
+  url: URL,
+  lookup: LookupFunction,
+  signal: AbortSignal,
+): Promise<IncomingMessage> {
+  let next = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (next.protocol !== "http:" && next.protocol !== "https:") {
+      throw new FetchFailed(`a redirect to ${next.protocol}//`);
     }
-    const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().startsWith("image/")) {
-      throw refuse(
-        `${url} answered ${contentType || "no content type"}, not an image. A shop that ` +
-          "challenges automated requests answers a web page here.",
-      );
+    if (hostBlocked(next)) throw new FetchFailed(`${next.hostname} is a private address`);
+    const response = await get(next, lookup, signal);
+    const status = response.statusCode ?? 0;
+    const location = response.headers.location;
+    if (status < 300 || status > 399 || location === undefined) {
+      if (status !== 200) {
+        response.destroy();
+        throw new FetchFailed(`it answered ${status}`);
+      }
+      const contentType = response.headers["content-type"] ?? "";
+      if (!contentType.toLowerCase().startsWith("image/")) {
+        response.destroy();
+        throw new FetchFailed(`it answered ${contentType || "no content-type"}`);
+      }
+      return response;
     }
-    return await read(response, url);
-  } finally {
-    clearTimeout(timer);
+    response.destroy();
+    next = new URL(location, next);
   }
-};
+  throw new FetchFailed(`more than ${MAX_REDIRECTS} redirects`);
+}
+
+/** One GET, dialled through `lookup`, answering once the headers have arrived. */
+function get(url: URL, lookup: LookupFunction, signal: AbortSignal): Promise<IncomingMessage> {
+  const request = url.protocol === "https:" ? httpsGet : httpGet;
+  return new Promise((resolve, reject) => {
+    request(url, { lookup, signal, headers: { "user-agent": USER_AGENT } }, resolve).on(
+      "error",
+      reject,
+    );
+  });
+}
 
 /** Reads the body, sniffing as soon as there are bytes to sniff and stopping at the cap. */
-async function read(response: Response, url: string): Promise<FetchedImage> {
-  const reader = response.body?.getReader();
-  if (!reader) throw refuse(`The image at ${url} answered no body.`);
+async function read(response: IncomingMessage): Promise<FetchedImage> {
   const chunks: Uint8Array[] = [];
   let length = 0;
   let type: PhotoType | undefined;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    length += value.length;
-    if (length > MAX_IMAGE_BYTES) {
-      await reader.cancel();
-      throw refuse(
-        `The image at ${url} is over ${Math.round(MAX_IMAGE_BYTES / 1024)} KB, the most the app ` +
-          "stores.",
-      );
-    }
-    if (!type && length >= SNIFF_BYTES) {
-      type = sniffImageType(join(chunks, length));
-      if (!type) {
-        await reader.cancel();
-        throw notAnImage(url);
+  try {
+    for await (const chunk of response as AsyncIterable<Buffer>) {
+      chunks.push(chunk);
+      length += chunk.length;
+      if (length > MAX_IMAGE_BYTES) throw new FetchFailed("it is over the cap");
+      if (!type && length >= SNIFF_BYTES) {
+        type = sniffImageType(join(chunks, length));
+        if (!type) throw new FetchFailed("it is not a JPEG, PNG, or WebP");
       }
     }
+  } finally {
+    response.destroy();
   }
   const bytes = join(chunks, length);
   type ??= sniffImageType(bytes);
-  if (!type) throw notAnImage(url);
+  if (!type) throw new FetchFailed("it is not a JPEG, PNG, or WebP");
   return { bytes, type };
 }
 
@@ -214,16 +307,6 @@ function join(chunks: Uint8Array[], length: number): Uint8Array {
   return bytes;
 }
 
-function notAnImage(url: string): CoreError {
-  return refuse(`What ${url} answered is not a JPEG, PNG, or WebP, whatever it calls itself.`);
-}
-
 function refuse(message: string): CoreError {
   return new CoreError("validation", message);
-}
-
-function reason(error: unknown): string {
-  const cause = (error as { cause?: unknown } | undefined)?.cause;
-  const message = cause instanceof Error ? cause.message : (error as Error)?.message;
-  return message ? message.toLowerCase() : "the request failed";
 }

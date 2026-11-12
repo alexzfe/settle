@@ -1,5 +1,4 @@
 import {
-  type CallContext,
   type ClaudeConnect,
   type ConnectionSummary,
   type Core,
@@ -472,12 +471,14 @@ export async function handleBlueprintPage(core: Core, c: Context): Promise<Respo
 export async function handleHomeFolderScript(core: Core, c: Context): Promise<Response> {
   const home = c.req.query("home") ?? "";
   try {
-    // The key opened this Home and no other; a Login opens only its Account's own.
-    const caller: CallContext =
-      keyedHomeOf(c) === home ? { caller: { kind: "session" } } : callerOf(c);
-    const { origin } = await core.run("home_folder_setup", caller, { home });
-    const token = core.homeToken(home) as string;
-    return c.body(homeFolderScript(origin, home, token), 200, {
+    // The key opened this Home and no other, and is what the folder keeps. A Login opens only
+    // its Account's own, and has no key to give: the folder gets a new one of its own.
+    const keyed = keyedHomeOf(c);
+    const key =
+      keyed?.home === home
+        ? keyed.key
+        : (await core.run("home_folder_setup", callerOf(c), { home })).key;
+    return c.body(homeFolderScript(core.accounts.origin, home, key), 200, {
       "content-type": "text/x-shellscript; charset=utf-8",
       "cache-control": "no-store",
     });
