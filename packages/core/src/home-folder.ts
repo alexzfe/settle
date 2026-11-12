@@ -42,8 +42,8 @@ export interface HomeFolderSetup {
 }
 
 /**
- * `token` is the Home's bearer key: the command sends it to fetch the script, and .mcp.json sends
- * it on every MCP call. Both carry it whether or not the server has a password, so turning one on
+ * `token` is the folder's key, one of the Home's bearer keys: the command sends it to fetch the
+ * script, and .mcp.json sends it on every MCP call. Both carry it whether or not the server has a password, so turning one on
  * later needs no new setup.
  */
 export function homeFolderSetup(origin: string, homeSlug: string, token: string): HomeFolderSetup {
@@ -82,8 +82,8 @@ export function homeFolderFiles(origin: string, homeSlug: string, token: string)
  * The POSIX sh script GET /api/home_folder_script serves: run in the Home Folder, it refuses a
  * folder whose .mcp.json names another Home, keeps a differing file as <file>.before-settle,
  * writes both files, and says what to do next. It reads nothing from stdin, which is the script
- * itself under `curl … | sh`. Home slugs are [a-z0-9-] and tokens letters and digits, so they
- * need no shell quoting.
+ * itself under `curl … | sh`. Home slugs are [a-z0-9-] and keys base64url ([A-Za-z0-9_-]), so
+ * they need no shell quoting.
  */
 export function homeFolderScript(origin: string, homeSlug: string, token: string): string {
   const writes = homeFolderFiles(origin, homeSlug, token).flatMap(({ path, content }) => [

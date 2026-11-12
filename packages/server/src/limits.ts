@@ -1,3 +1,4 @@
+import { BlockList, isIP } from "node:net";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context } from "hono";
 
@@ -28,7 +29,9 @@ interface Tally {
 /**
  * Failed logins, and failed setup, invite and reset submissions. Locking one account and IP pair
  * stops a guesser without locking the account's owner out from elsewhere; the per-IP limit stops
- * one IP trying many emails.
+ * one IP trying many emails. Each try is counted as a failure when it arrives, before its password
+ * is checked, and taken back when it turns out right: a parallel burst is counted as it comes, not
+ * once every guess in it has been checked.
  */
 export class FailureLimiter {
   readonly #limits: FailureLimits;
@@ -51,15 +54,32 @@ export class FailureLimiter {
     return until > now ? until : undefined;
   }
 
+  /**
+   * A try arriving: when the pair or the IP may try again, if either is locked now; otherwise the
+   * try is counted as a failure until succeed or takeBack says it was not one.
+   */
+  attempt(ip: string, key: string): number | undefined {
+    const until = this.lockedUntil(ip, key);
+    if (until === undefined) this.fail(ip, key);
+    return until;
+  }
+
+  /** A try that was right after all: the pair's failures are cleared, and the IP's try taken back. */
+  succeed(ip: string, key: string): void {
+    this.#pairs.delete(pairKey(ip, key));
+    this.#ips.get(ip)?.failures.pop();
+  }
+
+  /** A try that was no guess (a form refused for what it asked, not for its token): not counted. */
+  takeBack(ip: string, key: string): void {
+    this.#pairs.get(pairKey(ip, key))?.failures.pop();
+    this.#ips.get(ip)?.failures.pop();
+  }
+
   fail(ip: string, key: string): void {
     const now = this.#now();
     this.#count(this.#pairs, pairKey(ip, key), this.#limits.perPair, now);
     this.#count(this.#ips, ip, this.#limits.perIp, now);
-  }
-
-  /** A success clears the pair's failures; the IP's stay, so many emails still count. */
-  succeed(ip: string, key: string): void {
-    this.#pairs.delete(pairKey(ip, key));
   }
 
   #count(tallies: Map<string, Tally>, key: string, limit: number, now: number): void {
@@ -83,6 +103,50 @@ export class FailureLimiter {
 
 function pairKey(ip: string, key: string): string {
   return `${key.toLowerCase()}\n${ip}`;
+}
+
+export interface PasswordLimits {
+  /** Password checks one IP may have in flight at once. */
+  perIp: number;
+  /** Password checks the whole server may have in flight at once. */
+  total: number;
+}
+
+/**
+ * Each check costs about 128 MiB and a libuv thread for a fraction of a second, and Node has four
+ * such threads, shared with file reads: a few at once from one IP is a person, more is a flood.
+ */
+export const PASSWORD_LIMITS: PasswordLimits = { perIp: 2, total: 8 };
+
+/**
+ * Password checks in flight (a login, or a setup, invite or reset form), so a burst can neither
+ * hold every scrypt thread nor fill memory: what is over the limit is refused at once.
+ */
+export class PasswordGate {
+  readonly #limits: PasswordLimits;
+  readonly #inFlight = new Map<string, number>();
+  #total = 0;
+
+  constructor(limits: PasswordLimits = PASSWORD_LIMITS) {
+    this.#limits = limits;
+  }
+
+  /** Takes a place for a check from `ip`, or false when the IP or the server has none free. */
+  enter(ip: string): boolean {
+    const mine = this.#inFlight.get(ip) ?? 0;
+    if (mine >= this.#limits.perIp || this.#total >= this.#limits.total) return false;
+    this.#inFlight.set(ip, mine + 1);
+    this.#total++;
+    return true;
+  }
+
+  /** Gives back the place a check from `ip` took. */
+  leave(ip: string): void {
+    const mine = (this.#inFlight.get(ip) ?? 0) - 1;
+    if (mine > 0) this.#inFlight.set(ip, mine);
+    else this.#inFlight.delete(ip);
+    this.#total = Math.max(0, this.#total - 1);
+  }
 }
 
 export interface UploadLimits {
@@ -130,6 +194,48 @@ export class UploadLimiter {
   }
 }
 
+export interface RegisterLimits {
+  /** Clients one IP may register in an hour. */
+  perHour: number;
+}
+
+/**
+ * Claude registers one client per connect, so a person connecting a few apps, and retrying, stays
+ * far under this; a loop from one IP is stopped long before it could push out the
+ * UNUSED_CLIENTS (500) a real connect, still at its Allow, needs to stay among.
+ */
+export const REGISTER_LIMITS: RegisterLimits = { perHour: 20 };
+
+/** Client registrations (/register) per IP: anyone may register, so each IP gets a few an hour. */
+export class RegisterLimiter {
+  readonly #limits: RegisterLimits;
+  readonly #now: () => number;
+  readonly #registered = new Map<string, number[]>();
+
+  constructor(limits: RegisterLimits = REGISTER_LIMITS, now: () => number = Date.now) {
+    this.#limits = limits;
+    this.#now = now;
+  }
+
+  /** Takes one registration for `ip`, or, over the limit, takes none and says how long to wait. */
+  take(ip: string): { waitMs: number } | undefined {
+    const now = this.#now();
+    const recent = (this.#registered.get(ip) ?? []).filter((at) => at > now - HOUR);
+    if (recent.length >= this.#limits.perHour) {
+      return { waitMs: (recent[recent.length - this.#limits.perHour] ?? now) + HOUR - now };
+    }
+    recent.push(now);
+    this.#registered.set(ip, recent);
+    // Many IPs grow the map; forget the ones with nothing left in the hour.
+    if (this.#registered.size > 10_000) {
+      for (const [each, times] of this.#registered) {
+        if (times.every((at) => at <= now - HOUR)) this.#registered.delete(each);
+      }
+    }
+    return undefined;
+  }
+}
+
 /** "in 12 minutes", "in 3 hours": how long until `at`, in words, rounded up. */
 export function inWords(at: number, now: number = Date.now()): string {
   const minutes = Math.max(1, Math.ceil((at - now) / MINUTE));
@@ -138,23 +244,50 @@ export function inWords(at: number, now: number = Date.now()): string {
   return `in ${hours} hours`;
 }
 
-/** Where the client IP comes from: Cloudflare's header, or the socket. */
-export type TrustedProxy = "cloudflare" | undefined;
+/** Where the client IP comes from: Cloudflare's header, a local proxy's X-Forwarded-For, or the socket. */
+export type TrustedProxy = "cloudflare" | "forwarded";
 
 /**
  * The visitor's IP. Behind Cloudflare (SETTLE_TRUSTED_PROXY=cloudflare), from CF-Connecting-IP,
- * since every request arrives from the proxy's address; otherwise the socket's, and the header is
- * ignored, since anyone could send it.
+ * since every request arrives from the proxy's address. Behind a reverse proxy on this machine
+ * (=forwarded), from the right-most X-Forwarded-For hop, the one the proxy added, but only when
+ * the request comes from a loopback or private address, where that proxy is; the hops before it
+ * are the visitor's to make up. Otherwise the socket's, and the headers are ignored, since anyone
+ * could send them.
  */
-export function clientIp(c: Context, trustedProxy: TrustedProxy): string {
+export function clientIp(c: Context, trustedProxy: TrustedProxy | undefined): string {
   if (trustedProxy === "cloudflare") {
     const header = c.req.header("cf-connecting-ip")?.trim();
     if (header) return header;
   }
+  const peer = peerAddress(c);
+  if (trustedProxy === "forwarded" && peer !== undefined && isLocalPeer(peer)) {
+    const hop = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
+    if (hop) return hop;
+  }
+  return peer ?? "unknown";
+}
+
+function peerAddress(c: Context): string | undefined {
   try {
-    return getConnInfo(c).remote.address ?? "unknown";
+    return getConnInfo(c).remote.address;
   } catch {
     // A request made in a test, with no socket.
-    return "unknown";
+    return undefined;
   }
+}
+
+/** Loopback and the private ranges, where a reverse proxy on this machine or its Docker host is. */
+const LOCAL = new BlockList();
+LOCAL.addSubnet("127.0.0.0", 8, "ipv4");
+LOCAL.addSubnet("10.0.0.0", 8, "ipv4");
+LOCAL.addSubnet("172.16.0.0", 12, "ipv4");
+LOCAL.addSubnet("192.168.0.0", 16, "ipv4");
+LOCAL.addAddress("::1", "ipv6");
+LOCAL.addSubnet("fc00::", 7, "ipv6");
+
+function isLocalPeer(address: string): boolean {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
+  if (mapped) return LOCAL.check(mapped, "ipv4");
+  return isIP(address) === 4 ? LOCAL.check(address, "ipv4") : LOCAL.check(address, "ipv6");
 }

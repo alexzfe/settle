@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { newToken, tokenHash } from "../accounts.js";
 import { cityLatitude, countryCode } from "../cities.js";
 import { CoreError } from "../errors.js";
 import { homeFolderSetup } from "../home-folder.js";
@@ -7,7 +8,6 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { HomeRow, LevelRow, PhotoRow, RoomRow, SessionRow } from "../store.js";
-import { randomToken } from "../token.js";
 import {
   blueprintName,
   findLevel,
@@ -87,7 +87,6 @@ export const createHome = defineOperation({
         country: input.country,
         city: input.city,
         latitude,
-        token: randomToken(context.random),
         accountId: account.id,
       });
       log({ home, recordKind: "home", record: home, new: toHome(home) });
@@ -345,13 +344,21 @@ export const homeFolderSetupOperation = defineOperation({
     "How to make a folder this Home's Home Folder on a computer: the command to paste inside " +
     "it, which fetches GET /api/home_folder_script and writes .mcp.json (pointing the Agent at " +
     "this Home's MCP endpoint) and .claude/settings.json (enabling the plugin and pre-approving " +
-    "the server); the one-time plugin install line; and the two files, to show. Writes nothing.",
+    "the server); the one-time plugin install line; and the two files, to show. Each call makes " +
+    "a new key for one more folder, shown only now, since only its SHA-256 is stored; the keys " +
+    "of folders set up before keep working until rotate_home_key cancels them all.",
   input: z.object({ home: homeInput }),
-  readOnly: true,
+  readOnly: false,
   surface: "web",
   handler(context): HomeFolderSetupResult {
     const home = requireHome(context);
-    return homeFolderSetup(context.origin, home.slug, home.token);
+    const key = newToken();
+    context.store.insert("home_keys", {
+      homeId: home.id,
+      keyHash: tokenHash(key),
+      createdAt: context.now(),
+    });
+    return { key, ...homeFolderSetup(context.origin, home.slug, key) };
   },
 });
 

@@ -134,7 +134,6 @@ describe("the ownership check", () => {
         country: "GB",
         city: "London",
         latitude: 51.5,
-        token: "key",
         accountId: null,
       });
       expect(ownedHome(store, { kind: "session" }, "flat")).toEqual(home);
@@ -214,14 +213,19 @@ describe("the setup link", () => {
   let fresh: Core;
   beforeEach(async () => {
     store = openStore(":memory:");
-    store.insertHome({
+    const house = store.insertHome({
       slug: "house",
       name: "House",
       country: "GB",
       city: "London",
       latitude: 51.5,
-      token: "house-key",
       accountId: null,
+    });
+    // A key from before Accounts, as migration 0021 keeps it: by its hash.
+    store.insert("home_keys", {
+      homeId: house.id,
+      keyHash: tokenHash("house-key"),
+      createdAt: "2026-09-01T00:00:00.000Z",
     });
     const { createCore } = await import("./core.js");
     fresh = createCore({ store, publicOrigin: ORIGIN, passwordCost: TEST_PASSWORD_COST });
@@ -230,7 +234,7 @@ describe("the setup link", () => {
 
   it("makes the Admin, claims every Home made before Accounts, and is void once used", async () => {
     // No key opens a Home nobody has claimed.
-    expect(fresh.homeToken("house")).toBeUndefined();
+    expect(fresh.homeKeyOpens("house", "house-key")).toBe(false);
     const first = fresh.accounts.makeSetupLink() as string;
     const url = fresh.accounts.makeSetupLink() as string;
     expect(url).toMatch(new RegExp(`^${ORIGIN}/setup/[A-Za-z0-9_-]{43}$`));
@@ -244,7 +248,7 @@ describe("the setup link", () => {
     });
     expect(account).toMatchObject({ email: "sam@example.com", admin: true });
     expect(store.home("house")?.accountId).toBe(account.id);
-    expect(fresh.homeToken("house")).toBe("house-key");
+    expect(fresh.homeKeyOpens("house", "house-key")).toBe(true);
     expect(fresh.accounts.makeSetupLink()).toBeUndefined();
     const again = await refusal(
       fresh.accounts.redeem("setup", tokenOf(url), {
@@ -406,6 +410,7 @@ describe("the Account page", () => {
       createdAt: expect.any(String),
       password: true,
       google: false,
+      googleSignIn: false,
     });
   });
 });
@@ -471,19 +476,20 @@ describe("the Admin", () => {
     const kim = (other.caller as { account: number }).account;
     const url = await kimsGuide();
     const guide = { caller: { kind: "guide" } } as const;
-    const key = core.homeToken(otherHome);
-    expect(key).toBeDefined();
+    const { key } = await core.run("home_folder_setup", other, { home: otherHome });
+    const { key: fixtureKey } = await core.run("home_folder_setup", admin, { home: fixture.home });
+    expect(core.homeKeyOpens(otherHome, key)).toBe(true);
 
     await core.run("disable_account", admin, { account: kim });
-    expect(core.homeToken(otherHome)).toBeUndefined();
+    expect(core.homeKeyOpens(otherHome, key)).toBe(false);
     const closed = await refusal(core.run("get_guide_page", guide, { token: tokenOf(url) }));
     expect(closed.code).toBe("not_found");
     // Nobody else's is touched.
-    expect(core.homeToken(fixture.home)).toBeDefined();
+    expect(core.homeKeyOpens(fixture.home, fixtureKey)).toBe(true);
     expect((await refusal(core.run("get_account", other, {}))).message).toContain("logged in");
 
     await core.run("enable_account", admin, { account: kim });
-    expect(core.homeToken(otherHome)).toBe(key);
+    expect(core.homeKeyOpens(otherHome, key)).toBe(true);
     expect((await core.run("get_guide_page", guide, { token: tokenOf(url) })).text).toContain(
       "<html",
     );
@@ -538,11 +544,12 @@ describe("deleting an Account", () => {
   it("needs the email typed again, then removes its Homes, every row, and their files", async () => {
     const kim = (other.caller as { account: number }).account;
     await kimsFiles();
+    const { key } = await core.run("home_folder_setup", other, { home: otherHome });
     const wrong = await refusal(core.run("delete_account", other, { email: "kim@else.example" }));
     expect(wrong.message).toContain("exactly");
 
     await core.run("delete_account", other, { email: " KIM@example.com " });
-    expect(core.homeToken(otherHome)).toBeUndefined();
+    expect(core.homeKeyOpens(otherHome, key)).toBe(false);
     expect((await core.accounts.logIn("kim@example.com", TEST_PASSWORD)).outcome).toBe("wrong");
     const { accounts } = await core.run("list_accounts", admin, {});
     expect(accounts.map((each) => each.id)).not.toContain(kim);
@@ -558,12 +565,13 @@ describe("deleting an Account", () => {
   it("by the Admin, removes another Account's Homes and files the same way", async () => {
     const kim = (other.caller as { account: number }).account;
     await kimsFiles();
+    const { key } = await core.run("home_folder_setup", other, { home: otherHome });
     const wrong = await refusal(
       core.run("admin_delete_account", admin, { account: kim, email: "lee@example.com" }),
     );
     expect(wrong.message).toContain("exactly");
     await core.run("admin_delete_account", admin, { account: kim, email: "kim@example.com" });
-    expect(core.homeToken(otherHome)).toBeUndefined();
+    expect(core.homeKeyOpens(otherHome, key)).toBe(false);
     expect(existsSync(join(dataDir, "uploads", otherHome))).toBe(false);
     expect(existsSync(join(dataDir, "rendered", otherHome))).toBe(false);
     expect((await core.run("list_accounts", admin, {})).accounts).toHaveLength(1);
@@ -578,6 +586,7 @@ describe("the export", () => {
       file: JPEG,
       thumb: JPEG,
     });
+    await core.run("home_folder_setup", admin, { home: fixture.home });
     const result = await core.run("export_account", admin, {});
     expect(result.fileName).toMatch(/^settle-export-\d{4}-\d{2}-\d{2}\.zip$/);
     const bytes = new Uint8Array(await new Response(result.stream).arrayBuffer());
@@ -596,8 +605,9 @@ describe("the export", () => {
     });
     const rows = JSON.parse(strFromU8(files[`homes/${fixture.home}.json`] as Uint8Array));
     expect(rows.homes[0]).toMatchObject({ slug: fixture.home, name: "Fixture Home" });
-    // The Home's key stays on the server.
+    // The Home's keys stay on the server, even as hashes.
     expect(rows.homes[0]).not.toHaveProperty("token");
+    expect(rows).not.toHaveProperty("home_keys");
     expect(rows.rooms).toHaveLength(5);
     expect(rows.change_log.length).toBeGreaterThan(10);
     expect(rows.sessions.length).toBeGreaterThan(0);
@@ -607,12 +617,17 @@ describe("the export", () => {
 });
 
 describe("rotating", () => {
-  it("a Home's key cancels the old one", async () => {
-    const before = core.homeToken(fixture.home);
+  it("a Home's keys cancels every one of them, in every Home Folder, and no other Home's", async () => {
+    const first = await core.run("home_folder_setup", admin, { home: fixture.home });
+    const second = await core.run("home_folder_setup", admin, { home: fixture.home });
+    const kims = await core.run("home_folder_setup", other, { home: otherHome });
     await core.run("rotate_home_key", admin, { home: fixture.home });
-    const after = core.homeToken(fixture.home);
-    expect(after).toBeDefined();
-    expect(after).not.toBe(before);
+    expect(core.homeKeyOpens(fixture.home, first.key)).toBe(false);
+    expect(core.homeKeyOpens(fixture.home, second.key)).toBe(false);
+    expect(core.homeKeyOpens(otherHome, kims.key)).toBe(true);
+    // A Home Folder set up again gets a key that works.
+    const again = await core.run("home_folder_setup", admin, { home: fixture.home });
+    expect(core.homeKeyOpens(fixture.home, again.key)).toBe(true);
   });
 
   it("a Quick Guide's link cancels the old link", async () => {

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -19,6 +20,10 @@ interface Migration {
 export function migrate(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+  // For a migration that hashes a token it stores (0021): the SHA-256 in hex, as tokenHash makes it.
+  db.function("settle_sha256", { deterministic: true }, (text) =>
+    createHash("sha256").update(String(text)).digest("hex"),
+  );
 
   const applied = appliedIds(db);
   const pending = listMigrations().filter((migration) => !applied.has(migration.id));

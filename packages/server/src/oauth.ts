@@ -6,6 +6,7 @@ import type { Core, CurrentConnection } from "@settle/core";
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { inWords, RegisterLimiter } from "./limits.js";
 
 // Settle as the OAuth 2.1 sign-in server Claude talks to (the MCP authorization spec, 2025-11-25,
 // with CIMD). Claude's connector hits /mcp, gets a 401 pointing at the discovery documents, sends
@@ -79,12 +80,16 @@ export type ClientMetadataFetcher = (url: string) => Promise<unknown>;
 export interface OAuthOptions {
   /** Fetches a CIMD client's metadata document; a test gives its own. */
   fetchClientMetadata?: ClientMetadataFetcher;
+  /** Client registrations per IP; a test gives its own, with its own clock. */
+  registrations?: RegisterLimiter;
 }
 
 /** What the server's login gives the Allow page: the Account logged in, if any. */
 export interface OAuthLogin {
   /** The Account the request's Login names, or undefined when it has none. */
   account(c: Context): { id: number; email: string } | undefined;
+  /** The client's IP, as the login limits take it (SETTLE_TRUSTED_PROXY). */
+  ip(c: Context): string;
   /** The page attributes the login pages use: their HTML and their headers. */
   page(title: string, body: string[]): string;
   headers: Record<string, string>;
@@ -172,6 +177,7 @@ export function useOAuth(
 ): void {
   const { origin, mcpUrl } = core.accounts;
   const fetchMetadata = cached(options.fetchClientMetadata ?? fetchClientMetadata);
+  const registrations = options.registrations ?? new RegisterLimiter();
   // Allows given before a login, by the SHA-256 of the cookie that binds each to its browser.
   const pending = new Map<string, { request: AuthorizationRequest; until: number }>();
 
@@ -216,6 +222,19 @@ export function useOAuth(
 
   // RFC 7591, the fallback for a client without CIMD. Every client is public: no secret is made.
   app.post(OAUTH_PATHS.register, async (c) => {
+    const refused = registrations.take(login.ip(c));
+    if (refused) {
+      c.header("Retry-After", String(Math.ceil(refused.waitMs / 1000)));
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "Too many clients registered from here in the last hour. Try again " +
+            `${inWords(Date.now() + refused.waitMs)}, or connect with a client registered already.`,
+        },
+        429,
+      );
+    }
     const body = (await c.req.json().catch(() => undefined)) as Record<string, unknown> | undefined;
     const uris = body?.redirect_uris;
     if (
@@ -443,6 +462,14 @@ export function useOAuth(
     const text = (name: string) => (typeof form[name] === "string" ? (form[name] as string) : "");
     // A public client sends its id in the form; one that sends it by Basic is read the same.
     const clientId = text("client_id") || basicClientId(c.req.header("authorization"));
+    if (clientId === undefined) {
+      return oauthError(
+        c,
+        "invalid_client",
+        "The Authorization header's client_id is not URL-encoded right. Send client_id in the " +
+          "form instead, or encode it as RFC 6749 section 2.3.1 says.",
+      );
+    }
     if (!clientId) return oauthError(c, "invalid_request", "Send client_id.");
     if (text("resource") !== "" && text("resource") !== mcpUrl) {
       return oauthError(c, "invalid_target", `Tokens here are only for ${mcpUrl}.`);
@@ -491,11 +518,16 @@ function oauthError(c: Context, error: string, description: string): Response {
   return c.json({ error, error_description: description }, 400, NO_STORE);
 }
 
-function basicClientId(header: string | undefined): string {
+/** The client id a Basic header names: "" when there is none, undefined when it is malformed. */
+function basicClientId(header: string | undefined): string | undefined {
   const encoded = /^Basic (.+)$/.exec(header ?? "")?.[1];
   if (!encoded) return "";
   const [id = ""] = Buffer.from(encoded, "base64").toString("utf8").split(":");
-  return decodeURIComponent(id);
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return undefined;
+  }
 }
 
 function parseUrl(text: string): URL | undefined {

@@ -82,12 +82,13 @@ describe("loadConfig", () => {
     expect(loadConfig({ SETTLE_PASSWORD: "open sesame" })).toEqual(loadConfig({}));
   });
 
-  it("takes the client IP from Cloudflare only with SETTLE_TRUSTED_PROXY=cloudflare", () => {
+  it("takes the client IP from Cloudflare or a local proxy only with SETTLE_TRUSTED_PROXY", () => {
     expect(loadConfig({ SETTLE_TRUSTED_PROXY: "cloudflare" }).trustedProxy).toBe("cloudflare");
+    expect(loadConfig({ SETTLE_TRUSTED_PROXY: "forwarded" }).trustedProxy).toBe("forwarded");
     expect(loadConfig({}).trustedProxy).toBeUndefined();
     for (const value of ["nginx", "Cloudflare", "1"]) {
       expect(() => loadConfig({ SETTLE_TRUSTED_PROXY: value })).toThrow(
-        new RegExp(`SETTLE_TRUSTED_PROXY must be "cloudflare".*not "${value}"`),
+        new RegExp(`SETTLE_TRUSTED_PROXY must be "cloudflare" or "forwarded".*not "${value}"`),
       );
     }
   });

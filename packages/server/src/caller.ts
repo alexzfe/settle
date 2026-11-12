@@ -7,8 +7,8 @@ declare module "hono" {
   interface ContextVariableMap {
     /** The web caller, when a Login's cookie let the request through. */
     caller: Caller;
-    /** The Home whose key let the request through, when one did. */
-    keyed: string;
+    /** The Home whose key let the request through, when one did, and that key. */
+    keyed: { home: string; key: string };
   }
 }
 
@@ -22,7 +22,7 @@ export function callerOf(c: Context): CallContext {
   return { caller };
 }
 
-/** The Home whose key let this request through, if it came in by one. */
-export function keyedHomeOf(c: Context): string | undefined {
-  return c.get("keyed") as string | undefined;
+/** The Home whose key let this request through, and the key, if it came in by one. */
+export function keyedHomeOf(c: Context): { home: string; key: string } | undefined {
+  return c.get("keyed") as { home: string; key: string } | undefined;
 }

@@ -13,7 +13,7 @@ import {
 import type { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
-import { FailureLimiter } from "./limits.js";
+import { FailureLimiter, RegisterLimiter } from "./limits.js";
 import { addressBlocked, CLAUDE_CALLBACK, fetchClientMetadata } from "./oauth.js";
 import { loginCookie } from "./testing.js";
 
@@ -174,7 +174,9 @@ describe("the 401 at /mcp", () => {
   });
 
   it("opens to neither a Home's key nor a Login", async () => {
-    const homeKey = fixture.core.homeToken(fixture.home) as string;
+    const { key: homeKey } = await fixture.core.run("home_folder_setup", fixture.web, {
+      home: fixture.home,
+    });
     expect((await mcp(homeKey)).status).toBe(401);
     const cookie = loginCookie(fixture.core, fixture.web);
     const response = await request("/mcp", { method: "POST", headers: { cookie } });
@@ -182,7 +184,9 @@ describe("the 401 at /mcp", () => {
   });
 
   it("leaves a Home's own MCP endpoint taking its key, as before", async () => {
-    const homeKey = fixture.core.homeToken(fixture.home) as string;
+    const { key: homeKey } = await fixture.core.run("home_folder_setup", fixture.web, {
+      home: fixture.home,
+    });
     const { access_token } = await connect();
     const byConnection = await request(`/mcp/homes/${fixture.home}`, {
       method: "POST",
@@ -406,6 +410,19 @@ describe("/token", () => {
     expect(await wrong.json()).toMatchObject({ error: "invalid_grant" });
   });
 
+  it("answers a Basic header whose client id is not URL-encoded right as invalid_client", async () => {
+    const response = await request("/token", {
+      method: "POST",
+      headers: { authorization: `Basic ${Buffer.from("%E0%A4%A:x").toString("base64")}` },
+      body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: "x" }),
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: "invalid_client",
+      error_description: expect.stringContaining("client_id"),
+    });
+  });
+
   it("takes only a form, and refuses another audience", async () => {
     const json = await request("/token", {
       method: "POST",
@@ -590,6 +607,35 @@ describe("Claude Code's loopback callback and DCR", () => {
 
     const { access_token } = await connect(fixture.web, clientId, "http://127.0.0.1:4000/callback");
     expect((await mcp(access_token)).status).toBe(200);
+  });
+
+  it("limits how many clients one IP registers an hour, so a flood can't push out a real one", async () => {
+    let now = Date.parse("2026-11-11T10:00:00Z");
+    const limited = createApp({
+      core: fixture.core,
+      port: 4391,
+      publicOrigin: ORIGIN,
+      auth: {
+        failures: new FailureLimiter(),
+        oauth: { registrations: new RegisterLimiter({ perHour: 3 }, () => now) },
+      },
+    });
+    const register = () =>
+      limited.request("/register", {
+        method: "POST",
+        headers: { host: "settle.example.com", "content-type": "application/json" },
+        body: JSON.stringify({ redirect_uris: ["http://127.0.0.1/callback"] }),
+      });
+    for (let i = 0; i < 3; i++) expect((await register()).status).toBe(201);
+    const fourth = await register();
+    expect(fourth.status).toBe(429);
+    expect(fourth.headers.get("retry-after")).toBe(String(60 * 60));
+    expect(await fourth.json()).toMatchObject({
+      error: "invalid_request",
+      error_description: expect.stringContaining("Try again in 60 minutes"),
+    });
+    now += 60 * 60 * 1000 + 1;
+    expect((await register()).status).toBe(201);
   });
 
   it("refuses to register a redirect URI that is neither Claude's nor loopback", async () => {

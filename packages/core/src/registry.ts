@@ -63,6 +63,8 @@ export interface OperationContext extends CallContext {
   random(max: number): number;
   /** scrypt's cost for a new password hash (accounts.ts). */
   passwordCost: PasswordCost;
+  /** Whether the server offers Sign in with Google. */
+  googleSignIn: boolean;
   /**
    * The origin the app names itself by: the public origin when hosted, else
    * "http://127.0.0.1:<port>". The Home Folder's .mcp.json points the Agent at it.

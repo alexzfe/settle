@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { tokenHash } from "./accounts.js";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
 import type { ChangeEvent } from "./events.js";
@@ -363,8 +364,9 @@ describe("home_folder_setup", () => {
     const setup = await core.run("home_folder_setup", web, { home });
 
     expect(setup.origin).toBe("http://127.0.0.1:4380");
-    const token = core.homeToken(home) as string;
-    expect(token).toMatch(/^[A-Za-z0-9]{24}$/);
+    const token = setup.key;
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(core.homeKeyOpens(home, token)).toBe(true);
     expect(setup.command).toBe(
       `curl -fsSL -H "Authorization: Bearer ${token}" ` +
         '"http://127.0.0.1:4380/api/home_folder_script?home=my-flat" | sh',
@@ -415,16 +417,16 @@ describe("home_folder_setup", () => {
     }
   });
 
-  it("gives each Home its own key, which no Home or change-log output shows", async () => {
+  it("gives each Home Folder a key of its own Home, which no Home or change-log output shows", async () => {
     const home = await newHome();
     const other = (
       await core.run("create_home", web, { name: "Cottage", country: "GB", city: "London" })
     ).home.slug;
-    const token = core.homeToken(home) as string;
+    const { key: token } = await core.run("home_folder_setup", web, { home });
 
-    expect(core.homeToken(other)).toMatch(/^[A-Za-z0-9]{24}$/);
-    expect(core.homeToken(other)).not.toBe(token);
-    expect(core.homeToken("nowhere")).toBeUndefined();
+    expect(core.homeKeyOpens(other, token)).toBe(false);
+    expect(core.homeKeyOpens("nowhere", token)).toBe(false);
+    expect(core.homeKeyOpens(home, `${token}x`)).toBe(false);
     for (const output of [
       await core.run("list_homes", web, {}),
       await core.run("get_home", web, { home }),
@@ -432,6 +434,23 @@ describe("home_folder_setup", () => {
     ]) {
       expect(JSON.stringify(output)).not.toContain(token);
     }
+  });
+
+  it("makes a new key each time, for one more folder, and the earlier folders' keys keep working", async () => {
+    const home = await newHome();
+    const first = await core.run("home_folder_setup", web, { home });
+    const second = await core.run("home_folder_setup", web, { home });
+    expect(second.key).not.toBe(first.key);
+    expect(core.homeKeyOpens(home, first.key)).toBe(true);
+    expect(core.homeKeyOpens(home, second.key)).toBe(true);
+  });
+
+  it("stores only each key's SHA-256, so a copy of the database opens no Home", async () => {
+    const home = await newHome();
+    const { key } = await core.run("home_folder_setup", web, { home });
+    const rows = JSON.stringify(store.homeRows(store.home(home)?.id as number));
+    expect(rows).not.toContain(key);
+    expect(rows).toContain(tokenHash(key));
   });
 
   it("refuses a Home that does not exist", async () => {

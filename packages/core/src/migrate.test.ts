@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -42,6 +43,7 @@ describe("migrate", () => {
       { id: 18 },
       { id: 19 },
       { id: 20 },
+      { id: 21 },
     ]);
     db.close();
   });
@@ -50,7 +52,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 21 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 22 });
     db.close();
   });
 
@@ -107,6 +109,40 @@ describe("migrate", () => {
         null,
       ],
       [[], null],
+    ]);
+    db.close();
+  });
+
+  it("keeps each Home's key as its SHA-256 alone, so a Home Folder set up before keeps working", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    early.exec("PRAGMA foreign_keys = ON");
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0021")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early
+      .prepare(
+        `INSERT INTO homes (slug, name, country, city, latitude, token)
+         VALUES ('flat', 'Flat', 'GB', 'London', 51.5, 'theFlatsOldKey')`,
+      )
+      .run();
+    early.close();
+
+    const db = migrate(path);
+    const columns = (db.prepare("PRAGMA table_info(homes)").all() as { name: string }[]).map(
+      (column) => column.name,
+    );
+    // The column stays, emptied, so v2.1.0 still starts and makes Homes after a rollback; a later
+    // migration drops it.
+    expect(columns).toContain("token");
+    expect(db.prepare("SELECT token FROM homes").all()).toEqual([{ token: null }]);
+    expect(db.prepare("SELECT home_id, key_hash FROM home_keys").all()).toEqual([
+      { home_id: 1, key_hash: createHash("sha256").update("theFlatsOldKey").digest("hex") },
     ]);
     db.close();
   });
@@ -279,13 +315,19 @@ describe("migrate", () => {
     `);
     early.close();
 
+    // Kept by 0021 as their hashes, one per Home.
     const db = migrate(path);
-    const tokens = db.prepare("SELECT token FROM homes ORDER BY id").all() as { token: string }[];
-    expect(tokens).toHaveLength(2);
-    for (const { token } of tokens) expect(token).toMatch(/^[0-9a-f]{36}$/);
-    expect(tokens[0]?.token).not.toBe(tokens[1]?.token);
+    const keys = db.prepare("SELECT home_id, key_hash FROM home_keys ORDER BY home_id").all() as {
+      home_id: number;
+      key_hash: string;
+    }[];
+    expect(keys.map((key) => key.home_id)).toEqual([1, 2]);
+    for (const { key_hash } of keys) expect(key_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(keys[0]?.key_hash).not.toBe(keys[1]?.key_hash);
     expect(() =>
-      db.prepare("UPDATE homes SET token = ? WHERE slug = 'cottage'").run(tokens[0]?.token ?? ""),
+      db
+        .prepare("UPDATE home_keys SET key_hash = ? WHERE home_id = 2")
+        .run(keys[0]?.key_hash ?? ""),
     ).toThrow(/UNIQUE/);
     db.close();
   });
@@ -385,6 +427,7 @@ describe("migrate", () => {
       "features",
       "flags",
       "guides",
+      "home_keys",
       "homes",
       "items",
       "levels",
@@ -425,8 +468,11 @@ describe("migrate", () => {
     early.close();
 
     const db = migrate(path);
-    expect(db.prepare("SELECT slug, token, account_id FROM homes").all()).toEqual([
-      { slug: "flat", token: "key", account_id: null },
+    expect(db.prepare("SELECT slug, account_id FROM homes").all()).toEqual([
+      { slug: "flat", account_id: null },
+    ]);
+    expect(db.prepare("SELECT key_hash FROM home_keys").all()).toEqual([
+      { key_hash: createHash("sha256").update("key").digest("hex") },
     ]);
     const account = (email: string, admin: number) =>
       db
