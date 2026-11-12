@@ -336,7 +336,7 @@ it("takes only the Agent's own lines shopping, with the Full Guide on a tap", as
   expect(block("In the shop")).toEqual(["Drag a key across it: loops that snag catch claws"]);
   expect(block("Ask the seller")).toEqual(["Backing latex or felt?"]);
   // Measure first is hoisted under the statement, and is on the page exactly once.
-  const measure = screen.getByText("Measure first").closest("aside") as HTMLElement;
+  const measure = screen.getByText("Measure first").closest("[role=note]") as HTMLElement;
   expect([...measure.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
     "Living room, Wall 2 length (~3.60 m)",
   ]);
@@ -592,6 +592,8 @@ it("names the changed record and field of a value_changed flag, and clears it wi
   expect(inputsTo(fetch, "resolve_flag")).toEqual([
     { home: "flat", flag: "wool-rug/flag-1", resolution: "keep" },
   ]);
+  // Keep went away with the open flag; the keyboard lands on the flag's line, not the page body.
+  await waitFor(() => expect(document.activeElement).toBe(list.querySelector(":scope > li")));
 });
 
 it("links to the phone page and the Guides' exports, with a QR code only given a phone address", async () => {
@@ -675,4 +677,27 @@ it("makes a new phone link only after saying the old link and its QR code stop w
     expect(inputsTo(fetch, "rotate_guide_link")).toEqual([{ home: "flat", decision: "wool-rug" }]),
   );
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("opens the new-link dialog afresh, without the last refusal", async () => {
+  const phoneUrl = "https://settle.example.com/guide/k3Jx9QaZ7pLm";
+  showRug(
+    { quickGuide, guides: { ...guides, phoneUrl } },
+    {
+      rotate_guide_link: () =>
+        Response.json(
+          { error: { code: "not_found", message: "No Quick Guide for wool-rug." } },
+          { status: 404 },
+        ),
+    },
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "New link…" }));
+  let dialog = screen.getByRole("dialog", { name: "A new phone link" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Make a new link" }));
+  await within(dialog).findByRole("alert");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Keep this one" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "New link…" }));
+  dialog = screen.getByRole("dialog", { name: "A new phone link" });
+  expect(within(dialog).queryByRole("alert")).toBeNull();
 });

@@ -13,7 +13,7 @@
 
 .title {
   margin-block: var(--space-1) var(--space-2);
-  font-size: clamp(var(--text-xl), 5vw, 2.75rem);
+  font-size: var(--text-title);
 }
 
 .marks {
@@ -116,6 +116,9 @@
 
 a.chip {
   text-decoration: none;
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 a.chip:hover {

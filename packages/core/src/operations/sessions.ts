@@ -5,7 +5,7 @@ import { type OpeningBlock, renderOpening } from "../render.js";
 import type { HomeRow, SessionRow } from "../store.js";
 import { openingView } from "./decisions.js";
 import { homesOfAgent } from "./homes.js";
-import { homeInput, requireHome, requireSession, sessionInput } from "./scope.js";
+import { appPage, homeInput, requireHome, requireSession, sessionInput } from "./scope.js";
 
 export const SKILLS = ["home-intake", "design-direction", "color", "purchase"] as const;
 export type Skill = (typeof SKILLS)[number];
@@ -130,10 +130,6 @@ export const openSession = defineOperation({
           "open_session again with resend: true.",
     ].join("\n"),
 });
-
-function appPage(context: OperationContext, home: HomeRow): string {
-  return `${context.origin}/homes/${home.slug}`;
-}
 
 /**
  * The Home a new Session opens on: the URL's for a Home Folder, the one named as `home`, or

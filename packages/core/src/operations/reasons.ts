@@ -11,6 +11,21 @@ import type { RequirementReasonKind, requirementReasonInput } from "./schemas.js
 
 type ReasonIn = z.output<typeof requirementReasonInput>;
 
+/** Where the Agent finds the slugs of each kind of record a reason can point at. */
+const WHERE_LISTED: Record<RequirementReasonKind, string> = {
+  decision: "find_decisions lists the Decisions with their slugs.",
+  constraint: "The opening lists the Constraints with their slugs.",
+  note: "search_notes lists the Notes with their slugs.",
+  home: "A reason on the Home itself leaves `id` out.",
+  room: "The Home Overview in the opening lists the Rooms with their slugs.",
+  wall: "A Room's get_room_sheet lists its Walls with their slugs.",
+  window: "A Room's get_room_sheet lists its Windows with their slugs.",
+  door: "A Room's get_room_sheet lists its Doors with their slugs.",
+  feature: "A Room's get_room_sheet lists its Features with their slugs.",
+  surface: "A Room's get_room_sheet lists its Surfaces with their slugs.",
+  item: "find_items lists the Items with their slugs.",
+};
+
 /**
  * The fields a reason can name, per kind: the names the writers log a change under, as receipts
  * show them, so a link is named by its label ("room", "wall", "beyond"), never by an id. A
@@ -152,7 +167,9 @@ export function resolveReason(
   if (!record) {
     throw new CoreError(
       "not_found",
-      `This Home has no ${reason.kind} "${reason.id}" for a Requirement's reason to point at.`,
+      `This Home has no ${reason.kind} "${reason.id}" for a Requirement's reason to point at. ` +
+        WHERE_LISTED[reason.kind] +
+        (reason.kind === "home" ? "" : " Point the reason at one of those."),
     );
   }
   const fields = REASON_FIELDS[reason.kind];

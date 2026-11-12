@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import styles from "./Actions.module.css";
 import appStyles from "./App.module.css";
 import type { DecisionState } from "./api";
 import { LADDER, type Move, STATE_LABEL } from "./decisions";
+import { rescueFocus } from "./focus";
 import { queriesShowing } from "./liveUpdates";
 import { StateMark } from "./ui/StateMark";
 
@@ -19,12 +20,17 @@ export interface Action {
 /**
  * One button per action, sharing an optional reason field, with a refusal shown below them. On
  * success every Decision query is refetched, since a change may flag other Decisions. Actions that
- * each say what they do stack, one per line with the consequence under its button.
+ * each say what they do stack, one per line with the consequence under its button. A pressed
+ * button stays focusable while it works, and when the actions go away with what they acted on, focus
+ * moves to the line that held them.
  */
 export function Actions({ home, actions }: { home: string; actions: readonly Action[] }) {
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
   const id = useId();
+  // The line around the buttons, which stays when a resolved flag takes its buttons with it.
+  const line = useRef<HTMLElement | null>(null);
+  useEffect(() => () => rescueFocus(line.current), []);
   const act = useMutation({
     mutationFn: ({ action, reason }: { action: Action; reason: string | undefined }) =>
       action.post(reason),
@@ -53,9 +59,14 @@ export function Actions({ home, actions }: { home: string; actions: readonly Act
               type="button"
               // The first move is the likeliest; the rest are outlined.
               className={stacked && index > 0 ? "secondary" : undefined}
-              disabled={act.isPending}
+              // aria-disabled, not disabled: a disabled button drops the keyboard's focus.
+              aria-disabled={act.isPending || undefined}
               aria-describedby={stacked ? `${id}-${index}` : undefined}
-              onClick={() => act.mutate({ action, reason: reason.trim() || undefined })}
+              onClick={(event) => {
+                if (act.isPending) return;
+                line.current = event.currentTarget.closest("li, section");
+                act.mutate({ action, reason: reason.trim() || undefined });
+              }}
             >
               {action.label}
             </button>

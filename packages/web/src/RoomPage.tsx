@@ -91,8 +91,10 @@ export function RoomPage() {
   useDocumentTitle(sheet.data?.room.name);
   if (sheet.isPending) return <p>Loading…</p>;
   if (sheet.isError) return <p className={styles.error}>{sheet.error.message}</p>;
+  // Keyed so another Room never inherits a Photo being added or an open section.
   return (
     <RoomSheet
+      key={room}
       room={sheet.data.room}
       decisions={sheet.data.decisions}
       photos={sheet.data.photos ?? []}
@@ -710,9 +712,10 @@ const POINTS: readonly CompassPoint[] = ["n", "ne", "e", "se", "s", "sw", "w", "
 
 /**
  * What the Room's facing means for color and light, in one qualitative line. The sun side is
- * south in the northern hemisphere and north in the southern one.
+ * south in the northern hemisphere and north in the southern one, so while the Home's latitude
+ * is unknown (loading, or failed to load) a Room facing either says nothing rather than guess.
  */
-export function facingMeaning(facings: readonly CompassPoint[], latitude = 0): string {
+export function facingMeaning(facings: readonly CompassPoint[], latitude?: number): string {
   const distinct = [...new Set(facings)];
   if (distinct.length === 0) return "";
   const apart = distinct.some((a) => distinct.some((b) => stepsApart(a, b) > 1));
@@ -720,6 +723,7 @@ export function facingMeaning(facings: readonly CompassPoint[], latitude = 0): s
     return "Light from more than one side, so colors shift less through the day and the Room feels even.";
   }
   const [point] = distinct as [CompassPoint];
+  if (latitude === undefined) return point === "e" || point === "w" ? eastOrWest(point) : "";
   const sunSide = latitude < 0 ? "n" : "s";
   const poleSide = latitude < 0 ? "s" : "n";
   const leans = (letter: string) => point.includes(letter);
@@ -730,6 +734,11 @@ export function facingMeaning(facings: readonly CompassPoint[], latitude = 0): s
   if (leans(poleSide)) {
     return "Faces away from the sun: steady, cooler light, so colors read cooler and a little darker; warmer colors help.";
   }
+  return eastOrWest(point);
+}
+
+/** East and west read the same in both hemispheres. */
+function eastOrWest(point: CompassPoint): string {
   if (point === "e") {
     return "Faces east: bright, cooler morning light, then softer and bluer later, so warm colors keep it welcoming.";
   }

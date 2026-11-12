@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useLayoutEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   Link,
   Outlet,
@@ -7,6 +7,7 @@ import {
   useMatch,
   useNavigate,
   useParams,
+  useRouteError,
 } from "react-router";
 import { AboutPage } from "./AboutPage";
 import { AccountPage } from "./AccountPage";
@@ -23,14 +24,21 @@ import { HomePage } from "./HomePage";
 import { ItemPage } from "./ItemPage";
 import { ItemsPage } from "./ItemsPage";
 import { type LiveState, useLiveUpdates } from "./liveUpdates";
-import { useAccount, useDecisions, useHomes, useItems, useShopping } from "./queries";
+import {
+  useAccount,
+  useDecisions,
+  useHomes,
+  useHomeTimeZone,
+  useItems,
+  useShopping,
+} from "./queries";
 import { RoomPage } from "./RoomPage";
 import { RoomsPage } from "./RoomsPage";
 import { SessionPage } from "./SessionPage";
 import { ShoppingPage } from "./ShoppingPage";
 import { useScrollToHash } from "./scrollToHash";
 import { AgentStatus } from "./ui/AgentStatus";
-import { documentTitle, HomeNameContext } from "./ui/documentTitle";
+import { documentTitle, HomeNameContext, useDocumentTitle } from "./ui/documentTitle";
 import { SettleMark } from "./ui/SettleIcon";
 import { StateMark } from "./ui/StateMark";
 import { ThemeToggle } from "./ui/ThemeToggle";
@@ -39,6 +47,11 @@ import { ConnectStep, NameYourHome } from "./WelcomePage";
 export const routes: RouteObject[] = [
   {
     element: <Layout />,
+    errorElement: (
+      <Shell>
+        <PageError />
+      </Shell>
+    ),
     children: [
       {
         path: "/",
@@ -85,23 +98,81 @@ export const routes: RouteObject[] = [
         path: "/homes/:home",
         element: <HomeLayout />,
         children: [
-          { index: true, element: <HomePage /> },
-          { path: "about", element: <AboutPage /> },
-          { path: "rooms", element: <RoomsPage /> },
-          { path: "rooms/:room", element: <RoomPage /> },
-          { path: "decisions", element: <DecisionsPage /> },
-          { path: "decisions/:decision", element: <DecisionPage /> },
-          { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
-          { path: "shopping", element: <ShoppingPage /> },
-          { path: "items", element: <ItemsPage /> },
-          { path: "items/:item", element: <ItemPage /> },
-          { path: "log", element: <ChangeLogPage /> },
-          { path: "sessions/:session", element: <SessionPage /> },
+          {
+            // A page that fails to draw is replaced by a message; the Home's frame stays.
+            errorElement: <PageError />,
+            children: [
+              { index: true, element: <HomePage /> },
+              { path: "about", element: <AboutPage /> },
+              { path: "rooms", element: <RoomsPage /> },
+              { path: "rooms/:room", element: <RoomPage /> },
+              { path: "decisions", element: <DecisionsPage /> },
+              { path: "decisions/:decision", element: <DecisionPage /> },
+              { path: "blueprints/:blueprint/:page", element: <BlueprintPage /> },
+              { path: "shopping", element: <ShoppingPage /> },
+              { path: "items", element: <ItemsPage /> },
+              { path: "items/:item", element: <ItemPage /> },
+              { path: "log", element: <ChangeLogPage /> },
+              { path: "sessions/:session", element: <SessionPage /> },
+              { path: "*", element: <NotFound /> },
+            ],
+          },
         ],
+      },
+      {
+        path: "*",
+        element: (
+          <Shell>
+            <NotFound />
+          </Shell>
+        ),
       },
     ],
   },
 ];
+
+/** Where a link leads back to from an error: the Home's Overview inside a Home, else all Homes. */
+function WayBack() {
+  const home = useMatch({ path: "/homes/:home", end: false })?.params.home;
+  return home ? (
+    <Link to={`/homes/${home}`}>Back to the Overview</Link>
+  ) : (
+    <Link to="/">Back to all Homes</Link>
+  );
+}
+
+/** A path the app has no page for. */
+function NotFound() {
+  useDocumentTitle("No such page");
+  return (
+    <>
+      <h1>No such page</h1>
+      <p>Nothing lives at this address. The link may be mistyped, or the page may have moved.</p>
+      <p>
+        <WayBack />
+      </p>
+    </>
+  );
+}
+
+/**
+ * A page that threw while drawing. The error itself goes to the console, not the screen: the
+ * user can do nothing with a stack trace, and reloading often clears a passing fault.
+ */
+function PageError() {
+  const error = useRouteError();
+  useEffect(() => console.error(error), [error]);
+  useDocumentTitle("Something went wrong");
+  return (
+    <>
+      <h1>Something went wrong</h1>
+      <p>This page could not be shown. Reloading it may help.</p>
+      <p>
+        <WayBack />
+      </p>
+    </>
+  );
+}
 
 function Layout() {
   const home = useMatch({ path: "/homes/:home", end: false })?.params.home;
@@ -130,28 +201,55 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const sheet = useId();
   const { pathname } = useLocation();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const main = useRef<HTMLElement>(null);
+  // While the sheet is open, the page and the top bar's other controls are out of reach, so Tab
+  // stays in the sheet and the Menu button that closes it.
+  const covered = (narrow && open) || undefined;
   // Following a link in the sheet closes it.
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     if (!open) return;
+    // Opening moves focus to the sheet's first link.
+    document.getElementById(sheet)?.querySelector<HTMLElement>("a[href], button, select")?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      // An Escape a box over the sheet already used, as Find's, closes only that box.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setOpen(false);
+      menuButton.current?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, sheet]);
   return (
     <div className={styles.shell}>
+      {/* The first stop for the keyboard, shown only when focused: past the sidebar to the page.
+          A link, as skip links are, that focuses the page itself rather than adding #content to
+          the address the router reads. */}
+      {/* biome-ignore lint/a11y/useValidAnchor: see above. */}
+      <a
+        href="#content"
+        className={styles.skip}
+        onClick={(event) => {
+          event.preventDefault();
+          main.current?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       {narrow && (
         <header className={styles.topBar}>
-          <Link to="/" className={styles.topMark} aria-label="All Homes">
+          <Link to="/" className={styles.topMark} aria-label="All Homes" inert={covered}>
             <span aria-hidden="true" className={styles.lockupMark}>
               <SettleMark size={22} />
             </span>
           </Link>
           <span className={styles.topName}>{home?.name}</span>
-          <FindButton compact />
+          <span className={styles.topFind} inert={covered}>
+            <FindButton compact />
+          </span>
           <button
+            ref={menuButton}
             type="button"
             className={`secondary ${styles.menuButton}`}
             aria-expanded={open}
@@ -167,7 +265,14 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
         // A pointer convenience: Escape and the menu button close the sheet for the keyboard.
         // biome-ignore lint/a11y/noStaticElementInteractions: see above.
         // biome-ignore lint/a11y/useKeyWithClickEvents: see above.
-        <div className={styles.scrim} onClick={() => setOpen(false)} />
+        <div
+          className={styles.scrim}
+          data-scrim
+          onClick={() => {
+            setOpen(false);
+            menuButton.current?.focus();
+          }}
+        />
       )}
       <aside id={sheet} className={styles.sidebar} data-open={(narrow && open) || undefined}>
         <Link to="/" className={styles.lockup}>
@@ -183,7 +288,9 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
           <AccountLinks />
         </div>
       </aside>
-      <main className={styles.main}>{children}</main>
+      <main ref={main} id="content" tabIndex={-1} className={styles.main} inert={covered}>
+        {children}
+      </main>
     </div>
   );
 }
@@ -321,8 +428,48 @@ function HomeSidebar({ home }: { home: ShellHome }) {
 
 function HomeLayout() {
   const { home = "" } = useParams();
+  const homes = useHomes();
+  const missing = homes.data !== undefined && !homes.data.homes.some((each) => each.slug === home);
+  // The slug the list was fetched again for. A Home missing from a list fetched earlier may have
+  // been made since (by the create form, the Agent, or another tab), so it is looked for once more.
+  const [lookedFor, setLookedFor] = useState<string>();
+  const { refetch } = homes;
+  useEffect(() => {
+    if (!missing) return;
+    let current = true;
+    void refetch().then(() => {
+      if (current) setLookedFor(home);
+    });
+    return () => {
+      current = false;
+    };
+  }, [missing, home, refetch]);
+  if (missing) {
+    // Until the fresh list answers, the frame waits empty rather than saying "not found".
+    if (lookedFor !== home || homes.isFetching) return <Shell>{null}</Shell>;
+    // A Home the Account does not have (a mistyped slug, or another Account's): nothing to show
+    // and nothing to follow live.
+    return (
+      <Shell>
+        <NoSuchHome />
+      </Shell>
+    );
+  }
   // Keyed by Home, so switching Homes starts every page, form, and action result afresh.
   return <HomeScope key={home} home={home} />;
+}
+
+function NoSuchHome() {
+  useDocumentTitle("No such Home");
+  return (
+    <>
+      <h1>No such Home</h1>
+      <p>None of your Homes is at this address. The link may be mistyped.</p>
+      <p>
+        <Link to="/">Back to all Homes</Link>
+      </p>
+    </>
+  );
 }
 
 /** The section each path of a Home is in, as the nav and the tab title name it. */
@@ -355,6 +502,7 @@ function sectionOf(path: string): string {
 /** The pages of one Home, kept live while any of them is open. */
 function HomeScope({ home }: { home: string }) {
   const live = useLiveUpdates(home);
+  useHomeTimeZone(home);
   useScrollToHash();
   const homes = useHomes();
   const name = homes.data?.homes.find((each) => each.slug === home)?.name ?? home;

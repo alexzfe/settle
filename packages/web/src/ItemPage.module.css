@@ -19,7 +19,7 @@
 
 .title {
   margin-block: var(--space-1) var(--space-2);
-  font-size: clamp(var(--text-xl), 5vw, 2.75rem);
+  font-size: var(--text-title);
 }
 
 .kind {
@@ -181,6 +181,11 @@
 
 .addPhoto > p {
   margin: 0;
+}
+
+/* A wrapper that only watches for the crop's arrival, to move focus in; it takes no box. */
+.arrival {
+  display: contents;
 }
 
 .chooser {

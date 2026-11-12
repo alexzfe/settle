@@ -15,7 +15,8 @@ try {
     country: "GB",
     city: "London",
   });
-  const key = { authorization: `Bearer ${core.homeToken(home.slug)}` };
+  const setup = await core.run("home_folder_setup", web, { home: home.slug });
+  const key = { authorization: `Bearer ${setup.key}` };
   const tools = await listTools(createApp({ core, port: 4380 }), 4380, home.slug, key);
   writeFileSync(TOOLS_JSON, `${JSON.stringify(tools, null, 2)}\n`);
   // In Biome's layout, so pnpm lint stays clean.

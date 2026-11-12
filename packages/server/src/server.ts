@@ -99,6 +99,7 @@ export async function startServer(
       ...(config.publicOrigin ? { publicOrigin: config.publicOrigin } : {}),
       ...(lanUrl ? { lanUrl } : {}),
       ...(passwordCost ? { passwordCost } : {}),
+      googleSignIn: config.google !== undefined,
     });
     core = open;
     app = createApp({

@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { AgentWritten, shortDate } from "./AgentWritten";
+import { Callout } from "./Callout";
 import { EmptyState } from "./EmptyState";
 import { FlagMark } from "./StateMark";
 
@@ -22,6 +23,12 @@ it("says the Agent wrote it, where, and when", () => {
   );
 });
 
+it("adds the year to a date from an earlier year", () => {
+  const now = new Date(2026, 10, 11);
+  expect(shortDate(new Date(2026, 8, 14, 10).toISOString(), now)).toBe("14 Sep");
+  expect(shortDate(new Date(2025, 8, 14, 10).toISOString(), now)).toBe("14 Sep 2025");
+});
+
 it("leaves out a date it cannot read", () => {
   expect(shortDate("not a date")).toBeUndefined();
 });
@@ -31,4 +38,14 @@ it("offers to ask the Agent only when an empty state has a prompt", () => {
   expect(screen.queryByRole("button")).toBeNull();
   rerender(<EmptyState text="No Rooms yet" prompt={`claude "record my home"`} />);
   expect(screen.getByRole("button", { name: /Ask the Agent/ })).toBeTruthy();
+});
+
+it("sets a Callout off as a note named by its title, not as an unnamed landmark", () => {
+  render(
+    <Callout tone="important" title="Measure first">
+      <p>Measure the doorway.</p>
+    </Callout>,
+  );
+  expect(screen.queryByRole("complementary")).toBeNull();
+  expect(screen.getByRole("note", { name: "Measure first" })).toBeTruthy();
 });

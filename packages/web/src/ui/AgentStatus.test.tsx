@@ -64,8 +64,12 @@ it("shows the connection's failures first, with Reload once updates stop", async
   expect(await screen.findByText(/Agent working/)).toBeTruthy();
   act(() => source.emit("error"));
   expect(footer()).toBe("Reconnecting");
+  // The browser gives up, and get_home (not stubbed) says the Home is not found.
   source.readyState = 2;
-  act(() => source.emit("error"));
+  await act(async () => {
+    source.emit("error");
+    await vi.advanceTimersByTimeAsync(0);
+  });
   expect(footer()).toBe("Updates stoppedReload");
   expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
 });
@@ -126,4 +130,26 @@ it("no longer shows the steady Live state", async () => {
   const { footer } = showFooter([]);
   await act(async () => {});
   expect(footer()).not.toMatch(/Live|Connecting/);
+});
+
+it("keeps one status region in place and changes its text, so a screen reader reads each change", async () => {
+  const { source, agentCall } = showFooter([closed, open]);
+  const region = screen.getByRole("status");
+  expect(region.textContent).toBe("");
+  await agentCall(ago(1));
+  expect(await screen.findByText(/Agent working/)).toBeTruthy();
+  expect(screen.getByRole("status")).toBe(region);
+  expect(region.textContent).toBe("Agent working · Color Session");
+  act(() => source.emit("error"));
+  expect(screen.getByRole("status")).toBe(region);
+  expect(region.textContent).toBe("Reconnecting");
+  // No second live region nested inside it.
+  expect(region.querySelector("[aria-live], [role=status]")).toBeNull();
+});
+
+it("shows the last Session outside the status region, so loading a Home announces nothing", async () => {
+  showFooter([closed]);
+  const link = await screen.findByRole("link", { name: "Last Session 19 Sep" });
+  expect(screen.getByRole("status").contains(link)).toBe(false);
+  expect(screen.getByRole("status").textContent).toBe("");
 });

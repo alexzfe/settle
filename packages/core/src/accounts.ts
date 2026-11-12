@@ -31,6 +31,13 @@ export const ACCESS_TOKEN_SECONDS = 60 * 60;
 export const CODE_MINUTES = 5;
 /** A Connection unused this long has lapsed: its refresh token expires this long after last use. */
 export const CONNECTION_DAYS = 90;
+/**
+ * The most registered clients no Connection uses that are kept: anyone may register one, so
+ * without a cap a loop could grow the database without end. The oldest go first, so a flood of
+ * more than this, while a real connect waits at its Allow, would push that one's client out: the
+ * server's per-IP limit on /register (limits.ts) is what keeps one source from sending that many.
+ */
+export const UNUSED_CLIENTS = 500;
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -114,6 +121,12 @@ export function cleanEmail(email: string): string {
   return trimmed;
 }
 
+/**
+ * What a wrong current password is told, on the Account page (change_password, change_email). The
+ * server counts these refusals as failed tries, as it counts failed logins.
+ */
+export const WRONG_PASSWORD = "That is not this account's password.";
+
 /** What a bad, used, or expired link is told: the same for every miss. */
 export const LINK_MISS =
   "This link doesn't work. It may have been used already, or expired. Ask whoever runs this " +
@@ -141,7 +154,14 @@ export type GoogleLogInResult =
   | { outcome: "ok"; account: AccountRow }
   | { outcome: "unknown" }
   | { outcome: "disabled" }
-  | { outcome: "linked_elsewhere" };
+  | { outcome: "linked_elsewhere" }
+  | { outcome: "has_password" };
+
+/** Linking a Google account to the Account logged in: done, or it is another Account's already. */
+export type LinkGoogleResult =
+  | { outcome: "ok" }
+  | { outcome: "linked_elsewhere" }
+  | { outcome: "already_linked" };
 
 /** A Login, as the cookie check finds it. */
 export interface CurrentLogin {
@@ -161,6 +181,25 @@ export interface TokenGrant {
 export type GrantResult =
   | { outcome: "ok"; grant: TokenGrant }
   | { outcome: "refused"; why: string };
+
+/** One Connection, as the Account page lists it: the web's list_connections, which the server answers. */
+export interface ConnectionSummary {
+  id: number;
+  /** The host the Allow page named the client by: "claude.ai", or "localhost" for Claude Code. */
+  client: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** How to connect Claude to this server: the Connect to Claude block's button and command. */
+export interface ClaudeConnect {
+  /** The Account's MCP URL, which Claude's connector dialog takes. */
+  mcpUrl: string;
+  /** Claude's "Add custom connector" dialog, with Settle's name and URL filled in. */
+  addConnectorUrl: string;
+  /** For Claude Code: the same connector for every folder, and the plugin with the Skills. */
+  claudeCodeCommand: string;
+}
 
 /** A Connection, as an access token finds it at /mcp. */
 export interface CurrentConnection {
@@ -187,10 +226,20 @@ export interface Accounts {
   logIn(email: string, password: string): Promise<LogInResult>;
   /**
    * Finds the Account a Google sign-in is for: the one linked to its `sub`, always first, since
-   * emails change; else the Account whose email is Google's verified email, which is linked to the
-   * `sub` from then on. Never makes an Account: an invite does that (redeemWithGoogle).
+   * emails change; else an Account with no password whose email is Google's verified email, which
+   * is linked to the `sub` from then on. An Account with a password is never linked by its email
+   * (has_password): emails here are never confirmed, so whoever set it may not own it. Its owner
+   * logs in with the password and links Google from the Account page (linkGoogle). Never makes an
+   * Account: an invite does that (redeemWithGoogle).
    */
   googleLogIn(identity: GoogleIdentity): GoogleLogInResult;
+  /**
+   * Links the Google account a logged-in Account just signed in with, whatever its email: the
+   * Login proves the Account, and Google the Google account. Refused when another Account has it
+   * (linked_elsewhere), and when this Account is linked to a different one (already_linked): any
+   * Login can start a link, so a link is never replaced. A password reset removes it (redeem).
+   */
+  linkGoogle(accountId: number, identity: GoogleIdentity): LinkGoogleResult;
   /**
    * Uses an invite link with Google instead of a password: makes the Account with Google's
    * verified email, linked to its `sub` and with no password. Refused like redeem: LINK_MISS as
@@ -200,7 +249,8 @@ export interface Accounts {
   redeemWithGoogle(token: string, identity: GoogleIdentity): AccountRow;
   /**
    * Uses a link: setup makes the Admin and claims every unclaimed Home, invite makes an Account,
-   * reset sets the password and ends every Login. Returns the Account. A link that can't be used
+   * reset sets the password, ends every Login and Connection, cancels every key of the
+   * Account's Homes and unlinks Google. Returns the Account. A link that can't be used
    * is refused with LINK_MISS as not_found; a bad email or password, as validation.
    */
   redeem(
@@ -214,6 +264,11 @@ export interface Accounts {
   current(token: string): CurrentLogin | undefined;
   /** Ends the Login a cookie's token names, if there is one. */
   endLogin(token: string): void;
+  /**
+   * Whether the Login with this id still lets its Account in: not ended, not expired, and the
+   * Account enabled. For a stream opened by it, which must end with it.
+   */
+  loginHolds(loginId: number, accountId: number): boolean;
 
   /** Stores a client that registers itself (RFC 7591), with a new client id. It has no secret. */
   registerClient(client: { clientName?: string; redirectUris: string[] }): OauthClientRow;
@@ -341,8 +396,19 @@ export function createAccounts({ store, origin, cost, clock }: AccountsDeps): Ac
       if (account.disabledAt !== null) return { outcome: "disabled" };
       // Linked to another Google account already: the email alone must not move the link.
       if (account.googleSub !== null) return { outcome: "linked_elsewhere" };
+      // Its email was set by whoever made it, never confirmed: only the password's holder links.
+      if (hasPassword(account)) return { outcome: "has_password" };
       store.update("accounts", account.id, { googleSub: sub });
       return { outcome: "ok", account: { ...account, googleSub: sub } };
+    },
+
+    linkGoogle(accountId, { sub }) {
+      const holder = store.accountByGoogle(sub);
+      if (holder && holder.id !== accountId) return { outcome: "linked_elsewhere" };
+      const current = store.account(accountId)?.googleSub ?? null;
+      if (current !== null && current !== sub) return { outcome: "already_linked" };
+      store.update("accounts", accountId, { googleSub: sub });
+      return { outcome: "ok" };
     },
 
     redeemWithGoogle(token, { sub, email, emailVerified }) {
@@ -395,10 +461,12 @@ export function createAccounts({ store, origin, cost, clock }: AccountsDeps): Ac
         store.update("account_links", link.id, { usedAt: now() });
         if (kind === "reset") {
           const accountId = link.accountId as number;
-          store.update("accounts", accountId, { passwordHash });
-          // A reset means the password may be known to someone else: Claude's Connections end too.
+          // A reset means the password may be known to someone else, who could have made a
+          // Connection, read a Home's key or linked their own Google account: they end too.
+          store.update("accounts", accountId, { passwordHash, googleSub: null });
           store.deleteLogins(accountId);
           store.deleteConnections(accountId);
+          store.deleteAccountHomeKeys(accountId);
           return store.account(accountId) as AccountRow;
         }
         if (store.accountByEmail(email as string)) {
@@ -455,15 +523,25 @@ export function createAccounts({ store, origin, cost, clock }: AccountsDeps): Ac
       if (login) store.deleteLogin(login.id);
     },
 
+    loginHolds(loginId, accountId) {
+      if (!enabled(accountId)) return false;
+      const login = store.logins(accountId).find((each) => each.id === loginId);
+      return login !== undefined && login.expiresAt > now();
+    },
+
     registerClient({ clientName, redirectUris }) {
       // A registered client no Connection uses after a day is only clutter: each fresh connect
       // of a DCR client registers anew.
       store.pruneOauthClients(at(-DAY));
-      return store.insert("oauth_clients", {
-        clientId: newToken(),
-        clientName: clientName?.slice(0, 200) ?? null,
-        redirectUris,
-        createdAt: now(),
+      return store.transaction(() => {
+        const client = store.insert("oauth_clients", {
+          clientId: newToken(),
+          clientName: clientName?.slice(0, 200) ?? null,
+          redirectUris,
+          createdAt: now(),
+        });
+        store.capOauthClients(UNUSED_CLIENTS);
+        return client;
       });
     },
 

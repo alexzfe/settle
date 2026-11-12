@@ -38,6 +38,7 @@ import type {
   StateChangeRow,
   Store,
 } from "../store.js";
+import { dayIn, homeToday } from "../time-zone.js";
 import { addFeature } from "./features.js";
 import { saveItem } from "./items.js";
 import { active, requireRoom, requireSources, requireWall } from "./lookup.js";
@@ -155,16 +156,17 @@ export const setDecisionState = defineOperation({
   name: "set_decision_state",
   description:
     "Moves one Decision to another state and returns a receipt, including every Decision the " +
-    "move flagged. Only these moves: candidate to leaning, settled, or rejected; leaning to " +
-    "candidate, settled, or rejected; settled to leaning (a Reopen) or rejected; rejected to " +
-    "candidate (a revival). A Fulfilled Decision stays Settled for good: it can only be kept. " +
+    "move flagged. Only these moves: a Decision with an open flag or Conflict to its current " +
+    "state (a keep, which clears them; quote the user in `reason`); candidate to leaning, " +
+    "settled, or rejected; leaning to candidate, settled, or rejected; settled to leaning (a " +
+    "Reopen) or rejected; rejected to candidate (a revival). A Fulfilled Decision stays Settled " +
+    "for good: it can only be kept. " +
     "Settle only when the user clearly commits. Before a Reopen, rejecting " +
     "a Settled Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is " +
     "required: why, quoting the user's words when they gave permission. A Reopen or Reject " +
     "flags, but never changes, every Decision resting on this one; each flag stays until the " +
     "user keeps, Reopens, or Rejects that Decision, which also clears its own flags and " +
-    "Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting " +
-    "the user. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm " +
+    "Conflicts. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm " +
     "minimalism'\". Needs the open Session's id as `session`.",
   input: setDecisionStateInput,
   webInput: setDecisionStateWebInput,
@@ -199,7 +201,8 @@ export const findDecisions = defineOperation({
     "Fulfilled), the Room it is about or Home-wide, its open flags and Conflicts, and its " +
     "one-line statement. Covers every state, Rejected and Fulfilled ones included, which the " +
     "opening and Room Sheets leave out. Filter by room (a Room's slug) or homeWide, by kind, " +
-    "and by state. Before proposing a Decision, look up the Rejected ones in its scope and never " +
+    "by state, and by fulfilled: what is still to buy is the Settled Purchases with fulfilled " +
+    "false. Before proposing a Decision, look up the Rejected ones in its scope and never " +
     "propose one of them again. get_decision gives one Decision in full. Changes nothing.",
   input: findDecisionsInput,
   readOnly: true,
@@ -210,9 +213,12 @@ export const findDecisions = defineOperation({
     if (input.room !== undefined && input.homeWide) {
       throw new CoreError("validation", "Give room or homeWide, not both.");
     }
-    return { decisions: filterDecisions(loadDecisions(context.store, home), input) };
+    return {
+      decisions: filterDecisions(loadDecisions(context.store, home), input),
+      ...optional({ timeZone: home.timeZone }),
+    };
   },
-  text: ({ decisions }) => renderDecisions(decisions),
+  text: ({ decisions, timeZone }) => renderDecisions(decisions, timeZone),
 });
 
 export const getDecision = defineOperation({
@@ -241,9 +247,10 @@ export const getDecision = defineOperation({
         includeFullGuide: input.includeFullGuide === true,
         ...optional({ publicOrigin: context.publicOrigin, lanUrl: context.lanUrl }),
       }),
+      ...optional({ timeZone: home.timeZone }),
     };
   },
-  text: ({ decision }) => renderDecision(decision),
+  text: ({ decision, timeZone }) => renderDecision(decision, timeZone),
 });
 
 export const flagConflict = defineOperation({
@@ -277,7 +284,7 @@ export const flagConflict = defineOperation({
       if (decision.fulfilledAt !== null) {
         throw new CoreError(
           "validation",
-          `${fulfilledOn(decision)}, so there is nothing left to raise a Conflict against. For ` +
+          `${fulfilledOn(decision, model.home)}, so there is nothing left to raise a Conflict against. For ` +
             "something new the user wants now, save a new Decision.",
         );
       }
@@ -381,7 +388,7 @@ export const recordFulfilment = defineOperation({
       if (decision.fulfilledAt !== null) {
         throw new CoreError(
           "validation",
-          `${subject} was already Fulfilled on ${day(decision.fulfilledAt)}.`,
+          `${subject} was already Fulfilled on ${day(decision.fulfilledAt, model.home)}.`,
         );
       }
       const open = [...openFlags(model, decision), ...openConflicts(model, decision)];
@@ -390,7 +397,7 @@ export const recordFulfilment = defineOperation({
           "validation",
           `${subject} can't be Fulfilled while it has an open flag or Conflict ` +
             `(${open.map((each) => each.slug).join(", ")}): the user settles it first.\n` +
-            `${renderFlagged([toSummary(model, decision)])}\nAsk the user whether it still ` +
+            `${renderFlagged([toSummary(model, decision)], model.home.timeZone)}\nAsk the user whether it still ` +
             "holds, then keep it with set_decision_state (to settled, quoting them) and Fulfil " +
             "it; or Reopen or Reject it with set_decision_state, if that is what they say. " +
             "Nothing was recorded.",
@@ -502,11 +509,11 @@ function fulfilPurchase(
   const oldItem =
     input.replacesItem === undefined
       ? undefined
-      : replaced(model.items, input.replacesItem, "Item", "find_items lists the Items");
+      : replaced(model, model.items, input.replacesItem, "Item", "find_items lists the Items");
   const oldFeature =
     input.replacesFeature === undefined
       ? undefined
-      : replaced(model.features, input.replacesFeature, "Feature", "Room Sheets list them");
+      : replaced(model, model.features, input.replacesFeature, "Feature", "Room Sheets list them");
   const featureRoom =
     input.feature === undefined
       ? undefined
@@ -564,7 +571,7 @@ function fulfilPurchase(
   if (input.item) {
     const { room, unplaced, ...given } = input.item;
     const where = unplaced ? undefined : (room ?? scope?.slug);
-    const { values: rest, listed } = fromListing(given, listing, at);
+    const { values: rest, listed } = fromListing(given, listing, homeToday(at, model.home));
     item = saveItem(
       context,
       model,
@@ -637,11 +644,12 @@ function boughtListing(model: DecisionModel, decision: DecisionRow, slug: string
 /**
  * The Item bought, filled from the Listing bought: bought today, and its link, price, and shop
  * (the link's host) copied and tagged Listed. What the Agent gave wins and is not tagged. The
- * Listing's dimensions are free text and never copied: the Agent gives the sizes.
+ * Listing's dimensions are free text and never copied: the Agent gives the sizes. `today` is the
+ * Home's day.
  */
 function fromListing<
   T extends { boughtOn?: string; boughtFrom?: string; pricePaid?: string; link?: string },
->(given: T, listing: ListingRow | undefined, at: string): { values: T; listed: ListedField[] } {
+>(given: T, listing: ListingRow | undefined, today: string): { values: T; listed: ListedField[] } {
   if (!listing) return { values: given, listed: [] };
   const copied: Partial<Record<ListedField, string>> = optional({
     boughtFrom: listing.url ? shopOf(listing.url) : undefined,
@@ -654,7 +662,7 @@ function fromListing<
   return {
     values: {
       ...given,
-      boughtOn: given.boughtOn ?? at.slice(0, 10),
+      boughtOn: given.boughtOn ?? today,
       ...Object.fromEntries(listed.map((field) => [field, copied[field]])),
     },
     listed,
@@ -672,6 +680,7 @@ function shopOf(url: string): string | undefined {
 
 /** The Item or Feature a Purchase replaces: one of the Home's, not yet Archived. */
 function replaced<T extends { slug: string; archivedAt: string | null }>(
+  model: DecisionModel,
   rows: T[],
   slug: string,
   noun: string,
@@ -684,7 +693,7 @@ function replaced<T extends { slug: string; archivedAt: string | null }>(
   if (row.archivedAt !== null) {
     throw new CoreError(
       "validation",
-      `The ${noun} ${slug} was already Archived on ${day(row.archivedAt)}, so there is nothing ` +
+      `The ${noun} ${slug} was already Archived on ${day(row.archivedAt, model.home)}, so there is nothing ` +
         "to replace: leave it out.",
     );
   }
@@ -783,9 +792,9 @@ function fulfilRoomColor(
 }
 
 /** "Oak bookcase (oak-bookcase) was Fulfilled on 2026-09-14: what was done is recorded in the Home". */
-function fulfilledOn(decision: DecisionRow): string {
+function fulfilledOn(decision: DecisionRow, home: HomeRow): string {
   return (
-    `${titled(decision)} was Fulfilled on ${day(decision.fulfilledAt ?? "")}: what was done is ` +
+    `${titled(decision)} was Fulfilled on ${day(decision.fulfilledAt ?? "", home)}: what was done is ` +
     "recorded in the Home"
   );
 }
@@ -836,7 +845,7 @@ export const resolveFlag = defineOperation({
       if (flag.clearedAt !== null) {
         throw new CoreError(
           "validation",
-          `${flag.slug} was already cleared (${flag.resolution}) on ${day(flag.clearedAt)}.`,
+          `${flag.slug} was already cleared (${flag.resolution}) on ${day(flag.clearedAt, home)}.`,
         );
       }
       writes.resolve({ flag }, input.resolution, input.reason || undefined);
@@ -869,7 +878,7 @@ export const resolveConflict = defineOperation({
         throw new CoreError(
           "validation",
           `${conflict.slug} was already resolved (${conflict.resolution}) on ` +
-            `${day(conflict.resolvedAt)}.`,
+            `${day(conflict.resolvedAt, home)}.`,
         );
       }
       writes.resolve({ conflict }, input.resolution, input.reason || undefined);
@@ -938,6 +947,8 @@ export function requireDecision(model: DecisionModel, slug: string): DecisionRow
   throw new CoreError(
     "not_found",
     `This Home has no Decision "${slug}". find_decisions lists its Decisions with their slugs.`,
+    `This Home has no Decision "${slug}". It may have been renamed or removed; open it from the ` +
+      "Decisions page.",
   );
 }
 
@@ -1078,6 +1089,7 @@ function filterDecisions(
     homeWide?: boolean;
     kind?: DecisionKind;
     state?: DecisionState;
+    fulfilled?: boolean;
     archived?: boolean;
   },
 ): DecisionSummary[] {
@@ -1089,7 +1101,8 @@ function filterDecisions(
       (room === undefined || each.scopeRoomId === room.id) &&
       (!filter.homeWide || each.scopeRoomId === null) &&
       (filter.kind === undefined || each.kind === filter.kind) &&
-      (filter.state === undefined || each.state === filter.state),
+      (filter.state === undefined || each.state === filter.state) &&
+      (filter.fulfilled === undefined || (each.fulfilledAt !== null) === filter.fulfilled),
   );
   return sorted(model, rows).map((each) => toSummary(model, each));
 }
@@ -1250,6 +1263,7 @@ function toFlag(model: DecisionModel, row: FlagRow): Flag {
       name,
       ...optional({ field: row.sourceField }),
     },
+    ...optional({ old: row.oldValue, new: row.newValue }),
     raisedAt: row.raisedAt,
     ...optional({ clearedAt: row.clearedAt, resolution: row.resolution, reason: row.reason }),
   };
@@ -1295,7 +1309,10 @@ function evidenceSource(
   if (kind === "session") {
     const session = model.sessions.find((each) => each.id === id);
     return session
-      ? { slug: session.slug, name: `${day(session.openedAt)}, ${session.skills.join(", ")}` }
+      ? {
+          slug: session.slug,
+          name: `${day(session.openedAt, model.home)}, ${session.skills.join(", ")}`,
+        }
       : { slug: "?", name: "?" };
   }
   const decision = decisionById(model, id);
@@ -1341,7 +1358,8 @@ function validContent(kind: DecisionKind, content: object | undefined): Record<s
   );
 }
 
-const day = (timestamp: string) => timestamp.slice(0, 10);
+/** The day of a stored timestamp in the Home's time zone, as the Agent reads it. */
+const day = (timestamp: string, home: Pick<HomeRow, "timeZone">) => dayIn(timestamp, home.timeZone);
 
 // ─── Writing Decisions ──────────────────────────────────────────────────────────────────────
 
@@ -1541,7 +1559,7 @@ class DecisionWrites {
     if (decision.fulfilledAt !== null) {
       throw new CoreError(
         "illegal_transition",
-        `${fulfilledOn(decision)}, so it stays Settled and can only be kept. For something new, ` +
+        `${fulfilledOn(decision, this.#model.home)}, so it stays Settled and can only be kept. For something new, ` +
           "save a new Decision.",
       );
     }
@@ -1716,6 +1734,8 @@ class DecisionWrites {
         sourceKind: "decision",
         sourceId: source.id,
         sourceField: null,
+        oldValue: null,
+        newValue: null,
         raisedAt: this.#context.now(),
         clearedAt: null,
         resolution: null,

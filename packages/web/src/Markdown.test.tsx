@@ -33,6 +33,22 @@ it("renders lists, continuing an item on the line after it", () => {
   expect(html("* one\n+ two")).toBe("<ul><li>one</li><li>two</li></ul>");
 });
 
+it("keeps numbered steps in one list across the blank lines between them", () => {
+  expect(html("1. Measure the door\n\n2. Check the stairs\n\n3. Order")).toBe(
+    "<ol><li>Measure the door</li><li>Check the stairs</li><li>Order</li></ol>",
+  );
+  // A blank line before an item of the other kind, or before a paragraph, still ends the list.
+  expect(html("1. Measure\n\n- Wool\n\nDone.")).toBe(
+    "<ol><li>Measure</li></ol><ul><li>Wool</li></ul><p>Done.</p>",
+  );
+});
+
+it("numbers a list from its first item, so a step after a nested bullet keeps its number", () => {
+  expect(html("1. Measure the door\n   - with the frame\n2. Check the stairs")).toBe(
+    '<ol><li>Measure the door</li></ol><ul><li>with the frame</li></ul><ol start="2"><li>Check the stairs</li></ol>',
+  );
+});
+
 it("renders quotes, rules, and code blocks, leaving the code as written", () => {
   expect(html("> Measure\n> twice\n\n---\n\n```\n**not bold** <b>\n- not a list\n```")).toBe(
     "<blockquote>Measure twice</blockquote><hr>" +
@@ -64,8 +80,8 @@ it("renders GitHub alerts as Callouts, their lines as Markdown of their own", ()
       markdown={"> [!TIP]\n> Measure **twice**.\n> - once\n\n> [!caution]\n> Viscose sheds."}
     />,
   );
-  const callouts = [...container.querySelectorAll("aside")];
-  expect(callouts.map((aside) => aside.firstElementChild?.textContent)).toEqual(["Tip", "Caution"]);
+  const callouts = [...container.querySelectorAll("[role=note]")];
+  expect(callouts.map((note) => note.firstElementChild?.textContent)).toEqual(["Tip", "Caution"]);
   expect(callouts[0]?.querySelector("strong")?.textContent).toBe("twice");
   expect(callouts[0]?.querySelector("li")?.textContent).toBe("once");
   expect(callouts[1]?.querySelector("p:last-child")?.textContent).toBe("Viscose sheds.");

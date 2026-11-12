@@ -2,10 +2,14 @@
 // and caps an upload at 2 MB, and a phone photo is 3–8 MB. The picture is redrawn upright at a
 // long edge of 1600 px as a JPEG, with a 320 px thumbnail for the lists. Redrawing also drops the
 // file's metadata, the GPS position of the user's home among it, which is wanted. The one fact
-// kept is the day it was taken, read from the EXIF before anything is redrawn. A crop the user
+// kept is the day it was taken, read from the EXIF before anything is redrawn; a picture with no
+// date (a camera shot through the canvas, a screenshot) is dated the user's own day, which the
+// server's UTC clock is not in the evening. A crop the user
 // drew is cut from the decoded picture before it is shrunk, so a tight crop keeps its detail.
 // A Document's image is redrawn the same way, larger and finer, so a receipt's small print stays
 // readable, and with neither a thumbnail nor a date.
+
+import { localDay } from "./itemDates";
 
 export const PHOTO_EDGE = 1600;
 export const PHOTO_QUALITY = 0.8;
@@ -18,8 +22,8 @@ export interface PreparedPhoto {
   /** The Photo itself: at most 1600 px on its long edge, as a JPEG. */
   file: Blob;
   thumb: Blob;
-  /** When it was taken, YYYY-MM-DD, when the file says. */
-  takenOn?: string;
+  /** When it was taken, YYYY-MM-DD: the file's date, or today in the browser's time zone. */
+  takenOn: string;
   /** The whole picture's size, upright, when it could be decoded: what a crop is measured in. */
   size?: { width: number; height: number };
 }
@@ -46,8 +50,7 @@ export interface CropArea {
  * one the user reads.
  */
 export async function preparePhoto(picked: File, crop?: CropArea): Promise<PreparedPhoto> {
-  const takenOn = await takenOnOf(picked);
-  const dated = takenOn ? { takenOn } : {};
+  const dated = { takenOn: (await takenOnOf(picked)) ?? localDay(new Date()) };
   // The thumbnail is drawn from the 1600 px canvas: a smaller step down, and a sharper result.
   const redrawn = await redraw(picked, PHOTO_EDGE, PHOTO_QUALITY, crop, async (full) => ({
     thumb: await jpeg(drawn(full, THUMB_EDGE), THUMB_QUALITY),
@@ -158,6 +161,10 @@ function drawn(
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser cannot draw the photo.");
   context.imageSmoothingQuality = "high";
+  // A JPEG has no transparency: what a PNG or WebP leaves clear would save as black, hiding dark
+  // text on a transparent receipt. Paper white is what such a picture is meant to sit on.
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, width, height);
   context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
   return canvas;
 }

@@ -25,7 +25,7 @@
 
 .roomName {
   margin: 0;
-  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  font-size: var(--text-title);
   font-weight: 400;
   color: inherit;
 }
@@ -320,13 +320,15 @@ details.tips .tipList {
   font-family: var(--font-sans);
 }
 
+/* On the app's type scale: the main letters at the smallest body size, the diagonals at the
+   small-caps label size. */
 .compassMain {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
 .compassMinor {
-  font-size: 8px;
+  font-size: var(--text-label);
 }
 
 .compassRay {
@@ -350,7 +352,7 @@ details.tips .tipList {
 .markCount {
   fill: var(--color-attention);
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
@@ -410,7 +412,8 @@ details.tips .tipList {
 /* Surfaces as swatches. */
 .surfaces {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  /* Narrow enough for two Surfaces side by side on a phone. */
+  grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -492,6 +495,9 @@ details.tips .tipList {
   padding-block: var(--space-2);
   border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .decision:last-child {
@@ -543,4 +549,12 @@ details.tips .tipList {
 
 .roomNav a {
   text-decoration: none;
+}
+
+@media (max-width: 759.98px) {
+  .roomNav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
 }

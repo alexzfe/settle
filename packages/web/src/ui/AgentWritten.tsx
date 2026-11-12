@@ -3,15 +3,16 @@
 // own words. No tint: the type is the signal.
 
 import type { ReactNode } from "react";
+import { formatDate } from "../format";
 import styles from "./ui.module.css";
 
-const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
-
-/** A date as the label reads it, in the reader's time zone: "14 Sep". Undefined when unreadable. */
-export function shortDate(at: string): string | undefined {
-  const date = new Date(at);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+/**
+ * A date as the label reads it, in the reader's time zone: "14 Sep" this year, "14 Sep 2025" in
+ * an earlier one, as formatDate writes it. Undefined when unreadable.
+ */
+export function shortDate(at: string, now: Date = new Date()): string | undefined {
+  if (Number.isNaN(new Date(at).getTime())) return undefined;
+  return formatDate(at, now);
 }
 
 /** The authorship block: "Written by the Agent · Purchase Session · 14 Sep", then the prose. */

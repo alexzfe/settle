@@ -1,8 +1,9 @@
 // A Rating as stars: the Agent's judgement of how good a Listing is, never a score and never
-// computed here. Whole stars only, and a Listing that fails a must keeps the same count drawn
-// hollow instead of filled, so the shape carries the difference and colour only reinforces it —
-// colour is the one channel that can vanish (sunlight, a dimmed screen, colour deficiency)
-// without the reader noticing, and red against gold at star size is the hardest pair of all.
+// computed here. Whole stars only. A Listing that fails a must keeps the same count, filled in a
+// muted stone instead of gold, so earned and unearned stars never share a shape and "3 of 5"
+// reads at a glance; the failure itself is the red "Fails a must" line beside them. Colour is the
+// one channel that can vanish (sunlight, a dimmed screen, colour deficiency), so it never carries
+// the count.
 
 import styles from "./ui.module.css";
 
@@ -14,13 +15,13 @@ const STAR =
   "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
 
 /**
- * `rating` of five stars, with the count spoken for a reader who cannot see them. `outlined`
- * draws the earned stars hollow, for a Listing that fails a must.
+ * `rating` of five stars, with the count spoken for a reader who cannot see them. `muted` fills
+ * the earned stars in stone rather than gold, for a Listing that fails a must.
  */
-export function Stars({ rating, outlined = false }: { rating: number; outlined?: boolean }) {
+export function Stars({ rating, muted = false }: { rating: number; muted?: boolean }) {
   return (
     <span
-      className={outlined ? `${styles.stars} ${styles.starsOutlined}` : styles.stars}
+      className={muted ? `${styles.stars} ${styles.starsMuted}` : styles.stars}
       role="img"
       aria-label={`${rating} of ${STARS} stars`}
     >

@@ -245,6 +245,13 @@
   font-size: var(--text-xs);
 }
 
+/* On a phone the three segments are a fingertip tall, as every button is there. */
+@media (max-width: 759.98px) {
+  .themeToggle button {
+    min-height: 2.75rem;
+  }
+}
+
 .themeToggle button:first-child {
   border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px);
 }
@@ -268,8 +275,8 @@
   font-weight: 600;
 }
 
-/* A Rating's stars. Solid when the Listing qualifies, hollow when it fails a must: the shape
-   carries it, and the colour is only a second voice saying the same thing. */
+/* A Rating's stars: earned ones solid, unearned ones outlined, so the shape carries the count.
+   Gold when the Listing qualifies, stone when it fails a must. */
 .stars {
   display: inline-flex;
   gap: 0.05rem;
@@ -295,11 +302,11 @@
   stroke-width: 1.5;
 }
 
-/* A must-failer: the same count, hollow and heavier. The Rating itself is untouched. */
-.starsOutlined .starOn {
-  fill: none;
-  stroke: var(--color-error);
-  stroke-width: 2.75;
+/* A must-failer: the same count, still filled, in the field edge's grey rather than gold (stone is
+   under 3:1 on a card in the light theme, too faint for a shape that carries the count). The Rating itself is
+   untouched, and the red "Fails a must" line carries the failure. */
+.starsMuted .starOn {
+  fill: var(--color-field-edge);
 }
 
 /* ShowSwitch: the clutter rule's quiet switch for Archived or Rejected records. */
@@ -364,6 +371,16 @@
   white-space: nowrap;
 }
 
+/* On a phone, "Review" is a fingertip tall; the negative margin keeps the strip its height. */
+@media (max-width: 759.98px) {
+  .flagsAction {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-block: calc((1.55em - 2.75rem) / 2);
+  }
+}
+
 /* Dialog: the find box's backdrop and panel, centred, scrolling inside when it is taller than the
    screen. */
 .backdrop {
@@ -374,7 +391,7 @@
   justify-content: center;
   align-items: center;
   padding: var(--space-4);
-  background: rgb(28 26 23 / 0.35);
+  background: var(--color-scrim);
   animation: fade-in 150ms ease-out;
 }
 

@@ -5,6 +5,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { type FieldChange, named, renderItems } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { ItemRow, RoomRow } from "../store.js";
+import { tokens } from "../words.js";
 import { active, requireRoom, requireSources, requireWall } from "./lookup.js";
 import { type HomeModel, loadHome, roomById, toItem, wallSlug } from "./model.js";
 import {
@@ -17,7 +18,7 @@ import {
   type ReceiptResult,
   saveItemsInput,
 } from "./schemas.js";
-import { requireHome, requireSession } from "./scope.js";
+import { appPage, requireHome, requireSession } from "./scope.js";
 import { given, Writer } from "./writer.js";
 
 type ItemIn = z.output<typeof itemInput>;
@@ -79,15 +80,15 @@ export const findItems = defineOperation({
     const model = loadHome(context.store, home);
     const room =
       input.room === undefined ? undefined : requireRoom(model, input.room, { archived: true });
-    const words = input.text?.toLowerCase();
-    const items = inventoryOrder(model, input.archived === true).filter(
+    const filtered = inventoryOrder(model, input.archived === true).filter(
       (item) =>
         (room === undefined || item.roomId === room.id) &&
         (input.unplaced !== true || item.roomId === null) &&
-        (input.category === undefined || item.category === input.category) &&
-        (words === undefined || searchText(item).includes(words)),
+        (input.category === undefined || item.category === input.category),
     );
+    const items = input.text === undefined ? filtered : byWords(filtered, input.text);
     return {
+      ...(input.text === undefined ? {} : { searched: input.text }),
       items: items.map((item) => {
         // From the Photos and Documents the model already holds, in order: no query per Item.
         const photos = model.photos
@@ -102,13 +103,16 @@ export const findItems = defineOperation({
           .map((each) => ({ kind: each.kind, ...optional({ name: each.name }) }));
         return {
           ...toItem(model, item),
-          ...(photos.length > 0 ? { photos } : {}),
+          ...(photos.length > 0
+            ? { photos, page: appPage(context, home, `items/${item.slug}`) }
+            : {}),
           ...(documents.length > 0 ? { documents } : {}),
         };
       }),
+      ...optional({ timeZone: home.timeZone }),
     };
   },
-  text: ({ items }) => renderItems(items),
+  text: ({ items, searched, timeZone }) => renderItems(items, timeZone, searched),
 });
 
 export const listItems = defineOperation({
@@ -300,6 +304,8 @@ export function requireItem(model: HomeModel, slug: string): ItemRow {
     "not_found",
     `This Home has no Item "${slug}". find_items lists the Items with their slugs; leave out ` +
       "`item` to add a new one.",
+    `This Home has no Item "${slug}". It may have been renamed or removed; open it from the ` +
+      "Items page.",
   );
 }
 
@@ -311,6 +317,25 @@ function inventoryOrder(model: HomeModel, archived: boolean): ItemRow[] {
   return model.items
     .filter((item) => archived || active(item))
     .sort((a, b) => place(a) - place(b) || a.id - b.id);
+}
+
+/**
+ * The Items with any of the words of `text` in what they're searched by, those with the most first,
+ * in Inventory order otherwise. Words match whole, as in search_notes, or as a plural: "sofa" finds
+ * "sofas", but "in" doesn't find "dining".
+ */
+function byWords(items: ItemRow[], text: string): ItemRow[] {
+  const words = tokens(text);
+  return items
+    .map((item) => {
+      const searched = new Set(tokens(searchText(item)));
+      const found = (word: string) =>
+        searched.has(word) || searched.has(`${word}s`) || searched.has(`${word}es`);
+      return { item, score: words.filter(found).length };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(({ item }) => item);
 }
 
 function searchText(item: ItemRow): string {

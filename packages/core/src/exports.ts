@@ -7,6 +7,7 @@ import type {
 } from "./operations/schemas.js";
 import { QUICK_GUIDE_LINE_KINDS } from "./operations/schemas.js";
 import { fieldLabel, QUICK_GUIDE_HEADINGS, DECISION_STATE_LABELS as STATES } from "./render.js";
+import { dayIn } from "./time-zone.js";
 
 // The files the web serves as they are, rendered from stored data only, never by the AI at export
 // time: the Shopping List as a printable page and CSV, the Shopping Guides as a printable page and
@@ -19,6 +20,8 @@ import { fieldLabel, QUICK_GUIDE_HEADINGS, DECISION_STATE_LABELS as STATES } fro
 export interface ExportHome {
   name: string;
   slug: string;
+  /** Its IANA time zone, which the export's days are in; null, a Home with none, is UTC's. */
+  timeZone: string | null;
 }
 
 // ─── The Shopping List ──────────────────────────────────────────────────────────────────────
@@ -76,7 +79,7 @@ export function renderShoppingListPage(
 ): string {
   const body = [
     "<header>",
-    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt)}</p>`,
+    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt, home)}</p>`,
     "<h1>Shopping List</h1>",
     "</header>",
   ];
@@ -90,7 +93,7 @@ export function renderShoppingListPage(
       `<section class="${purchaseClass(purchase)}">`,
       `<h2><span class="box"></span>${escapeHtml(purchase.title)}</h2>`,
       `<p class="meta">${stateHtml(purchase)} · ${escapeHtml(place(purchase))}</p>`,
-      ...flagsHtml(purchase),
+      ...flagsHtml(purchase, home),
       `<p>${escapeHtml(purchase.statement)}</p>`,
       ...quickSections(purchase)
         .filter(({ kind }) => ON_THE_LIST.has(kind))
@@ -136,7 +139,7 @@ export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail
   if (purchases.length === 0) out.push("", "_No Purchase has Guides yet._");
   for (const purchase of purchases) {
     out.push("", `## ${purchase.title}`, "", about(purchase), "", purchase.statement);
-    const bought = boughtText(purchase);
+    const bought = boughtText(purchase, home);
     if (bought) out.push("", bought);
     out.push("", "### Quick Guide");
     const lookingFor = purchase.quickGuide?.lookingFor;
@@ -151,7 +154,7 @@ export function renderGuidesMarkdown(home: ExportHome, purchases: DecisionDetail
     out.push("", "### Full Guide", "");
     const full = purchase.guides?.fullGuide;
     if (full?.markdown === undefined) out.push("_No Full Guide written yet._");
-    else out.push(`_${fullGuideState(full)}_`, "", demoteMarkdown(full.markdown, 4));
+    else out.push(`_${fullGuideState(full, home)}_`, "", demoteMarkdown(full.markdown, 4));
   }
   return `${out.join("\n")}\n`;
 }
@@ -168,7 +171,7 @@ export function renderGuidesPage(
 ): string {
   const body = [
     "<header>",
-    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt)}</p>`,
+    `<p class="running">${escapeHtml(home.name)} · ${longDay(generatedAt, home)}</p>`,
     "<h1>Shopping Guides</h1>",
     "</header>",
   ];
@@ -177,13 +180,13 @@ export function renderGuidesPage(
     body.push(
       `<article class="${purchaseClass(purchase)} guide">`,
       `<p class="running">${escapeHtml(home.name)} · ${escapeHtml(place(purchase))} · ` +
-        `${longDay(generatedAt)}</p>`,
+        `${longDay(generatedAt, home)}</p>`,
       `<h2>${escapeHtml(purchase.title)}</h2>`,
       `<p class="meta">${stateHtml(purchase)}</p>`,
-      ...flagsHtml(purchase),
+      ...flagsHtml(purchase, home),
       `<p>${escapeHtml(purchase.statement)}</p>`,
     );
-    const bought = boughtText(purchase);
+    const bought = boughtText(purchase, home);
     if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
     body.push('<section class="quick">', "<h3>Quick Guide</h3>");
     const lookingFor = purchase.quickGuide?.lookingFor;
@@ -198,7 +201,7 @@ export function renderGuidesPage(
     if (full?.markdown === undefined) body.push("<p>No Full Guide written yet.</p>");
     else {
       body.push(
-        `<p class="meta">${escapeHtml(fullGuideState(full))}</p>`,
+        `<p class="meta">${escapeHtml(fullGuideState(full, home))}</p>`,
         markdownToHtml(full.markdown, 4),
       );
     }
@@ -208,12 +211,12 @@ export function renderGuidesPage(
   return htmlPage(`Shopping Guides: ${home.name}`, PRINT_STYLE, body);
 }
 
-function fullGuideState(full: FullGuide): string {
+function fullGuideState(full: FullGuide, home: ExportHome): string {
   return (
-    `Written ${day(full.writtenAt)}.` +
+    `Written ${day(full.writtenAt, home)}.` +
     (full.outOfDate
       ? " Out of date: a Requirement changed after it was written" +
-        (full.requirementsChangedAt ? `, on ${day(full.requirementsChangedAt)}.` : ".")
+        (full.requirementsChangedAt ? `, on ${day(full.requirementsChangedAt, home)}.` : ".")
       : "")
   );
 }
@@ -239,7 +242,7 @@ export function renderGuidePage(home: ExportHome, purchase: DecisionDetail): str
     `<p class="looking-for">${escapeHtml(purchase.quickGuide?.lookingFor ?? purchase.statement)}</p>`,
     "</header>",
   ];
-  const bought = boughtText(purchase);
+  const bought = boughtText(purchase, home);
   if (bought) body.push(`<p class="done">✓ ${escapeHtml(bought)}</p>`);
   const sections = quickSections(purchase);
   if (sections.length === 0) body.push(NOTHING_TO_CHECK);
@@ -361,19 +364,20 @@ function about(purchase: DecisionDetail): string {
 }
 
 /** "Bought 2026-09-14: Oak bookcase, 85 cm wide", once Fulfilled. */
-function boughtText(purchase: DecisionDetail): string | undefined {
+function boughtText(purchase: DecisionDetail, home: ExportHome): string | undefined {
   if (!purchase.fulfilledAt) return undefined;
   const bought = purchase.fulfilment?.bought;
-  return `Bought ${day(purchase.fulfilledAt)}${bought ? `: ${bought}` : ""}`;
+  return `Bought ${day(purchase.fulfilledAt, home)}${bought ? `: ${bought}` : ""}`;
 }
 
-const day = (timestamp: string) => timestamp.slice(0, 10);
+/** The day of a stored timestamp in the Home's time zone. */
+const day = (timestamp: string, home: ExportHome) => dayIn(timestamp, home.timeZone);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "14 Sep 2026". */
-function longDay(timestamp: string): string {
-  const [year, month, date] = day(timestamp).split("-");
+function longDay(timestamp: string, home: ExportHome): string {
+  const [year, month, date] = day(timestamp, home).split("-");
   return `${Number(date)} ${MONTHS[Number(month) - 1] ?? month} ${year}`;
 }
 
@@ -407,7 +411,7 @@ const FLAG_CAUSES: Record<Flag["cause"], string> = {
 };
 
 /** A Purchase's open Flags: "⚑ Flagged 14 Sep 2026: Warm clay was reopened. Review it." */
-function flagsHtml(purchase: DecisionDetail): string[] {
+function flagsHtml(purchase: DecisionDetail, home: ExportHome): string[] {
   if (purchase.openFlags.length === 0) return [];
   return [
     '<ul class="flags">',
@@ -417,7 +421,7 @@ function flagsHtml(purchase: DecisionDetail): string[] {
           ? `${fieldLabel(flag.source.field)} changed`
           : FLAG_CAUSES[flag.cause];
       return (
-        `<li>⚑ Flagged ${longDay(flag.raisedAt)}: ${escapeHtml(flag.source.name)} ${escapeHtml(cause)}. ` +
+        `<li>⚑ Flagged ${longDay(flag.raisedAt, home)}: ${escapeHtml(flag.source.name)} ${escapeHtml(cause)}. ` +
         "Review it before buying.</li>"
       );
     }),

@@ -215,6 +215,122 @@ describe("the Provenance rule", () => {
   });
 });
 
+describe("refusals say what to do", () => {
+  it("archiving a Wall the Room lacks lists its Walls", async () => {
+    const my = await setUp();
+    await my.saveRoom({ name: "Study", walls: [{ position: 1 }, { position: 2 }] });
+
+    const error = await refusal(
+      my.saveRoom({ room: "study", walls: [{ position: 5, archive: true }] }),
+    );
+
+    expect(error.code).toBe("not_found");
+    expect(error.message).toContain("study/wall-1, study/wall-2");
+  });
+
+  it("removing the only Level says it can be renamed instead", async () => {
+    const my = await setUp();
+    const { levels } = await my.getHome();
+    const only = levels[0]?.slug ?? "";
+
+    const error = await refusal(my.saveHome({ levels: [{ level: only, remove: true }] }));
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toContain("rename it with save_home");
+  });
+});
+
+describe("naming a Room", () => {
+  it("changes a Room named by its slug alone, keeping its name", async () => {
+    const my = await setUp();
+    await my.saveRoom({ name: "Living room" });
+
+    const { receipt } = await my.saveRoom({ room: "living-room", ceilingHeight: measured(2900) });
+
+    expect(receipt).toContain("Living room (living-room)");
+    expect(receipt).not.toContain("renamed");
+    const room = await my.room("living-room");
+    expect(room.name).toBe("Living room");
+    expect(room.ceilingHeight).toEqual(measured(2900));
+  });
+
+  it("refuses a new Room without a name, saying what to give", async () => {
+    const my = await setUp();
+
+    const error = await refusal(my.saveRoom({ ceilingHeight: measured(2900) }));
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toContain("`name`");
+    expect(error.message).toContain("`room`");
+  });
+});
+
+describe("find_items text", () => {
+  /** find_items as the AI reads it. */
+  const text = (result: unknown) =>
+    core.operations.find((each) => each.name === "find_items")?.text?.(result as never) ?? "";
+
+  async function furnished() {
+    const my = await setUp();
+    await my.saveItems({
+      items: [
+        { name: "Blue lamp", category: "lighting" },
+        {
+          name: "Old two-seat sofa",
+          category: "seating",
+          colors: [{ name: "faded blue", provenance: "estimated" }],
+        },
+        { name: "Oak bookcase", category: "storage" },
+      ],
+    });
+    return my;
+  }
+
+  it("matches each word on its own, the Items matching the most words first", async () => {
+    const my = await furnished();
+
+    const { items } = await my.findItems({ text: "blue sofa" });
+
+    expect(items.map((item) => item.slug)).toEqual(["old-two-seat-sofa", "blue-lamp"]);
+  });
+
+  it("on no match, says what was searched and what to try next", async () => {
+    const my = await furnished();
+
+    const result = await my.findItems({ text: "couch" });
+
+    expect(result.items).toEqual([]);
+    const answer = text(result);
+    expect(answer).toContain('"couch"');
+    expect(answer).toContain("`category`");
+    expect(answer).toContain("`room`");
+  });
+
+  it("matches whole words, so a short word inside a longer one is no match", async () => {
+    const my = await setUp();
+    await my.saveItems({
+      items: [
+        { name: "Leather armchair", category: "seating" },
+        { name: "Dining table", category: "tables" },
+      ],
+    });
+
+    const result = await my.findItems({ text: "the couch in here" });
+
+    expect(result.items).toEqual([]);
+    expect(text(result)).toContain('"the couch in here"');
+  });
+
+  it("a word still finds its plural", async () => {
+    const my = await setUp();
+    await my.saveItems({ items: [{ name: "Pair of side tables", category: "tables" }] });
+
+    const { items } = await my.findItems({ text: "table" });
+
+    expect(items.map((item) => item.slug)).toEqual(["pair-of-side-tables"]);
+  });
+});
+
 describe("Archiving, not deleting", () => {
   it("removing a Constraint Archives it: it leaves the Overview but stays listed", async () => {
     const my = await setUp();

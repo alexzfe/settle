@@ -620,6 +620,24 @@ describe("facingMeaning", () => {
     expect(facingMeaning(["s", "w"], 40)).toMatch(/^Light from more than one side/);
     expect(facingMeaning([])).toBe("");
   });
+
+  it("says nothing of the sun side while the Home's latitude is unknown", () => {
+    expect(facingMeaning(["s"], undefined)).toBe("");
+    expect(facingMeaning(["n"], undefined)).toBe("");
+    expect(facingMeaning(["e"], undefined)).toMatch(/^Faces east/);
+  });
+});
+
+it("leaves the sun side out of the Daylight card when the Home fails to load", async () => {
+  stubApi({
+    list_homes: () => ({ homes: [{ ...flat, latitude: -12 }] }),
+    get_home: () => new Response("<html>Bad gateway</html>", { status: 500 }),
+    get_room: () => ({ room: livingRoom(), decisions: [], photos: [] }),
+  });
+  renderRoutes("/homes/flat/rooms/living-room");
+  await screen.findByRole("heading", { name: "Living room", level: 1 });
+  expect(section("Daylight")).toContain("▭ Window facing S");
+  expect(section("Daylight")).not.toMatch(/sun/);
 });
 
 it("counts a glazed Door leading outside as daylight, but not one to an indoor Room", () => {

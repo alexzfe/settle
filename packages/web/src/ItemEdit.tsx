@@ -4,7 +4,7 @@
 
 import type { Color, Condition } from "@settle/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import styles from "./App.module.css";
 import { call, type EditItemInput, type Item } from "./api";
 import { cmFromMm, mmFromCm, sentence } from "./format";
@@ -171,7 +171,10 @@ export function changedFields(item: Item, draft: ItemDraft): { fields: Fields; e
 /** The pencil's form over the fact card, with Save and Cancel. */
 export function ItemEdit({ home, item, onDone }: { home: string; item: Item; onDone: () => void }) {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState(() => draftOf(item));
+  // The Item the draft was made from. Save diffs against it, not against the live Item, so a
+  // change the Agent makes while the form is open survives unless the user changed that field too.
+  const [started] = useState(item);
+  const [draft, setDraft] = useState(() => draftOf(started));
   const [errors, setErrors] = useState<string[]>([]);
   const id = useId();
   const save = useMutation({
@@ -196,7 +199,7 @@ export function ItemEdit({ home, item, onDone }: { home: string; item: Item; onD
         aria-label="Edit its facts"
         onSubmit={(event) => {
           event.preventDefault();
-          const { fields, errors } = changedFields(item, draft);
+          const { fields, errors } = changedFields(started, draft);
           setErrors(errors);
           if (errors.length > 0) return;
           if (Object.keys(fields).length === 0) {
@@ -329,8 +332,22 @@ function ListField({
   values: string[];
   onChange: (values: string[]) => void;
 }) {
+  // Where the keyboard goes once the list has redrawn: the new box after Add; after Remove, the
+  // entry that moved into the removed one's place, or Add when none is left. Left on a Remove
+  // button, it would now remove the next entry.
+  const group = useRef<HTMLFieldSetElement>(null);
+  const focusNext = useRef<number>(undefined);
+  useEffect(() => {
+    const at = focusNext.current;
+    if (at === undefined) return;
+    focusNext.current = undefined;
+    const boxes = group.current?.querySelectorAll("input") ?? [];
+    const target =
+      boxes[Math.min(at, boxes.length - 1)] ?? group.current?.querySelector(":scope > button");
+    if (target instanceof HTMLElement) target.focus();
+  }, [values]);
   return (
-    <fieldset className={form.group}>
+    <fieldset ref={group} className={form.group}>
       <legend>{label}</legend>
       {values.map((value, index) => (
         // The boxes hold no state of their own, so their position is key enough.
@@ -346,13 +363,23 @@ function ListField({
             type="button"
             className="secondary"
             aria-label={`Remove ${noun} ${index + 1}`}
-            onClick={() => onChange(values.filter((_, at) => at !== index))}
+            onClick={() => {
+              focusNext.current = index;
+              onChange(values.filter((_, at) => at !== index));
+            }}
           >
             Remove
           </button>
         </div>
       ))}
-      <button type="button" className="secondary" onClick={() => onChange([...values, ""])}>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => {
+          focusNext.current = values.length;
+          onChange([...values, ""]);
+        }}
+      >
         Add a {noun}
       </button>
     </fieldset>

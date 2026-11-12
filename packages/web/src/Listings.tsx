@@ -15,6 +15,7 @@ import {
   type DragEvent,
   type ReactNode,
   useEffect,
+  useId,
   useRef,
   useState,
 } from "react";
@@ -204,6 +205,7 @@ export function ListingComparison({
 }) {
   const wide = useWide("48rem");
   const drag = useDragScroll<HTMLDivElement>(`.${page.picture}`);
+  const id = useId();
   const shown = listings.toSorted(byBest);
   if (!wide) {
     return (
@@ -235,14 +237,18 @@ export function ListingComparison({
               Requirement
             </th>
             {shown.map((listing, index) => (
+              // Named by the Listing's name alone, so a screen reader reads that before each cell
+              // rather than the whole head with its picture, price and controls.
               <th
                 key={listing.slug}
                 scope="col"
+                aria-labelledby={`${id}-${listing.slug}`}
                 className={listing.failedMusts.length > 0 ? page.failedListing : undefined}
               >
                 <ListingHead
                   home={home}
                   listing={listing}
+                  nameId={`${id}-${listing.slug}`}
                   requirements={requirements}
                   eager={index < EAGER_PICTURES}
                 />
@@ -306,18 +312,21 @@ function ListingHead({
   listing,
   requirements,
   eager,
+  nameId,
 }: {
   home: string;
   listing: Listing;
   requirements: readonly Requirement[];
   /** Whether its picture loads at once rather than when scrolled to. */
   eager: boolean;
+  /** An id for the name, for a column header that is named by it. */
+  nameId?: string;
 }) {
   const verdict = listingVerdict(listing, requirements);
   return (
     <div className={page.listingHead}>
       <ListingPicture home={home} listing={listing} eager={eager} />
-      <span className={page.listingName}>
+      <span id={nameId} className={page.listingName}>
         <WebLink href={listing.url}>{listing.name}</WebLink>
       </span>
       <span className={listing.price ? page.price : `${page.price} ${page.noPrice}`}>
@@ -346,16 +355,16 @@ function ListingHead({
 
 /**
  * The Rating: five stars with the Agent's one-line reason beneath, in the treatment every other
- * piece of Agent-written text gets. A Listing that fails a must keeps every star it was given and
- * has them drawn hollow — the fail is carried by the verdict line, the marked cells, and the
- * shape of the stars, never by taking stars away. No Rating shows nothing at all, rather than
+ * piece of Agent-written text gets. A Listing that fails a must keeps every star it was given,
+ * filled in a muted colour — the fail is carried by the verdict line and the marked cells, never
+ * by taking stars away. No Rating shows nothing at all, rather than
  * five empty stars, which would read as a Rating of zero.
  */
 function Rating({ listing }: { listing: Listing }) {
   if (listing.rating === undefined) return null;
   return (
     <div className={page.rating}>
-      <Stars rating={listing.rating} outlined={listing.failedMusts.length > 0} />
+      <Stars rating={listing.rating} muted={listing.failedMusts.length > 0} />
       {listing.ratingNote && (
         <AgentWritten>
           <p className={page.ratingNote}>{listing.ratingNote}</p>
@@ -393,6 +402,12 @@ function ListingPicture({
 }) {
   const [pasting, setPasting] = useState(false);
   const [broken, setBroken] = useState(false);
+  // The paste box had the keyboard; closing it hands it back to the button that opened it.
+  const toggle = useRef<HTMLButtonElement>(null);
+  const closePaste = () => {
+    setPasting(false);
+    toggle.current?.focus();
+  };
   const hotlink = listing.photoUrl && isSafeLink(listing.photoUrl) ? listing.photoUrl : undefined;
   const src =
     listing.photoVersion === undefined
@@ -425,6 +440,7 @@ function ListingPicture({
           <FetchPicture home={home} listing={listing.slug} url={listing.photoUrl} />
         )}
         <button
+          ref={toggle}
           type="button"
           className={`secondary ${page.pictureButton}`}
           aria-expanded={pasting}
@@ -433,7 +449,7 @@ function ListingPicture({
           {empty ? "Add a picture" : "Change the picture"}
         </button>
       </div>
-      {pasting && <PasteBox home={home} listing={listing.slug} onDone={() => setPasting(false)} />}
+      {pasting && <PasteBox home={home} listing={listing.slug} onDone={closePaste} />}
     </div>
   );
 }
@@ -489,23 +505,30 @@ function PasteBox({
   const chooser = useRef<HTMLInputElement>(null);
   useEffect(() => target.current?.focus(), []);
   const send = useBoardWrite(home, (form: FormData) => upload("set_listing_photo", form));
+  // Set as a picture is sent, not on the next render, so two in the same task cannot both pass.
+  const inFlight = useRef(false);
 
   function post(field: "file" | "url", value: File | string) {
     const form = new FormData();
     form.append("home", home);
     form.append("listing", listing);
     form.append(field, value);
+    inFlight.current = true;
     send.mutate(form, {
       onSuccess: () => {
         setUrl("");
         onDone();
       },
+      onSettled: () => {
+        inFlight.current = false;
+      },
     });
   }
 
+  // One picture at a time: a second sent while the first is on its way would race it.
   function sendFirst(files: FileList | null | undefined) {
     const file = files?.[0];
-    if (file) post("file", file);
+    if (file && !inFlight.current) post("file", file);
   }
 
   function onPaste(event: ClipboardEvent<HTMLButtonElement>) {
@@ -522,6 +545,8 @@ function PasteBox({
 
   function onChoose(event: ChangeEvent<HTMLInputElement>) {
     sendFirst(event.target.files);
+    // Emptied, so the same file can be chosen again after a refusal.
+    event.target.value = "";
   }
 
   return (
@@ -547,6 +572,7 @@ function PasteBox({
         type="file"
         accept={PHOTO_ACCEPT}
         className={page.chooser}
+        disabled={send.isPending}
         onChange={onChoose}
         aria-label="Picture file"
       />

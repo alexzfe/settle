@@ -1,4 +1,5 @@
-import { keepPreviousData, QueryClient, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { ApiError, call, type ListDecisionsInput } from "./api";
 
 /**
@@ -53,6 +54,31 @@ export function useHomes() {
 
 export function useHome(home: string) {
   return useQuery({ queryKey: queryKeys.home(home), queryFn: () => call("get_home", { home }) });
+}
+
+/** The browser's IANA time zone, such as "America/Lima". */
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/**
+ * Gives a Home made before time zones the browser's, once, when its owner opens it: core dates a
+ * Photo or a purchase in the Home's day, and a Home with none is dated in the server's UTC one.
+ */
+export function useHomeTimeZone(home: string) {
+  const queryClient = useQueryClient();
+  const facts = useHome(home).data?.home;
+  const missing = facts !== undefined && facts.timeZone === undefined;
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!missing || sent.current) return;
+    sent.current = true;
+    call("set_home_time_zone", { home, timeZone: browserTimeZone(), onlyIfNone: true })
+      .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.home(home) }))
+      .catch(() => {
+        // Nothing to show: the Home keeps UTC's days, and the next visit tries again.
+      });
+  }, [home, missing, queryClient]);
 }
 
 export function useSessions(home: string) {
@@ -160,11 +186,19 @@ export function useFindIndex(home: string) {
 export function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
-      // A refusal will not change on retry; only a server that is not answering yet might.
-      queries: {
-        retry: (failureCount, error) =>
-          error instanceof ApiError && error.code === "unreachable" && failureCount < 3,
-      },
+      queries: { retry: (failureCount, error) => failureCount < 3 && mayAnswerSoon(error) },
     },
   });
+}
+
+/** What a proxy answers while the server behind it restarts, as on every deploy. */
+const RESTARTING = new Set([502, 503, 504]);
+
+/**
+ * Whether trying again may get an answer: a refusal will not change on retry, but a server that
+ * is not answering yet, or is restarting behind the proxy, might.
+ */
+function mayAnswerSoon(error: Error): boolean {
+  if (!(error instanceof ApiError)) return false;
+  return error.code === "unreachable" || RESTARTING.has(error.status ?? 0);
 }

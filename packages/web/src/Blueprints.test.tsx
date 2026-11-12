@@ -127,8 +127,10 @@ it("posts the file, the Home, and the label as a form, then lists the new Bluepr
   });
   fireEvent.click(button);
 
-  expect(await screen.findByRole("status")).toHaveProperty(
-    "textContent",
+  // The upload's own status line; the sidebar footer keeps a status region of its own.
+  const status = await screen.findByText(/^Uploaded /);
+  expect(status.getAttribute("role")).toBe("status");
+  expect(status.textContent).toBe(
     "Uploaded Estate agent plan, 3 pages. Ask the Agent in this Home's Home Folder to read it.",
   );
   await waitFor(() => expect(blueprintList()).toContain("Estate agent plan, 3 pages"));
@@ -149,7 +151,7 @@ it("leaves the label out when none is given, so the server names the Blueprint",
   await screen.findByText("No Blueprints yet.");
   choose(new File(["%PDF-1.7"], "plan.pdf", { type: "application/pdf" }));
   fireEvent.click(screen.getByRole("button", { name: "Upload Blueprint" }));
-  await screen.findByRole("status");
+  await screen.findByText(/^Uploaded /);
   const [, init] = fetch.mock.calls.find(([url]) => url === "/api/upload_blueprint") ?? [];
   const form = init?.body as FormData;
   expect(form.has("label")).toBe(false);
@@ -178,4 +180,30 @@ it("re-renders the Blueprint list when a Blueprint change event arrives", async 
 
   expect(await screen.findByText("Estate agent plan")).toBeDefined();
   expect(blueprintList()).toContain("Page 3: Ground (Level 0)");
+});
+
+it("takes no other file while one uploads, and then shows the upload's result", async () => {
+  let answer: (value: { blueprint: Blueprint }) => void = () => {};
+  stubHomePage({
+    upload_blueprint: () => new Promise((resolve) => (answer = resolve)),
+  });
+  renderRoutes("/homes/flat/about");
+  await screen.findByText("No Blueprints yet.");
+  choose(new File(["%PDF-1.7"], "plan.pdf", { type: "application/pdf" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload Blueprint" }));
+
+  const uploading = await screen.findByRole("button", { name: "Uploading…" });
+  expect(uploading).toHaveProperty("disabled", true);
+  expect(screen.getByLabelText("Blueprint file (PDF, PNG, or JPEG)")).toHaveProperty(
+    "disabled",
+    true,
+  );
+
+  act(() => answer({ blueprint: agentPlan }));
+  // The upload's own status line; the sidebar footer keeps a status region of its own.
+  const status = await screen.findByText(/^Uploaded /);
+  expect(status.getAttribute("role")).toBe("status");
+  expect(status.textContent).toBe(
+    "Uploaded Estate agent plan, 3 pages. Ask the Agent in this Home's Home Folder to read it.",
+  );
 });

@@ -57,7 +57,7 @@ function stub(rows: FindRow[] = index) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({ home: flat, levels: [], rooms: [], unplacedItems: 0 }),
-    find_index: () => rows,
+    find_index: () => ({ rows }),
   });
 }
 
@@ -127,12 +127,12 @@ it("ranks the bed frame first for 'bed fra', with its Quick Guide beside it", as
   const top = result("Main bedroom bed frame");
   expect(within(top).getByText("Decision")).toBeTruthy();
   expect(within(top).getByText("Main bedroom")).toBeTruthy();
-  const guide = within(top).getByRole("link", { name: "Quick Guide: Main bedroom bed frame" });
+  const guide = within(top).getByRole("option", { name: "Quick Guide: Main bedroom bed frame" });
   expect(guide.getAttribute("href")).toBe(
     "/homes/flat/decisions/main-bedroom-bed-frame#quick-guide",
   );
   // The row's own link is a separate target from the side link.
-  const own = within(top).getAllByRole("link")[0] as HTMLElement;
+  const own = within(top).getAllByRole("option")[0] as HTMLElement;
   expect(own.getAttribute("href")).toBe("/homes/flat/decisions/main-bedroom-bed-frame");
   expect(own.contains(guide)).toBe(false);
 });
@@ -270,4 +270,58 @@ it("is not offered outside a Home", async () => {
   expect(screen.queryByRole("button", { name: "Find in this Home" })).toBeNull();
   fireEvent.keyDown(document.body, { key: "/" });
   expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("lists results as options, and the field points at the selected one", async () => {
+  stub();
+  await openFromHomePage();
+  type("bed fra");
+  const list = within(dialog()).getByRole("listbox", { name: "Results" });
+  expect(field().getAttribute("aria-controls")).toBe(list.id);
+  expect(field().getAttribute("aria-expanded")).toBe("true");
+  const selected = within(list).getAllByRole("option", { selected: true });
+  expect(selected).toHaveLength(1);
+  expect(active()).toBe(selected[0]);
+  expect(selected[0]?.textContent).toMatch(/^Main bedroom bed frame/);
+  press("ArrowRight");
+  expect(within(list).getByRole("option", { selected: true })).toBe(active());
+  expect(active()?.getAttribute("aria-label")).toBe("Quick Guide: Main bedroom bed frame");
+});
+
+it("says the list is collapsed, and controls nothing, when there are no results", async () => {
+  stub();
+  await openFromHomePage();
+  type("zzz");
+  expect(field().getAttribute("aria-expanded")).toBe("false");
+  expect(field().getAttribute("aria-controls")).toBeNull();
+  expect(field().getAttribute("aria-activedescendant")).toBeNull();
+});
+
+it("closes on Escape even when focus has left the field", async () => {
+  stub();
+  await openFromHomePage();
+  field().blur();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  await act(async () => {});
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("names its close button by both its words, Close on a phone and Esc on a wide screen", async () => {
+  stub();
+  await openFromHomePage();
+  fireEvent.click(within(dialog()).getByRole("button", { name: "Close (Esc)" }));
+  await act(async () => {});
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("makes the page behind inert while open, and gives it back on closing", async () => {
+  stub();
+  await openFromHomePage();
+  const main = document.querySelector("main");
+  expect(main?.closest("[inert]")).not.toBeNull();
+  expect(dialog().closest("[inert]")).toBeNull();
+  press("Escape");
+  await act(async () => {});
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.querySelector("[inert]")).toBeNull();
 });

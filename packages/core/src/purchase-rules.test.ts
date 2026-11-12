@@ -167,6 +167,21 @@ describe("Requirements", () => {
     expect(onConstraint.message).toContain("Leave field out");
   });
 
+  it("refuse a reason pointing at no record, naming where that kind's slugs are listed", async () => {
+    const cases = [
+      [{ kind: "note", id: "no-such-note" }, "search_notes"],
+      [{ kind: "item", id: "no-such-item" }, "find_items"],
+      [{ kind: "decision", id: "no-such-decision" }, "find_decisions"],
+      [{ kind: "wall", id: "living-room/wall-9" }, "get_room_sheet"],
+      [{ kind: "room", id: "no-such-room" }, "Home Overview"],
+    ] as const;
+    for (const [reason, where] of cases) {
+      const error = await refusal(save(rug([must("Fits", reason)])));
+      expect(error.code).toBe("not_found");
+      expect(error.message).toContain(where);
+    }
+  });
+
   it("are flagged when their record is Archived, even when they name another field", async () => {
     await save(
       rug([must("Under the sofa's height", { kind: "item", id: "sofa", field: "height" })]),

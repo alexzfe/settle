@@ -8,18 +8,19 @@ export const getChangeLog = defineOperation({
   name: "get_change_log",
   description:
     "The Home's change log, newest first: when, from the web UI or which Session, which " +
-    "record and field, the old and new values, and any reason given. Never given to the AI.",
+    "record and field, the old and new values, and any reason given; `more` says whether older " +
+    "changes were left out. Never given to the AI.",
   input: getChangeLogInput,
   readOnly: true,
   surface: "web",
   handler(context, input): GetChangeLogResult {
     const home = requireHome(context);
-    const changes = context.store
-      .changes(home.id)
-      .reverse()
-      .slice(0, input.limit ?? DEFAULT_LIMIT);
+    const limit = input.limit ?? DEFAULT_LIMIT;
+    // One more than asked, to know whether there are more.
+    const changes = context.store.newestChanges(home.id, limit + 1);
     return {
-      changes: changes.map((change) => ({
+      more: changes.length > limit,
+      changes: changes.slice(0, limit).map((change) => ({
         at: change.at,
         origin: change.origin,
         recordKind: change.recordKind,

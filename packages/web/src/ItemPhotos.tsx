@@ -9,8 +9,9 @@ import { type ChangeEvent, lazy, Suspense, useEffect, useId, useRef, useState } 
 import type { PercentCrop } from "react-image-crop";
 import styles from "./App.module.css";
 import { call, type Photo, type PhotoOwner, type PhotoWall, photoUrl, upload } from "./api";
+import { rescueFocusSoon, useFocusArrival } from "./focus";
 import sheet from "./ItemPage.module.css";
-import { formatPartialDate } from "./itemDates";
+import { formatPartialDate, localDay } from "./itemDates";
 import { type CropArea, type PreparedPhoto, preparePhoto } from "./photoPrep";
 import { queryKeys } from "./queries";
 import { Dialog } from "./ui/Dialog";
@@ -60,12 +61,6 @@ function usePhotoWrite<Input>(
   });
 }
 
-/** A day as the Photos store it, YYYY-MM-DD, in the reader's time zone. */
-function isoDay(date: Date): string {
-  const two = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
-}
-
 /**
  * Photos grouped by the day they were taken, in the order given (newest first), each group headed
  * "Today" or "14 Mar 2026".
@@ -79,7 +74,7 @@ export function photoGroups(
     const last = groups.at(-1);
     if (last?.day === photo.takenOn) last.photos.push(photo);
     else {
-      const label = photo.takenOn === isoDay(today) ? "Today" : photoDate(photo);
+      const label = photo.takenOn === localDay(today) ? "Today" : photoDate(photo);
       groups.push({ day: photo.takenOn, label, photos: [photo] });
     }
   }
@@ -214,7 +209,11 @@ function PhotoViewer({
     const left = photos.filter((each) => each.id !== photo.id);
     const shown = left[Math.min(at, left.length - 1)];
     if (shown) onShow(shown.id);
-    else onClose();
+    else {
+      onClose();
+      // The Photo that opened the viewer goes with it, so the keyboard goes to the add buttons.
+      rescueFocusSoon(() => document.querySelector<HTMLElement>("[data-add-photo]"));
+    }
   };
   return (
     <Dialog
@@ -559,6 +558,7 @@ export function AddPhoto({
   owner,
   walls = [],
   photos = [],
+  label,
 }: {
   home: string;
   owner: PhotoOwner;
@@ -566,6 +566,8 @@ export function AddPhoto({
   walls?: readonly PhotoWallChoice[];
   /** A Room's Photos, for the Walls without one. */
   photos?: readonly Photo[];
+  /** A small-caps label above the buttons, where nothing else says what they are for. */
+  label?: string;
 }) {
   const camera = useRef<HTMLInputElement>(null);
   const chooser = useRef<HTMLInputElement>(null);
@@ -574,6 +576,8 @@ export function AddPhoto({
   const [caption, setCaption] = useState("");
   const [wall, setWall] = useState<number | null>(null);
   const id = useId();
+  // Each step replaces the controls of the one before, so focus follows into the new one.
+  const arrive = useFocusArrival<HTMLElement>();
   const save = usePhotoWrite(home, owner, (form: FormData) => upload("add_photo", form));
   const whole = adding?.step === "ready" ? adding.whole.preview : undefined;
   const cut = adding?.step === "ready" ? adding.cropped?.preview : undefined;
@@ -648,7 +652,7 @@ export function AddPhoto({
     if ("room" in owner && wall !== null) form.set("wall", String(wall));
     form.set("file", prepared.file, decoded ? "photo.jpg" : picked.name);
     form.set("thumb", prepared.thumb, decoded ? "thumb.jpg" : picked.name);
-    if (prepared.takenOn) form.set("takenOn", prepared.takenOn);
+    form.set("takenOn", prepared.takenOn);
     if (caption.trim()) form.set("caption", caption.trim());
     save.mutate(form, { onSuccess: close });
   }
@@ -656,9 +660,10 @@ export function AddPhoto({
   const shown = adding?.step === "ready" ? (adding.cropped ?? adding.whole) : undefined;
   const missing = "room" in owner ? wallsWithoutPhoto(walls, photos) : undefined;
   return (
-    <div className={sheet.addPhoto}>
+    <div className={sheet.addPhoto} data-add-photo>
+      {label && <p className="label">{label}</p>}
       {adding === undefined || adding.step === "failed" ? (
-        <div className={styles.actions}>
+        <div ref={arrive} className={styles.actions}>
           <button type="button" className="secondary" onClick={() => camera.current?.click()}>
             Take photo
           </button>
@@ -704,19 +709,22 @@ export function AddPhoto({
             </p>
           }
         >
-          <PhotoCrop
-            src={adding.whole.preview}
-            {...(adding.cropped ? { initial: adding.cropped.crop } : {})}
-            onDone={(crop) => {
-              const { size } = adding.whole.prepared;
-              if (size) void onCropped(adding.picked, size, crop);
-            }}
-            onCancel={() => setCropping(undefined)}
-          />
+          <div ref={arrive} className={sheet.arrival}>
+            <PhotoCrop
+              src={adding.whole.preview}
+              {...(adding.cropped ? { initial: adding.cropped.crop } : {})}
+              onDone={(crop) => {
+                const { size } = adding.whole.prepared;
+                if (size) void onCropped(adding.picked, size, crop);
+              }}
+              onCancel={() => setCropping(undefined)}
+            />
+          </div>
         </Suspense>
       )}
       {adding?.step === "ready" && shown && cropping !== "open" && (
         <form
+          ref={arrive}
           className={sheet.addForm}
           aria-label="Add a photo"
           onSubmit={(event) => {

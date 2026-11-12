@@ -98,7 +98,13 @@ export function BlueprintUploadForm({ home }: { home: string }) {
       <form className={`${styles.form} ${blueprintStyles.upload}`} onSubmit={onSubmit}>
         <label>
           Blueprint file (PDF, PNG, or JPEG){" "}
-          <input type="file" name="file" accept={BLUEPRINT_TYPES} onChange={onChoose} />
+          <input
+            type="file"
+            name="file"
+            accept={BLUEPRINT_TYPES}
+            disabled={send.isPending}
+            onChange={onChoose}
+          />
         </label>
         <label>
           Label (optional) <input name="label" placeholder="estate agent plan" size={30} />

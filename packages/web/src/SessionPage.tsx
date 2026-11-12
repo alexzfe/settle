@@ -67,6 +67,7 @@ export function SessionPage() {
           <SessionChanges
             home={home}
             all={log.data.changes}
+            more={log.data.more}
             changes={log.data.changes.filter((change) => change.origin === slug)}
           />
         )}
@@ -121,18 +122,20 @@ function SessionHeader({ session }: { session: Session }) {
 function SessionChanges({
   home,
   all,
+  more,
   changes,
 }: {
   home: string;
   all: ChangeEntry[];
+  /** Whether the server left older changes out. */
+  more: boolean;
   changes: ChangeEntry[];
 }) {
   const { names, rooms } = useNames(home, all);
   const groups = groupByRecord(changes);
-  const truncated = all.length >= LOADED_CHANGES;
   return (
     <>
-      {truncated && (
+      {more && (
         <p className={`${styles.muted} ${page.limit}`}>
           Only the newest {LOADED_CHANGES} changes are loaded, so older ones may be missing here.
         </p>

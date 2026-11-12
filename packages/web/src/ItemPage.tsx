@@ -42,7 +42,8 @@ export function ItemPage() {
   useDocumentTitle(read.data?.item.name);
   if (read.isPending) return <p>Loading…</p>;
   if (read.isError) return <p className={styles.error}>{read.error.message}</p>;
-  return <ItemSheet home={home} record={read.data} />;
+  // Keyed so another Item never inherits an open form or a Photo being added.
+  return <ItemSheet key={slug} home={home} record={read.data} />;
 }
 
 function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
@@ -157,7 +158,7 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
           </Card>
         )}
       </div>
-      {!pictured && <AddPhoto home={home} owner={{ item: item.slug }} />}
+      {!pictured && <AddPhoto home={home} owner={{ item: item.slug }} label="Photos" />}
 
       <ItemDocuments home={home} item={item.slug} documents={documents} />
 
