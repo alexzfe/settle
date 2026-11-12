@@ -100,10 +100,11 @@ export function RoomGrid({
       const onLevel = rooms.filter((room) => room.level === level.slug);
       return (
         <section key={level.slug} className={page.level}>
-          <h3 className={page.levelTitle}>
+          {/* The level under the page's h1, so an h2, drawn at its own small size. */}
+          <h2 className={page.levelTitle}>
             Level {level.storey}
             {level.name && <span className={page.levelName}> · {level.name}</span>}
-          </h3>
+          </h2>
           {onLevel.length === 0 ? (
             <p className={styles.muted}>No Rooms.</p>
           ) : (
@@ -122,6 +123,22 @@ export function RoomGrid({
         </section>
       );
     });
+}
+
+/**
+ * What the Room is used for, and Outdoor when it is. Left out when it would only say the name
+ * again: a Kitchen used as a kitchen.
+ */
+function FunctionsLine({ name, detail }: { name: string; detail: RoomDetail }) {
+  const functions = sentence(detail.functions.join(", "));
+  const repeatsName = functions.toLowerCase() === name.trim().toLowerCase();
+  if (repeatsName && !detail.outdoor) return null;
+  return (
+    <p className={page.functions}>
+      {repeatsName ? null : functions || "No functions yet"}
+      {detail.outdoor && <span className={page.outdoor}>Outdoor</span>}
+    </p>
+  );
 }
 
 function RoomTile({
@@ -170,12 +187,7 @@ function RoomTile({
             </>
           )}
         </p>
-        {detail && (
-          <p className={page.functions}>
-            {sentence(detail.functions.join(", ")) || "No functions yet"}
-            {detail.outdoor && <span className={page.outdoor}>Outdoor</span>}
-          </p>
-        )}
+        {detail && <FunctionsLine name={room.name} detail={detail} />}
         <p className={page.counts}>
           {detail && (
             <span className={gaps > 0 ? page.hasGaps : undefined}>

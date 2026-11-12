@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useLayoutEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   Link,
   Outlet,
@@ -201,28 +201,55 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const sheet = useId();
   const { pathname } = useLocation();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const main = useRef<HTMLElement>(null);
+  // While the sheet is open, the page and the top bar's other controls are out of reach, so Tab
+  // stays in the sheet and the Menu button that closes it.
+  const covered = (narrow && open) || undefined;
   // Following a link in the sheet closes it.
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     if (!open) return;
+    // Opening moves focus to the sheet's first link.
+    document.getElementById(sheet)?.querySelector<HTMLElement>("a[href], button, select")?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      // An Escape a box over the sheet already used, as Find's, closes only that box.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      setOpen(false);
+      menuButton.current?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, sheet]);
   return (
     <div className={styles.shell}>
+      {/* The first stop for the keyboard, shown only when focused: past the sidebar to the page.
+          A link, as skip links are, that focuses the page itself rather than adding #content to
+          the address the router reads. */}
+      {/* biome-ignore lint/a11y/useValidAnchor: see above. */}
+      <a
+        href="#content"
+        className={styles.skip}
+        onClick={(event) => {
+          event.preventDefault();
+          main.current?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       {narrow && (
         <header className={styles.topBar}>
-          <Link to="/" className={styles.topMark} aria-label="All Homes">
+          <Link to="/" className={styles.topMark} aria-label="All Homes" inert={covered}>
             <span aria-hidden="true" className={styles.lockupMark}>
               <SettleMark size={22} />
             </span>
           </Link>
           <span className={styles.topName}>{home?.name}</span>
-          <FindButton compact />
+          <span className={styles.topFind} inert={covered}>
+            <FindButton compact />
+          </span>
           <button
+            ref={menuButton}
             type="button"
             className={`secondary ${styles.menuButton}`}
             aria-expanded={open}
@@ -238,7 +265,14 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
         // A pointer convenience: Escape and the menu button close the sheet for the keyboard.
         // biome-ignore lint/a11y/noStaticElementInteractions: see above.
         // biome-ignore lint/a11y/useKeyWithClickEvents: see above.
-        <div className={styles.scrim} onClick={() => setOpen(false)} />
+        <div
+          className={styles.scrim}
+          data-scrim
+          onClick={() => {
+            setOpen(false);
+            menuButton.current?.focus();
+          }}
+        />
       )}
       <aside id={sheet} className={styles.sidebar} data-open={(narrow && open) || undefined}>
         <Link to="/" className={styles.lockup}>
@@ -254,7 +288,9 @@ function Shell({ home, children }: { home?: ShellHome; children: ReactNode }) {
           <AccountLinks />
         </div>
       </aside>
-      <main className={styles.main}>{children}</main>
+      <main ref={main} id="content" tabIndex={-1} className={styles.main} inert={covered}>
+        {children}
+      </main>
     </div>
   );
 }

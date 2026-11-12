@@ -20,6 +20,8 @@
   --color-hairline-soft: #efebe4;
   /* Edges and the Rejected mark only: at 2.6:1 on card it is never text. */
   --color-stone: #a39d93;
+  /* The edge of a text box or dropdown: 3.6:1 on card, so the box shows where it is. */
+  --color-field-edge: #8a8378;
 
   /* The one accent: Settled and the current nav item, nothing else. */
   --color-accent: #5e6b4e;
@@ -32,6 +34,9 @@
   --color-attention: #80600f;
   --color-error: #9b3b2e;
   --color-error-bg: #f5e3df;
+
+  /* The dim behind a dialog, the find box and the phone menu. */
+  --color-scrim: rgb(28 26 23 / 0.35);
 
   /* A faint edge around the user's real colors, so light and dark fills both stay visible. */
   --color-edge: rgb(42 39 36 / 0.22);
@@ -57,6 +62,9 @@
   --text-lg: 1.25rem;
   --text-xl: 1.625rem;
   --text-2xl: 2.125rem;
+  /* A detail page's title (a Room, an Item, a Decision): never smaller than a list page's h1,
+     growing to 44 px on a wide screen. */
+  --text-title: clamp(var(--text-2xl), 2.5vw + 1.25rem, 2.75rem);
   /* Small-caps labels, and the Agent's prose. */
   --text-label: 0.65625rem;
   --text-agent: 1.0625rem;
@@ -68,9 +76,11 @@
   --space-4: 1rem;
   --space-5: 1.25rem;
   --space-6: 1.5rem;
+  --space-7: 1.75rem;
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
+  --space-16: 4rem;
 
   /* Radii. */
   --radius: 6px;
@@ -99,6 +109,7 @@
     --color-hairline: #3a352f;
     --color-hairline-soft: #302c27;
     --color-stone: #7d756b;
+    --color-field-edge: #7d756b;
     --color-accent: #a3b18a;
     --color-accent-strong: #bcc8a6;
     --color-accent-soft: #2e3326;
@@ -125,6 +136,7 @@
   --color-hairline: #3a352f;
   --color-hairline-soft: #302c27;
   --color-stone: #7d756b;
+  --color-field-edge: #7d756b;
   --color-accent: #a3b18a;
   --color-accent-strong: #bcc8a6;
   --color-accent-soft: #2e3326;
@@ -248,7 +260,7 @@ button {
 /* A small press, only where motion is welcome. Wide buttons set --press-scale nearer 1, or the
    shrink reads as a jump. */
 @media (prefers-reduced-motion: no-preference) {
-  button:active:not(:disabled) {
+  button:active:not(:disabled, [aria-disabled="true"]) {
     transform: scale(var(--press-scale, 0.97));
   }
 }
@@ -279,7 +291,26 @@ button[type="reset"]:hover {
   background: var(--color-card);
 }
 
-button:disabled {
+/* On a phone every button, dropdown and text box is a fingertip, 44 px, tall. Below the app's
+   breakpoint. A checkbox or radio stays small, and its label, the tap target, is 44 px tall instead. */
+@media (max-width: 759.98px) {
+  button,
+  select,
+  textarea,
+  input:not([type="checkbox"], [type="radio"]) {
+    min-height: 2.75rem;
+  }
+
+  label:has(> input[type="checkbox"], > input[type="radio"]) {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}
+
+button:disabled,
+button[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -289,7 +320,7 @@ select,
 textarea {
   max-width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-hairline);
+  border: 1px solid var(--color-field-edge);
   border-radius: var(--radius);
   background: var(--color-card);
   color: var(--color-ink);
@@ -310,12 +341,19 @@ input[type="file"] {
   padding: var(--space-1);
 }
 
+/* Focus: the edge turns ink with a 2 px ink ring around it, as plain to see as the outline the
+   other controls get. */
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--color-ink-muted);
+  border-color: var(--color-ink);
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-hairline);
+  box-shadow: 0 0 0 2px var(--color-ink);
+}
+
+::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 1;
 }
 
 textarea {

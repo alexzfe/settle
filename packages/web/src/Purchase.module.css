@@ -495,6 +495,13 @@ a.reason:hover {
   font-size: var(--text-xs);
 }
 
+/* On a phone, Hold and Drop sit a thumb's width apart, so a slip does not drop a Listing. */
+@media (max-width: 759.98px) {
+  .listingControls {
+    gap: var(--space-2) var(--space-6);
+  }
+}
+
 .holdForm,
 .dropConfirm {
   display: grid;

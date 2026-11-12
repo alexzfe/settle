@@ -9,6 +9,7 @@ import { type ChangeEvent, lazy, Suspense, useEffect, useId, useRef, useState } 
 import type { PercentCrop } from "react-image-crop";
 import styles from "./App.module.css";
 import { call, type Document, type DocumentKind, documentUrl, upload } from "./api";
+import { useFocusArrival } from "./focus";
 import sheet from "./ItemPage.module.css";
 import { cropArea, isWhole, Refusal, ready } from "./ItemPhotos";
 import { type PreparedImage, prepareDocumentImage } from "./photoPrep";
@@ -98,7 +99,12 @@ export function ItemDocuments({
           </ul>
         </Section>
       )}
-      <AddDocument home={home} item={item} />
+      {/* With none, a small label says what Add document is for, as the section heading would. */}
+      <AddDocument
+        home={home}
+        item={item}
+        {...(documents.length === 0 ? { label: "Documents" } : {})}
+      />
       {shown && (
         <DocumentViewer
           home={home}
@@ -375,7 +381,16 @@ const PhotoCrop = lazy(() => import("./PhotoCrop"));
  * here and may be cropped; a PDF goes as it was picked. Then its kind, preset to Receipt, and
  * its name, which starts as the file's own for a chosen file and empty for a camera shot.
  */
-export function AddDocument({ home, item }: { home: string; item: string }) {
+export function AddDocument({
+  home,
+  item,
+  label,
+}: {
+  home: string;
+  item: string;
+  /** A small-caps label above the button, where nothing else says what it is for. */
+  label?: string;
+}) {
   const camera = useRef<HTMLInputElement>(null);
   const chooser = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState<Adding>();
@@ -383,6 +398,8 @@ export function AddDocument({ home, item }: { home: string; item: string }) {
   const [kind, setKind] = useState<DocumentKind>("receipt");
   const [name, setName] = useState("");
   const id = useId();
+  // Each step replaces the controls of the one before, so focus follows into the new one.
+  const arrive = useFocusArrival<HTMLElement>();
   const save = useDocumentWrite(home, item, (form: FormData) => upload("add_document", form));
   const whole = adding?.step === "ready" ? adding.whole.preview : undefined;
   const cut = adding?.step === "ready" ? adding.cropped?.preview : undefined;
@@ -477,8 +494,9 @@ export function AddDocument({ home, item }: { home: string; item: string }) {
   const sending = shown?.prepared.file;
   return (
     <div className={sheet.addPhoto}>
+      {label && <p className="label">{label}</p>}
       {adding === undefined && (
-        <div className={styles.actions}>
+        <div ref={arrive} className={styles.actions}>
           <button
             type="button"
             className="secondary"
@@ -489,7 +507,7 @@ export function AddDocument({ home, item }: { home: string; item: string }) {
         </div>
       )}
       {(adding?.step === "choosing" || adding?.step === "failed") && (
-        <div className={styles.actions}>
+        <div ref={arrive} className={styles.actions}>
           <button type="button" className="secondary" onClick={() => camera.current?.click()}>
             Take photo
           </button>
@@ -538,19 +556,22 @@ export function AddDocument({ home, item }: { home: string; item: string }) {
             </p>
           }
         >
-          <PhotoCrop
-            src={adding.whole.preview}
-            {...(adding.cropped ? { initial: adding.cropped.crop } : {})}
-            onDone={(crop) => {
-              const { size } = adding.whole.prepared;
-              if (size) void onCropped(adding.picked, size, crop);
-            }}
-            onCancel={() => setCropping(undefined)}
-          />
+          <div ref={arrive} className={sheet.arrival}>
+            <PhotoCrop
+              src={adding.whole.preview}
+              {...(adding.cropped ? { initial: adding.cropped.crop } : {})}
+              onDone={(crop) => {
+                const { size } = adding.whole.prepared;
+                if (size) void onCropped(adding.picked, size, crop);
+              }}
+              onCancel={() => setCropping(undefined)}
+            />
+          </div>
         </Suspense>
       )}
       {adding?.step === "ready" && shown && sending && cropping !== "open" && (
         <form
+          ref={arrive}
           className={sheet.addForm}
           aria-label="Add a document"
           onSubmit={(event) => {

@@ -234,6 +234,74 @@ it("opens the sidebar as a sheet from the menu button, and closes it on a link",
   expect(menu.getAttribute("aria-expanded")).toBe("false");
 });
 
+it("moves focus into the menu sheet, keeps it there, and gives it back to Menu on closing", () => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  renderRoutes("/homes/house/about");
+  const menu = screen.getByRole("button", { name: "Menu" });
+  menu.focus();
+  fireEvent.click(menu);
+  const sheet = document.getElementById(menu.getAttribute("aria-controls") ?? "") as HTMLElement;
+  expect(document.activeElement).toBe(within(sheet).getAllByRole("link")[0]);
+  // The page behind the scrim, and the top bar's other controls, are out of reach.
+  expect(screen.getByRole("main", { hidden: true }).hasAttribute("inert")).toBe(true);
+  expect(
+    screen.getByRole("link", { name: "All Homes", hidden: true }).closest("[inert]"),
+  ).not.toBeNull();
+  expect(menu.closest("[inert]")).toBeNull();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(document.activeElement).toBe(menu);
+  expect(screen.getByRole("main").hasAttribute("inert")).toBe(false);
+  // The scrim closes it the same way.
+  fireEvent.click(menu);
+  fireEvent.click(document.querySelector("[data-scrim]") as HTMLElement);
+  expect(menu.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(menu);
+});
+
+it("closes only Find on Escape when Find was opened from the menu sheet, then the sheet", async () => {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  stubApi({
+    list_homes: () => ({ homes: [house] }),
+    get_home: () => ({ home: house, levels: [], rooms: [], unplacedItems: 0 }),
+    find_index: () => ({ rows: [] }),
+  });
+  renderRoutes("/homes/house/about");
+  const menu = screen.getByRole("button", { name: "Menu" });
+  fireEvent.click(menu);
+  const sheet = document.getElementById(menu.getAttribute("aria-controls") ?? "") as HTMLElement;
+  const findRow = within(sheet).getByRole("button", { name: "Find in this Home" });
+  findRow.focus();
+  fireEvent.click(findRow);
+  const find = await screen.findByRole("dialog", { name: "Find in this Home" });
+  fireEvent.keyDown(within(find).getByRole("combobox"), { key: "Escape" });
+  await act(async () => {});
+  expect(screen.queryByRole("dialog", { name: "Find in this Home" })).toBeNull();
+  expect(menu.getAttribute("aria-expanded")).toBe("true");
+  expect(document.activeElement).toBe(findRow);
+  fireEvent.keyDown(findRow, { key: "Escape" });
+  expect(menu.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(menu);
+});
+
+it("offers a skip link first, which takes the keyboard to the page", () => {
+  renderRoutes("/homes/house/about");
+  const skip = screen.getByRole("link", { name: "Skip to content" });
+  const focusable = document.querySelectorAll("a[href], button, input, select, textarea");
+  expect(focusable[0]).toBe(skip);
+  fireEvent.click(skip);
+  expect(document.activeElement).toBe(screen.getByRole("main"));
+});
+
 it("shows only the mark and the theme switch outside a Home", async () => {
   renderRoutes("/");
   await screen.findAllByText("House");

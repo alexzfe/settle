@@ -99,7 +99,7 @@ it("shows every Room by Level under a summary line, titled for the Home", async 
   );
   await waitFor(() => expect(document.title).toBe("Rooms · Flat · Settle"));
 
-  const levels = screen.getAllByRole("heading", { level: 3 });
+  const levels = screen.getAllByRole("heading", { level: 2 });
   expect(levels.map((heading) => heading.textContent)).toEqual(["Level 0 · Ground", "Level 1"]);
   const groundTiles = levels[0]?.parentElement as HTMLElement;
   expect(
@@ -169,4 +169,25 @@ it("counts no Rooms with Gaps when a Room Sheet failed to load", async () => {
   await screen.findByRole("link", { name: "Bedroom" });
   await waitFor(() => expect(screen.getByText("3 Rooms · 2 open Decisions")).toBeDefined());
   expect(view.container.textContent).not.toMatch(/with Gaps/);
+});
+
+it("leaves out a tile's functions line when it only repeats the Room's name", async () => {
+  const functions: Record<string, RoomDetail["functions"]> = {
+    kitchen: ["kitchen"],
+    "living-room": ["living", "office"],
+  };
+  stubRoomsPage({
+    get_home: () => ({ home: flat, levels: [ground], rooms: [kitchen, living], unplacedItems: 0 }),
+    get_room: (input) => {
+      const room = [kitchen, living].find((each) => each.slug === input.room);
+      if (!room) throw new Error(`No Room ${input.room}`);
+      const detail = { ...roomDetail(room, []), functions: functions[room.slug] ?? [] };
+      return { room: detail, decisions: [], photos: [] };
+    },
+  });
+  renderRoutes("/homes/flat/rooms");
+  expect(await screen.findByText("Living, office")).toBeDefined();
+  const tile = screen.getByRole("link", { name: "Kitchen" }).closest("li") as HTMLElement;
+  await waitFor(() => expect(within(tile).getByText("No Gaps")).toBeDefined());
+  expect(tile.textContent).toBe("KitchenNo Gaps");
 });

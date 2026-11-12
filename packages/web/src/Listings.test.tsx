@@ -252,12 +252,12 @@ it("shows the Rating as stars with the Agent's reason, uncapped when it fails a 
       /starOn/.test(star.getAttribute("class") ?? ""),
     ),
   ).toEqual([true, true, true, true, false]);
-  // A must-failer keeps every star it was given: the fail is carried by the verdict line and by
-  // the shape of the stars, never by taking stars away.
+  // A must-failer keeps every star it was given, filled in a muted colour: the fail is carried by
+  // the verdict line, never by taking stars away or by hollowing them.
   const failing = starsOf("Jute loop rug") as HTMLElement;
   expect(failing.getAttribute("aria-label")).toBe("5 of 5 stars");
-  expect(failing.className).toMatch(/starsOutlined/);
-  expect(passing.className).not.toMatch(/starsOutlined/);
+  expect(failing.className).toMatch(/starsMuted/);
+  expect(passing.className).not.toMatch(/starsMuted/);
   // The reason line is the Agent's, and is shown as the Agent's.
   const rating = within(headOf("Hay Plain rug")).getByText(
     "Right size, real wool, but £120 over the others",
@@ -810,4 +810,43 @@ it("still says when a price is not recorded, and when it was recorded", async ()
   await screen.findByText("Unpriced rug");
   expect(within(headOf("Unpriced rug")).getByText("Price not recorded")).toBeDefined();
   expect(within(headOf("Unpriced rug")).getByText(`recorded ${date}`)).toBeDefined();
+});
+
+it("names each Listing column by the Listing alone, not by every control in its head", async () => {
+  showBoard([hay, jute]);
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  const table = boardSection().querySelector("table") as HTMLTableElement;
+  const columns = within(table).getAllByRole("columnheader");
+  expect(columns.map(computeName)).toEqual(["Requirement", "Hay Plain rug", jute.name]);
+});
+
+/** The name a screen reader reads for a header: its labelledby target when it has one. */
+function computeName(element: HTMLElement): string {
+  const ids = element.getAttribute("aria-labelledby");
+  if (!ids) return element.textContent ?? "";
+  return ids
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ");
+}
+
+it("gives the keyboard back to the picture button when the paste box closes", async () => {
+  showBoard([hay], {
+    set_listing_photo: () => ({ decision: "wool-rug", listing: hay }),
+  });
+  await screen.findByRole("link", { name: "Hay Plain rug" });
+  const change = () =>
+    within(headOf("Hay Plain rug")).getByRole("button", { name: "Change the picture" });
+  fireEvent.click(change());
+  const cancel = within(headOf("Hay Plain rug")).getByRole("button", { name: "Cancel" });
+  cancel.focus();
+  fireEvent.click(cancel);
+  expect(document.activeElement).toBe(change());
+  // And after a picture is sent.
+  fireEvent.click(change());
+  fireEvent.change(screen.getByLabelText("Picture file"), {
+    target: { files: [new File(["\xff\xd8\xff"], "rug.jpg", { type: "image/jpeg" })] },
+  });
+  await waitFor(() => expect(screen.queryByLabelText("Picture file")).toBeNull());
+  expect(document.activeElement).toBe(change());
 });

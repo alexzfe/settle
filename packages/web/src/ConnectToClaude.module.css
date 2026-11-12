@@ -15,6 +15,16 @@
   color: var(--color-ground);
   font-weight: 500;
   text-decoration: none;
+  transition-property: background-color, border-color, color, transform;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+/* The same small press a button gives, where motion is welcome. */
+@media (prefers-reduced-motion: no-preference) {
+  .button:active {
+    transform: scale(0.97);
+  }
 }
 
 .button:hover {
