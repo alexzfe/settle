@@ -156,10 +156,12 @@ export const deletePhoto = defineOperation({
   surface: "web",
   handler(context, input): PhotosResult {
     const home = requireHome(context);
-    return context.write("web", (log) => {
+    let removed: { path: string; thumbPath: string } | undefined;
+    const result = context.write("web", (log) => {
       const owner = requireOwner(context, home, input);
       const photo = requirePhoto(context, home, owner, input.photo);
       context.store.removePhoto(photo.id);
+      removed = photo;
       log({
         home,
         recordKind: owner.kind,
@@ -169,11 +171,14 @@ export const deletePhoto = defineOperation({
         new: null,
         reason: WEB_EDIT,
       });
-      // Last, so a failure above leaves the files with the row the rollback keeps.
-      context.files.remove(join(context.dataDir(), photo.path));
-      context.files.remove(join(context.dataDir(), photo.thumbPath));
       return { photos: photosOf(context, home, owner) };
     });
+    // After COMMIT, so a write or a COMMIT that fails leaves the files with the row it keeps.
+    if (removed) {
+      context.files.remove(join(context.dataDir(), removed.path));
+      context.files.remove(join(context.dataDir(), removed.thumbPath));
+    }
+    return result;
   },
 });
 
@@ -208,8 +213,9 @@ export const viewPhotos = defineOperation({
     "that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: " +
     "at most 4 per call, and the fewest that answer the question, usually the newest or the one " +
     "of the Wall in question. Call this only when the user has asked you to look or said yes " +
-    "to looking: each Photo stays in the Session's context for every later turn. Changes " +
-    "nothing.",
+    "to looking: each Photo stays in the Session's context for every later turn. When the user " +
+    "only asks what is where or what something looks like, answer from the records and point " +
+    "them to the Room's or Item's page in the app; don't offer to look. Changes nothing.",
   input: viewPhotosInput,
   readOnly: true,
   surface: "agent",

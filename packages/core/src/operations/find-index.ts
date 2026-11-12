@@ -154,11 +154,11 @@ export const findIndex = defineOperation({
   description:
     "The web's search index: every Room, Decision, Item, Listing, and Feature of the Home, " +
     "Archived and Rejected ones too, each with its name, where it is, the path to open, its " +
-    "tier, and when it last changed. The browser matches and ranks them.",
+    "tier, and when it last changed, as `rows`. The browser matches and ranks them.",
   input: findIndexInput,
   readOnly: true,
   surface: "web",
-  handler(context): FindRow[] {
+  handler(context): { rows: FindRow[] } {
     const home = requireHome(context);
     const model = loadDecisions(context.store, home);
     const changes = context.store.lastChanges(home.id);
@@ -168,7 +168,7 @@ export const findIndex = defineOperation({
       (min, each) => (min === undefined || each.at < min ? each.at : min),
       undefined,
     );
-    return FIND_KINDS.flatMap(({ kind, tier, label, found }) =>
+    const rows = FIND_KINDS.flatMap(({ kind, tier, label, found }) =>
       found(model).map(
         ({ since, state, also, ...record }): FindRow => ({
           kind,
@@ -181,6 +181,7 @@ export const findIndex = defineOperation({
         }),
       ),
     );
+    return { rows };
   },
 });
 

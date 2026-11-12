@@ -26,10 +26,16 @@ export type CoreErrorCode =
 
 export class CoreError extends Error {
   readonly code: CoreErrorCode;
+  /**
+   * The message for the web UI's user, when `message` points the Agent at one of its tools: core
+   * answers the web caller with this one instead.
+   */
+  readonly webMessage: string | undefined;
 
-  constructor(code: CoreErrorCode, message: string) {
+  constructor(code: CoreErrorCode, message: string, webMessage?: string) {
     super(message);
     this.name = "CoreError";
     this.code = code;
+    this.webMessage = webMessage;
   }
 }

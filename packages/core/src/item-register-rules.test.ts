@@ -185,6 +185,15 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
   });
   afterEach(() => core.close());
 
+  it("refuses a bad field from the page without the Agent's advice about input schemas", async () => {
+    const error = await refusal(edit({ manualLink: "not a link" }));
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toContain("`fields.manualLink`");
+    expect(error.message).not.toContain("input schema");
+    expect(error.message).not.toContain("Call edit_item again");
+  });
+
   describe("Listed Provenance", () => {
     it("is refused on a Wall's length, saying it belongs to an Item, and taken on an Item's width", async () => {
       const wall = await refusal(
@@ -484,6 +493,15 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
   });
   afterAll(() => fixture.core.close());
   const page = (item: string) => fixture.core.run("get_item", web, { home: fixture.home, item });
+
+  it("refuses an unknown Item in words for the user, naming no Agent tool", async () => {
+    const error = await refusal(page("nope"));
+    expect(error.code).toBe("not_found");
+    expect(error.message).toBe(
+      'This Home has no Item "nope". It may have been renamed or removed; open it from the ' +
+        "Items page.",
+    );
+  });
 
   it("shows the Billy with the Purchase relying on it and the one that replaced it", async () => {
     const billy = await page("bookcase");

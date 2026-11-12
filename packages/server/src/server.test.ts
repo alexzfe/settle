@@ -1,7 +1,13 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FIXTURE_FILES, TEST_PASSWORD_COST } from "@settle/core";
+import {
+  FIXTURE_FILES,
+  migrate,
+  NewerDatabaseError,
+  TEST_PASSWORD,
+  TEST_PASSWORD_COST,
+} from "@settle/core";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { type RunningServer, startServer } from "./server.js";
 import { setUp } from "./testing.js";
@@ -286,3 +292,80 @@ async function nextChanges(
     text += decoder.decode(value, { stream: true });
   }
 }
+
+it("tells the Account page whether Google sign-in is on, so it offers to link Google only then", async () => {
+  expect(await api("get_account", {})).toMatchObject({ account: { googleSignIn: false } });
+  const withGoogle = await startServer(
+    {
+      host: "127.0.0.1",
+      port: 0,
+      dataDir: join(root, "with-google"),
+      google: { clientId: "123-test.apps.googleusercontent.com", clientSecret: "GOCSPX-test" },
+    },
+    { passwordCost: TEST_PASSWORD_COST },
+  );
+  try {
+    const login = await setUp(withGoogle.setupUrl as string);
+    const response = await fetch(`${withGoogle.url}/api/get_account`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: login },
+      body: "{}",
+    });
+    expect(await response.json()).toMatchObject({ account: { googleSignIn: true } });
+  } finally {
+    await withGoogle.close();
+  }
+});
+
+it("ends an open /events stream when its Login ends, sending nothing after", async () => {
+  await api("create_home", { name: "Quiet home", country: "GB", city: "London" });
+  // A second Login of the same Account, in another browser.
+  const loggedIn = await fetch(`${server.url}/login`, {
+    method: "POST",
+    headers: { origin: server.url },
+    body: new URLSearchParams({ email: "sam@example.com", password: TEST_PASSWORD }),
+    redirect: "manual",
+  });
+  const other = (loggedIn.headers.get("set-cookie") ?? "").split(";")[0] as string;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const response = await fetch(`${server.url}/events?home=quiet-home`, {
+      headers: { cookie: other },
+      signal: controller.signal,
+    });
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    await reader.read();
+    await fetch(`${server.url}/logout`, {
+      method: "POST",
+      headers: { cookie: other, origin: server.url },
+      redirect: "manual",
+    });
+    // A change in the Home, made by the Login still open.
+    await callTool("quiet-home", "open_session", { skill: "home-intake" });
+    let text = "";
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value);
+    }
+    expect(text).not.toContain("event: change");
+    expect(text).not.toContain("event: agent");
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+});
+
+it("refuses to start on a database a newer Settle migrated, saying which migrations it lacks", async () => {
+  const dataDir = join(root, "newer");
+  mkdirSync(dataDir);
+  const db = migrate(join(dataDir, "settle.sqlite"));
+  db.exec("INSERT INTO migrations (id, applied_at) VALUES (9999, '')");
+  db.close();
+
+  const refusal = startServer({ host: "127.0.0.1", port: 0, dataDir });
+  await expect(refusal).rejects.toBeInstanceOf(NewerDatabaseError);
+  await expect(refusal).rejects.toThrow(/migration 9999.*settle\.sqlite\.before-9999/);
+});

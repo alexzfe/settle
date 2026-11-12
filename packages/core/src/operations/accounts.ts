@@ -11,6 +11,7 @@ import {
   passwordMatches,
   passwordProblem,
   RESET_MS,
+  WRONG_PASSWORD,
 } from "../accounts.js";
 import { CoreError } from "../errors.js";
 import { optional } from "../optional.js";
@@ -35,6 +36,8 @@ export interface AccountSummary {
   password: boolean;
   /** Whether a Google account is linked to it, to log in with. */
   google: boolean;
+  /** Whether the server offers Sign in with Google: then a Google account can be linked. */
+  googleSignIn: boolean;
 }
 
 export interface LoginSummary {
@@ -86,12 +89,13 @@ export const getAccount = defineOperation({
   name: "get_account",
   description:
     "The Account logged in: its email, whether it is the Admin, when it was made, whether it has " +
-    "a password, and whether a Google account is linked to it.",
+    "a password, whether a Google account is linked to it, and whether the server offers Sign " +
+    "in with Google.",
   input: z.object({}),
   readOnly: true,
   surface: "web",
   handler(context): { account: AccountSummary } {
-    return { account: summaryOf(requireAccount(context)) };
+    return { account: summaryOf(requireAccount(context), context.googleSignIn) };
   },
 });
 
@@ -99,8 +103,9 @@ export const changePassword = defineOperation({
   name: "change_password",
   description:
     "Changes the password of the Account logged in, given the current one, and ends every other " +
-    "Login of it, so a browser that had the old password is logged out. An Account made with " +
-    "Google sets its first password this way, with no current one.",
+    "Login of it and every Connection, so a browser that had the old password is logged out and " +
+    "Claude is disconnected. An Account made with Google sets its first password this way, with " +
+    "no current one.",
   input: z.object({
     current: passwordInput.optional(),
     password: z.string().describe("The new password: 12 to 256 characters, nothing else asked."),
@@ -115,7 +120,9 @@ export const changePassword = defineOperation({
     const passwordHash = await hashPassword(input.password, context.passwordCost);
     context.store.transaction(() => {
       context.store.update("accounts", account.id, { passwordHash });
+      // Whoever knew the old password may have made a Connection with it.
       context.store.deleteLogins(account.id, loginOf(context));
+      context.store.deleteConnections(account.id);
     });
     return {};
   },
@@ -142,7 +149,7 @@ export const changeEmail = defineOperation({
       throw new CoreError("validation", "Another account already uses that email.");
     }
     context.store.update("accounts", account.id, { email });
-    return { account: summaryOf({ ...account, email }) };
+    return { account: summaryOf({ ...account, email }, context.googleSignIn) };
   },
 });
 
@@ -175,8 +182,9 @@ export const listLogins = defineOperation({
 export const endLogins = defineOperation({
   name: "end_logins",
   description:
-    "Ends every Login of the Account logged in, this one included, and every Connection: " +
-    "everywhere logs out, and Claude is disconnected.",
+    "Ends every Login of the Account logged in, this one included, and every Connection, and " +
+    "cancels every key of its Homes: everywhere logs out, Claude is disconnected, and each Home " +
+    "Folder must be set up again.",
   input: z.object({}),
   readOnly: false,
   surface: "web",
@@ -185,6 +193,7 @@ export const endLogins = defineOperation({
     context.store.transaction(() => {
       context.store.deleteLogins(account.id);
       context.store.deleteConnections(account.id);
+      context.store.deleteAccountHomeKeys(account.id);
     });
     return {};
   },
@@ -293,8 +302,10 @@ export const cancelInvite = defineOperation({
 export const createResetLink = defineOperation({
   name: "create_reset_link",
   description:
-    "Makes a reset link for another Account: it sets a new password once, within 24 hours, and " +
-    "ends every Login of that Account. Any earlier reset link of it stops working. Shown only now.",
+    "Makes a reset link for another Account: it sets a new password once, within 24 hours, " +
+    "ends every Login and Connection of that Account, cancels every key of its Homes, and " +
+    "unlinks its Google account. Any " +
+    "earlier reset link of it stops working. Shown only now.",
   input: z.object({ account: accountIdInput }),
   readOnly: false,
   surface: "web",
@@ -404,14 +415,14 @@ export const adminDeleteAccount = defineOperation({
 export const rotateHomeKey = defineOperation({
   name: "rotate_home_key",
   description:
-    "Gives the Home a new key and cancels the old one: the Agent's .mcp.json stops working " +
-    "until the Home Folder command is run again in its folder.",
+    "Cancels every key of the Home: the .mcp.json of each of its Home Folders stops working " +
+    "until the Home Folder command is run again in that folder, which makes it a new key.",
   input: z.object({ home: homeInput }),
   readOnly: false,
   surface: "web",
   handler(context): Record<string, never> {
     const home = requireHome(context);
-    context.store.update("homes", home.id, { token: randomToken(context.random) });
+    context.store.deleteHomeKeys(home.id);
     return {};
   },
 });
@@ -442,7 +453,7 @@ export const rotateGuideLink = defineOperation({
   },
 });
 
-function summaryOf(account: AccountRow): AccountSummary {
+function summaryOf(account: AccountRow, googleSignIn: boolean): AccountSummary {
   const { email, admin, createdAt } = account;
   return {
     email,
@@ -450,13 +461,14 @@ function summaryOf(account: AccountRow): AccountSummary {
     createdAt,
     password: hasPassword(account),
     google: account.googleSub !== null,
+    googleSignIn,
   };
 }
 
 /** The current password, or a refusal. */
 async function requirePassword(account: AccountRow, password: string): Promise<void> {
   if (!(await passwordMatches(password, account.passwordHash))) {
-    throw new CoreError("validation", "That is not this account's password.");
+    throw new CoreError("validation", WRONG_PASSWORD);
   }
 }
 
@@ -507,7 +519,7 @@ const STORED = /\.(jpe?g|png|webp|heic|pdf|zip)$/i;
 
 /**
  * The export, made one entry per read: account.json; for each Home, homes/<slug>.json with
- * every row of it by table (the Home's key left out), and its uploads at the paths those rows
+ * every row of it by table (the Home's keys left out), and its uploads at the paths those rows
  * name. rendered/ is left out: it is a cache, made again from the uploads.
  */
 function zipAccount(context: OperationContext, account: AccountRow): ReadableStream<Uint8Array> {
@@ -523,7 +535,10 @@ function zipAccount(context: OperationContext, account: AccountRow): ReadableStr
   for (const home of homes) {
     entries.push(() => {
       const rows = store.homeRows(home.id);
+      // homes.token is a key kept for one release, for a rollback (0021); a key never leaves.
       rows.homes = (rows.homes ?? []).map(({ token: _token, account_id: _account, ...row }) => row);
+      // The Home's keys stay on the server, even as hashes.
+      delete rows.home_keys;
       return [`homes/${home.slug}.json`, json(rows)];
     });
     const uploads = join("uploads", home.slug);

@@ -1,19 +1,23 @@
 export {
   ACCESS_TOKEN_SECONDS,
   type Accounts,
+  type ClaudeConnect,
   CONNECTION_DAYS,
+  type ConnectionSummary,
   type CurrentConnection,
   type CurrentLogin,
   type GoogleIdentity,
   type GoogleLogInResult,
   type GrantResult,
   LINK_MISS,
+  type LinkGoogleResult,
   LOGIN_DAYS,
   type LogInResult,
   PASSWORD_MAX,
   PASSWORD_MIN,
   type PasswordCost,
   type TokenGrant,
+  WRONG_PASSWORD,
 } from "./accounts.js";
 export {
   type AnyOperation,
@@ -53,7 +57,7 @@ export {
   PLUGIN_INSTALL,
 } from "./home-folder.js";
 export { MAX_IMAGE_BYTES } from "./images.js";
-export { migrate } from "./migrate.js";
+export { migrate, NewerDatabaseError } from "./migrate.js";
 export type {
   AccountExport,
   AccountListEntry,
@@ -67,6 +71,7 @@ export type { FindRow } from "./operations/find-index.js";
 export type { Session } from "./operations/homes.js";
 export * from "./operations/schemas.js";
 export { SKILLS, type Skill } from "./operations/sessions.js";
+export { hostBlocked, safeLookup } from "./private-addresses.js";
 export type { Operation, OperationSurface } from "./registry.js";
 export {
   DECISION_KIND_LABELS,

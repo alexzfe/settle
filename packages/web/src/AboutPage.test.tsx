@@ -1,3 +1,4 @@
+import { focusManager } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Constraint, Home, Level, Note } from "./api";
@@ -168,6 +169,7 @@ it("shows the command that sets up the Home Folder, the plugin install line, and
   const fetch = stubAboutPage({
     home_folder_setup: () => ({
       origin,
+      key: "the-new-key",
       command,
       pluginInstall,
       files: [
@@ -205,20 +207,65 @@ it("shows the command that sets up the Home Folder, the plugin install line, and
   expect(files.querySelector("figure pre")?.textContent).toBe(mcp);
 });
 
+it("makes the folder's key once, when asked, and never again on its own, since each call makes one", async () => {
+  const fetch = stubAboutPage({
+    home_folder_setup: () => ({
+      origin: "https://settle.example.com",
+      key: "the-new-key",
+      command: "curl … | sh",
+      pluginInstall: "claude plugin install settle@settle",
+      files: [],
+    }),
+  });
+  renderRoutes("/homes/flat/about");
+  fireEvent.click(await screen.findByRole("button", { name: "Set up Home Folder" }));
+  await screen.findByText("curl … | sh");
+  expect(screen.getByText(/new key for this folder, shown only now/)).toBeTruthy();
+  // Coming back to the tab refetches a query; this is no query.
+  await act(async () => {
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(inputsTo(fetch, "home_folder_setup")).toEqual([{ home: "flat" }]);
+});
+
 it("makes a new key only after saying the old one stops and the Home Folder command must run again", async () => {
   const fetch = stubAboutPage({ rotate_home_key: () => ({}) });
   renderRoutes("/homes/flat/about");
   fireEvent.click(await screen.findByRole("button", { name: "New key…" }));
   const dialog = screen.getByRole("dialog", { name: "A new key for this Home" });
-  expect(dialog.textContent).toContain("The old key stops working at once");
+  expect(dialog.textContent).toContain("Every key of this Home stops working at once");
   expect(dialog.textContent).toContain("run the Home Folder command in that folder again");
   fireEvent.click(screen.getByRole("button", { name: "Keep this one" }));
   expect(inputsTo(fetch, "rotate_home_key")).toEqual([]);
 
   fireEvent.click(screen.getByRole("button", { name: "New key…" }));
   fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
-  await screen.findByText(/The Home has a new key\./);
+  await screen.findByText(/Every key of this Home is cancelled\./);
   expect(inputsTo(fetch, "rotate_home_key")).toEqual([{ home: "flat" }]);
+});
+
+it("hides the Home Folder command once a new key cancels the key it holds", async () => {
+  stubAboutPage({
+    home_folder_setup: () => ({
+      origin: "https://settle.example.com",
+      key: "the-cancelled-key",
+      command: "curl … | sh",
+      pluginInstall: "claude plugin install settle@settle",
+      files: [],
+    }),
+    rotate_home_key: () => ({}),
+  });
+  renderRoutes("/homes/flat/about");
+  fireEvent.click(await screen.findByRole("button", { name: "Set up Home Folder" }));
+  await screen.findByText("curl … | sh");
+
+  fireEvent.click(screen.getByRole("button", { name: "New key…" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make a new key" }));
+  await screen.findByText(/Every key of this Home is cancelled\./);
+  expect(screen.queryByText("curl … | sh")).toBeNull();
+  expect(screen.getByRole("button", { name: "Set up Home Folder" })).toBeTruthy();
 });
 
 describe("the Home's time zone, the day it dates things in", () => {

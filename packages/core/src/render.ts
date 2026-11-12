@@ -246,11 +246,14 @@ export function renderRoomSheet(
     sources = false,
     decisions = [],
     photos = [],
+    page,
     timeZone,
   }: {
     sources?: boolean;
     decisions?: DecisionSummary[];
     photos?: Photo[];
+    /** The Room's page in the app, where the user sees its Photos. */
+    page?: string;
     /** The Home's time zone, its days are in; UTC's when it has none. */
     timeZone?: Zone;
   } = {},
@@ -304,10 +307,15 @@ export function renderRoomSheet(
     "Items",
     room.items.map((item) => itemLine(item, { where: false, register: false, sources, timeZone })),
   );
-  // The user sees these on the Room page themselves; said here, not only in the Skills, because a
-  // plain question can reach the Room Sheet without any Skill running.
+  // The user sees these on the Room page themselves. The recall rule is said here, not only in the
+  // Skills, because a plain question ("what's next to the couch?") reaches the Room Sheet with no
+  // Skill running.
   if (photos.length > 0) {
-    lines.push("", `Photos, which the user sees on this Room's page: ${photoList(photos)}`);
+    lines.push(
+      "",
+      `Photos, which the user sees on this Room's page${page ? `, ${page}` : ""}: ` +
+        `${photoList(photos)}. ${recallRule("that page")}`,
+    );
   }
   section(
     lines,
@@ -472,7 +480,9 @@ function registerParts(item: FoundItem): (string | undefined)[] {
     item.warrantyUntil && `warranty until ${item.warrantyUntil}`,
     item.serialNumber && `serial ${item.serialNumber}`,
     item.manualLink && `manual ${item.manualLink}`,
-    item.photos?.length ? `photos: ${photoList(item.photos)}` : undefined,
+    item.photos?.length
+      ? `photos, which the user sees on its page${item.page ? `, ${item.page}` : ""}: ${photoList(item.photos)}`
+      : undefined,
     item.documents?.length
       ? `documents: ${item.documents
           .map((document) => join(" ", [document.kind, document.name && `"${document.name}"`]))
@@ -481,12 +491,25 @@ function registerParts(item: FoundItem): (string | undefined)[] {
   ];
 }
 
-/** find_items: one line per Item, with where it is and its register. */
-export function renderItems(items: FoundItem[], timeZone: Zone): string {
+/**
+ * find_items: one line per Item, with where it is and its register. With none found for a text
+ * search, what was searched and what to try next, so a miss isn't read as the user owning nothing.
+ */
+export function renderItems(items: FoundItem[], timeZone: Zone, searched?: string): string {
+  if (items.length === 0 && searched !== undefined) {
+    return (
+      `No Items have any of the words "${searched}" in their name, brand, model, category, ` +
+      "materials, colors, or note. The Item may be recorded under another word (a couch as a " +
+      "sofa): try one, filter by `category` or `room` instead, or leave `text` out for the " +
+      "whole Inventory."
+    );
+  }
   if (items.length === 0) return "No Items match.";
-  return items
-    .map((item) => `- ${itemLine(item, { where: true, register: true, timeZone })}`)
-    .join("\n");
+  const lines = items.map(
+    (item) => `- ${itemLine(item, { where: true, register: true, timeZone })}`,
+  );
+  if (items.some((item) => item.photos?.length)) lines.push("", recallRule("the Item's page"));
+  return lines.join("\n");
 }
 
 /** search_notes: one line per Note, with the day it was written. */
@@ -607,7 +630,20 @@ function flagCause(flag: Flag): string {
   const source = recordText(flag.source);
   if (flag.cause !== "value_changed") return `${source} ${FLAG_CAUSES[flag.cause]}`;
   if (flag.source.field === "archivedAt") return `${source} was Archived or restored`;
-  return `${source}${flag.source.field ? ` ${fieldLabel(flag.source.field)}` : ""} changed`;
+  const field = flag.source.field;
+  const named = `${source}${field ? ` ${fieldLabel(field)}` : ""}`;
+  if (!field) return `${named} changed`;
+  // Flags from before migration 0022 carry neither value, and say only that it changed.
+  const { old, new: now } = flag;
+  if (old !== undefined && now !== undefined) {
+    if (JSON.stringify(old) === JSON.stringify(now)) {
+      return `${named} changed, then back to ${value(field, old)}`;
+    }
+    return `${named} changed from ${value(field, old)} to ${value(field, now)}`;
+  }
+  if (now !== undefined) return `${named} set to ${value(field, now)}`;
+  if (old !== undefined) return `${named} cleared (was ${value(field, old)})`;
+  return `${named} changed`;
 }
 
 /**
@@ -966,6 +1002,14 @@ export function renderViewedPages({ blueprint, pages }: ViewImagesResult): strin
   }
   return lines.join("\n");
 }
+
+/**
+ * What the Agent does with a Photo listing when the user is only recalling something: their Photos
+ * are on the page, so it points there instead of offering to look (view_photos says the same).
+ */
+const recallRule = (page: string) =>
+  "When the user only asks what is where or what something looks like, answer from the records " +
+  `and point them to ${page}; don't offer to look.`;
 
 /**
  * Photos, newest first, as the Room Sheet and the register name them: how many, then each by its

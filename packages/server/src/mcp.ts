@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { CallToolRequestSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { type AnyOperation, type Caller, type Core, CoreError } from "@settle/core";
 import type { AgentActivity } from "./agent-activity.js";
 
@@ -119,6 +120,34 @@ function buildServer(
     { name: "settle", version: "0.0.1" },
     { instructions: SERVER_INSTRUCTIONS },
   );
+  /** One tool call: core validates the arguments, so a refusal of them is worded as core's are. */
+  const call = async (tool: AnyOperation, args: unknown): Promise<CallToolResult> => {
+    // A valid call counts before it runs, so its agent event comes before its change events; one
+    // whose input core will refuse counts not at all, as when the SDK refused it.
+    const named = (args as { session?: unknown } | undefined)?.session;
+    const recorded =
+      tool.input.safeParse(args).success &&
+      record(typeof named === "string" ? named : undefined, tool.name);
+    try {
+      // Core reads the Session from the tool's `session` argument, and from it the Home.
+      const output = await core.run(tool.name, { caller, ...(home ? { home } : {}) }, args);
+      // Through a Connection, a new Session's Home is known once open_session returns.
+      const opened = (output as { session?: unknown } | undefined)?.session;
+      if (!recorded && typeof opened === "string") record(opened, tool.name);
+      const text = tool.text ? tool.text(output) : JSON.stringify(output);
+      // The text block first, naming what the images show; never structuredContent, which
+      // makes Codex drop the images.
+      const images = (tool.images?.(output) ?? []).map(({ data, mimeType }) => ({
+        type: "image" as const,
+        data: Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString("base64"),
+        mimeType,
+      }));
+      return { content: [{ type: "text" as const, text }, ...images] };
+    } catch (error) {
+      if (!(error instanceof CoreError)) throw error;
+      return { isError: true, content: [{ type: "text", text: error.message }] };
+    }
+  };
   for (const tool of tools) {
     server.registerTool(
       tool.name,
@@ -126,35 +155,34 @@ function buildServer(
         title: titleOf(tool.name),
         description: tool.description,
         inputSchema: tool.input,
-        annotations: { readOnlyHint: tool.readOnly, openWorldHint: false },
+        annotations: { readOnlyHint: tool.readOnly, openWorldHint: tool.openWorld === true },
       },
-      async (args) => {
-        // The SDK calls this only once the tool is found and its input is valid. The call
-        // counts before it runs, so its agent event comes before its change events.
-        const named = (args as { session?: unknown }).session;
-        const recorded = record(typeof named === "string" ? named : undefined, tool.name);
-        try {
-          // Core reads the Session from the tool's `session` argument, and from it the Home.
-          const output = await core.run(tool.name, { caller, ...(home ? { home } : {}) }, args);
-          // Through a Connection, a new Session's Home is known once open_session returns.
-          const opened = (output as { session?: unknown } | undefined)?.session;
-          if (!recorded && typeof opened === "string") record(opened, tool.name);
-          const text = tool.text ? tool.text(output) : JSON.stringify(output);
-          // The text block first, naming what the images show; never structuredContent, which
-          // makes Codex drop the images.
-          const images = (tool.images?.(output) ?? []).map(({ data, mimeType }) => ({
-            type: "image" as const,
-            data: Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString("base64"),
-            mimeType,
-          }));
-          return { content: [{ type: "text" as const, text }, ...images] };
-        } catch (error) {
-          if (!(error instanceof CoreError)) throw error;
-          return { isError: true, content: [{ type: "text", text: error.message }] };
-        }
+      // Never called: the tools/call handler below replaces the SDK's, which would have called it.
+      () => {
+        throw new Error(`${tool.name} is answered by Settle's tools/call handler`);
       },
     );
   }
+  // The SDK lists the tools from their schemas, but its own tools/call would refuse an input its
+  // schema rejects with bare Zod paths and nothing about what to do. This one hands the raw
+  // arguments to core, whose refusal says what to fix (ADR 0004). It must come after the
+  // registerTool calls above, which install the SDK's handler it replaces; "refusals of a tool's
+  // input come from Core" in mcp.test.ts fails if an SDK upgrade changes that.
+  server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const tool = tools.find((each) => each.name === request.params.name);
+    if (!tool) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: `There is no tool "${request.params.name}". tools/list names the tools there are.`,
+          },
+        ],
+      };
+    }
+    return call(tool, request.params.arguments ?? {});
+  });
   return server;
 }
 

@@ -397,9 +397,11 @@ export function ChangeLogPage() {
         <p>No changes yet.</p>
       ) : (
         <>
-          <p className={`${styles.muted} ${page.limit}`}>
-            Only the newest {LOADED_CHANGES} changes are loaded.
-          </p>
+          {log.data.more && (
+            <p className={`${styles.muted} ${page.limit}`}>
+              Only the newest {LOADED_CHANGES} changes are loaded.
+            </p>
+          )}
           <ol className={page.timeline} aria-label="Changes by Session">
             {groupChanges(changes).map((group) => (
               <TimelineGroup

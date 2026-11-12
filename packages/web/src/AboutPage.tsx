@@ -2,7 +2,7 @@
 // and Home Folder, in two columns on a wide screen.
 
 import type { PlannedStay } from "@settle/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";
 import about from "./AboutPage.module.css";
@@ -41,6 +41,8 @@ export function AboutPage() {
 /** The reference parts, once the Home is loaded. */
 function AboutColumns({ slug }: { slug: string }) {
   const home = useHome(slug);
+  // Bumped by a new key: the setup shown holds a key it just cancelled, so it starts over.
+  const [keyRound, setKeyRound] = useState(0);
   if (home.isPending) return <p>Loading…</p>;
   if (home.isError) return <p className={styles.error}>{home.error.message}</p>;
   const { unplacedItems } = home.data;
@@ -67,8 +69,8 @@ function AboutColumns({ slug }: { slug: string }) {
       </div>
       <div>
         <Section title="Home Folder" id="home-folder">
-          <HomeFolderSetup home={home.data.home} />
-          <NewKey home={slug} />
+          <HomeFolderSetup key={keyRound} home={home.data.home} />
+          <NewKey home={slug} onNewKey={() => setKeyRound((round) => round + 1)} />
         </Section>
         <Section title="Blueprints" id="blueprints">
           <BlueprintList home={slug} />
@@ -252,20 +254,16 @@ function NoteList({ home }: { home: string }) {
  * server writes nothing itself, so the same steps work wherever it runs.
  */
 export function HomeFolderSetup({ home }: { home: Home }) {
-  const [shown, setShown] = useState(false);
-  const setup = useQuery({
-    queryKey: [...queryKeys.home(home.slug), "home-folder-setup"],
-    queryFn: () => call("home_folder_setup", { home: home.slug }),
-    enabled: shown,
-  });
+  // A mutation, never a query: each call makes a new key, so nothing may refetch it on its own.
+  const setup = useMutation({ mutationFn: () => call("home_folder_setup", { home: home.slug }) });
 
-  if (!shown) {
+  if (setup.isIdle) {
     return (
       <>
         <p className={styles.muted}>
           A folder for this Home on each computer you talk to the Agent from.
         </p>
-        <button type="button" onClick={() => setShown(true)}>
+        <button type="button" onClick={() => setup.mutate()}>
           Set up Home Folder
         </button>
       </>
@@ -287,6 +285,10 @@ export function HomeFolderSetup({ home }: { home: Home }) {
           <p>
             Make a folder for this Home, e.g. <code>~/Homes/{home.slug}</code>, open a terminal in
             it, and paste this:
+          </p>
+          <p className={styles.muted}>
+            It holds a new key for this folder, shown only now. Folders set up before keep their
+            own.
           </p>
           <pre>
             <code>{command}</code>
@@ -332,16 +334,13 @@ export function HomeFolderSetup({ home }: { home: Home }) {
  * A new key for the Home's Agent, cancelling the old: for a key that leaked, in a .mcp.json that
  * was shared or committed. Every Home Folder of the Home then needs the command run again.
  */
-function NewKey({ home }: { home: string }) {
-  const queryClient = useQueryClient();
+function NewKey({ home, onNewKey }: { home: string; onNewKey: () => void }) {
   const [open, setOpen] = useState(false);
   const rotate = useMutation({
     mutationFn: () => call("rotate_home_key", { home }),
     onSuccess: () => {
       setOpen(false);
-      void queryClient.invalidateQueries({
-        queryKey: [...queryKeys.home(home), "home-folder-setup"],
-      });
+      onNewKey();
     },
   });
   return (
@@ -350,17 +349,15 @@ function NewKey({ home }: { home: string }) {
         New key…
       </button>
       {rotate.isSuccess && (
-        <p role="status">
-          The Home has a new key. Run the Home Folder command again in each of its folders.
-        </p>
+        <p role="status">Every key of this Home is cancelled. Set up each of its folders again.</p>
       )}
       {open && (
         <Dialog label="A new key for this Home" onClose={() => setOpen(false)}>
           <h2>Give this Home a new key?</h2>
           <p>
-            The old key stops working at once: the Agent in every Home Folder of this Home loses its
-            access until you run the Home Folder command in that folder again. Do this if the key in
-            a <code>.mcp.json</code> was shared or committed by mistake.
+            Every key of this Home stops working at once: the Agent in every Home Folder of this
+            Home loses its access until you run the Home Folder command in that folder again. Do
+            this if the key in a <code>.mcp.json</code> was shared or committed by mistake.
           </p>
           <div className={about.dialogActions}>
             <button type="button" disabled={rotate.isPending} onClick={() => rotate.mutate()}>

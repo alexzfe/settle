@@ -16,7 +16,7 @@ import {
   TEST_PASSWORD_COST,
 } from "@settle/core";
 import type { Hono } from "hono";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { mcpTools, SERVER_INSTRUCTIONS } from "./mcp.js";
 import { asLoggedIn, loginCookie } from "./testing.js";
@@ -80,6 +80,12 @@ async function callTool(home: string, name: string, args: unknown): Promise<Tool
   return ((await response.json()) as { result: ToolResult }).result;
 }
 
+/** What every file served from an upload carries: no sniffing, and nothing in it may run. */
+function expectServedFileHeaders(response: Response): void {
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
+}
+
 it("answers /health", async () => {
   const response = await app.request("/health");
   expect(response.status).toBe(200);
@@ -101,7 +107,13 @@ describe("the web UI", () => {
     const withUi = loggedIn(core, web, createApp({ core, port: PORT, webDist: dist }));
 
     expect(await (await withUi.request("/assets/app.js")).text()).toBe("console.log('ui')");
-    expect(await (await withUi.request("/")).text()).toContain("The UI");
+    const page = await withUi.request("/");
+    expect(await page.text()).toContain("The UI");
+    // No other site may frame the app, and nothing it serves is sniffed as another type.
+    expect(page.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+    expect(page.headers.get("x-content-type-options")).toBe("nosniff");
+    const route = await withUi.request("/homes/my-flat/sessions");
+    expect(route.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
     expect(await (await withUi.request("/homes/my-flat/sessions")).text()).toContain("The UI");
     expect((await withUi.request("/api/list_homes")).status).toBe(404);
   });
@@ -179,6 +191,87 @@ describe("the web API", () => {
       body: "{}",
     });
     expect([tool.status, unknown.status, form.status]).toEqual([404, 404, 415]);
+    expect(((await form.json()) as { error: { code: string } }).error.code).toBe(
+      "unsupported_media_type",
+    );
+  });
+});
+
+describe("errors the server didn't expect", () => {
+  /** An app on a core whose database has closed under it, so every call throws a plain Error. */
+  async function broken(): Promise<Hono> {
+    const other = createCore({ passwordCost: TEST_PASSWORD_COST });
+    const brokenApp = loggedIn(
+      other,
+      await addAccount(other),
+      createApp({ core: other, port: PORT }),
+    );
+    other.close();
+    return brokenApp;
+  }
+
+  it("answers { error } with 500 and an id the server's log names, never a stack", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await (await broken()).request("/api/list_homes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+
+      expect(response.status).toBe(500);
+      const { error } = (await response.json()) as { error: { code: string; message: string } };
+      expect(error.code).toBe("internal");
+      const id = /error ([0-9a-f]{8})/.exec(error.message)?.[1];
+      expect(error.message).toMatch(/^Something went wrong on the server\. Try again;/);
+      expect(error.message).not.toMatch(/ at |\.js|database/);
+      expect(id).toBeDefined();
+      const line = logged.mock.calls
+        .map((call) => call.join(" "))
+        .find((each) => each.includes(id as string));
+      expect(line).toContain("POST /api/list_homes");
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("logs a link's route, never the one-time token in its path", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const token = "s3cr3t-reset-token";
+      const response = await (await broken()).request(`/reset/${token}`);
+      expect(response.status).toBe(500);
+      const lines = logged.mock.calls.map((call) => call.join(" "));
+      expect(lines.some((line) => line.includes("GET /reset/:token"))).toBe(true);
+      expect(lines.some((line) => line.includes(token))).toBe(false);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("keeps the Home Folder script's 500 in plain text, for curl -f", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await (await broken()).request("/api/home_folder_script?home=flat");
+      expect(response.status).toBe(500);
+      expect(response.headers.get("content-type")).toMatch(/^text\/plain/);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("answers an unknown path or method under /api/ with { error } and 404", async () => {
+    for (const [method, path] of [
+      ["GET", "/api/list_homes"],
+      ["DELETE", "/api/x"],
+      ["POST", "/api/a/b"],
+    ] as const) {
+      const response = await app.request(path, { method });
+      expect(response.status, `${method} ${path}`).toBe(404);
+      expect(await response.json()).toEqual({
+        error: { code: "not_found", message: `There is no ${method} ${path}.` },
+      });
+    }
   });
 });
 
@@ -197,7 +290,8 @@ describe("the search index", () => {
         body: JSON.stringify({ home: fixture.home }),
       });
       expect(response.status).toBe(200);
-      const rows = (await response.json()) as FindRow[];
+      // An object, like every other operation's answer, so a field can be added later.
+      const { rows } = (await response.json()) as { rows: FindRow[] };
       expect(new Set(rows.map((each) => each.kind))).toEqual(
         new Set(["room", "decision", "item", "listing", "feature"]),
       );
@@ -338,6 +432,7 @@ describe("Photos", () => {
       const thumb = await withFixture.request(url("thumb"));
       expect([full.status, full.headers.get("content-type")]).toEqual([200, "image/jpeg"]);
       expect(full.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+      expectServedFileHeaders(full);
       expect(new Uint8Array(await full.arrayBuffer())).toEqual(jpeg(1));
       expect(thumb.headers.get("cache-control")).toBe("no-cache");
       expect(new Uint8Array(await thumb.arrayBuffer())).toEqual(jpeg(2));
@@ -440,6 +535,31 @@ describe("Photos", () => {
   });
 });
 
+describe("Listing pictures", () => {
+  it("serves a Listing's picture with the served-file headers", async () => {
+    const fixture = await createFixtureHome();
+    const withFixture = loggedIn(
+      fixture.core,
+      fixture.web,
+      createApp({ core: fixture.core, port: PORT }),
+    );
+    const png = new Uint8Array(64);
+    png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    await fixture.core.run("set_listing_photo", fixture.web, {
+      home: fixture.home,
+      listing: "solid-oak-bookcase",
+      file: png,
+    });
+
+    const got = await withFixture.request(
+      `/api/get_listing_photo?home=${fixture.home}&listing=solid-oak-bookcase`,
+    );
+
+    expect([got.status, got.headers.get("content-type")]).toEqual([200, "image/png"]);
+    expectServedFileHeaders(got);
+  });
+});
+
 describe("Documents", () => {
   it("takes a Document by multipart, serves it inline under its name, and edits and deletes by JSON", async () => {
     const fixture = await createFixtureHome();
@@ -496,6 +616,12 @@ describe("Documents", () => {
       const got = await withFixture.request(url(version));
       expect([got.status, got.headers.get("content-type")]).toEqual([200, "application/pdf"]);
       expect(got.headers.get("content-disposition")).toBe('inline; filename="IKEA receipt.pdf"');
+      // Not sandboxed: Firefox's PDF viewer won't open a sandboxed document. Nothing may still load,
+      // and it may not be framed.
+      expect(got.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(got.headers.get("content-security-policy")).toBe(
+        "default-src 'none'; frame-ancestors 'none'",
+      );
       expect(got.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
       expect(new Uint8Array(await got.arrayBuffer())).toEqual(pdf);
       expect((await withFixture.request(url())).headers.get("cache-control")).toBe("no-cache");
@@ -574,7 +700,7 @@ describe("Documents", () => {
     } as RequestInit);
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({
-      error: { code: "validation", message: expect.stringContaining("Manual link") },
+      error: { code: "too_large", message: expect.stringContaining("Manual link") },
     });
     expect(read).toBe(false);
   });
@@ -947,6 +1073,7 @@ describe("Blueprints", () => {
     const listed = await api("list_blueprints", { home: "my-flat" });
 
     expect(uploaded.status).toBe(200);
+    expectServedFileHeaders(page);
     expect(await uploaded.json()).toMatchObject({
       blueprint: {
         slug: "agent-plan",
@@ -1001,6 +1128,10 @@ describe("Blueprints", () => {
       "has no page 2",
     );
     expect(asJson.status).toBe(405);
+    expect(asJson.headers.get("allow")).toBe("GET");
+    expect(((await asJson.json()) as { error: { code: string } }).error.code).toBe(
+      "method_not_allowed",
+    );
   });
 
   it("view_images returns the text block, then two image blocks, under the 25K-token cap", async () => {
@@ -1181,10 +1312,12 @@ describe("the Home Folder script", () => {
   it("gives home_folder_setup's command and files through the web API", async () => {
     await api("create_home", { name: "My flat", country: "GB", city: "London" });
     const response = await api("home_folder_setup", { home: "my-flat" });
-    expect(await response.json()).toMatchObject({
+    const setup = (await response.json()) as { key: string };
+    expect(core.homeKeyOpens("my-flat", setup.key)).toBe(true);
+    expect(setup).toMatchObject({
       origin: `http://127.0.0.1:${PORT}`,
       command:
-        `curl -fsSL -H "Authorization: Bearer ${core.homeToken("my-flat")}" ` +
+        `curl -fsSL -H "Authorization: Bearer ${setup.key}" ` +
         `"http://127.0.0.1:${PORT}/api/home_folder_script?home=my-flat" | sh`,
     });
   });

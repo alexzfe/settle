@@ -160,7 +160,7 @@
             ]
           },
           "text": {
-            "description": "Only Items whose name, brand, model, materials, colors, or note contain this.",
+            "description": "Words to look for in each Item's name, brand, model, category, materials, colors, and note. Only Items with at least one of these words come back, those matching the most words first.",
             "type": "string",
             "minLength": 1
           },
@@ -182,7 +182,7 @@
     {
       "name": "find_decisions",
       "title": "Find decisions",
-      "description": "Lists this Home's Decisions, one line each: title and slug, kind, state (and when it was Fulfilled), the Room it is about or Home-wide, its open flags and Conflicts, and its one-line statement. Covers every state, Rejected and Fulfilled ones included, which the opening and Room Sheets leave out. Filter by room (a Room's slug) or homeWide, by kind, and by state. Before proposing a Decision, look up the Rejected ones in its scope and never propose one of them again. get_decision gives one Decision in full. Changes nothing.",
+      "description": "Lists this Home's Decisions, one line each: title and slug, kind, state (and when it was Fulfilled), the Room it is about or Home-wide, its open flags and Conflicts, and its one-line statement. Covers every state, Rejected and Fulfilled ones included, which the opening and Room Sheets leave out. Filter by room (a Room's slug) or homeWide, by kind, by state, and by fulfilled: what is still to buy is the Settled Purchases with fulfilled false. Before proposing a Decision, look up the Rejected ones in its scope and never propose one of them again. get_decision gives one Decision in full. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -218,6 +218,10 @@
             "description": "Only Decisions in this state.",
             "type": "string",
             "enum": ["candidate", "leaning", "settled", "rejected"]
+          },
+          "fulfilled": {
+            "description": "true for only the Fulfilled Decisions (Purchases bought); false for only those not Fulfilled, so a Settled Purchase with false is one still to buy.",
+            "type": "boolean"
           }
         },
         "required": ["session"]
@@ -340,7 +344,7 @@
     {
       "name": "view_photos",
       "title": "View photos",
-      "description": "Shows the user's own Photos of this Home's Rooms and Items as images, so you can look at them: first a text block with one line per Photo (its id, the Room or Item it is of, the Wall it shows, the day it was taken, its caption), then one image per Photo, as stored, in that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: at most 4 per call, and the fewest that answer the question, usually the newest or the one of the Wall in question. Call this only when the user has asked you to look or said yes to looking: each Photo stays in the Session's context for every later turn. Changes nothing.",
+      "description": "Shows the user's own Photos of this Home's Rooms and Items as images, so you can look at them: first a text block with one line per Photo (its id, the Room or Item it is of, the Wall it shows, the day it was taken, its caption), then one image per Photo, as stored, in that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: at most 4 per call, and the fewest that answer the question, usually the newest or the one of the Wall in question. Call this only when the user has asked you to look or said yes to looking: each Photo stays in the Session's context for every later turn. When the user only asks what is where or what something looks like, answer from the records and point them to the Room's or Item's page in the app; don't offer to look. Changes nothing.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -634,10 +638,10 @@
             "minLength": 1
           },
           "name": {
+            "description": "The Room's name as the user says it, e.g. \"Living room\" or \"Mia's room\". Needed for a new Room; with `room`, leave it out to keep the name, or give a new one to rename it (its slug stays).",
             "type": "string",
             "minLength": 1,
-            "maxLength": 100,
-            "description": "The Room's name as the user says it, e.g. \"Living room\" or \"Mia's room\". A new name renames it; its slug stays."
+            "maxLength": 100
           },
           "level": {
             "description": "The Level the Room is on, by slug or name (\"ground\"). A new Room without one goes on the ground Level; a staircase belongs to the Level you enter it from.",
@@ -1766,7 +1770,7 @@
             "minLength": 1
           }
         },
-        "required": ["session", "name"]
+        "required": ["session"]
       },
       "annotations": {
         "readOnlyHint": false,
@@ -2541,7 +2545,7 @@
     {
       "name": "set_decision_state",
       "title": "Set decision state",
-      "description": "Moves one Decision to another state and returns a receipt, including every Decision the move flagged. Only these moves: candidate to leaning, settled, or rejected; leaning to candidate, settled, or rejected; settled to leaning (a Reopen) or rejected; rejected to candidate (a revival). A Fulfilled Decision stays Settled for good: it can only be kept. Settle only when the user clearly commits. Before a Reopen, rejecting a Settled Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is required: why, quoting the user's words when they gave permission. A Reopen or Reject flags, but never changes, every Decision resting on this one; each flag stays until the user keeps, Reopens, or Rejects that Decision, which also clears its own flags and Conflicts. To keep a flagged Decision as it is, pass its current state as `to`, quoting the user. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm minimalism'\". Needs the open Session's id as `session`.",
+      "description": "Moves one Decision to another state and returns a receipt, including every Decision the move flagged. Only these moves: a Decision with an open flag or Conflict to its current state (a keep, which clears them; quote the user in `reason`); candidate to leaning, settled, or rejected; leaning to candidate, settled, or rejected; settled to leaning (a Reopen) or rejected; rejected to candidate (a revival). A Fulfilled Decision stays Settled for good: it can only be kept. Settle only when the user clearly commits. Before a Reopen, rejecting a Settled Decision, or reviving a Rejected one, ask the user and wait for a yes. `reason` is required: why, quoting the user's words when they gave permission. A Reopen or Reject flags, but never changes, every Decision resting on this one; each flag stays until the user keeps, Reopens, or Rejects that Decision, which also clears its own flags and Conflicts. Then say plainly what changed, e.g. \"Settled: Design Direction 'Warm minimalism'\". Needs the open Session's id as `session`.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -2779,7 +2783,7 @@
       },
       "annotations": {
         "readOnlyHint": false,
-        "openWorldHint": false
+        "openWorldHint": true
       },
       "execution": {
         "taskSupport": "forbidden"

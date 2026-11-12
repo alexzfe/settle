@@ -1,8 +1,9 @@
 // Who a Google sign-in reaches: the Account linked to its `sub`, always first; else, with an email
-// Google has verified, the Account with that email, linked from then on; else nothing. Only an
+// Google has verified, an Account with that email and no password, linked from then on; else
+// nothing. A password Account links Google only from its Account page, logged in. Only an
 // invite link makes an Account with Google, and that Account has no password until it sets one.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { LINK_MISS } from "./accounts.js";
+import { LINK_MISS, NO_PASSWORD } from "./accounts.js";
 import { type CallContext, type Core, createCore } from "./core.js";
 import { CoreError } from "./errors.js";
 import { addAccount, TEST_PASSWORD, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
@@ -43,19 +44,25 @@ function refusal(run: () => unknown): CoreError {
 }
 
 describe("googleLogIn", () => {
-  it("links a password Account whose email is Google's verified one, and logs it in", async () => {
+  it("never links a password Account by its email alone: whoever set the email may not own it", () => {
+    // Emails here are never confirmed: an invitee could have taken this one before its owner came.
+    const result = core.accounts.googleLogIn(kimAtGoogle);
+    expect(result).toEqual({ outcome: "has_password" });
+    expect(store.account(kimId)?.googleSub).toBeNull();
+  });
+
+  it("links an Account with no password by Google's verified email, and logs it in", () => {
+    store.update("accounts", kimId, { passwordHash: NO_PASSWORD });
     const result = core.accounts.googleLogIn(kimAtGoogle);
     expect(result).toMatchObject({
       outcome: "ok",
       account: { id: kimId, googleSub: "google-kim" },
     });
     expect(store.account(kimId)?.googleSub).toBe("google-kim");
-    // From then on it can use either.
-    expect((await core.accounts.logIn("kim@example.com", TEST_PASSWORD)).outcome).toBe("ok");
   });
 
   it("matches on the sub first, so a changed Google email still logs in", () => {
-    core.accounts.googleLogIn(kimAtGoogle);
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
     const result = core.accounts.googleLogIn({
       sub: "google-kim",
       email: "kim.new@gmail.com",
@@ -88,7 +95,7 @@ describe("googleLogIn", () => {
   });
 
   it("refuses a disabled Account, by email or by sub", async () => {
-    core.accounts.googleLogIn(kimAtGoogle);
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
     await core.run("disable_account", admin, { account: kimId });
     expect(core.accounts.googleLogIn(kimAtGoogle)).toEqual({ outcome: "disabled" });
     expect(core.accounts.googleLogIn({ ...kimAtGoogle, sub: "google-other" })).toEqual({
@@ -97,16 +104,74 @@ describe("googleLogIn", () => {
   });
 
   it("does not move an Account's link to another Google account with the same email", () => {
-    core.accounts.googleLogIn(kimAtGoogle);
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
     const result = core.accounts.googleLogIn({ ...kimAtGoogle, sub: "google-impostor" });
     expect(result).toEqual({ outcome: "linked_elsewhere" });
     expect(store.account(kimId)?.googleSub).toBe("google-kim");
   });
 
   it("keeps each Google account to one Settle Account", () => {
-    core.accounts.googleLogIn(kimAtGoogle);
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
     const samId = (admin.caller as { account: number }).account;
     expect(() => store.update("accounts", samId, { googleSub: "google-kim" })).toThrow(/UNIQUE/);
+  });
+});
+
+describe("linkGoogle", () => {
+  it("is offered on the Account page only when the server has Google sign-in on", async () => {
+    const withGoogle = createCore({ passwordCost: TEST_PASSWORD_COST, googleSignIn: true });
+    try {
+      const as = await addAccount(withGoogle, "max@example.com");
+      expect((await withGoogle.run("get_account", as, {})).account.googleSignIn).toBe(true);
+    } finally {
+      withGoogle.close();
+    }
+    expect((await core.run("get_account", admin, {})).account.googleSignIn).toBe(false);
+  });
+
+  it("links the Account logged in to the Google account it signed in with, whatever its email", async () => {
+    const result = core.accounts.linkGoogle(kimId, {
+      sub: "google-kim",
+      email: "kim.personal@gmail.com",
+      emailVerified: false,
+    });
+    expect(result).toEqual({ outcome: "ok" });
+    expect(core.accounts.googleLogIn({ sub: "google-kim", emailVerified: false })).toMatchObject({
+      outcome: "ok",
+      account: { id: kimId },
+    });
+    // From then on it can use either.
+    expect((await core.accounts.logIn("kim@example.com", TEST_PASSWORD)).outcome).toBe("ok");
+    // Again, with the same one, changes nothing.
+    expect(core.accounts.linkGoogle(kimId, kimAtGoogle)).toEqual({ outcome: "ok" });
+  });
+
+  it("refuses a Google account another Account is linked to, and moves no link", () => {
+    const samId = (admin.caller as { account: number }).account;
+    core.accounts.linkGoogle(samId, kimAtGoogle);
+    expect(core.accounts.linkGoogle(kimId, kimAtGoogle)).toEqual({ outcome: "linked_elsewhere" });
+    expect(store.account(kimId)?.googleSub).toBeNull();
+    expect(store.account(samId)?.googleSub).toBe("google-kim");
+  });
+
+  it("never replaces the Google account an Account is linked to: any Login could start a link", () => {
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
+    const other = { sub: "google-someone-else", email: "x@gmail.com", emailVerified: true };
+    expect(core.accounts.linkGoogle(kimId, other)).toEqual({ outcome: "already_linked" });
+    expect(store.account(kimId)?.googleSub).toBe("google-kim");
+  });
+
+  it("is undone by a password reset, which assumes someone else knew the password", async () => {
+    core.accounts.linkGoogle(kimId, { sub: "google-intruder", emailVerified: false });
+    const { reset } = await core.run("create_reset_link", admin, { account: kimId });
+    const token = reset.url.slice(reset.url.lastIndexOf("/") + 1);
+    await core.accounts.redeem("reset", token, { password: `${TEST_PASSWORD}-new` });
+    expect(store.account(kimId)?.googleSub).toBeNull();
+    expect(core.accounts.googleLogIn({ sub: "google-intruder", emailVerified: false })).toEqual({
+      outcome: "unknown",
+    });
+    // The owner can link their own Google account again.
+    expect(core.accounts.linkGoogle(kimId, kimAtGoogle)).toEqual({ outcome: "ok" });
   });
 });
 
@@ -159,7 +224,7 @@ describe("redeemWithGoogle", () => {
   });
 
   it("refuses a Google account or an email that already has an Account", async () => {
-    core.accounts.googleLogIn(kimAtGoogle);
+    core.accounts.linkGoogle(kimId, kimAtGoogle);
     const token = await inviteToken();
     const linked = refusal(() =>
       core.accounts.redeemWithGoogle(token, { ...kimAtGoogle, email: "kim2@gmail.com" }),

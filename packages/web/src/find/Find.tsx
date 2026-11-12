@@ -165,7 +165,7 @@ function FindOverlay({
   const [active, setActive] = useState<Active>({ row: 0, side: false });
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
-  const results = useMemo(() => find(index.data ?? [], query), [index.data, query]);
+  const results = useMemo(() => find(index.data?.rows ?? [], query), [index.data, query]);
   const shown = expanded ? results : results.slice(0, SHOWN);
   const current = shown[active.row];
   const targetId = current && `${id}-${active.row}${active.side ? "-side" : ""}`;

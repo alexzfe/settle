@@ -24,6 +24,12 @@ const PLACEHOLDER_PAGE = `<!doctype html>
 </html>
 `;
 
+/** The app's page and assets: no other site may frame them, and the browser never sniffs a type. */
+const APP_HEADERS: Record<string, string> = {
+  "content-security-policy": "frame-ancestors 'none'",
+  "x-content-type-options": "nosniff",
+};
+
 /**
  * Serves the built web UI from `webDist`, with a history fallback: any other page path is a
  * client-side route and gets index.html. Without a build, `/` shows a placeholder page.
@@ -34,6 +40,11 @@ export function serveWeb(app: Hono, webDist: string | undefined): void {
     app.get("/", (c) => c.html(PLACEHOLDER_PAGE));
     return;
   }
+  app.use("*", async (c, next) => {
+    await next();
+    if (SERVER_PATHS.test(c.req.path)) return;
+    for (const [name, value] of Object.entries(APP_HEADERS)) c.header(name, value);
+  });
   app.use("*", serveStatic({ root: webDist }));
   app.get("*", async (c) => {
     if (SERVER_PATHS.test(c.req.path)) return c.notFound();
