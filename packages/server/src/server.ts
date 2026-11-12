@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
-import type { Server } from "node:http";
-import type { AddressInfo } from "node:net";
+import type { IncomingMessage, Server } from "node:http";
+import type { AddressInfo, Socket } from "node:net";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { type Core, type CoreOptions, createCore } from "@settle/core";
@@ -34,6 +34,8 @@ export interface ServerOptions {
   webDist?: string;
   /** Internal seam: scrypt's cost; a test gives a cheap one. */
   passwordCost?: CoreOptions["passwordCost"];
+  /** Internal seam: how long a stop waits for requests in flight; a test gives a short one. */
+  stopGraceMs?: number;
 }
 
 type Fetch = Parameters<typeof serve>[0]["fetch"];
@@ -44,7 +46,7 @@ type Fetch = Parameters<typeof serve>[0]["fetch"];
  */
 export async function startServer(
   config: Config,
-  { webDist = WEB_DIST, passwordCost }: ServerOptions = {},
+  { webDist = WEB_DIST, passwordCost, stopGraceMs = STOP_GRACE_MS }: ServerOptions = {},
 ): Promise<RunningServer> {
   mkdirSync(config.dataDir, { recursive: true });
   const lanHost = config.lan && (config.lan.host ?? lanAddress());
@@ -58,17 +60,34 @@ export async function startServer(
   let lanApp: Hono | undefined;
   let core: Core | undefined;
   const servers: Server[] = [];
+  const streams = new Set<Socket>();
+  // The handlers still running, so a stop closes the database only once they have ended.
+  const handling = new Set<Promise<unknown>>();
+  const track = (answer: Response | Promise<Response>): Response | Promise<Response> => {
+    if (!(answer instanceof Promise)) return answer;
+    const settled = answer.catch(() => {});
+    handling.add(settled);
+    void settled.finally(() => handling.delete(settled));
+    return answer;
+  };
+  let closing: Promise<void> | undefined;
   try {
     const main = await listen(config.host, config.port, (request, env) =>
-      app ? app.fetch(request, env) : unavailable(),
+      app ? track(app.fetch(request, env)) : unavailable(),
     );
     servers.push(main);
+    // The /events streams never finish by themselves, so a stop ends them rather than waiting.
+    main.on("request", (request: IncomingMessage) => {
+      if (!request.url?.startsWith("/events")) return;
+      streams.add(request.socket);
+      request.socket.once("close", () => streams.delete(request.socket));
+    });
     const { port } = main.address() as AddressInfo;
     const lanUrl = lanHost && `http://${urlHost(lanHost)}:${port}`;
     if (lanHost) {
       servers.push(
         await listen(lanHost, port, (request, env) =>
-          lanApp ? lanApp.fetch(request, env) : unavailable(),
+          lanApp ? track(lanApp.fetch(request, env)) : unavailable(),
         ),
       );
     }
@@ -100,7 +119,13 @@ export async function startServer(
       origin: config.publicOrigin ?? `http://127.0.0.1:${port}`,
       ...(lanUrl ? { lanUrl } : {}),
       ...(setupUrl ? { setupUrl } : {}),
-      close: () => closeAll(servers).finally(() => open.close()),
+      close: () => {
+        // Once, though SIGINT and SIGTERM may both ask.
+        closing ??= closeAll(servers, streams, stopGraceMs)
+          .then(() => handlersEnded(handling))
+          .finally(() => open.close());
+        return closing;
+      },
     };
   } catch (error) {
     core?.close();
@@ -127,15 +152,63 @@ function unavailable(): Response {
   return new Response(null, { status: 503 });
 }
 
-async function closeAll(servers: Server[]): Promise<void> {
-  await Promise.all(
+/**
+ * How long a stop waits for requests in flight (an upload, a Blueprint render) before cutting
+ * them. With HANDLER_END_MS after it, a stop stays well inside the 10 s Docker gives between
+ * SIGTERM and SIGKILL.
+ */
+const STOP_GRACE_MS = 7000;
+
+/**
+ * How long a stop then waits for the handlers of cut requests to end. A cut request's body ends
+ * early, so its handler usually ends at once; one that does not is not waited on past this.
+ */
+const HANDLER_END_MS = 1000;
+
+/** Resolves once every handler still running has ended, or after HANDLER_END_MS. */
+async function handlersEnded(handling: Set<Promise<unknown>>): Promise<void> {
+  if (handling.size === 0) return;
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    Promise.all(handling),
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, HANDLER_END_MS);
+    }),
+  ]);
+  clearTimeout(timer);
+}
+
+/**
+ * Stops accepting, ends the /events streams, and lets the requests in flight finish, closing each
+ * connection once its answer is sent; whatever is still open after the grace is cut. The caller
+ * then waits for the handlers to end and only then closes the database, so no handler writes to
+ * a closed one.
+ */
+async function closeAll(
+  servers: Server[],
+  streams: Set<Socket> = new Set(),
+  graceMs = STOP_GRACE_MS,
+): Promise<void> {
+  const closed = Promise.all(
     servers.map(
       (server) =>
         new Promise<void>((resolve, reject) => {
           server.close((error) => (error ? reject(error) : resolve()));
-          // Open /events streams would otherwise keep close() waiting forever.
-          server.closeAllConnections();
         }),
     ),
   );
+  for (const socket of streams) socket.destroy();
+  // A kept-alive connection goes idle once its request is answered; close it then.
+  const sweep = setInterval(() => {
+    for (const server of servers) server.closeIdleConnections();
+  }, 50);
+  const cut = setTimeout(() => {
+    for (const server of servers) server.closeAllConnections();
+  }, graceMs);
+  try {
+    await closed;
+  } finally {
+    clearInterval(sweep);
+    clearTimeout(cut);
+  }
 }

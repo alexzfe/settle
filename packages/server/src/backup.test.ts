@@ -1,6 +1,18 @@
-import { createWriteStream, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { once } from "node:events";
+import {
+  closeSync,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  rmSync,
+  statSync,
+  writeSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { TEST_PASSWORD, TEST_PASSWORD_COST } from "@settle/core";
 import { extract } from "tar";
 import { afterAll, beforeAll, expect, it } from "vitest";
@@ -110,6 +122,34 @@ it("writes a .tar.gz that restores into a server serving the same Homes and file
     expect(new Uint8Array(await served.arrayBuffer())).toEqual(JPEG);
   } finally {
     await again.close();
+  }
+});
+
+it("refuses to write an archive of a database that fails SQLite's integrity check", async () => {
+  // A database with an index, then a page in the middle overwritten: the online backup copies
+  // pages as they are, so the copy is as broken as the original.
+  const dataDir = join(root, "broken");
+  mkdirSync(dataDir);
+  const database = new DatabaseSync(join(dataDir, "settle.sqlite"));
+  database.exec("CREATE TABLE notes (text TEXT); CREATE INDEX notes_text ON notes (text);");
+  const insert = database.prepare("INSERT INTO notes VALUES (?)");
+  for (let i = 0; i < 2000; i++) insert.run(`note ${i} ${"x".repeat(50)}`);
+  database.close();
+  const file = openSync(join(dataDir, "settle.sqlite"), "r+");
+  writeSync(file, Buffer.alloc(4096, 0x41), 0, 4096, 4096 * 3);
+  closeSync(file);
+
+  // The file is open before the refusal, so an empty file shows nothing was written.
+  const archive = join(root, "broken.tgz");
+  const out = createWriteStream(archive);
+  await once(out, "open");
+  try {
+    await expect(writeBackup(dataDir, out)).rejects.toThrow(
+      /failed SQLite's integrity check.*no backup was written/s,
+    );
+    expect(statSync(archive).size).toBe(0);
+  } finally {
+    out.destroy();
   }
 });
 

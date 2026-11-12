@@ -1,0 +1,10 @@
+{
+  // The image's build: the shipped code only, without tests or maps. tsconfig.json still builds
+  // and type-checks everything for development and CI.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": false,
+    "declarationMap": false
+  },
+  "exclude": ["src/**/*.test.ts"]
+}

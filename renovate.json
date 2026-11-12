@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "7 days",
+  "enabledManagers": ["github-actions", "dockerfile", "custom.regex"],
+  "customManagers": [
+    {
+      "description": "pnpm, pinned in CI's env and the Dockerfile's ARG",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/", "/^Dockerfile$/"],
+      "matchStrings": ["PNPM_VERSION[:=] ?(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "pnpm",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "description": "Node, pinned in CI's env; the Dockerfile's base image carries the same version",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["NODE_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "CI's Node and the image's base image move in one pull request",
+      "matchDepNames": ["node"],
+      "groupName": "node"
+    },
+    {
+      "description": "infra's deploy workflow is followed at main on purpose, so its fixes reach Settle without a pull request here",
+      "matchPackageNames": ["alexzfe/infra"],
+      "enabled": false
+    }
+  ]
+}
