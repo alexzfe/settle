@@ -8,12 +8,14 @@ export {
   type GoogleLogInResult,
   type GrantResult,
   LINK_MISS,
+  type LinkGoogleResult,
   LOGIN_DAYS,
   type LogInResult,
   PASSWORD_MAX,
   PASSWORD_MIN,
   type PasswordCost,
   type TokenGrant,
+  WRONG_PASSWORD,
 } from "./accounts.js";
 export {
   type AnyOperation,
@@ -67,6 +69,7 @@ export type { FindRow } from "./operations/find-index.js";
 export type { Session } from "./operations/homes.js";
 export * from "./operations/schemas.js";
 export { SKILLS, type Skill } from "./operations/sessions.js";
+export { hostBlocked, safeLookup } from "./private-addresses.js";
 export type { Operation, OperationSurface } from "./registry.js";
 export {
   DECISION_KIND_LABELS,

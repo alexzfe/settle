@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { PasswordCost } from "./accounts.js";
+import type { RenderRunner } from "./blueprints/render-runner.js";
 import type { RecordKind } from "./events.js";
 import type { FileStore, PdfRenderer } from "./files.js";
 import type { ImageFetcher } from "./images.js";
@@ -48,6 +49,11 @@ export interface OperationContext extends CallContext {
   /** Renders Blueprint files to page images and text lines. */
   renderPdf: PdfRenderer;
   /**
+   * Runs Blueprint renders off the server's own thread, with a time limit: every render of a file
+   * goes through it, never through renderPdf.open directly.
+   */
+  renders: RenderRunner;
+  /**
    * Fetches a Listing's product photo from the shop, validated: core's one outbound call (see
    * images.ts). A port like the two above, so no test ever reaches the network; store.transaction
    * is synchronous, so callers fetch before the write, never inside it.
@@ -63,6 +69,8 @@ export interface OperationContext extends CallContext {
   random(max: number): number;
   /** scrypt's cost for a new password hash (accounts.ts). */
   passwordCost: PasswordCost;
+  /** Whether the server offers Sign in with Google. */
+  googleSignIn: boolean;
   /**
    * The origin the app names itself by: the public origin when hosted, else
    * "http://127.0.0.1:<port>". The Home Folder's .mcp.json points the Agent at it.

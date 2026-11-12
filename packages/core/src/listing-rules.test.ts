@@ -5,12 +5,14 @@
 //
 // The image fetch is a port on OperationContext, so every test here injects its own: no test
 // reaches the network. What the real one does is in images.test.ts.
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { join, relative } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CallContext, type Core, createCore, type OperationInput } from "./core.js";
 import { CoreError } from "./errors.js";
+import { nodeFileStore } from "./files.js";
 import { addAccount, TEST_PASSWORD_COST } from "./fixture/fixture-home.js";
 import type { FetchedImage } from "./images.js";
 import type { DecisionDetail, Listing } from "./operations/schemas.js";
@@ -19,6 +21,7 @@ let web: CallContext;
 
 const JPEG = image([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46], "image/jpeg");
 const PNG = image([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], "image/png");
+const JPEG_2 = image([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x10, 0x45, 0x78], "image/jpeg");
 const WEBP = image([0x52, 0x49, 0x46, 0x46, 0x20, 0, 0, 0, 0x57, 0x45, 0x42, 0x50], "image/webp");
 
 function image(signature: number[], type: FetchedImage["type"]): FetchedImage {
@@ -35,6 +38,8 @@ let fetched: string[];
 
 /** The clock, movable so a test can come back to a hold on a later day. */
 let now: string;
+/** Called with each path, relative to the data dir, as the file store removes it. */
+let onRemove: ((path: string) => void) | undefined;
 let dataDir: string;
 let core: Core;
 let home: string;
@@ -45,10 +50,20 @@ beforeEach(async () => {
   answers = new Map();
   fetched = [];
   now = "2026-09-17T10:00:00.000Z";
+  onRemove = undefined;
   dataDir = mkdtempSync(join(tmpdir(), "settle-listings-"));
   core = createCore({
     passwordCost: TEST_PASSWORD_COST,
     dataDir,
+    // A file, so a second connection can see what is committed and fail a write on purpose.
+    database: join(dataDir, "settle.db"),
+    files: {
+      ...nodeFileStore,
+      remove(path) {
+        onRemove?.(relative(dataDir, path));
+        nodeFileStore.remove(path);
+      },
+    },
     clock: () => new Date(now),
     async fetchImage(url) {
       fetched.push(url);
@@ -80,6 +95,7 @@ beforeEach(async () => {
   });
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   core.close();
   rmSync(dataDir, { recursive: true, force: true });
 });
@@ -139,6 +155,43 @@ async function decisionText(decision = "wool-rug"): Promise<string> {
 async function changes(): Promise<{ field: string | null; old: unknown; new: unknown }[]> {
   const { changes: all } = await core.run("get_change_log", web, { home });
   return all as unknown as { field: string | null; old: unknown; new: unknown }[];
+}
+
+const listingsDir = () => join(dataDir, "uploads", home, "listings");
+/** The Listing pictures on disk, by file name. */
+const pictures = () => (existsSync(listingsDir()) ? readdirSync(listingsDir()).sort() : []);
+
+/** The Listings' picture paths as committed, read over a second connection. */
+function committedPhotoPaths(): string[] {
+  const db = new DatabaseSync(join(dataDir, "settle.db"), { readOnly: true });
+  try {
+    return db
+      .prepare("SELECT photo_path FROM listings WHERE photo_path IS NOT NULL ORDER BY id")
+      .all()
+      .map((row) => row.photo_path as string);
+  } finally {
+    db.close();
+  }
+}
+
+/** Fails every change-log write, as a full disk would, until the answer is called. */
+function failWrites(): () => void {
+  const db = new DatabaseSync(join(dataDir, "settle.db"));
+  db.exec(
+    "CREATE TRIGGER fail_writes BEFORE INSERT ON change_log " +
+      "BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+  );
+  return () => {
+    db.exec("DROP TRIGGER fail_writes");
+    db.close();
+  };
+}
+
+/** Each removal, with the picture paths committed at that moment. */
+function watchRemovals(): { path: string; committed: string[] }[] {
+  const removals: { path: string; committed: string[] }[] = [];
+  onRemove = (path) => removals.push({ path, committed: committedPhotoPaths() });
+  return removals;
 }
 
 describe("the Rating", () => {
@@ -215,9 +268,11 @@ describe("the picture", () => {
     const [recorded] = await listings();
     expect(recorded?.photoUrl).toBe("https://media.example.pe/falabellaPE/1_01/public");
     expect(recorded?.photoVersion).toMatch(/^[0-9a-f]{16}$/);
-    // The URL has no extension at all; the bytes say WebP, so the stored copy is a .webp.
-    const path = join(dataDir, "uploads", home, "listings", "hay-plain-rug.webp");
-    expect(new Uint8Array(readFileSync(path))).toEqual(WEBP.bytes);
+    // The URL has no extension at all; the bytes say WebP, so the stored copy is a .webp, named
+    // for its version so new bytes never overwrite it.
+    const name = `hay-plain-rug-${recorded?.photoVersion}.webp`;
+    expect(pictures()).toEqual([name]);
+    expect(new Uint8Array(readFileSync(join(listingsDir(), name)))).toEqual(WEBP.bytes);
 
     const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
     expect(served.mimeType).toBe("image/webp");
@@ -236,10 +291,10 @@ describe("the picture", () => {
     expect((await listings())[0]?.photoVersion).toBe(first);
 
     await listing({ listing: "hay-plain-rug", photoUrl: "https://shop.example/b.png" });
-    expect((await listings())[0]?.photoVersion).not.toBe(first);
+    const second = (await listings())[0]?.photoVersion;
+    expect(second).not.toBe(first);
     // The JPEG it replaced does not linger beside the new PNG.
-    expect(existsSync(join(dataDir, "uploads", home, "listings", "hay-plain-rug.jpg"))).toBe(false);
-    expect(existsSync(join(dataDir, "uploads", home, "listings", "hay-plain-rug.png"))).toBe(true);
+    expect(pictures()).toEqual([`hay-plain-rug-${second}.png`]);
   });
 
   it("never fails the call, whatever goes wrong: the Listing is recorded with the link and the receipt says so", async () => {
@@ -266,6 +321,72 @@ describe("the picture", () => {
       n++;
     }
     expect(existsSync(join(dataDir, "uploads", home, "listings"))).toBe(false);
+  });
+
+  it("tells the Agent what it can do when the picture can't be fetched: ask the user to paste it", async () => {
+    // The fetcher's refusal speaks to the user at the paste box; the Agent can paste nothing.
+    answers.set(
+      "https://shop.example/walled.jpg",
+      new CoreError(
+        "validation",
+        "Couldn't fetch an image from that address. Save the picture from the shop's page, then " +
+          "paste it or choose the file instead.",
+      ),
+    );
+    const receipt = await listing(hay({ photoUrl: "https://shop.example/walled.jpg" }));
+    expect(receipt).toContain(
+      "its picture could not be stored, so the link is kept: Couldn't fetch an image from that " +
+        "address. If the user wants the picture, ask them to save it from the shop's page and " +
+        "paste it into the Listing on the board.",
+    );
+    expect(receipt).not.toContain("choose the file");
+  });
+
+  it("keeps the picture it had when the write replacing it rolls back", async () => {
+    answers.set("https://shop.example/a.jpg", JPEG);
+    answers.set("https://shop.example/b.jpg", JPEG_2);
+    await listing(hay({ photoUrl: "https://shop.example/a.jpg" }));
+
+    const restore = failWrites();
+    await expect(
+      listing({ listing: "hay-plain-rug", photoUrl: "https://shop.example/b.jpg" }),
+    ).rejects.toThrow("disk full");
+    restore();
+
+    const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
+    expect(served.data).toEqual(JPEG.bytes);
+    expect(pictures()).toHaveLength(1);
+  });
+
+  it("removes the picture it replaced only once the new one is committed", async () => {
+    answers.set("https://shop.example/a.jpg", JPEG);
+    answers.set("https://shop.example/b.png", PNG);
+    await listing(hay({ photoUrl: "https://shop.example/a.jpg" }));
+    const [old] = committedPhotoPaths();
+
+    const removals = watchRemovals();
+    await listing({ listing: "hay-plain-rug", photoUrl: "https://shop.example/b.png" });
+
+    expect(removals).toEqual([{ path: old, committed: committedPhotoPaths() }]);
+    expect(committedPhotoPaths()).not.toContain(old);
+    expect(pictures()).toHaveLength(1);
+  });
+
+  it("keeps the new picture, and succeeds, when removing the one it replaced fails", async () => {
+    answers.set("https://shop.example/a.jpg", JPEG);
+    answers.set("https://shop.example/b.png", PNG);
+    await listing(hay({ photoUrl: "https://shop.example/a.jpg" }));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onRemove = () => {
+      throw new Error("EBUSY: resource busy");
+    };
+
+    await listing({ listing: "hay-plain-rug", photoUrl: "https://shop.example/b.png" });
+
+    onRemove = undefined;
+    const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
+    expect(served.data).toEqual(PNG.bytes);
+    expect(String(warn.mock.calls[0])).toContain("EBUSY");
   });
 
   it("is refused by get_listing_photo when only the link was kept", async () => {
@@ -298,7 +419,7 @@ describe("set_listing_photo, the board's paste box", () => {
     expect(after.photoUrl).toBe("https://shop.example/a.jpg");
     const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
     expect([served.mimeType, served.data]).toEqual(["image/png", PNG.bytes]);
-    expect(existsSync(join(dataDir, "uploads", home, "listings", "hay-plain-rug.jpg"))).toBe(false);
+    expect(pictures()).toEqual([`hay-plain-rug-${after.photoVersion}.png`]);
   });
 
   it("takes an image URL instead, fetching it with the same validation, and records it as the source", async () => {
@@ -312,6 +433,65 @@ describe("set_listing_photo, the board's paste box", () => {
     expect(
       (await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" })).mimeType,
     ).toBe("image/webp");
+  });
+
+  it("keeps the picture it had when the write replacing it rolls back", async () => {
+    const restore = failWrites();
+    await expect(
+      core.run("set_listing_photo", web, { home, listing: "hay-plain-rug", file: JPEG_2.bytes }),
+    ).rejects.toThrow("disk full");
+    restore();
+
+    const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
+    expect(served.data).toEqual(JPEG.bytes);
+    expect(pictures()).toHaveLength(1);
+  });
+
+  it("removes the picture it replaced only once the new one is committed", async () => {
+    const [old] = committedPhotoPaths();
+    const removals = watchRemovals();
+
+    await core.run("set_listing_photo", web, {
+      home,
+      listing: "hay-plain-rug",
+      file: JPEG_2.bytes,
+    });
+
+    expect(removals).toEqual([{ path: old, committed: committedPhotoPaths() }]);
+    expect(committedPhotoPaths()).not.toContain(old);
+    const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
+    expect(served.data).toEqual(JPEG_2.bytes);
+    expect(pictures()).toHaveLength(1);
+  });
+
+  it("keeps the new picture, and succeeds, when removing the one it replaced fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    onRemove = () => {
+      throw new Error("EBUSY: resource busy");
+    };
+
+    await core.run("set_listing_photo", web, {
+      home,
+      listing: "hay-plain-rug",
+      file: JPEG_2.bytes,
+    });
+
+    onRemove = undefined;
+    const served = await core.run("get_listing_photo", web, { home, listing: "hay-plain-rug" });
+    expect(served.data).toEqual(JPEG_2.bytes);
+    expect(String(warn.mock.calls[0])).toContain("EBUSY");
+  });
+
+  it("does not fetch for a Listing the Home has not got", async () => {
+    const error = await refusal(
+      core.run("set_listing_photo", web, {
+        home,
+        listing: "nope",
+        url: "https://shop.example/a.jpg",
+      }),
+    );
+    expect(error.code).toBe("not_found");
+    expect(fetched).toEqual(["https://shop.example/a.jpg"]);
   });
 
   it("reports its failures, unlike the automatic fetch, because the user is waiting on it", async () => {
@@ -442,7 +622,7 @@ describe("drop_listing", () => {
 
     expect(dropped).toEqual({ decision: "wool-rug", listing: "hay-plain-rug" });
     expect(await listings()).toEqual([]);
-    expect(existsSync(join(dataDir, "uploads", home, "listings", "hay-plain-rug.jpg"))).toBe(false);
+    expect(pictures()).toEqual([]);
     // The change log reads newest first.
     const all = await changes();
     const added = all.slice(0, all.length - before);
@@ -454,6 +634,16 @@ describe("drop_listing", () => {
     });
     // The slug is free again, and the Purchase still stands.
     expect((await detail()).requirements).toHaveLength(3);
+  });
+
+  it("removes the picture only once the drop is committed", async () => {
+    const [old] = committedPhotoPaths();
+    const removals = watchRemovals();
+
+    await core.run("drop_listing", web, { home, listing: "hay-plain-rug" });
+
+    expect(removals).toEqual([{ path: old, committed: [] }]);
+    expect(pictures()).toEqual([]);
   });
 
   it("is refused for a Listing this Home has not got", async () => {

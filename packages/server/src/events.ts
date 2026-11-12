@@ -11,7 +11,10 @@ const KEEP_ALIVE_MS = 25_000;
  * GET /events?home=<slug>, for a Home of the Account logged in: Server-Sent Events, one "change" event with data
  * { home, recordKind, recordSlug } for each record a committed write changed in that Home, and
  * one "agent" event with data { home, at } for each MCP tool call the Agent makes for it. The
- * last "agent" event, when there is one, is also sent on connect.
+ * last "agent" event, when there is one, is also sent on connect. The stream lasts only as long
+ * as what opened it: before each event and keep-alive, the Login must still hold and the Home still
+ * be its Account's, or the stream ends, so a tab left open after logging out, or after the Account
+ * is disabled or deleted, hears nothing more (and never a Home made later under the same slug).
  */
 export function streamChanges(core: Core, activity: AgentActivity, c: Context): Response {
   const home = c.req.query("home");
@@ -20,19 +23,39 @@ export function streamChanges(core: Core, activity: AgentActivity, c: Context): 
     return c.json({ error: { code: "validation", message } }, 400);
   }
   // Its own ownership check, since no operation runs: another Account's Home is not found.
+  const caller = callerOf(c);
   try {
-    core.checkHome(callerOf(c), home);
+    core.checkHome(caller, home);
   } catch (error) {
     if (!(error instanceof CoreError)) throw error;
     return c.json({ error: { code: error.code, message: error.message } }, 404);
   }
+  /** Whether the Login that opened the stream still holds, and the Home is still its Account's. */
+  const holds = () => {
+    const { caller: who } = caller;
+    if (who.kind !== "web") return false;
+    if (who.login !== undefined && !core.accounts.loginHolds(who.login, who.account)) return false;
+    try {
+      core.checkHome(caller, home);
+      return true;
+    } catch (error) {
+      if (!(error instanceof CoreError)) throw error;
+      return false;
+    }
+  };
   // A reverse proxy (nginx, as on the homeserver) would otherwise hold the stream in its buffer
   // and deliver events late or in bursts; this header tells it to pass each one through at once.
   c.header("X-Accel-Buffering", "no");
   return streamSSE(c, async (stream) => {
     // Writes go out one after another; a failed write means the client left, and onAbort ends it.
     let writing: Promise<unknown> = Promise.resolve();
+    let end = () => {};
+    const ended = new Promise<void>((resolve) => {
+      end = resolve;
+      stream.onAbort(resolve);
+    });
     const send = (write: () => Promise<unknown>) => {
+      if (!holds()) return end();
       writing = writing.then(write).catch(() => {});
     };
     // A comment first, so the response and its headers reach the client straight away.
@@ -52,7 +75,7 @@ export function streamChanges(core: Core, activity: AgentActivity, c: Context): 
       () => send(() => stream.write(": keep-alive\n\n")),
       KEEP_ALIVE_MS,
     );
-    await new Promise<void>((resolve) => stream.onAbort(resolve));
+    await ended;
     clearInterval(keepAlive);
     stop();
     stopAgent();

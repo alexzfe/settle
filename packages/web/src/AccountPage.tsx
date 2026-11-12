@@ -17,7 +17,7 @@ export function AccountPage() {
   const account = useAccount();
   if (account.isPending) return <p>Loading…</p>;
   if (account.isError) return <p className={styles.error}>{account.error.message}</p>;
-  const { email, admin, createdAt, password, google } = account.data.account;
+  const { email, admin, createdAt, password, google, googleSignIn } = account.data.account;
   return (
     <>
       <h1>Your account</h1>
@@ -26,6 +26,12 @@ export function AccountPage() {
         {admin && ", the Admin of this server"}. Made {formatDate(createdAt)}.
         {google && " You can log in with Google."}
       </p>
+      {googleSignIn && !google && (
+        <p>
+          {/* A full page load, not the app's router: the trip goes to Google and back. */}
+          <a href="/auth/google?link=1">Link Google</a> to log in with your Google account too.
+        </p>
+      )}
       <div className={page.columns}>
         <div>
           <Section title="Email">
@@ -147,7 +153,7 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
       )}
       <p className={styles.muted}>
         At least 12 characters; a few words in a row is fine. Every other browser logged in to your
-        account is logged out.
+        account is logged out, and Claude is disconnected.
       </p>
       {hasPassword && (
         <label>
@@ -180,7 +186,7 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
       {change.isSuccess && (
         <p role="status">
           {change.variables.current === undefined ? "Password set." : "Password changed."} Other
-          browsers are logged out.
+          browsers are logged out, and Claude is disconnected.
         </p>
       )}
       {change.isError && (
@@ -223,7 +229,10 @@ function Logins() {
       >
         Log out everywhere
       </button>
-      <p>This disconnects Claude too.</p>
+      <p>
+        This disconnects Claude too, and cancels the keys of your Homes: each Home Folder must be
+        set up again, from its Home's About page.
+      </p>
       {end.isError && (
         <p role="alert" className={styles.error}>
           {end.error.message}

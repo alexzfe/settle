@@ -8,6 +8,7 @@ import type { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import { FailureLimiter } from "./limits.js";
+import { loginCookie } from "./testing.js";
 
 const ORIGIN = "https://settle.example.com";
 const CLIENT_ID = "123-test.apps.googleusercontent.com";
@@ -168,7 +169,20 @@ describe("on", () => {
     expect(line).toMatch(/Path=\/auth\/google/);
   });
 
-  it("links a password Account by Google's verified email and logs it in, back to next", async () => {
+  it("never links a password Account by its email alone, saying how to link it instead", async () => {
+    const { response } = await signIn(app(), "/auth/google?next=/");
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain(
+      "Log in with your email and password, then link Google from your Account page.",
+    );
+    expect(cookieOf(response, "settle_login")).toBeUndefined();
+    expect(fixture.core.accounts.googleLogIn({ sub: "google-kim", emailVerified: false })).toEqual({
+      outcome: "unknown",
+    });
+  });
+
+  it("logs in the Account linked to the Google account, back to next", async () => {
+    fixture.core.accounts.linkGoogle(kimId, { sub: "google-kim", emailVerified: true });
     const { response, google } = await signIn(app(), "/auth/google?next=%2Fauthorize%2Fresume");
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("/authorize/resume");
@@ -186,8 +200,8 @@ describe("on", () => {
     );
   });
 
-  it("matches on the sub after that, whatever the Google email has become", async () => {
-    await signIn(app(), "/auth/google?next=/");
+  it("matches on the sub, whatever the Google email has become", async () => {
+    fixture.core.accounts.linkGoogle(kimId, { sub: "google-kim", emailVerified: true });
     identity = { sub: "google-kim", email: "kim.renamed@gmail.com", email_verified: true };
     const { response } = await signIn(app(), "/auth/google?next=/");
     expect(response.status).toBe(303);
@@ -256,8 +270,58 @@ describe("on", () => {
   });
 
   it("never sends a login off the site", async () => {
+    fixture.core.accounts.linkGoogle(kimId, { sub: "google-kim", emailVerified: true });
     const { response } = await signIn(app(), "/auth/google?next=%2F%2Fevil.example");
     expect(response.headers.get("location")).toBe("/");
+  });
+});
+
+describe("linking Google from the Account page", () => {
+  /** The round trip, begun and ended by a browser logged in as `login` (a Cookie header). */
+  async function linkTrip(to: Hono, login: string) {
+    const started = await get(to, "/auth/google?link=1", login);
+    expect(started.status).toBe(302);
+    const google = new URL(started.headers.get("location") ?? "");
+    const trip = cookieOf(started, "settle_google");
+    const callback = new URL(codeBack(google));
+    return get(to, callback.pathname + callback.search, `${trip}; ${login}`);
+  }
+
+  it("links the Google account to the Account logged in, whatever its email, and goes back", async () => {
+    identity = { sub: "google-kim", email: "kim.personal@gmail.com", email_verified: true };
+    const response = await linkTrip(app(), loginCookie(fixture.core, kim));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/account");
+    // From then on, Log in with Google reaches it.
+    const { response: next } = await signIn(app(), "/auth/google?next=/");
+    expect(next.status).toBe(303);
+    expect(cookieOf(next, "settle_login")).toBeDefined();
+  });
+
+  it("needs a Login, sending a stranger to log in first", async () => {
+    const response = await get(app(), "/auth/google?link=1");
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?next=%2Faccount");
+  });
+
+  it("refuses a Google account another Account is linked to", async () => {
+    const samId = (fixture.web.caller as { account: number }).account;
+    fixture.core.accounts.linkGoogle(samId, { sub: "google-kim", emailVerified: true });
+    const response = await linkTrip(app(), loginCookie(fixture.core, kim));
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain("already linked to another account here");
+  });
+
+  it("never replaces the Google account already linked, which a reset removes", async () => {
+    fixture.core.accounts.linkGoogle(kimId, { sub: "google-kim-own", emailVerified: true });
+    const response = await linkTrip(app(), loginCookie(fixture.core, kim));
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain(
+      "Your account is already linked to a different Google account",
+    );
+    expect(
+      fixture.core.accounts.googleLogIn({ sub: "google-kim-own", emailVerified: true }),
+    ).toMatchObject({ outcome: "ok" });
   });
 });
 
@@ -268,7 +332,9 @@ describe("an invite, used with Google", () => {
     expect(page).toContain(`href="/auth/google?invite=${token}">Join with Google</a>`);
     expect(page).toContain('name="password"');
     const { reset } = await fixture.core.run("create_reset_link", fixture.web, { account: kimId });
-    expect(await (await get(app(), new URL(reset.url).pathname)).text()).not.toContain("Google");
+    expect(await (await get(app(), new URL(reset.url).pathname)).text()).not.toContain(
+      "/auth/google",
+    );
   });
 
   it("makes the Account with Google's verified email, linked, with no password", async () => {
