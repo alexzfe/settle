@@ -16,6 +16,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { migrate } from "./migrate.js";
 
 const MIGRATIONS = join(import.meta.dirname, "..", "migrations");
+const MIGRATION_IDS = readdirSync(MIGRATIONS)
+  .filter((file) => /^\d{4}_.*\.sql$/.test(file))
+  .map((file) => Number(file.slice(0, 4)))
+  .sort((a, b) => a - b);
 
 describe("migrate", () => {
   const dirs: string[] = [];
@@ -30,31 +34,10 @@ describe("migrate", () => {
 
   it("applies every migration to an empty database and records each", () => {
     const db = migrate(":memory:");
-    expect(db.prepare("SELECT id FROM migrations ORDER BY id").all()).toEqual([
-      { id: 0 },
-      { id: 1 },
-      { id: 2 },
-      { id: 3 },
-      { id: 4 },
-      { id: 5 },
-      { id: 6 },
-      { id: 7 },
-      { id: 8 },
-      { id: 9 },
-      { id: 10 },
-      { id: 11 },
-      { id: 12 },
-      { id: 13 },
-      { id: 14 },
-      { id: 15 },
-      { id: 16 },
-      { id: 17 },
-      { id: 18 },
-      { id: 19 },
-      { id: 20 },
-      { id: 21 },
-      { id: 22 },
-    ]);
+    // Read from the folder, so the migrations of PRs merged in any order need no edit here.
+    expect(db.prepare("SELECT id FROM migrations ORDER BY id").all()).toEqual(
+      MIGRATION_IDS.map((id) => ({ id })),
+    );
     db.close();
   });
 
@@ -62,7 +45,9 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 23 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({
+      n: MIGRATION_IDS.length,
+    });
     db.close();
   });
 
@@ -793,6 +778,30 @@ describe("migrate", () => {
     expect(() => migrate(path, { migrations: broken })).toThrow();
 
     expect(existsSync(join(dir, "settle.sqlite.before-9990"))).toBe(true);
+  });
+
+  it("leaves a Home made before with no time zone, so its days stay UTC's", () => {
+    const path = tempDatabase();
+    const early = new DatabaseSync(path);
+    for (const file of readdirSync(MIGRATIONS)
+      .filter((each) => each < "0021")
+      .sort()) {
+      early.exec(readFileSync(join(MIGRATIONS, file), "utf8"));
+      early
+        .prepare("INSERT INTO migrations (id, applied_at) VALUES (?, '')")
+        .run(Number(file.slice(0, 4)));
+    }
+    early.exec(
+      "INSERT INTO homes (slug, name, country, city, latitude, token) " +
+        "VALUES ('flat', 'Flat', 'CL', 'Santiago', -33.4, 'key')",
+    );
+    early.close();
+
+    const db = migrate(path);
+    expect(db.prepare("SELECT slug, time_zone FROM homes").all()).toEqual([
+      { slug: "flat", time_zone: null },
+    ]);
+    db.close();
   });
 
   it("on every start, takes in a key an older Settle made after 0021 as that Home's one key", () => {

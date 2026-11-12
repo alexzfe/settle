@@ -144,6 +144,7 @@ export const getRoomSheet = defineOperation({
         decisions: roomDecisions(model, room),
         photos: roomPhotos(model, room),
         page: appPage(context, home, `rooms/${room.slug}`),
+        timeZone: home.timeZone,
       }),
     };
   },

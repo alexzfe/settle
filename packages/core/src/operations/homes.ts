@@ -8,6 +8,7 @@ import { defineOperation, type OperationContext } from "../registry.js";
 import { named } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { HomeRow, LevelRow, PhotoRow, RoomRow, SessionRow } from "../store.js";
+import { timeZoneNamed } from "../time-zone.js";
 import {
   blueprintName,
   findLevel,
@@ -24,6 +25,7 @@ import {
   type HomeFolderSetupResult,
   type Level,
   type levelInput,
+  notATimeZone,
   type ReceiptResult,
   type Room,
   saveHomeInput,
@@ -61,6 +63,14 @@ export const createHome = defineOperation({
       .max(90)
       .optional()
       .describe("Degrees north, negative for south. Only needed when the city is not found."),
+    timeZone: z
+      .string()
+      .trim()
+      .optional()
+      .describe(
+        'The IANA time zone the Home is in, such as "America/Santiago": the browser\'s. One the ' +
+          "server doesn't know is left out rather than refused: the user never typed it.",
+      ),
   }),
   readOnly: false,
   surface: "web",
@@ -87,6 +97,7 @@ export const createHome = defineOperation({
         country: input.country,
         city: input.city,
         latitude,
+        timeZone: input.timeZone === undefined ? null : (timeZoneNamed(input.timeZone) ?? null),
         accountId: account.id,
       });
       log({ home, recordKind: "home", record: home, new: toHome(home) });
@@ -160,6 +171,36 @@ export const getHome = defineOperation({
   },
 });
 
+export const setHomeTimeZone = defineOperation({
+  name: "set_home_time_zone",
+  description:
+    "Sets the Home's IANA time zone, the day core dates things in when no date is given. With " +
+    "onlyIfNone, the browser's zone sent when the owner opens a Home that has none: a Home with " +
+    "one keeps it, and a zone the server doesn't know is left out rather than refused. Answers " +
+    "the Home.",
+  input: z.object({
+    home: homeInput,
+    timeZone: z.string().trim(),
+    onlyIfNone: z.boolean().optional(),
+  }),
+  readOnly: false,
+  surface: "web",
+  handler(context, input): { home: Home } {
+    const home = requireHome(context);
+    if (input.onlyIfNone && home.timeZone !== null) return { home: toHome(home) };
+    const timeZone = timeZoneNamed(input.timeZone);
+    if (timeZone === undefined) {
+      if (input.onlyIfNone) return { home: toHome(home) };
+      throw new CoreError("validation", `${notATimeZone(input.timeZone)}.`);
+    }
+    context.write("web", (log) => {
+      const writer = new Writer(context, home, log, undefined);
+      writer.patch("homes", "home", home, named(home), { timeZone });
+    });
+    return { home: toHome(requireHome(context)) };
+  },
+});
+
 export const saveHome = defineOperation({
   name: "save_home",
   description:
@@ -195,7 +236,12 @@ export const saveHome = defineOperation({
         ...facts
       } = input;
       const subject = named(home);
-      writer.line(subject, undefined, writer.patch("homes", "home", home, subject, facts));
+      const timeZone = facts.timeZone && timeZoneNamed(facts.timeZone);
+      writer.line(
+        subject,
+        undefined,
+        writer.patch("homes", "home", home, subject, { ...facts, timeZone }),
+      );
       for (const level of levels ?? []) saveLevel(context, home, writer, level);
       for (const page of blueprintPages ?? []) mapBlueprintPage(context, home, writer, page);
       return writer.receipt();
@@ -394,6 +440,7 @@ export function toHome(row: HomeRow): Home {
       liftCarDepth: row.liftCarDepth,
       accessWidth: row.accessWidth,
       accessNote: row.accessNote,
+      timeZone: row.timeZone,
     }),
   };
 }

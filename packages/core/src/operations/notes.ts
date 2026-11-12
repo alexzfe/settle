@@ -1,3 +1,4 @@
+import { optional } from "../optional.js";
 import { defineOperation } from "../registry.js";
 import { renderNotes } from "../render.js";
 import { uniqueSlug } from "../slug.js";
@@ -67,7 +68,8 @@ export const searchNotes = defineOperation({
     requireSession(context, home, { open: false });
     const notes = newestFirst(context.store.list("notes", home.id));
     const words = input.query === undefined ? [] : tokens(input.query);
-    if (words.length === 0) return { notes: notes.map(toNote) };
+    const timeZone = optional({ timeZone: home.timeZone });
+    if (words.length === 0) return { notes: notes.map(toNote), ...timeZone };
     const scored = notes
       .map((note) => {
         const text = new Set(tokens(note.text));
@@ -75,9 +77,9 @@ export const searchNotes = defineOperation({
       })
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score);
-    return { notes: scored.map(({ note }) => toNote(note)) };
+    return { notes: scored.map(({ note }) => toNote(note)), ...timeZone };
   },
-  text: ({ notes }) => renderNotes(notes),
+  text: ({ notes, timeZone }) => renderNotes(notes, timeZone),
 });
 
 export const listNotes = defineOperation({

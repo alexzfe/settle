@@ -143,3 +143,9 @@ export function warrantyUntil(
   const day = bought.day === undefined ? undefined : Math.min(bought.day, daysIn(year, month));
   return { value: write({ ...bought, year, month, ...(day === undefined ? {} : { day }) }) };
 }
+
+/** `at`'s day, YYYY-MM-DD, in the browser's time zone: a day as the Photos store it. */
+export function localDay(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}

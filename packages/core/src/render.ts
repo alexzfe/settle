@@ -48,6 +48,7 @@ import type {
   Window,
 } from "./operations/schemas.js";
 import { QUICK_GUIDE_LINE_KINDS } from "./operations/schemas.js";
+import { dayIn } from "./time-zone.js";
 
 export interface NamedRecord {
   name: string;
@@ -102,8 +103,8 @@ export function renderOpening(view: OpeningView, blocks: readonly OpeningBlock[]
       block === "overview"
         ? renderHomeOverview(view.overview)
         : block === "decisions"
-          ? renderHomeDecisions(view.decisions)
-          : renderFlagged(view.flagged),
+          ? renderHomeDecisions(view.decisions, view.overview.home.timeZone)
+          : renderFlagged(view.flagged, view.overview.home.timeZone),
     )
     .filter((text) => text !== "")
     .join("\n\n");
@@ -126,6 +127,7 @@ export function renderHomeOverview({
   const lines = [
     `Home: ${home.name}`,
     `Location: ${home.city}, ${home.country} (latitude ${formatLatitude(home.latitude)})`,
+    `Time zone: ${home.timeZone ?? "not set, so its days are UTC's"}`,
   ];
   const tenure = join(", ", [
     home.tenure,
@@ -245,17 +247,20 @@ export function renderRoomSheet(
     decisions = [],
     photos = [],
     page,
+    timeZone,
   }: {
     sources?: boolean;
     decisions?: DecisionSummary[];
     photos?: Photo[];
     /** The Room's page in the app, where the user sees its Photos. */
     page?: string;
+    /** The Home's time zone, its days are in; UTC's when it has none. */
+    timeZone?: Zone;
   } = {},
 ): string {
   const lines = [`Room: ${named(room)}`, `Level: ${room.level.name} (storey ${room.level.storey})`];
   if (room.archivedAt) {
-    lines.push(`Archived: ${join(", ", [day(room.archivedAt), room.archivedReason])}`);
+    lines.push(`Archived: ${join(", ", [day(room.archivedAt, timeZone), room.archivedReason])}`);
   }
   if (room.outdoor) lines.push("Outdoor: yes");
   if (room.functions.length > 0) lines.push(`Functions: ${room.functions.join(", ")}`);
@@ -300,7 +305,7 @@ export function renderRoomSheet(
   section(
     lines,
     "Items",
-    room.items.map((item) => itemLine(item, { where: false, register: false, sources })),
+    room.items.map((item) => itemLine(item, { where: false, register: false, sources, timeZone })),
   );
   // The user sees these on the Room page themselves. The recall rule is said here, not only in the
   // Skills, because a plain question ("what's next to the couch?") reaches the Room Sheet with no
@@ -315,7 +320,7 @@ export function renderRoomSheet(
   section(
     lines,
     "Decisions",
-    decisions.map((decision) => decisionLine(decision, false)),
+    decisions.map((decision) => decisionLine(decision, false, timeZone)),
   );
   lines.push("", room.gaps.length > 0 ? `Gaps: ${room.gaps.join(", ")}` : "Gaps: none");
   return lines.join("\n");
@@ -421,7 +426,12 @@ function featureLine(feature: Feature, sources: boolean): string {
  */
 export function itemLine(
   item: FoundItem,
-  { where, register, sources = false }: { where: boolean; register: boolean; sources?: boolean },
+  {
+    where,
+    register,
+    sources = false,
+    timeZone,
+  }: { where: boolean; register: boolean; sources?: boolean; timeZone?: Zone },
 ): string {
   const location = where
     ? item.room
@@ -449,7 +459,8 @@ export function itemLine(
     item.condition,
     join(" ", [item.brand, item.model]),
     ...(register ? registerParts(item) : []),
-    item.archivedAt && `Archived ${join(": ", [day(item.archivedAt), item.archivedReason])}`,
+    item.archivedAt &&
+      `Archived ${join(": ", [day(item.archivedAt, timeZone), item.archivedReason])}`,
   ])}`;
   return line;
 }
@@ -484,7 +495,7 @@ function registerParts(item: FoundItem): (string | undefined)[] {
  * find_items: one line per Item, with where it is and its register. With none found for a text
  * search, what was searched and what to try next, so a miss isn't read as the user owning nothing.
  */
-export function renderItems(items: FoundItem[], searched?: string): string {
+export function renderItems(items: FoundItem[], timeZone: Zone, searched?: string): string {
   if (items.length === 0 && searched !== undefined) {
     return (
       `No Items have any of the words "${searched}" in their name, brand, model, category, ` +
@@ -494,15 +505,19 @@ export function renderItems(items: FoundItem[], searched?: string): string {
     );
   }
   if (items.length === 0) return "No Items match.";
-  const lines = items.map((item) => `- ${itemLine(item, { where: true, register: true })}`);
+  const lines = items.map(
+    (item) => `- ${itemLine(item, { where: true, register: true, timeZone })}`,
+  );
   if (items.some((item) => item.photos?.length)) lines.push("", recallRule("the Item's page"));
   return lines.join("\n");
 }
 
 /** search_notes: one line per Note, with the day it was written. */
-export function renderNotes(notes: Note[]): string {
+export function renderNotes(notes: Note[], timeZone: Zone): string {
   if (notes.length === 0) return "No Notes match.";
-  return notes.map((note) => `- ${note.text} (${note.slug}), ${day(note.createdAt)}`).join("\n");
+  return notes
+    .map((note) => `- ${note.text} (${note.slug}), ${day(note.createdAt, timeZone)}`)
+    .join("\n");
 }
 
 // ─── Decisions ──────────────────────────────────────────────────────────────────────────────
@@ -533,10 +548,10 @@ export function titled(decision: { title: string; slug: string }): string {
  * One Decision on one line: title and slug, kind, state, when it was Fulfilled, with `scope` the
  * Room it is about or Home-wide, its open flags and Conflicts, then its one-line statement.
  */
-export function decisionLine(decision: DecisionSummary, scope: boolean): string {
+export function decisionLine(decision: DecisionSummary, scope: boolean, timeZone: Zone): string {
   const parts = [
     `${DECISION_KIND_LABELS[decision.kind]}, ${DECISION_STATE_LABELS[decision.state]}` +
-      (decision.fulfilledAt ? `, Fulfilled ${day(decision.fulfilledAt)}` : ""),
+      (decision.fulfilledAt ? `, Fulfilled ${day(decision.fulfilledAt, timeZone)}` : ""),
     scope ? (decision.room ? named(decision.room) : "Home-wide") : undefined,
     decision.openFlags.length > 0 ? count(decision.openFlags.length, "open flag") : undefined,
     decision.openConflicts.length > 0
@@ -547,9 +562,9 @@ export function decisionLine(decision: DecisionSummary, scope: boolean): string 
 }
 
 /** find_decisions: one line per Decision, with its scope. */
-export function renderDecisions(decisions: DecisionSummary[]): string {
+export function renderDecisions(decisions: DecisionSummary[], timeZone: Zone): string {
   if (decisions.length === 0) return "No Decisions match.";
-  return decisions.map((decision) => `- ${decisionLine(decision, true)}`).join("\n");
+  return decisions.map((decision) => `- ${decisionLine(decision, true, timeZone)}`).join("\n");
 }
 
 /**
@@ -557,7 +572,7 @@ export function renderDecisions(decisions: DecisionSummary[]): string {
  * with its state (or a count of Candidates when none is chosen), then the other Home-wide Settled
  * Decisions not yet Fulfilled, one line each.
  */
-export function renderHomeDecisions(view: HomeDecisionsView): string {
+export function renderHomeDecisions(view: HomeDecisionsView, timeZone: Zone): string {
   const lines = [
     "Home-wide Decisions in force:",
     "",
@@ -567,7 +582,7 @@ export function renderHomeDecisions(view: HomeDecisionsView): string {
   ];
   if (view.others.length > 0) {
     lines.push("", "Other Home-wide Decisions, Settled:");
-    for (const decision of view.others) lines.push(`- ${decisionLine(decision, false)}`);
+    for (const decision of view.others) lines.push(`- ${decisionLine(decision, false, timeZone)}`);
   }
   return lines.join("\n");
 }
@@ -587,17 +602,17 @@ function inFull(label: string, decision: DecisionDetail | undefined, candidates:
 }
 
 /** The opening's open flags and Conflicts, one line each, with the flagged Decision's scope. */
-export function renderFlagged(decisions: DecisionSummary[]): string {
+export function renderFlagged(decisions: DecisionSummary[], timeZone: Zone): string {
   if (decisions.length === 0) return "";
   const lines = ["Open flags and Conflicts:"];
   for (const decision of decisions) {
     const subject = `${titled(decision)}, ${decision.room ? named(decision.room) : "Home-wide"}`;
     for (const flag of decision.openFlags) {
-      lines.push(`- ${subject}: flagged on ${day(flag.raisedAt)}, ${flagCause(flag)}`);
+      lines.push(`- ${subject}: flagged on ${day(flag.raisedAt, timeZone)}, ${flagCause(flag)}`);
     }
     for (const conflict of decision.openConflicts) {
       lines.push(
-        `- ${subject}: Conflict raised on ${day(conflict.raisedAt)}: ${conflict.description}`,
+        `- ${subject}: Conflict raised on ${day(conflict.raisedAt, timeZone)}: ${conflict.description}`,
       );
     }
   }
@@ -636,7 +651,7 @@ function flagCause(flag: Flag): string {
  * open flags and Conflicts, then one line per Basis entry (and per automatic entry it lacks) and
  * per piece of Evidence.
  */
-export function renderDecision(decision: DecisionDetail): string {
+export function renderDecision(decision: DecisionDetail, timeZone: Zone): string {
   const lines = [
     `Decision: ${titled(decision)}`,
     `Kind: ${DECISION_KIND_LABELS[decision.kind]}`,
@@ -645,7 +660,7 @@ export function renderDecision(decision: DecisionDetail): string {
   ];
   if (decision.fulfilledAt) {
     lines.push(
-      `Fulfilled: ${join("; ", [day(decision.fulfilledAt), fulfilmentText(decision.fulfilment)])}`,
+      `Fulfilled: ${join("; ", [day(decision.fulfilledAt, timeZone), fulfilmentText(decision.fulfilment)])}`,
     );
   }
   lines.push(`Statement: ${decision.statement}`);
@@ -657,22 +672,25 @@ export function renderDecision(decision: DecisionDetail): string {
   if (decision.requirements.length > 0) {
     lines.push("", "Requirements:", ...decision.requirements.map(requirementLine));
   }
-  if (decision.kind === "purchase") lines.push(...purchaseLines(decision));
+  if (decision.kind === "purchase") lines.push(...purchaseLines(decision, timeZone));
   section(
     lines,
     "Open flags",
-    decision.openFlags.map((flag) => `${flag.slug}: ${flagCause(flag)} on ${day(flag.raisedAt)}`),
+    decision.openFlags.map(
+      (flag) => `${flag.slug}: ${flagCause(flag)} on ${day(flag.raisedAt, timeZone)}`,
+    ),
   );
   section(
     lines,
     "Open Conflicts",
     decision.openConflicts.map(
-      (conflict) => `${conflict.slug}: ${conflict.description} (raised ${day(conflict.raisedAt)})`,
+      (conflict) =>
+        `${conflict.slug}: ${conflict.description} (raised ${day(conflict.raisedAt, timeZone)})`,
     ),
   );
   const basisLine = (entry: DecisionDetail["basis"][number]) =>
     `${titled(entry)}: ${DECISION_KIND_LABELS[entry.kind]}, ${DECISION_STATE_LABELS[entry.state]}` +
-    (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt)}` : "") +
+    (entry.fulfilledAt ? `, Fulfilled ${day(entry.fulfilledAt, timeZone)}` : "") +
     (entry.automatic
       ? entry.kind === "palette"
         ? "; in the Basis as the Palette whose colors it uses"
@@ -768,11 +786,15 @@ function requirementLine(requirement: Requirement): string {
  * Measure first, then the AI's own avoids, tests, and asks, in the Quick Guide's order), the Full Guide as one line or in full, then one
  * line per Listing and per Deviation.
  */
-function purchaseLines(decision: DecisionDetail): string[] {
+function purchaseLines(decision: DecisionDetail, timeZone: Zone): string[] {
   const lines: string[] = [];
   // Once Fulfilled, its Guides served their purpose: what was bought and how it differs remain.
   if (decision.fulfilledAt) {
-    section(lines, "Listings", decision.listings.map(listingLine));
+    section(
+      lines,
+      "Listings",
+      decision.listings.map((listing) => listingLine(listing, timeZone)),
+    );
     section(lines, "Deviations", decision.deviations.map(deviationLine));
     return lines;
   }
@@ -793,15 +815,20 @@ function purchaseLines(decision: DecisionDetail): string[] {
     lines.push("", "Full Guide: not written yet");
   } else {
     const state = full.outOfDate
-      ? `out of date: a Requirement changed on ${day(full.requirementsChangedAt ?? "")}`
+      ? `out of date: a Requirement changed on ${day(full.requirementsChangedAt ?? "", timeZone)}`
       : "up to date";
     if (full.markdown === undefined) {
       lines.push(
         "",
-        `Full Guide: written ${day(full.writtenAt)}, ${state}; includeFullGuide shows it`,
+        `Full Guide: written ${day(full.writtenAt, timeZone)}, ${state}; includeFullGuide shows it`,
       );
     } else {
-      lines.push("", `Full Guide, written ${day(full.writtenAt)}, ${state}:`, "", full.markdown);
+      lines.push(
+        "",
+        `Full Guide, written ${day(full.writtenAt, timeZone)}, ${state}:`,
+        "",
+        full.markdown,
+      );
     }
   }
   // How the Quick Guide gets into the shop: the address a phone opens (the public origin's page
@@ -816,7 +843,11 @@ function purchaseLines(decision: DecisionDetail): string[] {
         "(hosted, or started with SETTLE_LAN=1, the Decision page shows one as a QR code)",
     );
   }
-  section(lines, "Listings", decision.listings.map(listingLine));
+  section(
+    lines,
+    "Listings",
+    decision.listings.map((listing) => listingLine(listing, timeZone)),
+  );
   section(
     lines,
     "Deviations",
@@ -855,7 +886,7 @@ export const HOLD_REASON_LABELS: Record<HoldReason, string> = {
  * them: the stars say how good the product is, the musts say whether it qualifies, and a 5-star
  * product under "fails must 3" is the strongest sign the Requirement wants a second look.
  */
-export function listingLine(listing: Listing): string {
+export function listingLine(listing: Listing, timeZone: Zone): string {
   const fails = listing.checks.filter(
     (check) => check.strength === "must" && check.result === "fail",
   );
@@ -870,7 +901,7 @@ export function listingLine(listing: Listing): string {
       ? `; fails must ${fails.map((check) => `${check.requirement} (${check.text})`).join(", ")}`
       : "") +
     (held
-      ? `; Held ${day(held.at)}: ${HOLD_REASON_LABELS[held.reason]}` +
+      ? `; Held ${day(held.at, timeZone)}: ${HOLD_REASON_LABELS[held.reason]}` +
         (held.note ? ` (${held.note})` : "")
       : "")
   );
@@ -1153,6 +1184,7 @@ const LABELS: Record<string, string> = {
   liftCarDepth: "lift car depth",
   accessWidth: "narrowest access width",
   accessNote: "narrowest access",
+  timeZone: "time zone",
   otherRoom: "to",
   otherWall: "other side at",
   wall: "on",
@@ -1373,9 +1405,12 @@ function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
-/** The day of an ISO timestamp. */
-function day(timestamp: string): string {
-  return timestamp.slice(0, 10);
+/** The Home's IANA time zone, which the days of its timestamps are in; none is UTC's. */
+type Zone = string | null | undefined;
+
+/** The day of an ISO timestamp in the Home's time zone. */
+function day(timestamp: string, timeZone: Zone): string {
+  return dayIn(timestamp, timeZone ?? null);
 }
 
 /** The parts that are not empty, joined. */

@@ -40,7 +40,12 @@ it("runs the first run: name the Home, then connect Claude, then the Home", asyn
   await screen.findByRole("heading", { name: "Connect Settle to Claude" });
   expect(router.state.location.pathname).toBe("/welcome/connect/flat");
   expect(inputsTo(fetch, "create_home")).toEqual([
-    { name: "Flat", country: "Spain", city: "Madrid" },
+    {
+      name: "Flat",
+      country: "Spain",
+      city: "Madrid",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
   ]);
   const button = await screen.findByRole("link", { name: "Connect Settle to Claude" });
   expect(button.getAttribute("href")).toBe(connect.addConnectorUrl);

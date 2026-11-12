@@ -61,6 +61,8 @@ export interface HomeRow {
   liftCarDepth: Measurement | null;
   accessWidth: Measurement | null;
   accessNote: string | null;
+  /** The Home's IANA time zone, the day core dates things in; null on a Home made before. */
+  timeZone: string | null;
   /** The Account that owns it; null until the setup link claims a Home made before Accounts. */
   accountId: number | null;
 }
@@ -659,7 +661,8 @@ export interface Store {
   transaction<T>(fn: () => T): T;
 
   insertHome(
-    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "accountId">,
+    home: Pick<HomeRow, "slug" | "name" | "country" | "city" | "latitude" | "accountId"> &
+      Partial<Pick<HomeRow, "timeZone">>,
   ): HomeRow;
   /** The key a Home's key hash is, if the Home has it. */
   homeKey(homeId: number, keyHash: string): HomeKeyRow | undefined;

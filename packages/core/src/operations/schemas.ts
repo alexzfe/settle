@@ -5,6 +5,7 @@
 // "bought on" is boughtOn.
 import { z } from "zod";
 import { PHOTO_TYPES } from "../images.js";
+import { timeZoneNamed } from "../time-zone.js";
 import { homeInput, sessionInput } from "./scope.js";
 
 // ─── Fixed lists ────────────────────────────────────────────────────────────────────────────
@@ -282,6 +283,22 @@ const bytes = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
 
 const text = z.string().trim().min(1);
 
+/** An IANA time zone, such as "America/Santiago"; an offset is refused (see time-zone.ts). */
+export const timeZoneInput = z
+  .string()
+  .trim()
+  .refine((name) => timeZoneNamed(name) !== undefined, {
+    error: (issue) => notATimeZone(String(issue.input)),
+  });
+
+/** The refusal of a name that is no place's IANA time zone, saying what to give instead. */
+export function notATimeZone(name: string): string {
+  return (
+    `"${name}" is not an IANA time zone. Give the zone's name, such as "America/Santiago" or ` +
+    '"Europe/London", not an offset'
+  );
+}
+
 // ─── save_home ──────────────────────────────────────────────────────────────────────────────
 
 export const levelInput = z.object({
@@ -337,6 +354,14 @@ export const saveHomeInput = z.object({
     .max(200)
     .optional()
     .describe('What that narrowest point is, e.g. "turn in the communal stair".'),
+  timeZone: timeZoneInput
+    .optional()
+    .describe(
+      'The Home\'s IANA time zone, such as "America/Santiago": the day a Photo or a purchase ' +
+        "is dated in when no date is given. Set from the user's browser, and shown on the Home " +
+        "Overview; change it only when the user says the Home is in another zone, or when the " +
+        "Overview says it is not set and the user says where the Home is.",
+    ),
   levels: z
     .array(levelInput)
     .optional()
@@ -869,6 +894,8 @@ export const homeSchema = z.object({
   liftCarDepth: measurementSchema.optional(),
   accessWidth: measurementSchema.optional(),
   accessNote: z.string().optional(),
+  /** The Home's IANA time zone; none on a Home made before time zones, whose days are UTC's. */
+  timeZone: z.string().optional(),
 });
 
 export const levelSchema = z.object({ slug: z.string(), name: z.string(), storey: z.number() });
@@ -1171,14 +1198,20 @@ export const homeFolderSetupResult = z.object({
 });
 
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
+/** The Home's IANA time zone, which the text's days are in; none on a Home whose days are UTC's. */
+const textTimeZone = z.string().optional();
 export const findItemsResult = z.object({
   /** The `text` searched for, when one was given. */
   searched: z.string().optional(),
   items: z.array(foundItemSchema),
+  timeZone: textTimeZone,
 });
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
 export const listNotesResult = z.object({ notes: z.array(noteSchema) });
-export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
+export const searchNotesResult = z.object({
+  notes: z.array(noteSchema),
+  timeZone: textTimeZone,
+});
 /** Newest first. */
 export const getChangeLogResult = z.object({
   changes: z.array(changeSchema),
@@ -2380,8 +2413,12 @@ export type DecisionDetail = z.infer<typeof decisionDetailSchema>;
  * the Rooms' order, each group in the order the Decisions were created. Archived ones never.
  */
 export const listDecisionsResult = z.object({ decisions: z.array(decisionSummarySchema) });
-export const findDecisionsResult = listDecisionsResult;
-export const getDecisionResult = z.object({ decision: decisionDetailSchema });
+export const findDecisionsResult = listDecisionsResult.extend({ timeZone: textTimeZone });
+export const getDecisionResult = z.object({
+  decision: decisionDetailSchema,
+  /** The Home's IANA time zone, which the text's days are in; none when its days are UTC's. */
+  timeZone: z.string().optional(),
+});
 
 /**
  * set_decision_state, resolve_flag, and resolve_conflict: the receipt (one line per change, then

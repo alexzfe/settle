@@ -543,6 +543,10 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "timeZone": {
+            "description": "The Home's IANA time zone, such as \"America/Santiago\": the day a Photo or a purchase is dated in when no date is given. Set from the user's browser, and shown on the Home Overview; change it only when the user says the Home is in another zone, or when the Overview says it is not set and the user says where the Home is.",
+            "type": "string"
+          },
           "levels": {
             "description": "Levels to add, change, or remove. Levels not listed stay as they are.",
             "type": "array",
