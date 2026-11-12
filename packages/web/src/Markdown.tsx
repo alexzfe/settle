@@ -10,7 +10,13 @@ import { Callout, type CalloutTone } from "./ui/Callout";
 export type Block = { line: number } & (
   | { kind: "heading"; level: number; text: string }
   | { kind: "paragraph"; text: string }
-  | { kind: "list"; ordered: boolean; items: { line: number; text: string }[] }
+  | {
+      kind: "list";
+      ordered: boolean;
+      /** The number a numbered list starts from, when not 1. */
+      start?: number;
+      items: { line: number; text: string }[];
+    }
   | { kind: "quote"; text: string }
   | { kind: "alert"; alert: AlertKind; markdown: string }
   | { kind: "code"; text: string }
@@ -20,7 +26,7 @@ export type Block = { line: number } & (
 const FENCE = /^\s*```/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/;
 const RULE = /^\s{0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/;
-const ITEM = /^\s*(?:([-*+])|\d{1,9}[.)])\s+(.*)$/;
+const ITEM = /^\s*(?:([-*+])|(\d{1,9})[.)])\s+(.*)$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
 const ALERT = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i;
 
@@ -54,7 +60,8 @@ export function blocks(markdown: string): Block[] {
       continue;
     }
     if (text.trim() === "") {
-      open = undefined;
+      // Loose lists are common: a blank line between items of one kind keeps them one list.
+      if (open?.kind !== "list" || !continuesList(open, lines, line)) open = undefined;
       continue;
     }
     const heading = HEADING.exec(text);
@@ -71,11 +78,14 @@ export function blocks(markdown: string): Block[] {
     const item = ITEM.exec(text);
     if (item) {
       const ordered = item[1] === undefined;
-      const entry = { line, text: item[2] ?? "" };
+      const entry = { line, text: item[3] ?? "" };
       if (open?.kind === "list" && open.ordered === ordered) {
         open.items.push(entry);
       } else {
-        open = { line, kind: "list", ordered, items: [entry] };
+        // A numbered list keeps its first item's number, so a step after a nested bullet (which
+        // ends the list) still reads as step 2, not as 1 again.
+        const start = Number(item[2] ?? 1);
+        open = { line, kind: "list", ordered, ...(start !== 1 && { start }), items: [entry] };
         found.push(open);
       }
       continue;
@@ -117,6 +127,17 @@ export function blocks(markdown: string): Block[] {
     }
   }
   return found;
+}
+
+/** Whether the next line with text after `line` is an item of the same kind as `list`. */
+function continuesList(
+  list: Extract<Block, { kind: "list" }>,
+  lines: readonly string[],
+  line: number,
+): boolean {
+  const next = lines.slice(line + 1).find((each) => each.trim() !== "");
+  const item = next === undefined ? null : ITEM.exec(next);
+  return item !== null && (item[1] === undefined) === list.ordered;
 }
 
 // `code`, **strong** or __strong__, *emphasis* or _emphasis_ (not inside a word), [label](href).
@@ -239,7 +260,13 @@ function element(block: Block, level: number, id: string | undefined): ReactNode
       return <p key={key}>{inline(block.text)}</p>;
     case "list": {
       const items = block.items.map((item) => <li key={item.line}>{inline(item.text)}</li>);
-      return block.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>;
+      return block.ordered ? (
+        <ol key={key} start={block.start}>
+          {items}
+        </ol>
+      ) : (
+        <ul key={key}>{items}</ul>
+      );
     }
     case "quote":
       return <blockquote key={key}>{inline(block.text)}</blockquote>;

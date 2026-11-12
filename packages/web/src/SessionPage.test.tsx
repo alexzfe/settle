@@ -106,7 +106,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function stubSession() {
+function stubSession(more = false) {
   return stubApi({
     list_homes: () => ({ homes: [flat] }),
     get_home: () => ({
@@ -117,7 +117,7 @@ function stubSession() {
     }),
     list_decisions: () => ({ decisions: [palette] }),
     list_sessions: () => ({ sessions: [unsummarised, color] }),
-    get_change_log: () => ({ changes: log }),
+    get_change_log: () => ({ changes: log, more }),
   });
 }
 
@@ -163,6 +163,18 @@ it("reads the Session's changes as sentences grouped by record, oldest first", a
   expect(section.queryByRole("table")).toBeNull();
   fireEvent.click(section.getByRole("button", { name: "Show every field" }));
   expect(section.getAllByRole("row")).toHaveLength(6);
+});
+
+it("says older changes may be missing only when the server left some out", async () => {
+  stubSession(true);
+  renderRoutes("/homes/flat/sessions/color-6d8j");
+  expect(await screen.findByText(/Only the newest 200 changes are loaded/)).toBeDefined();
+  cleanup();
+
+  stubSession(false);
+  renderRoutes("/homes/flat/sessions/color-6d8j");
+  await screen.findByText("Washi and Sumi");
+  expect(screen.queryByText(/Only the newest/)).toBeNull();
 });
 
 it("says when a Session has no summary", async () => {

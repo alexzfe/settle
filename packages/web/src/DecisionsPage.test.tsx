@@ -316,3 +316,8 @@ it("dates when a Decision was opened, naming the year only once it is past", () 
   expect(openSince("2026-09-14T10:00:00Z", now)).toBe("14 Sep");
   expect(openSince("2025-11-02T10:00:00Z", now)).toBe("Nov 2025");
 });
+
+it("dates a Decision against the given day, not the clock", () => {
+  const now = new Date("2025-09-22T00:00:00Z");
+  expect(openSince("2025-09-14T10:00:00Z", now)).toBe("14 Sep");
+});

@@ -29,6 +29,15 @@ settle.example.com {
 On a [Tailscale](https://tailscale.com) tailnet, `tailscale serve --bg 4380` gives the machine an
 HTTPS address that only your devices can reach.
 
+Both pass each visitor's IP on in `X-Forwarded-For`, and `deploy/compose.yaml` sets
+`SETTLE_TRUSTED_PROXY=forwarded` so the limits on wrong passwords count by it. Without it, every
+request seems to come from the proxy, and one person's wrong guesses would lock out everyone.
+Settle reads the header only from a loopback or private address (the proxy reaches the container
+through Docker's gateway, a private address), and takes its last entry, the one the proxy added.
+So keep the port published on `127.0.0.1` only, as `deploy/compose.yaml` does: published on your
+LAN, any device there could send its own `X-Forwarded-For` and pick a new IP with each wrong
+guess. To serve the LAN directly, with no proxy, set `SETTLE_TRUSTED_PROXY=` (empty) in `.env`.
+
 ### Behind Cloudflare
 
 With Cloudflare in front (a proxied DNS record, or a Cloudflare Tunnel):
@@ -70,8 +79,11 @@ docker compose up -d
    and logs you in. The link works once; only someone who can read the server's log has it.
 2. Create a Home. Its About page gives you a command that sets up a folder for that Home.
 3. On the computer where you use [Claude Code](https://claude.com/claude-code), make an empty
-   folder and run that command in it. It writes `.mcp.json`, which holds the Home's key, so don't
-   commit that file or share it. If you do, the About page's **New key** cancels it.
+   folder and run that command in it. It writes `.mcp.json`, which holds a key for that folder,
+   shown only once (the server keeps only its hash), so don't commit that file or share it. If you
+   do, the About page's **New key** cancels every key of the Home. **Log out everywhere** and a
+   reset link cancel the keys of all your Homes, so each Home Folder must be set up again after
+   them.
 4. In the same folder, add the plugin and start Claude:
 
    ```sh
@@ -168,7 +180,16 @@ docker compose up -d
 docker compose pull && docker compose up -d
 ```
 
-The database is migrated when the server starts.
+The database is migrated when the server starts. Before it applies a migration, Settle copies the
+database to `settle.sqlite.before-<NNNN>` in the data folder, `<NNNN>` being the first migration it
+applies, and removes the copy from the upgrade before. To go back to the version you had, stop the
+container, delete `settle.sqlite-wal` and `settle.sqlite-shm` if they are there, replace
+`settle.sqlite` with that copy, and pin the old image tag (`ghcr.io/alexzfe/settle:vX.Y.Z`) in
+`compose.yaml`.
+Anything written since the upgrade is lost.
+
+An older Settle refuses to start on a database a newer one migrated, and says which copy to
+restore.
 
 ### From a version with one shared password
 

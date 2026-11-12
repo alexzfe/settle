@@ -13,7 +13,7 @@ export function useScrollToHash(): void {
   const { hash, key } = useLocation();
   // key re-runs it for each navigation, even to the same hash.
   useEffect(() => {
-    const id = decodeURIComponent(hash.slice(1));
+    const id = idOf(hash);
     if (!id) return;
     const land = () => {
       const target = document.getElementById(id);
@@ -33,4 +33,14 @@ export function useScrollToHash(): void {
     watch.observe(document.body, { childList: true, subtree: true });
     return stop;
   }, [hash, key]);
+}
+
+/** The id a #hash names, decoded; a stray % that is not an escape is taken as written. */
+function idOf(hash: string): string {
+  const raw = hash.slice(1);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }

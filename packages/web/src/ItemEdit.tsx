@@ -171,7 +171,10 @@ export function changedFields(item: Item, draft: ItemDraft): { fields: Fields; e
 /** The pencil's form over the fact card, with Save and Cancel. */
 export function ItemEdit({ home, item, onDone }: { home: string; item: Item; onDone: () => void }) {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState(() => draftOf(item));
+  // The Item the draft was made from. Save diffs against it, not against the live Item, so a
+  // change the Agent makes while the form is open survives unless the user changed that field too.
+  const [started] = useState(item);
+  const [draft, setDraft] = useState(() => draftOf(started));
   const [errors, setErrors] = useState<string[]>([]);
   const id = useId();
   const save = useMutation({
@@ -196,7 +199,7 @@ export function ItemEdit({ home, item, onDone }: { home: string; item: Item; onD
         aria-label="Edit its facts"
         onSubmit={(event) => {
           event.preventDefault();
-          const { fields, errors } = changedFields(item, draft);
+          const { fields, errors } = changedFields(started, draft);
           setErrors(errors);
           if (errors.length > 0) return;
           if (Object.keys(fields).length === 0) {

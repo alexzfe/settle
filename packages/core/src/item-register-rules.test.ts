@@ -112,6 +112,7 @@ describe("migration 0012, the Item register", () => {
 /** A Home with a Bedroom, a Measured mattress, and a Purchase whose Requirements cite it. */
 describe("a Home with a mattress and a bed-frame Purchase", () => {
   let core: Core;
+  let now: Date;
   let home: string;
   let session: string;
   const agent = (): CallContext => ({ caller: { kind: "session", session }, home });
@@ -133,10 +134,17 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
     (await core.run("get_decision", web, { home, decision: "bed-frame" })).decision.flags;
 
   beforeEach(async () => {
-    core = createCore({ passwordCost: TEST_PASSWORD_COST });
+    now = new Date();
+    core = createCore({ passwordCost: TEST_PASSWORD_COST, clock: () => now });
     web = await addAccount(core);
-    home = (await core.run("create_home", web, { name: "My flat", country: "PE", city: "Lima" }))
-      .home.slug;
+    home = (
+      await core.run("create_home", web, {
+        name: "My flat",
+        country: "PE",
+        city: "Lima",
+        timeZone: "America/Lima",
+      })
+    ).home.slug;
     session = (
       await core.run("open_session", { caller: { kind: "session" }, home }, { skill: "purchase" })
     ).session;
@@ -176,6 +184,15 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
     });
   });
   afterEach(() => core.close());
+
+  it("refuses a bad field from the page without the Agent's advice about input schemas", async () => {
+    const error = await refusal(edit({ manualLink: "not a link" }));
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toContain("`fields.manualLink`");
+    expect(error.message).not.toContain("input schema");
+    expect(error.message).not.toContain("Call edit_item again");
+  });
 
   describe("Listed Provenance", () => {
     it("is refused on a Wall's length, saying it belongs to an Item, and taken on an Item's width", async () => {
@@ -347,13 +364,15 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
     });
 
     it("fills bought on, bought from, price paid, and link, tagging all but the day Listed", async () => {
+      // 19:24 on 11 November in Lima, already the 12th in UTC: bought on the Home's day.
+      now = new Date("2026-11-12T00:24:00.000Z");
       await fulfil({
         listing: "cama-roma",
         item: { name: "Cama Roma", category: "beds", width: listed(1600) },
       });
       const item = await frame();
       expect(item).toMatchObject({
-        boughtOn: new Date().toISOString().slice(0, 10),
+        boughtOn: "2026-11-11",
         boughtFrom: "falabella.com.pe",
         pricePaid: "S/ 1,299",
         link: "https://www.falabella.com.pe/cama-roma",
@@ -372,6 +391,43 @@ describe("a Home with a mattress and a bed-frame Purchase", () => {
         fields: { pricePaid: "S/ 1,199", link: "https://www.falabella.com.pe/cama-roma" },
       });
       expect((await frame()).listed).toEqual(["link"]);
+    });
+
+    it("shows its one day, the Home's, wherever the Fulfilment is read", async () => {
+      // 19:24 on 11 November in Lima, already the 12th in UTC.
+      now = new Date("2026-11-12T00:24:00.000Z");
+      await fulfil({ listing: "cama-roma", item: { name: "Cama Roma", category: "beds" } });
+      const text = (name: string, output: unknown) => {
+        const operation = core.operations.find((each) => each.name === name);
+        if (!operation?.text) throw new Error(`${name} renders no text`);
+        return operation.text(output);
+      };
+      const read = [
+        text(
+          "get_decision",
+          await core.run("get_decision", agent(), { session, decision: "bed-frame" }),
+        ),
+        text("find_decisions", await core.run("find_decisions", agent(), { session })),
+        (await refusal(fulfil({ listing: "cama-roma" }))).message,
+        (
+          await refusal(
+            core.run("record_listing", agent(), {
+              session,
+              decision: "bed-frame",
+              name: "Other",
+              checks: [],
+            } as never),
+          )
+        ).message,
+        (await core.run("export_guides", web, { home, decision: "bed-frame", format: "markdown" }))
+          .text,
+        (await core.run("export_guides", web, { home, decision: "bed-frame", format: "html" }))
+          .text,
+      ];
+      for (const each of read) {
+        expect(each).toMatch(/2026-11-11|11 Nov 2026/);
+        expect(each).not.toMatch(/2026-11-12|12 Nov 2026/);
+      }
     });
 
     it("lets what the Agent gives win, untagged", async () => {
@@ -437,6 +493,15 @@ describe("get_item and the Agent's text, on the fixture Home", () => {
   });
   afterAll(() => fixture.core.close());
   const page = (item: string) => fixture.core.run("get_item", web, { home: fixture.home, item });
+
+  it("refuses an unknown Item in words for the user, naming no Agent tool", async () => {
+    const error = await refusal(page("nope"));
+    expect(error.code).toBe("not_found");
+    expect(error.message).toBe(
+      'This Home has no Item "nope". It may have been renamed or removed; open it from the ' +
+        "Items page.",
+    );
+  });
 
   it("shows the Billy with the Purchase relying on it and the one that replaced it", async () => {
     const billy = await page("bookcase");

@@ -505,23 +505,30 @@ function PasteBox({
   const chooser = useRef<HTMLInputElement>(null);
   useEffect(() => target.current?.focus(), []);
   const send = useBoardWrite(home, (form: FormData) => upload("set_listing_photo", form));
+  // Set as a picture is sent, not on the next render, so two in the same task cannot both pass.
+  const inFlight = useRef(false);
 
   function post(field: "file" | "url", value: File | string) {
     const form = new FormData();
     form.append("home", home);
     form.append("listing", listing);
     form.append(field, value);
+    inFlight.current = true;
     send.mutate(form, {
       onSuccess: () => {
         setUrl("");
         onDone();
       },
+      onSettled: () => {
+        inFlight.current = false;
+      },
     });
   }
 
+  // One picture at a time: a second sent while the first is on its way would race it.
   function sendFirst(files: FileList | null | undefined) {
     const file = files?.[0];
-    if (file) post("file", file);
+    if (file && !inFlight.current) post("file", file);
   }
 
   function onPaste(event: ClipboardEvent<HTMLButtonElement>) {
@@ -538,6 +545,8 @@ function PasteBox({
 
   function onChoose(event: ChangeEvent<HTMLInputElement>) {
     sendFirst(event.target.files);
+    // Emptied, so the same file can be chosen again after a refusal.
+    event.target.value = "";
   }
 
   return (
@@ -563,6 +572,7 @@ function PasteBox({
         type="file"
         accept={PHOTO_ACCEPT}
         className={page.chooser}
+        disabled={send.isPending}
         onChange={onChoose}
         aria-label="Picture file"
       />

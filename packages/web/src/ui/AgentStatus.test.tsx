@@ -64,8 +64,12 @@ it("shows the connection's failures first, with Reload once updates stop", async
   expect(await screen.findByText(/Agent working/)).toBeTruthy();
   act(() => source.emit("error"));
   expect(footer()).toBe("Reconnecting");
+  // The browser gives up, and get_home (not stubbed) says the Home is not found.
   source.readyState = 2;
-  act(() => source.emit("error"));
+  await act(async () => {
+    source.emit("error");
+    await vi.advanceTimersByTimeAsync(0);
+  });
   expect(footer()).toBe("Updates stoppedReload");
   expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
 });

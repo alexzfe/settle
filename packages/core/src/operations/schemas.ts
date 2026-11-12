@@ -5,6 +5,7 @@
 // "bought on" is boughtOn.
 import { z } from "zod";
 import { PHOTO_TYPES } from "../images.js";
+import { timeZoneNamed } from "../time-zone.js";
 import { homeInput, sessionInput } from "./scope.js";
 
 // ─── Fixed lists ────────────────────────────────────────────────────────────────────────────
@@ -282,6 +283,22 @@ const bytes = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
 
 const text = z.string().trim().min(1);
 
+/** An IANA time zone, such as "America/Santiago"; an offset is refused (see time-zone.ts). */
+export const timeZoneInput = z
+  .string()
+  .trim()
+  .refine((name) => timeZoneNamed(name) !== undefined, {
+    error: (issue) => notATimeZone(String(issue.input)),
+  });
+
+/** The refusal of a name that is no place's IANA time zone, saying what to give instead. */
+export function notATimeZone(name: string): string {
+  return (
+    `"${name}" is not an IANA time zone. Give the zone's name, such as "America/Santiago" or ` +
+    '"Europe/London", not an offset'
+  );
+}
+
 // ─── save_home ──────────────────────────────────────────────────────────────────────────────
 
 export const levelInput = z.object({
@@ -337,6 +354,14 @@ export const saveHomeInput = z.object({
     .max(200)
     .optional()
     .describe('What that narrowest point is, e.g. "turn in the communal stair".'),
+  timeZone: timeZoneInput
+    .optional()
+    .describe(
+      'The Home\'s IANA time zone, such as "America/Santiago": the day a Photo or a purchase ' +
+        "is dated in when no date is given. Set from the user's browser, and shown on the Home " +
+        "Overview; change it only when the user says the Home is in another zone, or when the " +
+        "Overview says it is not set and the user says where the Home is.",
+    ),
   levels: z
     .array(levelInput)
     .optional()
@@ -504,8 +529,9 @@ export const saveRoomInput = z.object({
     ),
   name: text
     .max(100)
+    .optional()
     .describe(
-      `The Room's name as the user says it, e.g. "Living room" or "Mia's room". A new name renames it; its slug stays.`,
+      `The Room's name as the user says it, e.g. "Living room" or "Mia's room". Needed for a new Room; with \`room\`, leave it out to keep the name, or give a new one to rename it (its slug stays).`,
     ),
   level: slugInput
     .optional()
@@ -736,7 +762,11 @@ export const findItemsInput = z.object({
   category: z.enum(ITEM_CATEGORIES).optional().describe("Only Items of this category."),
   text: text
     .optional()
-    .describe("Only Items whose name, brand, model, materials, colors, or note contain this."),
+    .describe(
+      "Words to look for in each Item's name, brand, model, category, materials, colors, and " +
+        "note. Only Items with at least one of these words come back, those matching the most " +
+        "words first.",
+    ),
   archived: z
     .boolean()
     .optional()
@@ -864,6 +894,8 @@ export const homeSchema = z.object({
   liftCarDepth: measurementSchema.optional(),
   accessWidth: measurementSchema.optional(),
   accessNote: z.string().optional(),
+  /** The Home's IANA time zone; none on a Home made before time zones, whose days are UTC's. */
+  timeZone: z.string().optional(),
 });
 
 export const levelSchema = z.object({ slug: z.string(), name: z.string(), storey: z.number() });
@@ -1038,6 +1070,8 @@ export const foundItemSchema = itemSchema.extend({
   photos: z
     .array(z.object({ id: z.number(), takenOn: z.string(), caption: z.string().optional() }))
     .optional(),
+  /** With its Photos: the Item's page in the app, where the user sees them. */
+  page: z.string().optional(),
   /** Each Document's kind and name, in the Item page's order. Never the file. */
   documents: z
     .array(z.object({ kind: z.enum(DOCUMENT_KINDS), name: z.string().optional() }))
@@ -1153,6 +1187,8 @@ export const getHomeResult = z.object({
 export const homeFolderSetupResult = z.object({
   /** The origin the app names itself by, e.g. "https://settle.example.com". */
   origin: z.string(),
+  /** The new key for this folder: shown only now, since only its SHA-256 is stored. */
+  key: z.string(),
   /** curl -fsSL -H "Authorization: Bearer <token>" "<origin>/api/home_folder_script?home=<slug>" | sh */
   command: z.string(),
   /** Run once inside the folder: adds the plugin marketplace and installs the plugin for it. */
@@ -1162,12 +1198,26 @@ export const homeFolderSetupResult = z.object({
 });
 
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
-export const findItemsResult = z.object({ items: z.array(foundItemSchema) });
+/** The Home's IANA time zone, which the text's days are in; none on a Home whose days are UTC's. */
+const textTimeZone = z.string().optional();
+export const findItemsResult = z.object({
+  /** The `text` searched for, when one was given. */
+  searched: z.string().optional(),
+  items: z.array(foundItemSchema),
+  timeZone: textTimeZone,
+});
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
 export const listNotesResult = z.object({ notes: z.array(noteSchema) });
-export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
+export const searchNotesResult = z.object({
+  notes: z.array(noteSchema),
+  timeZone: textTimeZone,
+});
 /** Newest first. */
-export const getChangeLogResult = z.object({ changes: z.array(changeSchema) });
+export const getChangeLogResult = z.object({
+  changes: z.array(changeSchema),
+  /** Whether older changes were left out by the limit. */
+  more: z.boolean(),
+});
 
 /** get_room_sheet: the Room Sheet as text. */
 export const getRoomSheetResult = z.object({ sheet: z.string() });
@@ -1950,6 +2000,13 @@ export const findDecisionsInput = z.object({
   homeWide: z.boolean().optional().describe("true for only the Home-wide Decisions."),
   kind: z.enum(DECISION_KINDS).optional().describe("Only Decisions of this kind."),
   state: z.enum(DECISION_STATES).optional().describe("Only Decisions in this state."),
+  fulfilled: z
+    .boolean()
+    .optional()
+    .describe(
+      "true for only the Fulfilled Decisions (Purchases bought); false for only those not " +
+        "Fulfilled, so a Settled Purchase with false is one still to buy.",
+    ),
 });
 
 const includeFullGuideInput = z
@@ -2029,6 +2086,13 @@ export const flagSchema = z.object({
     name: z.string(),
     field: z.string().optional(),
   }),
+  /**
+   * value_changed: the field's value before the change that raised the flag, and its value now (a
+   * length or color with its Provenance, text, a number). Left out when empty, and on a flag raised
+   * before old and new values were kept.
+   */
+  old: z.unknown().optional(),
+  new: z.unknown().optional(),
   raisedAt: z.string(),
   /** Set once the user kept, reopened, or rejected the flagged Decision. */
   clearedAt: z.string().optional(),
@@ -2349,8 +2413,12 @@ export type DecisionDetail = z.infer<typeof decisionDetailSchema>;
  * the Rooms' order, each group in the order the Decisions were created. Archived ones never.
  */
 export const listDecisionsResult = z.object({ decisions: z.array(decisionSummarySchema) });
-export const findDecisionsResult = listDecisionsResult;
-export const getDecisionResult = z.object({ decision: decisionDetailSchema });
+export const findDecisionsResult = listDecisionsResult.extend({ timeZone: textTimeZone });
+export const getDecisionResult = z.object({
+  decision: decisionDetailSchema,
+  /** The Home's IANA time zone, which the text's days are in; none when its days are UTC's. */
+  timeZone: z.string().optional(),
+});
 
 /**
  * set_decision_state, resolve_flag, and resolve_conflict: the receipt (one line per change, then

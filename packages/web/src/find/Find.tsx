@@ -167,7 +167,7 @@ function FindOverlay({
   const input = useRef<HTMLInputElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const id = useId();
-  const results = useMemo(() => find(index.data ?? [], query), [index.data, query]);
+  const results = useMemo(() => find(index.data?.rows ?? [], query), [index.data, query]);
   const shown = expanded ? results : results.slice(0, SHOWN);
   const current = shown[active.row];
   const listed = !index.isPending && !index.isError && results.length > 0;

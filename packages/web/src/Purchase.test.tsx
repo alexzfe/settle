@@ -678,3 +678,26 @@ it("makes a new phone link only after saying the old link and its QR code stop w
   );
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
+
+it("opens the new-link dialog afresh, without the last refusal", async () => {
+  const phoneUrl = "https://settle.example.com/guide/k3Jx9QaZ7pLm";
+  showRug(
+    { quickGuide, guides: { ...guides, phoneUrl } },
+    {
+      rotate_guide_link: () =>
+        Response.json(
+          { error: { code: "not_found", message: "No Quick Guide for wool-rug." } },
+          { status: 404 },
+        ),
+    },
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "New link…" }));
+  let dialog = screen.getByRole("dialog", { name: "A new phone link" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Make a new link" }));
+  await within(dialog).findByRole("alert");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Keep this one" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "New link…" }));
+  dialog = screen.getByRole("dialog", { name: "A new phone link" });
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+});

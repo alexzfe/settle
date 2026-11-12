@@ -18,6 +18,7 @@ const admin = {
   createdAt: "2026-10-01T10:00:00.000Z",
   password: true,
   google: false,
+  googleSignIn: false,
 };
 
 function stubAdminPage(handlers: ApiHandlers = {}) {

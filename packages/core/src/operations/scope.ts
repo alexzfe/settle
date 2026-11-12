@@ -10,6 +10,15 @@ export const sessionInput = z
   .min(1)
   .describe("The id of this conversation's open Session, as open_session returned it.");
 
+/**
+ * A page of the Home in the app, by its path under the Home's address ("rooms/living-room"), or
+ * the Home's own page: where the user uploads what the Agent can't take in the chat, and sees
+ * their Photos.
+ */
+export function appPage(context: OperationContext, home: HomeRow, path?: string): string {
+  return `${context.origin}/homes/${home.slug}${path ? `/${path}` : ""}`;
+}
+
 /** The Home the call is scoped to, which the web caller's Account must own. */
 export function requireHome(context: OperationContext): HomeRow {
   if (!context.home) throw new CoreError("validation", "Pass `home`, the slug of the Home.");

@@ -102,16 +102,17 @@ export function formatColor(color: ColorText): string {
   return `${estimatedMark(color.provenance)}${color.name}${maker ? ` (${maker})` : ""}`;
 }
 
-/** A timestamp in the reader's locale, the way the rest of the app writes dates: "15 Sep 2026, 03:19". */
+/**
+ * A timestamp the way the rest of the app writes dates, in the reader's time zone, with the year
+ * and a 24-hour time: "15 Sep 2026, 03:19". Never the browser's locale form ("Sep 15, 2026" to
+ * one reader). An unreadable timestamp is left as it came.
+ */
 export function formatTime(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return at;
+  const two = (n: number) => String(n).padStart(2, "0");
+  const day = `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+  return `${day}, ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");

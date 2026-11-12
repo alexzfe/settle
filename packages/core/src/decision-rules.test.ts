@@ -207,6 +207,19 @@ describe("a state change from the web UI", () => {
     );
     expect(error.code).toBe("illegal_transition");
   });
+
+  it("refuses an unknown Decision in words for the user, naming no Agent tool", async () => {
+    const error = await refusal(
+      core.run("set_decision_state", web, { home, decision: "nope", to: "settled" }),
+    );
+    expect(error.code).toBe("not_found");
+    expect(error.message).toBe(
+      'This Home has no Decision "nope". It may have been renamed or removed; open it from the ' +
+        "Decisions page.",
+    );
+    const agents = await refusal(setState("nope", "settled"));
+    expect(agents.message).toMatch(/find_decisions lists its Decisions/);
+  });
 });
 
 describe("Basis and Evidence", () => {

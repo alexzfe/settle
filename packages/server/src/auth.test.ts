@@ -16,7 +16,7 @@ import type { Hono } from "hono";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { safeNext } from "./auth.js";
-import { FAILURE_LIMITS, FailureLimiter, UploadLimiter } from "./limits.js";
+import { FAILURE_LIMITS, FailureLimiter, PasswordGate, UploadLimiter } from "./limits.js";
 import { loginCookie } from "./testing.js";
 
 const PORT = 4380;
@@ -45,8 +45,9 @@ beforeAll(async () => {
     decision: "wool-rug",
   });
   guideToken = (decision.guides?.phoneUrl ?? "").slice(`${ORIGIN}/guide/`.length);
-  homeToken = fixture.core.homeToken(fixture.home) as string;
-  cottageToken = fixture.core.homeToken(cottage) as string;
+  homeToken = (await fixture.core.run("home_folder_setup", fixture.web, { home: fixture.home }))
+    .key;
+  cottageToken = (await fixture.core.run("home_folder_setup", kim, { home: cottage })).key;
   photo =
     (
       await fixture.core.run("add_photo", fixture.web, {
@@ -335,6 +336,147 @@ describe("failed logins", () => {
     }
   });
 
+  it("hold against a parallel burst: no more guesses get through than the limit allows", async () => {
+    const limited = authed();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const statuses = await Promise.all(
+        Array.from({ length: 40 }, async (_, i) => {
+          const response = await logIn(EMAIL, `wrong ${i} password`, undefined, limited);
+          return response.status;
+        }),
+      );
+      expect(statuses.filter((status) => status === 401).length).toBeLessThanOrEqual(5);
+      expect(statuses.filter((status) => status === 429).length).toBeGreaterThanOrEqual(35);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("count an attempt before its password is checked, and take it back when it is right", () => {
+    let now = 0;
+    const limiter = new FailureLimiter({ perPair: 2, perIp: 3, windowMs: 60_000 }, () => now);
+    expect(limiter.attempt("ip", EMAIL)).toBeUndefined();
+    expect(limiter.attempt("ip", EMAIL)).toBeUndefined();
+    // Two attempts still being checked lock the pair, before either is known to be wrong.
+    expect(limiter.attempt("ip", EMAIL)).toBe(60_000);
+    now = 60_001;
+    expect(limiter.attempt("ip", EMAIL)).toBeUndefined();
+    limiter.succeed("ip", EMAIL);
+    // The right one counts toward neither the pair nor the IP.
+    expect(limiter.attempt("ip", EMAIL)).toBeUndefined();
+    expect(limiter.attempt("ip", "kim@example.com")).toBeUndefined();
+    limiter.takeBack("ip", "kim@example.com");
+    expect(limiter.attempt("ip", "lee@example.com")).toBeUndefined();
+    expect(limiter.attempt("ip", "max@example.com")).toBeUndefined();
+    expect(limiter.lockedUntil("ip", "sue@example.com")).toBe(120_001);
+  });
+
+  it("let one IP check only a few passwords at once, and the server only a few more", async () => {
+    const gate = new PasswordGate({ perIp: 2, total: 3 });
+    expect(gate.enter("a")).toBe(true);
+    expect(gate.enter("a")).toBe(true);
+    expect(gate.enter("a")).toBe(false);
+    expect(gate.enter("b")).toBe(true);
+    expect(gate.enter("c")).toBe(false);
+    gate.leave("a");
+    expect(gate.enter("a")).toBe(true);
+    gate.leave("b");
+    expect(gate.enter("c")).toBe(true);
+
+    // At the door: what is over is refused at once, saying to wait a moment.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const gated = createApp({
+        core: fixture.core,
+        port: PORT,
+        publicOrigin: ORIGIN,
+        auth: {
+          failures: new FailureLimiter(),
+          passwords: new PasswordGate({ perIp: 1, total: 4 }),
+        },
+      });
+      const answers = await Promise.all(
+        ["a@example.com", "b@example.com", "c@example.com"].map((email) =>
+          logIn(email, "not their password", undefined, gated),
+        ),
+      );
+      expect(answers.map((each) => each.status).sort()).toEqual([401, 429, 429]);
+      const busy = answers.find((each) => each.status === 429) as Response;
+      expect(busy.headers.get("retry-after")).toBe("1");
+      expect(await busy.text()).toContain("Wait a moment, then try again");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("lock the current password's check on the Account page too: change_password and change_email", async () => {
+    const limited = authed();
+    const as = kimLogin();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      for (let i = 0; i < 5; i++) {
+        const miss = await api(
+          "change_password",
+          as,
+          { current: `wrong ${i} password`, password: "a whole new password" },
+          limited,
+        );
+        expect(miss.status).toBe(400);
+      }
+      // Locked, even with the right password, and for the other check of it.
+      const right = await api(
+        "change_email",
+        as,
+        { email: "kim@example.com", password: TEST_PASSWORD },
+        limited,
+      );
+      expect(right.status).toBe(429);
+      const body = (await right.json()) as { error: { code: string; message: string } };
+      expect(body.error.code).toBe("rate_limited");
+      expect(body.error.message).toContain("Try again in 15 minutes");
+      // A form refused for what it asks is no guess: it isn't counted.
+      const fresh = authed();
+      for (let i = 0; i < 6; i++) {
+        const short = await api(
+          "change_password",
+          as,
+          { current: TEST_PASSWORD, password: "short" },
+          fresh,
+        );
+        expect(short.status).toBe(400);
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("let the Account page check only a few passwords at once, as the login does", async () => {
+    const gated = createApp({
+      core: fixture.core,
+      port: PORT,
+      publicOrigin: ORIGIN,
+      auth: { failures: new FailureLimiter(), passwords: new PasswordGate({ perIp: 1, total: 4 }) },
+    });
+    const as = kimLogin();
+    const answers = await Promise.all(
+      [1, 2, 3].map((i) =>
+        api(
+          "change_password",
+          as,
+          { current: `wrong ${i} password`, password: "x".repeat(12) },
+          gated,
+        ),
+      ),
+    );
+    expect(answers.map((each) => each.status).sort()).toEqual([400, 429, 429]);
+    const busy = answers.find((each) => each.status === 429) as Response;
+    expect(busy.headers.get("retry-after")).toBe("1");
+    expect(((await busy.json()) as { error: { message: string } }).error.message).toContain(
+      "Wait a moment, then try again",
+    );
+  });
+
   it("lock an IP after 20 across every account, and unlock after 15 minutes", async () => {
     let now = Date.parse("2026-10-22T10:00:00Z");
     const limiter = new FailureLimiter(FAILURE_LIMITS, () => now);
@@ -359,6 +501,49 @@ describe("failed logins", () => {
     limiter.succeed("ip", EMAIL);
     limiter.fail("ip", EMAIL);
     expect(limiter.lockedUntil("ip", EMAIL)).toBeUndefined();
+  });
+
+  it("are counted by a local proxy's X-Forwarded-For with SETTLE_TRUSTED_PROXY=forwarded, from a private peer alone", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const failures = new FailureLimiter();
+      const proxied = createApp({
+        core: fixture.core,
+        port: PORT,
+        publicOrigin: ORIGIN,
+        auth: { trustedProxy: "forwarded", failures },
+      });
+      /** A wrong login as the proxy sends it: from `peer`, with the hops it was given. */
+      const wrong = (peer: string, forwarded: string) =>
+        proxied.request(
+          "/login",
+          {
+            method: "POST",
+            headers: {
+              host: "settle.example.com",
+              "content-type": "application/x-www-form-urlencoded",
+              origin: ORIGIN,
+              "x-forwarded-for": forwarded,
+            },
+            body: new URLSearchParams({ email: EMAIL, password: "wrong" }).toString(),
+          },
+          { incoming: { socket: { remoteAddress: peer } } },
+        );
+      // Docker's bridge gateway, as Caddy on the host reaches the container: the right-most hop is
+      // the visitor Caddy saw; what the visitor wrote before it is theirs to make up.
+      await wrong("172.17.0.1", "10.9.9.9, 198.51.100.7");
+      expect(warn.mock.calls.at(-1)?.[0]).toBe(`Failed login for "${EMAIL}" from 198.51.100.7`);
+      await wrong("::ffff:127.0.0.1", "198.51.100.8");
+      expect(warn.mock.calls.at(-1)?.[0]).toBe(`Failed login for "${EMAIL}" from 198.51.100.8`);
+      // A peer on the internet is no proxy of ours: its header is ignored.
+      await wrong("203.0.113.5", "198.51.100.9");
+      expect(warn.mock.calls.at(-1)?.[0]).toBe(`Failed login for "${EMAIL}" from 203.0.113.5`);
+      // With no header, the peer itself.
+      await wrong("10.0.0.2", "");
+      expect(warn.mock.calls.at(-1)?.[0]).toBe(`Failed login for "${EMAIL}" from 10.0.0.2`);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("are counted by Cloudflare's visitor IP only with SETTLE_TRUSTED_PROXY=cloudflare", async () => {
@@ -491,6 +676,7 @@ describe("the one-time links' pages", () => {
         createdAt: expect.any(String),
         password: true,
         google: false,
+        googleSignIn: false,
       },
     });
     const again = await post(path, {
@@ -501,19 +687,25 @@ describe("the one-time links' pages", () => {
     expect(again.status).toBe(404);
   });
 
-  it("set a password from a reset link, ending every other Login", async () => {
+  it("set a password from a reset link, ending every other Login and the Home keys", async () => {
     const account = (kim.caller as { account: number }).account;
     const before = kimLogin();
     const { reset } = await fixture.core.run("create_reset_link", fixture.web, { account });
     const path = new URL(reset.url).pathname;
-    expect(await (await request(path)).text()).not.toContain('name="email"');
+    const form = await (await request(path)).text();
+    expect(form).not.toContain('name="email"');
+    expect(form).toContain(
+      "Claude is disconnected, each Home Folder must be set up again, and Google is unlinked",
+    );
     const done = await post(path, { password: "kim's new password", again: "kim's new password" });
     expect(done.status).toBe(303);
     expect((await api("list_homes", before)).status).toBe(401);
+    expect((await mcp(cottage, bearer(cottageToken))).status).toBe(401);
     expect((await logIn("kim@example.com", "kim's new password")).status).toBe(303);
     // Back as it was, for the other tests.
     const { reset: back } = await fixture.core.run("create_reset_link", fixture.web, { account });
     await post(new URL(back.url).pathname, { password: TEST_PASSWORD, again: TEST_PASSWORD });
+    cottageToken = (await fixture.core.run("home_folder_setup", kim, { home: cottage })).key;
   });
 
   it("limit how often one IP may miss", async () => {
@@ -656,7 +848,7 @@ describe("a Home's bearer key", () => {
 
     await api("rotate_home_key", kimLogin(), { home: cottage });
     expect((await mcp(cottage, bearer(cottageToken))).status).toBe(401);
-    cottageToken = fixture.core.homeToken(cottage) as string;
+    cottageToken = (await fixture.core.run("home_folder_setup", kim, { home: cottage })).key;
     expect((await mcp(cottage, bearer(cottageToken))).status).toBe(200);
   });
 
@@ -667,6 +859,11 @@ describe("a Home's bearer key", () => {
       headers: cookie,
     });
     expect(script.status).toBe(200);
+    // With no key to write, the script carries a new one, for this folder, that opens the Home.
+    const key = /"Authorization": "Bearer ([^"]+)"/.exec(await script.text())?.[1] as string;
+    expect(key).not.toBe(homeToken);
+    expect((await mcp(fixture.home, bearer(key))).status).toBe(200);
+    expect((await mcp(fixture.home, bearer(homeToken))).status).toBe(200);
   });
 });
 

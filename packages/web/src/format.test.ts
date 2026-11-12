@@ -6,6 +6,7 @@ import {
   formatDimensions,
   formatLength,
   formatLogValue,
+  formatTime,
   sentence,
   wallNameOf,
   words,
@@ -89,6 +90,17 @@ describe("formatDate", () => {
 
   it("leaves an unreadable date as it came", () => {
     expect(formatDate("not a date", now)).toBe("not a date");
+  });
+});
+
+describe("formatTime", () => {
+  it("writes a timestamp as formatDate does, with the time, whatever the browser's locale", () => {
+    expect(formatTime(new Date(2026, 10, 11, 0, 5).toISOString())).toBe("11 Nov 2026, 00:05");
+    expect(formatTime(new Date(2025, 0, 3, 17, 42).toISOString())).toBe("3 Jan 2025, 17:42");
+  });
+
+  it("leaves an unreadable timestamp as it came", () => {
+    expect(formatTime("not a date")).toBe("not a date");
   });
 });
 

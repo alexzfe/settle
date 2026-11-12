@@ -42,8 +42,15 @@ function roomFlagged(room: string, decisions: readonly DecisionSummary[]): boole
   );
 }
 
-/** The Rooms whose loaded Room Sheet still has Gaps. */
-export function roomsWithGaps(rooms: readonly Room[], details: Map<string, RoomDetail>): Room[] {
+/**
+ * The Rooms whose Room Sheet still has Gaps, or undefined until every Room's sheet has loaded: a
+ * sheet still loading, or one that failed, would be counted as having none.
+ */
+export function roomsWithGaps(
+  rooms: readonly Room[],
+  details: Map<string, RoomDetail>,
+): Room[] | undefined {
+  if (!rooms.every((room) => details.has(room.slug))) return undefined;
   return rooms.filter((room) => (details.get(room.slug)?.gaps.length ?? 0) > 0);
 }
 

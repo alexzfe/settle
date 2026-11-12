@@ -124,6 +124,53 @@ it("offers Home Intake when there are no Rooms yet", async () => {
   expect(screen.getByRole("link", { name: "0 Unplaced Items" })).toBeDefined();
 });
 
+/** A Home of three Rooms with two open Decisions, each Room's sheet answered by `getRoom`. */
+function stubThreeRooms(getRoom: ApiHandlers["get_room"]) {
+  return stubRoomsPage({
+    get_home: () => ({
+      home: flat,
+      levels: [ground, upper],
+      rooms: [kitchen, living, bedroom],
+      unplacedItems: 0,
+    }),
+    get_room: getRoom,
+    list_decisions: () => ({
+      decisions: [
+        openDecision("rug", living, "candidate"),
+        openDecision("lamp", bedroom, "leaning"),
+      ],
+    }),
+  });
+}
+
+it("counts no Rooms with Gaps until every Room Sheet has loaded", async () => {
+  const fetch = stubThreeRooms(undefined);
+  const answer = fetch.getMockImplementation();
+  // The Room Sheets never arrive.
+  fetch.mockImplementation((url, init) =>
+    url === "/api/get_room"
+      ? new Promise<Response>(() => {})
+      : (answer?.(url, init) as Promise<Response>),
+  );
+  renderRoutes("/homes/flat/rooms");
+  expect(await screen.findByText("3 Rooms · 2 open Decisions")).toBeDefined();
+  expect(screen.queryByText(/with Gaps/)).toBeNull();
+});
+
+it("counts no Rooms with Gaps when a Room Sheet failed to load", async () => {
+  stubThreeRooms((input) => {
+    if (input.room === "kitchen") {
+      return Response.json({ error: { code: "internal", message: "Broke." } }, { status: 500 });
+    }
+    const room = input.room === "bedroom" ? bedroom : living;
+    return { room: roomDetail(room, ["times of use"]), decisions: [], photos: [] };
+  });
+  const view = renderRoutes("/homes/flat/rooms");
+  await screen.findByRole("link", { name: "Bedroom" });
+  await waitFor(() => expect(screen.getByText("3 Rooms · 2 open Decisions")).toBeDefined());
+  expect(view.container.textContent).not.toMatch(/with Gaps/);
+});
+
 it("leaves out a tile's functions line when it only repeats the Room's name", async () => {
   const functions: Record<string, RoomDetail["functions"]> = {
     kitchen: ["kitchen"],

@@ -33,6 +33,22 @@ it("renders lists, continuing an item on the line after it", () => {
   expect(html("* one\n+ two")).toBe("<ul><li>one</li><li>two</li></ul>");
 });
 
+it("keeps numbered steps in one list across the blank lines between them", () => {
+  expect(html("1. Measure the door\n\n2. Check the stairs\n\n3. Order")).toBe(
+    "<ol><li>Measure the door</li><li>Check the stairs</li><li>Order</li></ol>",
+  );
+  // A blank line before an item of the other kind, or before a paragraph, still ends the list.
+  expect(html("1. Measure\n\n- Wool\n\nDone.")).toBe(
+    "<ol><li>Measure</li></ol><ul><li>Wool</li></ul><p>Done.</p>",
+  );
+});
+
+it("numbers a list from its first item, so a step after a nested bullet keeps its number", () => {
+  expect(html("1. Measure the door\n   - with the frame\n2. Check the stairs")).toBe(
+    '<ol><li>Measure the door</li></ol><ul><li>with the frame</li></ul><ol start="2"><li>Check the stairs</li></ol>',
+  );
+});
+
 it("renders quotes, rules, and code blocks, leaving the code as written", () => {
   expect(html("> Measure\n> twice\n\n---\n\n```\n**not bold** <b>\n- not a list\n```")).toBe(
     "<blockquote>Measure twice</blockquote><hr>" +
