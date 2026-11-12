@@ -504,8 +504,9 @@ export const saveRoomInput = z.object({
     ),
   name: text
     .max(100)
+    .optional()
     .describe(
-      `The Room's name as the user says it, e.g. "Living room" or "Mia's room". A new name renames it; its slug stays.`,
+      `The Room's name as the user says it, e.g. "Living room" or "Mia's room". Needed for a new Room; with \`room\`, leave it out to keep the name, or give a new one to rename it (its slug stays).`,
     ),
   level: slugInput
     .optional()
@@ -736,7 +737,11 @@ export const findItemsInput = z.object({
   category: z.enum(ITEM_CATEGORIES).optional().describe("Only Items of this category."),
   text: text
     .optional()
-    .describe("Only Items whose name, brand, model, materials, colors, or note contain this."),
+    .describe(
+      "Words to look for in each Item's name, brand, model, category, materials, colors, and " +
+        "note. Only Items with at least one of these words come back, those matching the most " +
+        "words first.",
+    ),
   archived: z
     .boolean()
     .optional()
@@ -1038,6 +1043,8 @@ export const foundItemSchema = itemSchema.extend({
   photos: z
     .array(z.object({ id: z.number(), takenOn: z.string(), caption: z.string().optional() }))
     .optional(),
+  /** With its Photos: the Item's page in the app, where the user sees them. */
+  page: z.string().optional(),
   /** Each Document's kind and name, in the Item page's order. Never the file. */
   documents: z
     .array(z.object({ kind: z.enum(DOCUMENT_KINDS), name: z.string().optional() }))
@@ -1162,7 +1169,11 @@ export const homeFolderSetupResult = z.object({
 });
 
 export const listItemsResult = z.object({ items: z.array(itemSchema) });
-export const findItemsResult = z.object({ items: z.array(foundItemSchema) });
+export const findItemsResult = z.object({
+  /** The `text` searched for, when one was given. */
+  searched: z.string().optional(),
+  items: z.array(foundItemSchema),
+});
 export const listConstraintsResult = z.object({ constraints: z.array(constraintSchema) });
 export const listNotesResult = z.object({ notes: z.array(noteSchema) });
 export const searchNotesResult = z.object({ notes: z.array(noteSchema) });
@@ -1950,6 +1961,13 @@ export const findDecisionsInput = z.object({
   homeWide: z.boolean().optional().describe("true for only the Home-wide Decisions."),
   kind: z.enum(DECISION_KINDS).optional().describe("Only Decisions of this kind."),
   state: z.enum(DECISION_STATES).optional().describe("Only Decisions in this state."),
+  fulfilled: z
+    .boolean()
+    .optional()
+    .describe(
+      "true for only the Fulfilled Decisions (Purchases bought); false for only those not " +
+        "Fulfilled, so a Settled Purchase with false is one still to buy.",
+    ),
 });
 
 const includeFullGuideInput = z
@@ -2029,6 +2047,13 @@ export const flagSchema = z.object({
     name: z.string(),
     field: z.string().optional(),
   }),
+  /**
+   * value_changed: the field's value before the change that raised the flag, and its value now (a
+   * length or color with its Provenance, text, a number). Left out when empty, and on a flag raised
+   * before old and new values were kept.
+   */
+  old: z.unknown().optional(),
+  new: z.unknown().optional(),
   raisedAt: z.string(),
   /** Set once the user kept, reopened, or rejected the flagged Decision. */
   clearedAt: z.string().optional(),

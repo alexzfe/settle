@@ -42,6 +42,7 @@ describe("migrate", () => {
       { id: 18 },
       { id: 19 },
       { id: 20 },
+      { id: 22 },
     ]);
     db.close();
   });
@@ -50,7 +51,7 @@ describe("migrate", () => {
     const path = tempDatabase();
     migrate(path).close();
     const db = migrate(path);
-    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 21 });
+    expect(db.prepare("SELECT count(*) AS n FROM migrations").get()).toEqual({ n: 22 });
     db.close();
   });
 

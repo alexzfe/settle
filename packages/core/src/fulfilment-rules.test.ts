@@ -149,8 +149,90 @@ describe("value_changed flags", () => {
       }),
     ]);
     expect(await decisionText()).toContain(
-      "Living room, Wall 2 (living-room/wall-2) length changed on",
+      "Living room, Wall 2 (living-room/wall-2) length changed from ~3.00 m (Estimated) to 2.95 m (Measured) on",
     );
+  });
+
+  it("say what the changed value was and is, so the Agent can weigh the change", async () => {
+    await save(rug([must("Under 2.8 m wide", wall2)]));
+    await saveRoom({
+      room: "living-room",
+      name: "Living room",
+      walls: [{ position: 2, length: measured(2950) }],
+    });
+    expect((await detail()).openFlags[0]).toEqual(
+      expect.objectContaining({
+        old: { mm: 3000, provenance: "estimated" },
+        new: { mm: 2950, provenance: "measured" },
+      }),
+    );
+    expect(await decisionText()).toContain(
+      "Living room, Wall 2 (living-room/wall-2) length changed from ~3.00 m (Estimated) to " +
+        "2.95 m (Measured) on",
+    );
+  });
+
+  it("keep the value from before the flag and the latest one when it changes again", async () => {
+    await save(rug([must("Under 2.8 m wide", wall2)]));
+    for (const mm of [2950, 2900]) {
+      await saveRoom({
+        room: "living-room",
+        name: "Living room",
+        walls: [{ position: 2, length: measured(mm) }],
+      });
+    }
+    const flags = (await detail()).openFlags;
+    expect(flags).toHaveLength(1);
+    expect(flags[0]).toEqual(
+      expect.objectContaining({
+        old: { mm: 3000, provenance: "estimated" },
+        new: { mm: 2900, provenance: "measured" },
+      }),
+    );
+  });
+
+  it("say what a value was set to when it had none before", async () => {
+    const rugBrand: Reason = { kind: "item", id: "old-rug", field: "brand" };
+    await save(rug([prefer("Same maker as the old rug", rugBrand)]));
+
+    await core.run("edit_item", web, { home, item: "old-rug", fields: { brand: "Hay" } });
+
+    expect(await decisionText()).toContain("Old rug (old-rug) brand set to Hay on");
+  });
+
+  it("say what a cleared value was", async () => {
+    const rugBrand: Reason = { kind: "item", id: "old-rug", field: "brand" };
+    await core.run("edit_item", web, { home, item: "old-rug", fields: { brand: "Hay" } });
+    await save(rug([prefer("Same maker as the old rug", rugBrand)]));
+
+    await core.run("edit_item", web, { home, item: "old-rug", fields: { brand: null } });
+
+    expect(await decisionText()).toContain("Old rug (old-rug) brand cleared (was Hay) on");
+  });
+
+  it("say a value changed back when it ends where it was before the flag", async () => {
+    await save(rug([must("Under 2.8 m wide", wall2)]));
+    for (const length of [estimated(2950), estimated(3000)]) {
+      await saveRoom({
+        room: "living-room",
+        name: "Living room",
+        walls: [{ position: 2, length }],
+      });
+    }
+
+    expect(await decisionText()).toContain(
+      "Living room, Wall 2 (living-room/wall-2) length changed, then back to ~3.00 m (Estimated) on",
+    );
+  });
+
+  it("refuse a reason on another Home, saying only to leave `id` out", async () => {
+    const error = await refusal(
+      save(rug([must("Fits the lift", { kind: "home", id: "someone-elses-flat" })])),
+    );
+
+    expect(error.code).toBe("not_found");
+    expect(error.message).toContain("A reason on the Home itself leaves `id` out.");
+    expect(error.message).not.toContain("Point the reason at one of those");
   });
 
   it("flag one naming no field on any change to its record", async () => {
@@ -400,6 +482,24 @@ describe("record_fulfilment of a Purchase", () => {
       item: "wool-rug",
       replacedItem: "old-rug",
     });
+  });
+
+  it("lets find_decisions tell what is still to buy from what was bought", async () => {
+    await save({ ...rug(undefined, undefined), title: "Jute rug" });
+    await setState("jute-rug", "settled");
+    await fulfil({ decision: "wool-rug", bought: "A wool rug", item: wool });
+    const find = async (fulfilled: boolean) =>
+      (
+        await core.run("find_decisions", agent(session), {
+          session,
+          kind: "purchase",
+          state: "settled",
+          fulfilled,
+        })
+      ).decisions.map((each) => each.slug);
+
+    expect(await find(false)).toEqual(["jute-rug"]);
+    expect(await find(true)).toEqual(["wool-rug"]);
   });
 
   it("adds the Item Unplaced when told", async () => {

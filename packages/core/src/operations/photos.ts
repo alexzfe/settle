@@ -207,8 +207,9 @@ export const viewPhotos = defineOperation({
     "that order. Name Photos by id, as the Room Sheet's Photos line and find_items list them: " +
     "at most 4 per call, and the fewest that answer the question, usually the newest or the one " +
     "of the Wall in question. Call this only when the user has asked you to look or said yes " +
-    "to looking: each Photo stays in the Session's context for every later turn. Changes " +
-    "nothing.",
+    "to looking: each Photo stays in the Session's context for every later turn. When the user " +
+    "only asks what is where or what something looks like, answer from the records and point " +
+    "them to the Room's or Item's page in the app; don't offer to look. Changes nothing.",
   input: viewPhotosInput,
   readOnly: true,
   surface: "agent",

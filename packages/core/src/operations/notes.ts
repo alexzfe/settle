@@ -2,6 +2,7 @@ import { defineOperation } from "../registry.js";
 import { renderNotes } from "../render.js";
 import { uniqueSlug } from "../slug.js";
 import type { NoteRow } from "../store.js";
+import { tokens } from "../words.js";
 import { active } from "./lookup.js";
 import { toNote } from "./model.js";
 import {
@@ -93,14 +94,4 @@ export const listNotes = defineOperation({
 
 function newestFirst(notes: NoteRow[]): NoteRow[] {
   return notes.filter(active).sort((a, b) => b.id - a.id);
-}
-
-/** Lowercase words without accents, so "Café" finds "cafe". */
-function tokens(text: string): string[] {
-  return text
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((word) => word.length > 1);
 }
