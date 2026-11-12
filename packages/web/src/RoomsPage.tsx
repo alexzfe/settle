@@ -22,9 +22,10 @@ export function RoomsPage() {
   const open = (decisions.data?.decisions ?? []).filter(
     (decision) => decision.room && listed.has(decision.room.slug) && isOpen(decision),
   ).length;
+  const withGaps = roomsWithGaps(rooms, details);
   const summary = [
     count(rooms.length, "Room"),
-    `${roomsWithGaps(rooms, details).length} with Gaps`,
+    ...(withGaps ? [`${withGaps.length} with Gaps`] : []),
     ...(decisions.data ? [count(open, "open Decision")] : []),
   ];
   return (

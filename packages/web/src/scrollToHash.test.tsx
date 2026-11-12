@@ -31,3 +31,23 @@ it("scrolls to the section a link's hash names once the page has rendered it", a
   await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
   expect(scrolled).toEqual(["quick-guide"]);
 });
+
+it("takes a hash that is not valid percent-encoding as written, not as a crash", async () => {
+  const scrolled: string[] = [];
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this.id);
+  };
+  renderRoutes("/page#100%", [
+    {
+      path: "/page",
+      element: <Landing id="100%" />,
+    },
+  ]);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect(scrolled).toEqual(["100%"]);
+});
+
+function Landing({ id }: { id: string }) {
+  useScrollToHash();
+  return <section id={id}>Here</section>;
+}

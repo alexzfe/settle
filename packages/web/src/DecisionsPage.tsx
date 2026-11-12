@@ -120,7 +120,7 @@ const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 export function openSince(at: string, now: Date = new Date()): string {
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return "";
-  if (date.getFullYear() === now.getFullYear()) return shortDate(at) ?? "";
+  if (date.getFullYear() === now.getFullYear()) return shortDate(at, now) ?? "";
   return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 

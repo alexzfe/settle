@@ -158,6 +158,10 @@ function drawn(
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser cannot draw the photo.");
   context.imageSmoothingQuality = "high";
+  // A JPEG has no transparency: what a PNG or WebP leaves clear would save as black, hiding dark
+  // text on a transparent receipt. Paper white is what such a picture is meant to sit on.
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, width, height);
   context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
   return canvas;
 }

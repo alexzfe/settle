@@ -1,7 +1,7 @@
 import type { ChangeEvent, RecordKind } from "@settle/core";
 import { type QueryKey, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { call } from "./api";
+import { ApiError, call } from "./api";
 import { queryKeys } from "./queries";
 
 /**
@@ -113,9 +113,9 @@ function queriesOfHome(home: string): QueryKey[] {
 }
 
 /**
- * How the live connection stands: connecting at first, live once open, reconnecting while the
- * browser retries a dropped connection, and stopped when the browser has given up (the page must
- * be reloaded to get updates again).
+ * How the live connection stands: connecting at first, live once open, reconnecting while a
+ * dropped connection is retried, and stopped when there is nothing left to retry for (the Home is
+ * not found, or the Login ran out), so only a reload can help.
  */
 export type LiveState = "connecting" | "live" | "reconnecting" | "stopped";
 
@@ -143,11 +143,23 @@ export function useLastAgentCall(home: string): string | undefined {
 // EventSource.CLOSED, spelled out so a stand-in EventSource without the constants still works.
 const CLOSED = 2;
 
+/** How long to wait before opening a new stream after the browser gave up on one: it doubles. */
+const FIRST_RETRY_MS = 2000;
+const LAST_RETRY_MS = 30_000;
+/**
+ * How many streams in a row may be refused while the Home itself answers before giving up: the
+ * server is up, so the refusal is not a passing restart (a proxy that drops /events, say).
+ */
+const REFUSALS_WHILE_UP = 5;
+
 /**
  * Keeps one Home's queries fresh while its pages are open: each change event invalidates the
- * queries showing that record kind, and after a dropped connection comes back (the browser
- * retries on its own) everything for the Home is refetched, since changes may have been missed.
- * Each agent event is kept for useLastAgentCall. Returns how the connection stands.
+ * queries showing that record kind, and after a dropped connection comes back everything for the
+ * Home is refetched, since changes may have been missed. The browser retries a dropped stream on
+ * its own, but gives up for good when a retry is refused (the 502 while the server restarts on a
+ * deploy); then a new stream is opened after a wait that doubles from 2 to 30 seconds. It stops
+ * when the Login has run out (the call answered 401 goes to the login page), when the Home is not
+ * found, or when the stream is refused five times in a row while the Home answers. Each agent event is kept for useLastAgentCall. Returns how the connection stands.
  */
 export function useLiveUpdates(home: string): LiveState {
   const queryClient = useQueryClient();
@@ -156,32 +168,68 @@ export function useLiveUpdates(home: string): LiveState {
     const invalidate = (keys: QueryKey[]) => {
       for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey });
     };
-    const events = new EventSource(`/events?home=${encodeURIComponent(home)}`);
+    let events: EventSource | undefined;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let wait = FIRST_RETRY_MS;
     let dropped = false;
+    let refusedWhileUp = 0;
+    let ended = false;
+
+    const connect = () => {
+      const source = new EventSource(`/events?home=${encodeURIComponent(home)}`);
+      events = source;
+      source.addEventListener("change", (event: MessageEvent<string>) => {
+        const change = JSON.parse(event.data) as ChangeEvent;
+        invalidate(queriesShowing(change.recordKind, change.home));
+      });
+      source.addEventListener("agent", (event: MessageEvent<string>) => {
+        const agent = JSON.parse(event.data) as AgentEvent;
+        queryClient.setQueryData(agentCallKey(agent.home), agent.at);
+      });
+      source.addEventListener("error", () => {
+        dropped = true;
+        if (source.readyState !== CLOSED) {
+          setState("reconnecting");
+          return;
+        }
+        source.close();
+        void giveUpOrRetry();
+      });
+      source.addEventListener("open", () => {
+        setState("live");
+        wait = FIRST_RETRY_MS;
+        refusedWhileUp = 0;
+        if (!dropped) return;
+        dropped = false;
+        invalidate(queriesOfHome(home));
+      });
+    };
+
+    // The browser does not say why it gave up. An ordinary call does: a 401 (the Login ran out)
+    // goes to the login page, and not_found means there is no such Home to follow.
+    const giveUpOrRetry = async () => {
+      setState("reconnecting");
+      const stop = await call("get_home", { home }).then(
+        () => ++refusedWhileUp >= REFUSALS_WHILE_UP,
+        (error: unknown) =>
+          error instanceof ApiError && (error.status === 401 || error.code === "not_found"),
+      );
+      if (ended) return;
+      if (stop) {
+        setState("stopped");
+        return;
+      }
+      retry = setTimeout(connect, wait);
+      wait = Math.min(wait * 2, LAST_RETRY_MS);
+    };
+
     setState("connecting");
-    events.addEventListener("change", (event: MessageEvent<string>) => {
-      const change = JSON.parse(event.data) as ChangeEvent;
-      invalidate(queriesShowing(change.recordKind, change.home));
-    });
-    events.addEventListener("agent", (event: MessageEvent<string>) => {
-      const agent = JSON.parse(event.data) as AgentEvent;
-      queryClient.setQueryData(agentCallKey(agent.home), agent.at);
-    });
-    events.addEventListener("error", () => {
-      dropped = true;
-      const stopped = events.readyState === CLOSED;
-      setState(stopped ? "stopped" : "reconnecting");
-      // The browser gives up on a refused stream without saying why. If the Login ran out, an
-      // ordinary call is answered 401, which goes to the login.
-      if (stopped) call("get_account", {}).catch(() => {});
-    });
-    events.addEventListener("open", () => {
-      setState("live");
-      if (!dropped) return;
-      dropped = false;
-      invalidate(queriesOfHome(home));
-    });
-    return () => events.close();
+    connect();
+    return () => {
+      ended = true;
+      clearTimeout(retry);
+      events?.close();
+    };
   }, [home, queryClient]);
   return state;
 }
