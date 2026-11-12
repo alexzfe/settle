@@ -24,6 +24,7 @@ button.iconButton:hover {
 
 /* The sidebar's Find row: reads as a quiet field, with its shortcuts at the right. */
 .row {
+  --press-scale: 0.99;
   width: 100%;
   min-height: 2.25rem;
   padding: var(--space-1) var(--space-2);
@@ -68,6 +69,7 @@ button.iconButton:hover {
   align-items: flex-start;
   padding: var(--space-4);
   background: rgb(28 26 23 / 0.35);
+  animation: fade-in 150ms ease-out;
 }
 
 @media (min-width: 48rem) {
@@ -87,6 +89,7 @@ button.iconButton:hover {
   border-radius: var(--radius);
   background: var(--color-ground);
   box-shadow: var(--shadow-raised);
+  animation: rise-in 200ms ease-out;
 }
 
 @media (min-width: 48rem) {
@@ -259,4 +262,18 @@ button.iconButton:hover {
   border: none;
   background: var(--color-card);
   color: var(--color-ink);
+}
+
+/* The find box arrives like the dialog: the backdrop fades, the panel rises into place. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
 }
