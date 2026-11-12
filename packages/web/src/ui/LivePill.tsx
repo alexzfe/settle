@@ -10,12 +10,13 @@ const LABEL: Record<"reconnecting" | "stopped", string> = {
 
 /**
  * "Reconnecting", or "Updates stopped" with a Reload button: the states that say the page has
- * stopped following the Agent. Nothing while connecting or live.
+ * stopped following the Agent. Nothing while connecting or live. It is read out by the status
+ * region AgentStatus keeps around it.
  */
 export function LivePill({ state }: { state: LiveState }) {
   if (state === "connecting" || state === "live") return null;
   return (
-    <span className={`${styles.live} ${styles[`live-${state}`]}`} aria-live="polite">
+    <span className={`${styles.live} ${styles[`live-${state}`]}`}>
       <span className={styles.liveDot} aria-hidden />
       {LABEL[state]}
       {state === "stopped" && (

@@ -10,8 +10,9 @@
 .entry {
   position: relative;
   display: grid;
-  /* The picture's track is auto, so a row without one gives the words its width. */
-  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 11rem) auto;
+  /* The picture's track is the picture's own width on every row, so the Room column sits in the
+     same place whether a row has a picture or not. */
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 11rem) 4.5rem;
   grid-template-areas:
     "mark head room thumb"
     ".    body room thumb";
@@ -21,6 +22,9 @@
   padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .entry:last-child {
@@ -140,7 +144,8 @@
 /* Take it with you. */
 .downloadLinks {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  /* Two columns, so the four links make two even rows rather than three and an orphan. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 var(--space-5);
   font-size: var(--text-sm);
 }
@@ -160,6 +165,10 @@
 
 /* Phone: the Room drops under the title, the picture keeps its corner. */
 @media (max-width: 40rem) {
+  .downloadLinks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .entry {
     grid-template-columns: 22px minmax(0, 1fr) auto;
     grid-template-areas:

@@ -64,8 +64,8 @@ it("renders GitHub alerts as Callouts, their lines as Markdown of their own", ()
       markdown={"> [!TIP]\n> Measure **twice**.\n> - once\n\n> [!caution]\n> Viscose sheds."}
     />,
   );
-  const callouts = [...container.querySelectorAll("aside")];
-  expect(callouts.map((aside) => aside.firstElementChild?.textContent)).toEqual(["Tip", "Caution"]);
+  const callouts = [...container.querySelectorAll("[role=note]")];
+  expect(callouts.map((note) => note.firstElementChild?.textContent)).toEqual(["Tip", "Caution"]);
   expect(callouts[0]?.querySelector("strong")?.textContent).toBe("twice");
   expect(callouts[0]?.querySelector("li")?.textContent).toBe("once");
   expect(callouts[1]?.querySelector("p:last-child")?.textContent).toBe("Viscose sheds.");

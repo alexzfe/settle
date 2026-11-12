@@ -219,6 +219,22 @@ describe("the login page", () => {
     expect(page).not.toContain('class="error"');
   });
 
+  it("looks like Settle: the app's paper, ink and serif, its 6 px corners, and the mark", async () => {
+    const page = await (await request("/login")).text();
+    // The light and dark token values, copied from the web app's tokens.css.
+    for (const token of ["#f6f3ee", "#fbfaf7", "#2a2724", "#6b655d", "#8a8378", "#9b3b2e"]) {
+      expect(page).toContain(token);
+    }
+    for (const token of ["#1c1a17", "#24211d", "#ece6dc", "#a39b8f", "#7d756b", "#e8917f"]) {
+      expect(page).toContain(token);
+    }
+    expect(page).toContain("Newsreader");
+    expect(page).toContain("border-radius: 6px");
+    expect(page).not.toMatch(/#(?:bbb|333|fafaf7|1c1c1a)\b/);
+    // The mark beside the name, said once: the heading reads "Settle".
+    expect(page).toMatch(/<h1><svg [^>]*aria-hidden="true"[^>]*>.*<\/svg>Settle<\/h1>/);
+  });
+
   it("refuses a wrong password or email alike, logging the email and IP, never the password", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {

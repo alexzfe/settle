@@ -157,7 +157,7 @@ function ItemSheet({ home, record }: { home: string; record: ItemRecord }) {
           </Card>
         )}
       </div>
-      {!pictured && <AddPhoto home={home} owner={{ item: item.slug }} />}
+      {!pictured && <AddPhoto home={home} owner={{ item: item.slug }} label="Photos" />}
 
       <ItemDocuments home={home} item={item.slug} documents={documents} />
 

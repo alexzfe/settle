@@ -311,19 +311,33 @@ const escapeHtml = (text: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
+// The login pages copy the web app's tokens (packages/web/src/tokens.css) by hand, as the printable
+// Guides do in core/src/exports.ts: ground #f6f3ee, card #fbfaf7, ink #2a2724, muted ink #6b655d,
+// field edge #8a8378, hairline #e3ded6, error #9b3b2e, and their dark values; the 6 px radius;
+// the serif for the heading and the sans for text. Newsreader and Inter are named first but not
+// served here, so the page falls back to Georgia and the system sans. Keep them in step.
 const STYLE = [
-  "body { font-family: system-ui, sans-serif; max-width: 22rem; margin: 15vh auto; padding: 0 1rem; color: #222; background: #fafaf7; }",
-  "h1 { font-size: 1.4rem; font-weight: 600; }",
-  "label { display: block; margin: 1rem 0 0.3rem; }",
-  "input { box-sizing: border-box; width: 100%; padding: 0.5rem; font: inherit; border: 1px solid #bbb; border-radius: 4px; }",
-  "button { margin-top: 1rem; padding: 0.5rem 1.2rem; font: inherit; border: 0; border-radius: 4px; background: #333; color: #fff; }",
-  "button.secondary { background: transparent; color: inherit; border: 1px solid #bbb; }",
-  ".error { color: #a1260d; }",
-  ".hint { color: #666; font-size: 0.9rem; }",
-  "a.google { display: block; margin-top: 1rem; padding: 0.5rem 1.2rem; text-align: center; color: inherit; text-decoration: none; border: 1px solid #bbb; border-radius: 4px; }",
-  ".or { margin: 1.5rem 0 0; color: #666; text-align: center; }",
-  "@media (prefers-color-scheme: dark) { body { color: #eee; background: #1c1c1a; } input { background: #2a2a28; color: #eee; border-color: #555; } button { background: #eee; color: #222; } .error { color: #ff8a6b; } .hint { color: #aaa; } }",
+  ":root { color-scheme: light; --ground: #f6f3ee; --card: #fbfaf7; --ink: #2a2724; --muted: #6b655d; --field: #8a8378; --hairline: #e3ded6; --error: #9b3b2e; }",
+  "@media (prefers-color-scheme: dark) { :root { color-scheme: dark; --ground: #1c1a17; --card: #24211d; --ink: #ece6dc; --muted: #a39b8f; --field: #7d756b; --hairline: #3a352f; --error: #e8917f; } }",
+  'body { font-family: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.55; max-width: 22rem; margin: 15vh auto; padding: 0 1rem; color: var(--ink); background: var(--ground); }',
+  'h1 { display: flex; gap: 0.6rem; align-items: center; font-family: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif; font-size: 2.125rem; font-weight: 500; letter-spacing: -0.01em; line-height: 1.2; }',
+  "label { display: block; margin: 1rem 0 0.3rem; font-size: 0.875rem; }",
+  "input { box-sizing: border-box; width: 100%; padding: 0.5rem 0.75rem; font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--field); border-radius: 6px; }",
+  "input:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 2px var(--ink); }",
+  "button { margin-top: 1rem; padding: 0.5rem 1.2rem; font: inherit; font-weight: 500; border: 1px solid var(--ink); border-radius: 6px; background: var(--ink); color: var(--ground); cursor: pointer; }",
+  "button.secondary { background: var(--card); color: var(--ink); border-color: var(--hairline); }",
+  ":focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }",
+  "a { color: var(--ink); }",
+  ".error { color: var(--error); }",
+  ".hint { color: var(--muted); font-size: 0.875rem; }",
+  "a.google { display: block; margin-top: 1rem; padding: 0.5rem 1.2rem; text-align: center; color: var(--ink); text-decoration: none; background: var(--card); border: 1px solid var(--hairline); border-radius: 6px; }",
+  ".or { margin: 1.5rem 0 0; color: var(--muted); text-align: center; }",
 ];
+
+// The Settle mark, as packages/web/src/ui/SettleIcon.tsx draws it at 28 px; the heading's text
+// names it, so the mark itself is hidden from screen readers.
+const MARK =
+  '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.67 15.4A9 9 0 0 0 20.33 15.4Z" fill="currentColor" stroke="none"/></svg>';
 
 /** A page in the login pages' style: no JavaScript, styled inline. */
 function page(title: string, body: string[]): string {
@@ -339,7 +353,7 @@ function page(title: string, body: string[]): string {
     "</style>",
     "</head>",
     "<body>",
-    "<h1>Settle</h1>",
+    `<h1>${MARK}Settle</h1>`,
     ...body,
     "</body>",
     "</html>",

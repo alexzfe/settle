@@ -28,7 +28,37 @@
   width: 100%;
   min-width: 0;
   max-width: var(--width-main);
-  padding: 28px 32px 64px;
+  padding: var(--space-7) var(--space-8) var(--space-16);
+}
+
+/* Focused by the skip link, the page itself needs no ring: the next Tab goes into it. */
+.main:focus {
+  outline: none;
+}
+
+/* "Skip to content": out of sight until the keyboard reaches it, then over the top-left corner. */
+.skip {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 30;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-ink);
+  color: var(--color-ground);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip:focus {
+  color: var(--color-ground);
+  transform: none;
+}
+
+/* The phone top bar's find icon, in a wrapper that only carries inert while the menu is open. */
+.topFind {
+  display: contents;
 }
 
 .main > h1:first-child,
@@ -44,7 +74,7 @@
   align-self: flex-start;
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   font-weight: 500;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -88,6 +118,9 @@
   color: var(--color-ink);
   font-size: var(--text-sm);
   text-decoration: none;
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .sideNav a:hover {
@@ -165,13 +198,18 @@
     gap: var(--space-2);
     align-items: center;
     min-height: 3.25rem;
-    padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+    padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
     border-bottom: 1px solid var(--color-hairline);
     background: var(--color-ground);
   }
 
+  /* A 44 px tap around the 22 px mark; the bar's left padding is smaller to keep it in place. */
   .topMark {
     display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     color: var(--color-ink);
   }
 
@@ -214,15 +252,26 @@
     box-shadow: var(--shadow-raised);
   }
 
+  /* The sheet's rows and links at a fingertip's height. */
+  .sideNav a {
+    padding-block: var(--space-3);
+  }
+
+  .accountLinks a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+
   .scrim {
     position: fixed;
     inset: 0;
     z-index: 19;
-    background: rgb(28 26 23 / 0.35);
+    background: var(--color-scrim);
   }
 
   .main {
-    padding: 20px var(--space-4) 48px;
+    padding: var(--space-5) var(--space-4) var(--space-12);
   }
 }
 
@@ -306,6 +355,9 @@
 a.tag {
   color: var(--color-ink);
   text-decoration: none;
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 a.tag:hover {
@@ -337,6 +389,10 @@ a.tag:hover {
   border-bottom: 1px solid var(--color-hairline);
   text-align: left;
   vertical-align: top;
+}
+
+.table tbody tr {
+  transition: background-color 150ms ease-out;
 }
 
 .table tbody tr:hover {

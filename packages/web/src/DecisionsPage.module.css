@@ -23,10 +23,22 @@
   color: var(--color-ink);
   font-size: var(--text-sm);
   text-decoration: none;
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .pill:hover {
   border-color: var(--color-ink-muted);
+}
+
+@media (max-width: 759.98px) {
+  .pill,
+  .pillCurrent {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
 }
 
 .pillCurrent,
@@ -140,6 +152,9 @@
   position: relative;
   padding: var(--space-2);
   border-bottom: 1px solid var(--color-hairline-soft);
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .rows li:last-child .row {
@@ -215,7 +230,7 @@
   flex-wrap: wrap;
   gap: 0 var(--space-3);
   margin-top: 0.1rem;
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.45;
 }
 
@@ -250,9 +265,11 @@
   text-align: right;
   white-space: nowrap;
 }
-/* "Open since" is wider than its 68px column in small caps, so the header wraps to two lines. */
+/* The header row's labels take the header's own small-caps size, not the row cells' 14 px. */
+.columns .kind,
+.columns .room,
 .columns .since {
-  white-space: normal;
+  font-size: inherit;
 }
 
 /* Phones: kind and room drop under the title. */

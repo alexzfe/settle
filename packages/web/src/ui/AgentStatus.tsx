@@ -1,7 +1,7 @@
 // The sidebar footer's line on the Agent: working now, a Session left open, or the last Session.
 // The MCP endpoint is stateless, so "connected" is unknowable; the last tool call is the signal.
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Session } from "../api";
 import { skillName } from "../HomePage";
@@ -33,20 +33,39 @@ function useMinuteTick(): void {
 }
 
 /**
- * One line, in priority order: the live connection's failure, with Reload; "● Agent working"
- * while a Session is open and the Agent called a tool in the last 5 minutes; "Session still open ·
- * Wrap up" once it has been idle 30 minutes; else the last Session's date, or nothing.
+ * The footer's status region, with the last Session's link beside it. The region stays in the
+ * page whatever it says, empty included, so a screen reader announces each change of text: a live
+ * region inserted with its text already in it is not read out. Only the Agent's live states go in
+ * it; the last Session is history, and announcing it on every Home load would be noise.
  */
 export function AgentStatus({ home, live }: { home: string; live: LiveState }) {
+  const line = useAgentLine(home, live);
+  return (
+    <>
+      <div role="status" className={styles.region}>
+        {line.live}
+      </div>
+      {line.last}
+    </>
+  );
+}
+
+/**
+ * One line, in priority order: the live connection's failure, with Reload; "● Agent working"
+ * while a Session is open and the Agent called a tool in the last 5 minutes; "Session still open ·
+ * Wrap up" once it has been idle 30 minutes; else the last Session's date, or nothing. The first
+ * three are `live`, for the status region; the last Session is `last`, shown outside it.
+ */
+function useAgentLine(home: string, live: LiveState): { live?: ReactNode; last?: ReactNode } {
   useMinuteTick();
   const sessions = useSessions(home);
   const lastCall = useLastAgentCall(home);
-  if (live === "reconnecting" || live === "stopped") return <LivePill state={live} />;
-  if (!sessions.data) return null;
+  if (live === "reconnecting" || live === "stopped") return { live: <LivePill state={live} /> };
+  if (!sessions.data) return {};
   const newest = sessions.data.sessions.toSorted(
     (a, b) => Date.parse(b.openedAt) - Date.parse(a.openedAt),
   )[0];
-  if (!newest) return null;
+  if (!newest) return {};
   if (!newest.closedAt) {
     // Opening the Session was itself a call, and the one to go by after a server restart.
     const lastActive = Math.max(
@@ -55,30 +74,36 @@ export function AgentStatus({ home, live }: { home: string; live: LiveState }) {
     );
     const idle = Date.now() - lastActive;
     if (idle < WORKING_MS) {
-      return (
-        <span className={styles.status} aria-live="polite">
-          <span className={styles.dot} aria-hidden />
-          Agent working · {sessionName(newest)}
-        </span>
-      );
+      return {
+        live: (
+          <span className={styles.status}>
+            <span className={styles.dot} aria-hidden />
+            Agent working · {sessionName(newest)}
+          </span>
+        ),
+      };
     }
     if (idle >= IDLE_MS) {
       const prompt = buildPrompt({
         text: `wrap up the open ${sessionName(newest)} with a summary of what changed and what is still open`,
         slug: newest.slug,
       });
-      return (
-        <span className={styles.status}>
-          {sessionName(newest)} still open · <AskAgent prompt={prompt} label="Wrap up" />
-        </span>
-      );
+      return {
+        live: (
+          <span className={styles.status}>
+            {sessionName(newest)} still open · <AskAgent prompt={prompt} label="Wrap up" />
+          </span>
+        ),
+      };
     }
   }
-  return (
-    <span className={styles.status} aria-live="polite">
-      <Link to={`/homes/${home}/sessions/${newest.slug}`}>
-        Last Session {shortDate(newest.closedAt ?? newest.openedAt)}
-      </Link>
-    </span>
-  );
+  return {
+    last: (
+      <span className={styles.status}>
+        <Link to={`/homes/${home}/sessions/${newest.slug}`}>
+          Last Session {shortDate(newest.closedAt ?? newest.openedAt)}
+        </Link>
+      </span>
+    ),
+  };
 }

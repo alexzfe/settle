@@ -72,6 +72,9 @@
   padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--color-hairline-soft);
   font-size: var(--text-sm);
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .row:hover {

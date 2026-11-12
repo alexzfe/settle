@@ -35,6 +35,13 @@ button.iconButton:hover {
   text-align: left;
 }
 
+/* On a phone the row is a fingertip tall, as every button is there. */
+@media (max-width: 759.98px) {
+  .row {
+    min-height: 2.75rem;
+  }
+}
+
 .row:hover {
   border-color: var(--color-ink-muted);
   background: var(--color-card);
@@ -68,7 +75,7 @@ button.iconButton:hover {
   justify-content: center;
   align-items: flex-start;
   padding: var(--space-4);
-  background: rgb(28 26 23 / 0.35);
+  background: var(--color-scrim);
   animation: fade-in 150ms ease-out;
 }
 
@@ -125,6 +132,34 @@ button.iconButton:hover {
   padding: var(--space-1) var(--space-2);
   color: var(--color-ink-muted);
   font-size: var(--text-xs);
+}
+
+/* On a wide screen the button reads as its key; the word "Close" is for the phone. */
+.closeWord {
+  display: none;
+}
+
+.closeKey {
+  font: inherit;
+}
+
+/* The app's phone breakpoint: a phone has no Escape key, so the button says Close, at a
+   thumb's 44 px. */
+@media (max-width: 759.98px) {
+  .close {
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-size: var(--text-sm);
+  }
+
+  .closeWord {
+    display: inline;
+  }
+
+  .closeKey {
+    display: none;
+  }
 }
 
 .note {

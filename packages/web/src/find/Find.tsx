@@ -18,6 +18,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import type { FindRow } from "../api";
+import { inertAround } from "../focus";
 import { useFindIndex } from "../queries";
 import styles from "./Find.module.css";
 import { find } from "./match";
@@ -164,22 +165,42 @@ function FindOverlay({
   const [expanded, setExpanded] = useState(false);
   const [active, setActive] = useState<Active>({ row: 0, side: false });
   const input = useRef<HTMLInputElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
   const id = useId();
   const results = useMemo(() => find(index.data ?? [], query), [index.data, query]);
   const shown = expanded ? results : results.slice(0, SHOWN);
   const current = shown[active.row];
-  const targetId = current && `${id}-${active.row}${active.side ? "-side" : ""}`;
+  const listed = !index.isPending && !index.isError && results.length > 0;
+  const targetId =
+    listed && current ? `${id}-${active.row}${active.side ? "-side" : ""}` : undefined;
+  // The latest onClose, for the document's Escape listener.
+  const close = useRef(onClose);
+  close.current = onClose;
 
-  // The page behind stays still while the box is open, and gets its focus back when it closes.
+  // The page behind stays still and inert while the box is open, so Tab and a screen reader stay
+  // in the box, and it gets its focus back when the box closes.
   useEffect(() => {
     const before = document.activeElement;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const madeInert = backdrop.current ? inertAround(backdrop.current) : [];
     input.current?.focus();
     return () => {
       document.body.style.overflow = overflow;
+      for (const element of madeInert) element.removeAttribute("inert");
       if (before instanceof HTMLElement) before.focus();
     };
+  }, []);
+
+  // Escape closes the box wherever focus is, even after a click left it on the page body.
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
@@ -192,8 +213,9 @@ function FindOverlay({
       setActive({ row, side: false });
     };
     const caretAtEnd = input.current?.selectionStart === query.length;
-    // Only Escape reaches past the field: Enter on "n more" or Esc is that button's own.
-    if (event.target !== input.current && event.key !== "Escape") return;
+    // Keys pressed elsewhere in the panel are their own: Enter on "n more" or Close is that
+    // button's. Escape is the document's, above.
+    if (event.target !== input.current) return;
     switch (event.key) {
       case "ArrowDown":
         if (active.row < results.length - 1) move(active.row + 1);
@@ -214,9 +236,6 @@ function FindOverlay({
         if (path) onGo(path);
         break;
       }
-      case "Escape":
-        onClose();
-        break;
       default:
         return;
     }
@@ -228,6 +247,7 @@ function FindOverlay({
     // biome-ignore lint/a11y/noStaticElementInteractions: see above.
     // biome-ignore lint/a11y/useKeyWithClickEvents: see above.
     <div
+      ref={backdrop}
       className={styles.backdrop}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -247,8 +267,8 @@ function FindOverlay({
             type="text"
             role="combobox"
             aria-label="Find"
-            aria-expanded="true"
-            aria-controls={`${id}-results`}
+            aria-expanded={listed}
+            aria-controls={listed ? `${id}-results` : undefined}
             aria-activedescendant={targetId}
             aria-autocomplete="list"
             placeholder="Find a Room, Decision, Item…"
@@ -263,8 +283,16 @@ function FindOverlay({
               setActive({ row: 0, side: false });
             }}
           />
-          <button type="button" className={`secondary ${styles.close}`} onClick={onClose}>
-            Esc
+          {/* "Close" on a phone, which has no Escape key; the key's own name on a wider screen. The
+              name holds both words, so a speech user can say either one they see. */}
+          <button
+            type="button"
+            className={`secondary ${styles.close}`}
+            aria-label="Close (Esc)"
+            onClick={onClose}
+          >
+            <span className={styles.closeWord}>Close</span>
+            <kbd className={styles.closeKey}>Esc</kbd>
           </button>
         </div>
         {index.isPending ? (
@@ -276,7 +304,9 @@ function FindOverlay({
             {query.trim() ? "Nothing here is named like that." : "Type a name to find it."}
           </p>
         ) : (
-          <ul id={`${id}-results`} className={styles.results} aria-label="Results">
+          // A list of results that is also a listbox, so the field's highlighted option is read out.
+          // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: see above.
+          <ul id={`${id}-results`} role="listbox" className={styles.results} aria-label="Results">
             {shown.map((row, at) => (
               <Result
                 key={`${row.kind}/${row.slug}`}
@@ -304,9 +334,13 @@ function FindOverlay({
  */
 function Result({ row, id, active }: { row: FindRow; id: string; active?: "row" | "side" }) {
   return (
-    <li className={row.retired ? `${styles.result} ${styles.retired}` : styles.result}>
+    // Each link is an option of the listbox, so the field's highlighted result is announced as
+    // the arrows move; the row itself is only layout.
+    <li role="none" className={row.retired ? `${styles.result} ${styles.retired}` : styles.result}>
       <Link
         id={id}
+        role="option"
+        aria-selected={active === "row"}
         to={row.path}
         replace
         className={styles.main}
@@ -322,6 +356,8 @@ function Result({ row, id, active }: { row: FindRow; id: string; active?: "row" 
       {row.also && (
         <Link
           id={`${id}-side`}
+          role="option"
+          aria-selected={active === "side"}
           to={row.also.path}
           replace
           className={styles.side}
